@@ -3211,6 +3211,17 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var extraInvestidor10 = mapaFIIExtra[at.ticker];
             var valorMercadoRV = dado.marketCap || est.marketCap ||
               ((typeof cot === 'number' && typeof est.sharesOutstanding === 'number') ? cot * est.sharesOutstanding : null);
+            // Para FIIs, o plano atual da Brapi não libera marketCap nem
+            // sharesOutstanding (bloqueados junto com defaultKeyStatistics),
+            // então a maioria dos fundos ficava sempre em "Não disponível"
+            // nesta coluna. Fallback: patrimônio líquido do Investidor10
+            // (mesma aproximação de valor de mercado já usada na Pesquisa de
+            // Ativos), convertido do texto abreviado ("R$ 2,90 bi") para o
+            // valor numérico com o parser já usado para a liquidez diária.
+            if (typeof valorMercadoRV !== 'number' && isFII && extraInvestidor10 && extraInvestidor10.valorPatrimonial) {
+              var valorPatrimonialNum = parseValorAbrevBR(extraInvestidor10.valorPatrimonial);
+              if (typeof valorPatrimonialNum === 'number') valorMercadoRV = valorPatrimonialNum;
+            }
             c[14 + o].textContent = fmtGrandeRV(valorMercadoRV);
             // Sem averageDailyVolume3Month, não usamos regularMarketVolume (volume
             // de um único dia) como substituto: gera valores muito distantes da
@@ -3299,6 +3310,23 @@ h2{font-size:32px;letter-spacing:-.02em;}
                 if (linhaVisivel) {
                   totDivRvAcum += valorEstimadoFII;
                   tr.setAttribute('data-div', String(valorEstimadoFII));
+                  if (totDivRvEl) totDivRvEl.textContent = 'R$ ' + formatarNumero(totDivRvAcum, 2);
+                  atualizarYieldRV();
+                }
+              } else if (typeof dyVal === 'number' && typeof cot === 'number') {
+                // estimarProventoFII também depende do histórico de pagamentos
+                // (dividendsData) vindo da Brapi, que o plano atual não libera
+                // para FIIs em nenhuma chamada desta tabela — por isso essa
+                // estimativa falha para praticamente todo FII, deixando a
+                // coluna sempre em "Nenhum anunciado". Como último recurso,
+                // estima o valor mensal a partir do Dividend Yield (12m) já
+                // obtido acima (Brapi ou, na falta dele, Investidor10),
+                // aplicado à cotação atual e à quantidade do cliente.
+                var valorEstimadoPorDY = (dyVal / 100 / 12) * cot * at.quantidade;
+                c[10 + o].textContent = 'R$ ' + formatarNumero(valorEstimadoPorDY, 2);
+                if (linhaVisivel) {
+                  totDivRvAcum += valorEstimadoPorDY;
+                  tr.setAttribute('data-div', String(valorEstimadoPorDY));
                   if (totDivRvEl) totDivRvEl.textContent = 'R$ ' + formatarNumero(totDivRvAcum, 2);
                   atualizarYieldRV();
                 }
@@ -3538,12 +3566,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
         if (lucroPct !== null) tdLucPct.className = lucroPct >= 0 ? 'pos' : 'neg';
         tr.appendChild(tdLucPct);
 
-        // Marcação manual em vermelho (clique com o botão direito) em todas
-        // as células de dados da linha — mesmo recurso discreto já
-        // disponível em Ações/FIIs. A célula de cupons fica de fora por já
-        // ter sua própria interação (campo editável).
+        // Edição por clique + marcação manual em vermelho (clique com o
+        // botão direito) em todas as células de dados da linha — mesmo
+        // recurso já disponível em Ações/FIIs. A célula de cupons fica de
+        // fora por já ter sua própria interação (campo numérico editável).
         Array.prototype.forEach.call(tr.children, function(td) {
-          if (td !== tdCup) habilitarMarcacaoManual(td);
+          if (td !== tdCup) tornarCelulaEditavel(td);
         });
 
         // Coluna final: excluir este ativo da análise de Renda Fixa —
