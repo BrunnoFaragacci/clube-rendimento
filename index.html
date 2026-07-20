@@ -525,27 +525,22 @@ h2{font-size:32px;letter-spacing:-.02em;}
   // continua acessível normalmente a partir da página filha.
   function escreverConteudoJanela(janela, html) {
     if (!janela) return;
-    // Quando o site é aberto localmente (file://), o Blob criado a partir dele
-    // recebe origem "null" (blob:null/...), o que o Chrome marca como "Não
-    // seguro" e bloqueia leitura de dados entre a aba nova e a original —
-    // por isso a página carrega em branco. Nesse caso usa-se o método antigo
-    // (document.write), que continua funcionando normalmente. O Blob só é
-    // usado quando o site está hospedado via http(s)://, onde tem origem real.
-    if (window.location.protocol === 'file:') {
-      janela.document.open();
-      janela.document.write(html);
-      janela.document.close();
-      return;
-    }
-    try {
-      var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-      var url = URL.createObjectURL(blob);
-      janela.location.replace(url);
-    } catch (e) {
-      janela.document.open();
-      janela.document.write(html);
-      janela.document.close();
-    }
+    // Sempre grava o conteúdo via document.write (síncrono), em vez de navegar
+    // a janela para uma Blob URL (janela.location.replace(url)). O Blob exige
+    // uma navegação assíncrona: o código que chama esta função lê
+    // "janela.document" logo em seguida (na MESMA linha de execução, antes do
+    // navegador processar a navegação), e nesse instante ainda pega o
+    // document antigo (about:blank) da janela — daí a página abrir com os
+    // títulos/quadros da análise, mas nenhuma linha da tabela é preenchida
+    // (todo o código que usa esse "document" desatualizado falha em silêncio
+    // ou lança erro, como em "Cannot set properties of null" ao tentar achar
+    // um elemento que só existe no HTML novo). document.write não tem esse
+    // problema: o documento da janela já reflete o HTML novo assim que esta
+    // função retorna, tanto em http(s) quanto ao abrir o arquivo localmente
+    // (file://, onde o Blob de fato tinha origem "null" e ficava bloqueado).
+    janela.document.open();
+    janela.document.write(html);
+    janela.document.close();
   }
 
   /* ===================== NOTÍCIAS DO MERCADO ===================== */
