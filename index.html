@@ -3171,11 +3171,19 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var entrada = dadosGraficoRV.find(function(d) { return d._idx === globalIdx; });
             if (entrada) { entrada.segmento = segNome; entrada.quoteType = quoteType; }
 
-            // Indicadores fundamentalistas
+            // Indicadores fundamentalistas — para FIIs, o plano atual da Brapi
+            // não libera P/VP nem Dividend Yield (bloqueados junto com
+            // defaultKeyStatistics/financialData), então cai no fallback do
+            // Investidor10 (mesma fonte já usada na Pesquisa de Ativos) quando
+            // esses dados vêm vazios da Brapi.
+            var extraFundInd10 = mapaFIIExtra[at.ticker];
             c[6 + o].textContent  = typeof dado.priceEarnings === 'number'      ? formatarNumero(dado.priceEarnings, 2)            : 'Não disponível';
-            c[7 + o].textContent  = typeof est.priceToBook === 'number'          ? formatarNumero(est.priceToBook, 2)               : 'Não disponível';
+            var pvpVal = typeof est.priceToBook === 'number' ? est.priceToBook :
+              (isFII && extraFundInd10 && typeof extraFundInd10.pvp === 'number' ? extraFundInd10.pvp : null);
+            c[7 + o].textContent  = pvpVal !== null                              ? formatarNumero(pvpVal, 2)                        : 'Não disponível';
             var dyCalculado = calcularDYPreciso(dado);
-            var dyVal = dyCalculado !== null ? dyCalculado : (typeof est.dividendYield === 'number' ? est.dividendYield * 100 : null);
+            var dyVal = dyCalculado !== null ? dyCalculado : (typeof est.dividendYield === 'number' ? est.dividendYield * 100 :
+              (isFII && extraFundInd10 && typeof extraFundInd10.dividendYield12m === 'number' ? extraFundInd10.dividendYield12m : null));
             c[8 + o].textContent  = dyVal !== null                               ? formatarNumero(dyVal, 2) + '%'                   : 'Não disponível';
             if (entrada && dyVal !== null) entrada.dy = dyVal;
             c[9 + o].textContent  = typeof fin.returnOnEquity === 'number'       ? formatarNumero(fin.returnOnEquity * 100, 2) + '%': 'Não disponível';
