@@ -3178,12 +3178,22 @@ h2{font-size:32px;letter-spacing:-.02em;}
             // esses dados vêm vazios da Brapi.
             var extraFundInd10 = mapaFIIExtra[at.ticker];
             c[6 + o].textContent  = typeof dado.priceEarnings === 'number'      ? formatarNumero(dado.priceEarnings, 2)            : 'Não disponível';
+            // dados.pvp e dados.dividendYield12m vêm da Edge Function do Investidor10
+            // como strings já formatadas no padrão brasileiro (ex.: "1,05" e "8,52%"),
+            // não como números — por isso são convertidos aqui em vez de comparados
+            // com typeof === 'number' (checagem que nunca era verdadeira e fazia o
+            // fallback ficar sempre em "Não disponível" mesmo com o dado disponível).
+            var pvpFallback = (isFII && extraFundInd10 && extraFundInd10.pvp) ?
+              parseFloat(String(extraFundInd10.pvp).replace(',', '.')) : NaN;
             var pvpVal = typeof est.priceToBook === 'number' ? est.priceToBook :
-              (isFII && extraFundInd10 && typeof extraFundInd10.pvp === 'number' ? extraFundInd10.pvp : null);
+              (isFinite(pvpFallback) ? pvpFallback : null);
             c[7 + o].textContent  = pvpVal !== null                              ? formatarNumero(pvpVal, 2)                        : 'Não disponível';
             var dyCalculado = calcularDYPreciso(dado);
+            var dyFallbackStr = (isFII && extraFundInd10 && extraFundInd10.dividendYield12m) ?
+              String(extraFundInd10.dividendYield12m) : '';
+            var dyFallback = dyFallbackStr ? parseFloat(dyFallbackStr.replace('%', '').trim().replace(',', '.')) : NaN;
             var dyVal = dyCalculado !== null ? dyCalculado : (typeof est.dividendYield === 'number' ? est.dividendYield * 100 :
-              (isFII && extraFundInd10 && typeof extraFundInd10.dividendYield12m === 'number' ? extraFundInd10.dividendYield12m : null));
+              (isFinite(dyFallback) ? dyFallback : null));
             c[8 + o].textContent  = dyVal !== null                               ? formatarNumero(dyVal, 2) + '%'                   : 'Não disponível';
             if (entrada && dyVal !== null) entrada.dy = dyVal;
             c[9 + o].textContent  = typeof fin.returnOnEquity === 'number'       ? formatarNumero(fin.returnOnEquity * 100, 2) + '%': 'Não disponível';
