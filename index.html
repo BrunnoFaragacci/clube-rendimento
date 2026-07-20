@@ -9708,6 +9708,36 @@ function aplicarDadosExtraInvestidor10(dados){
     elLiq.textContent = dados.liquidezDiaria + '/dia';
     elLiq.title = 'Fonte: Investidor10 (dado não disponível na Brapi)';
   }
+  // O plano atual da Brapi não libera os módulos "defaultKeyStatistics" nem
+  // "financialData" para Fundos Imobiliários, então P/VP, DY e cotas
+  // emitidas chegam sempre vazios (—) da Brapi para FIIs. Preenchidos aqui
+  // via Investidor10 sempre que ainda estiverem em branco.
+  var motivoSemBrapiFII = 'Fonte: Investidor10 (a Brapi não libera este dado para FIIs no plano atual)';
+  ['fii-pvp','fii2-pvp'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el && el.textContent === '—' && dados.pvp){
+      var n = parseFloat(String(dados.pvp).replace(',', '.'));
+      el.textContent = isFinite(n) ? fmt(n,2)+'x' : (dados.pvp+'x');
+      el.title = motivoSemBrapiFII;
+    }
+  });
+  ['fii-dy','fii2-dy'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el && el.textContent === '—' && dados.dividendYield12m){
+      el.textContent = dados.dividendYield12m;
+      el.title = motivoSemBrapiFII + ' — yield dos últimos 12 meses';
+    }
+  });
+  var elCotas = document.getElementById('fii2-cotas');
+  if(elCotas && elCotas.textContent === '—' && dados.cotasEmitidas){
+    elCotas.textContent = dados.cotasEmitidas;
+    elCotas.title = motivoSemBrapiFII;
+  }
+  var elMcapFII = document.getElementById('fii2-mcap');
+  if(elMcapFII && elMcapFII.textContent === '—' && dados.valorPatrimonial){
+    elMcapFII.textContent = dados.valorPatrimonial;
+    elMcapFII.title = motivoSemBrapiFII + ' — patrimônio líquido do fundo (aproximação de valor de mercado)';
+  }
   // Reflete os valores (já formatados) no comparador FII em bolsa x cetipado x CDI.
   if(dadoBolsaComp){
     dadoBolsaComp.taxaAdm  = elTx  ? elTx.textContent  : dadoBolsaComp.taxaAdm;
@@ -9903,15 +9933,34 @@ function pesquisar(){
   var t=(document.getElementById('ticker-input').value||'').trim().toUpperCase();
   if(!t)return;
   mostrarLoading();
-  var url1=BASE+'/quote/'+t+'?dividends=true&range=1y&interval=1d&modules=summaryProfile,defaultKeyStatistics,financialData&token='+TOKEN;
-  var url2=BASE+'/quote/'+t+'?modules=balanceSheetHistory,incomeStatementHistory,cashflowHistory&token='+TOKEN;
-  Promise.all([fetch(url1).then(function(r){return r.json();}),fetch(url2).then(function(r){return r.json();})])
-    .then(function(rs){
+  // Primeiro identifica o tipo do ativo com uma chamada básica (sem
+  // "dividends", "range" nem módulos extras): o plano atual da Brapi
+  // bloqueia esses parâmetros para Fundos Imobiliários (a chamada volta
+  // com erro 400/403 em vez de "results", e o site mostrava "não
+  // encontrado" mesmo para FIIs válidos, como HGLG11). Ações continuam
+  // usando a chamada completa normalmente.
+  var urlTipo=BASE+'/quote/'+t+'?token='+TOKEN;
+  fetch(urlTipo).then(function(r){return r.json();}).then(function(dTipo){
+    if(!dTipo.results||!dTipo.results.length){mostrarErro('Ticker "'+t+'" não encontrado na B3.');return;}
+    var baseInfo=dTipo.results[0];
+    var ehFundo=(baseInfo.type||'').toLowerCase()==='fund';
+    var url1=ehFundo
+      ? BASE+'/quote/'+t+'?modules=summaryProfile&token='+TOKEN
+      : BASE+'/quote/'+t+'?dividends=true&range=1y&interval=1d&modules=summaryProfile,defaultKeyStatistics,financialData&token='+TOKEN;
+    var promessas=[fetch(url1).then(function(r){return r.json();}).catch(function(){return null;})];
+    if(!ehFundo){
+      var url2=BASE+'/quote/'+t+'?modules=balanceSheetHistory,incomeStatementHistory,cashflowHistory&token='+TOKEN;
+      promessas.push(fetch(url2).then(function(r){return r.json();}).catch(function(){return null;}));
+    }
+    Promise.all(promessas).then(function(rs){
       var d1=rs[0],d2=rs[1];
-      if(!d1.results||!d1.results.length){mostrarErro('Ticker "'+t+'" não encontrado na B3.');return;}
-      renderizar(d1.results[0],d2.results&&d2.results[0]?d2.results[0]:{});
-    })
-    .catch(function(e){mostrarErro('Erro ao consultar a API: '+e.message);});
+      // Se a chamada enriquecida falhar por qualquer motivo (ex.: mais uma
+      // restrição de plano), ainda assim renderiza com os dados básicos já
+      // obtidos em vez de travar a página em branco.
+      var dados=(d1&&d1.results&&d1.results[0])?d1.results[0]:baseInfo;
+      renderizar(dados,(d2&&d2.results&&d2.results[0])?d2.results[0]:{});
+    }).catch(function(){renderizar(baseInfo,{});});
+  }).catch(function(e){mostrarErro('Erro ao consultar a API: '+e.message);});
 }
 
 document.getElementById('btn-pesquisar').addEventListener('click',pesquisar);
