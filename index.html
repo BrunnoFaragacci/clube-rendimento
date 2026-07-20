@@ -2653,7 +2653,19 @@ h2{font-size:32px;letter-spacing:-.02em;}
     // Torna uma célula da tabela editável (clique para digitar um novo
     // valor) e permite marcá-la manualmente em vermelho (clique com o botão
     // direito), sem exigir nenhum botão visível — a edição/marcação fica
-    // disponível de forma discreta em qualquer célula da tabela de Ações/FIIs.
+    // disponível de forma discreta em qualquer célula das tabelas de
+    // Ações/FIIs, Renda Fixa e Fundos Cetipados.
+    //
+    // Colunas que alimentam algum quadrante-resumo (Valor total, Variação,
+    // Próximos proventos, Valor aplicado, Posição, Valor líquido, etc.)
+    // recebem um "recalculador" — uma função associada à célula via
+    // aoEditarCelula() — que roda logo após a confirmação da edição e ajusta
+    // o total correspondente pela diferença entre o valor novo e o anterior.
+    // Como as linhas da tabela de RV são criadas ANTES dos dados chegarem
+    // (para já exibir "Consultando..."), o recalculador só pode ser
+    // associado depois, quando o valor de cada célula é conhecido — por
+    // isso essa lógica fica separada da própria tornarCelulaEditavel, que
+    // só cuida da interação de clique/edição em si.
     function tornarCelulaEditavel(td) {
       if (!td || td.dataset.editavel) return;
       td.dataset.editavel = '1';
@@ -2675,7 +2687,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
           if (confirmado) return;
           confirmado = true;
           var novo = input.value.trim();
+          var anterior = valorAtual;
           td.textContent = novo === '' ? '—' : novo;
+          if (typeof td._recalcularAoEditar === 'function') {
+            try { td._recalcularAoEditar(novo, anterior); } catch (e) {}
+          }
         }
         input.addEventListener('blur', confirmar);
         input.addEventListener('keydown', function(e) {
@@ -2687,6 +2703,13 @@ h2{font-size:32px;letter-spacing:-.02em;}
         ev.preventDefault();
         td.classList.toggle('marcado-manual');
       });
+    }
+
+    // Associa um recalculador de quadrante a uma célula já tornada editável
+    // (ver comentário acima de tornarCelulaEditavel). fn recebe (novoTexto,
+    // textoAnterior) e roda depois que a célula já exibe o novo valor.
+    function aoEditarCelula(td, fn) {
+      if (td) td._recalcularAoEditar = fn;
     }
 
     // Aplica a edição/marcação manual a todas as células de dados de uma
@@ -3137,6 +3160,28 @@ h2{font-size:32px;letter-spacing:-.02em;}
                 if (isFII) totFIIsOnly += vt; else totAcoesOnly += vt;
                 dadosGraficoRV.push({ ticker: at.ticker, valorTotal: vt, segmento: segNome, dy: null, quoteType: quoteType, isFII: isFII, _idx: globalIdx });
                 todosAtivos.push({ nome: at.ticker, classe: 'RV', valor: vt });
+                // Editar a célula "Valor total" ajusta o card de total (RV/
+                // Ações/FIIs) pela diferença frente ao valor anterior, e
+                // mantém dadosGraficoRV/todosAtivos sincronizados — mesmos
+                // dados usados pelos gráficos e pela exclusão de linha.
+                aoEditarCelula(c[4 + o], function(novoTxt) {
+                  var novoNum = parseNumeroBR(novoTxt);
+                  if (isNaN(novoNum)) return;
+                  var entradaG = dadosGraficoRV.filter(function(d) { return d._idx === globalIdx; })[0];
+                  var antigoNum = entradaG ? entradaG.valorTotal : vt;
+                  var delta = novoNum - antigoNum;
+                  if (delta === 0) return;
+                  totRV += delta;
+                  if (isFII) totFIIsOnly += delta; else totAcoesOnly += delta;
+                  if (entradaG) entradaG.valorTotal = novoNum;
+                  for (var _ai = 0; _ai < todosAtivos.length; _ai++) {
+                    if (todosAtivos[_ai].classe === 'RV' && todosAtivos[_ai].nome === at.ticker) {
+                      todosAtivos[_ai].valor = novoNum;
+                      break;
+                    }
+                  }
+                  if (totRvEl) totRvEl.textContent = 'R$ ' + formatarNumero(totRV, 2);
+                });
               }
             } else {
               c[3 + o].textContent = 'Não disponível';
@@ -3161,6 +3206,30 @@ h2{font-size:32px;letter-spacing:-.02em;}
                   totVarRvEl.textContent = 'R$ ' + formatarNumero(totVarRV, 2);
                   totVarRvEl.className = 'resumo-valor ' + (totVarRV >= 0 ? 'pos' : 'neg');
                 }
+                // A célula mostra um percentual (ex.: "▲ 0,70%"), não o valor
+                // em R$ acumulado no card — por isso, ao editar, o novo
+                // percentual é convertido de volta para R$ usando o mesmo
+                // valor aplicado (preço médio × quantidade) desta linha,
+                // e o card é ajustado pela diferença frente ao data-var
+                // anterior (mesmo atributo já usado para reverter o total
+                // quando a linha é excluída).
+                var valorAplicadoLinhaRV = at.precoMedio * at.quantidade;
+                aoEditarCelula(c[5 + o], function(novoTxt) {
+                  var limpo = String(novoTxt).replace(/[▲▼\s%]/g, '').trim();
+                  var num = parseFloat(limpo.replace(',', '.'));
+                  if (isNaN(num)) return;
+                  var negativo = /▼/.test(novoTxt) || /^-/.test(String(novoTxt).trim());
+                  var pct = negativo ? -Math.abs(num) : Math.abs(num);
+                  var novoValorVar = (pct / 100) * valorAplicadoLinhaRV;
+                  var anteriorVar = parseFloat(tr.getAttribute('data-var')) || 0;
+                  totVarRV += novoValorVar - anteriorVar;
+                  tr.setAttribute('data-var', String(novoValorVar));
+                  if (totVarRvEl) {
+                    totVarRvEl.textContent = 'R$ ' + formatarNumero(totVarRV, 2);
+                    totVarRvEl.className = 'resumo-valor ' + (totVarRV >= 0 ? 'pos' : 'neg');
+                  }
+                  c[5 + o].className = novoValorVar >= 0 ? 'pos' : 'neg';
+                });
               }
             } else if (typeof dado.regularMarketChangePercent === 'number') {
               var pos = dado.regularMarketChangePercent >= 0;
@@ -3339,6 +3408,25 @@ h2{font-size:32px;letter-spacing:-.02em;}
               c[11 + o].textContent = '—';
             }
 
+            // Editar "Próximos proventos" ajusta o card "Total de dividendos
+            // a pagar" e o Yield da carteira pela diferença frente ao valor
+            // já somado (guardado em data-div, mesmo atributo usado para
+            // reverter o total quando a linha é excluída — funciona tanto
+            // para valores anunciados quanto para as estimativas acima, e
+            // também quando a célula não tinha nenhum valor ainda).
+            if (linhaVisivel) {
+              aoEditarCelula(c[10 + o], function(novoTxt) {
+                var novoNum = parseNumeroBR(novoTxt);
+                if (isNaN(novoNum)) novoNum = 0;
+                var anteriorDiv = parseFloat(tr.getAttribute('data-div')) || 0;
+                if (novoNum === anteriorDiv) return;
+                totDivRvAcum += novoNum - anteriorDiv;
+                tr.setAttribute('data-div', String(novoNum));
+                if (totDivRvEl) totDivRvEl.textContent = 'R$ ' + formatarNumero(totDivRvAcum, 2);
+                atualizarYieldRV();
+              });
+            }
+
             // Último provento efetivamente pago — acumulado à parte, só para
             // compor o DY da carteira inteira no último mês (quadrante na
             // área de Fundos Cetipados), independente do que já foi
@@ -3510,10 +3598,14 @@ h2{font-size:32px;letter-spacing:-.02em;}
         ? item.posicao
         : (typeof item.valorLiquido === 'number' ? item.valorLiquido : 0);
 
-      // Acumular totRF (itens RF não entram na diversificação)
+      // Acumular totRF (itens RF não entram na diversificação). tipoNorm é
+      // calculado sempre (não só quando valor > 0) porque a Posição pode
+      // ser editada depois para um valor positivo, e nesse caso o callback
+      // de edição (mais abaixo) precisa da mesma chave de tipo já usada
+      // aqui e no botão de excluir.
+      var tipoNorm = String(item.tipo || '').toUpperCase().trim();
       if (valor > 0) {
         totRF += valor;
-        var tipoNorm = String(item.tipo || '').toUpperCase().trim();
         totRFPorTipo[tipoNorm] = (totRFPorTipo[tipoNorm] || 0) + valor;
       }
 
@@ -3523,9 +3615,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
         var lucroRS  = (valor && valorAplicado) ? valor - valorAplicado : null;
         var lucroPct = (lucroRS !== null && valorAplicado) ? (lucroRS / valorAplicado) * 100 : null;
 
-        // Acumula no total de lucro RF (o valor inicial, sem cupons — o
-        // listener abaixo ajusta esse total pela diferença sempre que o
-        // usuário editar os cupons pagos de algum ativo).
+        // Acumula no total de lucro RF (o valor inicial, sem cupons — as
+        // edições abaixo, tanto de cupons quanto de Valor aplicado/Posição,
+        // ajustam esse total pela diferença via recomputarLucroRF()).
         if (lucroRS !== null) totLucroRF += lucroRS;
 
         var tr = D.createElement('tr');
@@ -3534,8 +3626,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
         tr.appendChild(cel(D, item.aplicacao   || '—'));
         tr.appendChild(cel(D, item.vencimento  || '—'));
         tr.appendChild(cel(D, item.taxa        || '—'));
-        tr.appendChild(cel(D, valorAplicado    !== null ? 'R$ ' + formatarNumero(valorAplicado, 2) : '—'));
-        tr.appendChild(cel(D, valor            > 0     ? 'R$ ' + formatarNumero(valor, 2)          : '—'));
+        var tdValAplic = cel(D, valorAplicado  !== null ? 'R$ ' + formatarNumero(valorAplicado, 2) : '—');
+        tr.appendChild(tdValAplic);
+        var tdPosicao = cel(D, valor           > 0     ? 'R$ ' + formatarNumero(valor, 2)          : '—');
+        tr.appendChild(tdPosicao);
         var tdLiq = cel(D, typeof item.valorLiquido === 'number'
           ? 'R$ ' + formatarNumero(item.valorLiquido, 2) : '—');
         tr.appendChild(tdLiq);
@@ -3608,28 +3702,71 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
         corpoRFPos.appendChild(tr);
 
-        // Listener: cupons editados recalculam Lucro (R$) e Lucro (%), e
-        // ajustam o total de lucro RF pela diferença frente ao valor anterior.
-        (function(posicaoAtivo, valorAplicadoAtivo, tdLRS, tdLPct) {
-          inpCup.addEventListener('input', function() {
-            var cupVal = parseFloat(inpCup.value) || 0;
-            var lucRS  = (posicaoAtivo !== null && valorAplicadoAtivo !== null)
-              ? posicaoAtivo - valorAplicadoAtivo + cupVal
-              : null;
-            var lucPct = (lucRS !== null && valorAplicadoAtivo)
-              ? (lucRS / valorAplicadoAtivo) * 100 : null;
-            tdLRS.textContent  = lucRS  !== null ? 'R$ ' + formatarNumero(lucRS,  2) : '—';
-            tdLRS.className    = lucRS  !== null ? (lucRS  >= 0 ? 'pos' : 'neg') : '';
-            tdLPct.textContent = lucPct !== null ? formatarNumero(lucPct, 2) + '%' : '—';
-            tdLPct.className   = lucPct !== null ? (lucPct >= 0 ? 'pos' : 'neg') : '';
-            totLucroRF += (lucRS !== null ? lucRS : 0) - (lucroAtualRS !== null ? lucroAtualRS : 0);
-            lucroAtualRS = lucRS;
-            if (totLucroRFEl) {
-              totLucroRFEl.textContent = 'R$ ' + formatarNumero(totLucroRF, 2);
-              totLucroRFEl.className = 'resumo-valor ' + (totLucroRF >= 0 ? 'pos' : 'neg');
-            }
-          });
-        })(valor, valorAplicado, tdLucRS, tdLucPct);
+        // Estado "vivo" desta linha (posição, valor aplicado e cupons),
+        // reatribuído sempre que o usuário edita a célula correspondente —
+        // ao contrário de capturar esses valores só uma vez no momento da
+        // criação da linha, isso garante que qualquer uma das três edições
+        // (Valor aplicado, Posição ou Cupons pagos) recalcule Lucro (R$)/(%)
+        // usando sempre os valores mais recentes das outras duas.
+        var posicaoAtual        = valor;
+        var valorAplicadoAtual  = valorAplicado;
+        var cuponsAtual         = typeof item.cupons === 'number' ? item.cupons : 0;
+
+        function recomputarLucroRF() {
+          var novoLucroRS = (posicaoAtual !== null && valorAplicadoAtual !== null)
+            ? posicaoAtual - valorAplicadoAtual + cuponsAtual
+            : null;
+          var novoLucroPct = (novoLucroRS !== null && valorAplicadoAtual)
+            ? (novoLucroRS / valorAplicadoAtual) * 100 : null;
+          tdLucRS.textContent  = novoLucroRS  !== null ? 'R$ ' + formatarNumero(novoLucroRS,  2) : '—';
+          tdLucRS.className    = novoLucroRS  !== null ? (novoLucroRS  >= 0 ? 'pos' : 'neg') : '';
+          tdLucPct.textContent = novoLucroPct !== null ? formatarNumero(novoLucroPct, 2) + '%' : '—';
+          tdLucPct.className   = novoLucroPct !== null ? (novoLucroPct >= 0 ? 'pos' : 'neg') : '';
+          totLucroRF += (novoLucroRS !== null ? novoLucroRS : 0) - (lucroAtualRS !== null ? lucroAtualRS : 0);
+          lucroAtualRS = novoLucroRS;
+          if (totLucroRFEl) {
+            totLucroRFEl.textContent = 'R$ ' + formatarNumero(totLucroRF, 2);
+            totLucroRFEl.className = 'resumo-valor ' + (totLucroRF >= 0 ? 'pos' : 'neg');
+          }
+        }
+
+        // Cupons editados: recalcula Lucro (R$)/(%) e ajusta o total de
+        // lucro RF pela diferença frente ao valor anterior.
+        inpCup.addEventListener('input', function() {
+          cuponsAtual = parseFloat(inpCup.value) || 0;
+          recomputarLucroRF();
+        });
+
+        // Valor aplicado editado: recalcula só o Lucro (R$)/(%) desta linha
+        // (o total em Renda Fixa do card não depende do valor aplicado, só
+        // da Posição/valor atual — ver abaixo).
+        aoEditarCelula(tdValAplic, function(novoTxt) {
+          var novoNum = parseNumeroBR(novoTxt);
+          valorAplicadoAtual = isNaN(novoNum) ? null : novoNum;
+          recomputarLucroRF();
+        });
+
+        // Posição editada: além de recalcular o Lucro (R$)/(%) desta linha,
+        // ajusta o total em Renda Fixa (geral e por tipo) pela diferença —
+        // mesmo critério (só soma quando > 0) já usado na criação da linha
+        // e no botão de excluir, para que ambos continuem consistentes.
+        aoEditarCelula(tdPosicao, function(novoTxt) {
+          var novoNum = parseNumeroBR(novoTxt);
+          var novoVal = isNaN(novoNum) ? null : novoNum;
+          var contribAntigo = (valor && valor > 0) ? valor : 0;
+          var contribNovo   = (novoVal && novoVal > 0) ? novoVal : 0;
+          var deltaTotal = contribNovo - contribAntigo;
+          if (deltaTotal !== 0) {
+            totRF += deltaTotal;
+            totRFPorTipo[tipoNorm] = (totRFPorTipo[tipoNorm] || 0) + deltaTotal;
+            if (totRfEl) totRfEl.textContent = 'R$ ' + formatarNumero(totRF, 2);
+            var elTipoLive = totRfTipoEls[tipoNorm];
+            if (elTipoLive) elTipoLive.textContent = totRFPorTipo[tipoNorm] ? 'R$ ' + formatarNumero(totRFPorTipo[tipoNorm], 2) : '—';
+          }
+          valor = novoVal; // mantém o botão "excluir" (que lê 'valor') sincronizado
+          posicaoAtual = novoVal;
+          recomputarLucroRF();
+        });
       }
 
       // Avançar para o próximo item de forma assíncrona (evita travar a UI)
@@ -4206,9 +4343,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
             : 'Não disponível'));
 
           // Coluna 5: valor líquido
-          tr.appendChild(cel(D, typeof fundo.valorLiquido === 'number'
+          var tdValorLiq = cel(D, typeof fundo.valorLiquido === 'number'
             ? 'R$ ' + formatarNumero(fundo.valorLiquido, 2)
-            : 'Não disponível'));
+            : 'Não disponível');
+          tr.appendChild(tdValorLiq);
 
           // Coluna 6: dia de pagamento
           tr.appendChild(cel(D, typeof fundo.diaPagamento === 'number'
@@ -4236,6 +4374,27 @@ h2{font-size:32px;letter-spacing:-.02em;}
             : 'Não disponível');
           if (typeof yieldMesLinha === 'number') tdYield.className = 'pos';
           tr.appendChild(tdYield);
+
+          // Edição por clique + marcação manual em todas as colunas de dados
+          // (exceto o toggle de detalhes, o nome do fundo e a coluna de ação),
+          // mesmo recurso já disponível nas tabelas de Ações/FIIs e Renda Fixa.
+          Array.prototype.forEach.call(tr.children, function(td, tdIdx) {
+            if (tdIdx === 0 || tdIdx === 1) return;
+            tornarCelulaEditavel(td);
+          });
+
+          // A tabela de Fundos Cetipados recalcula seus totais por completo a
+          // cada renderização (ao contrário de Ações/FIIs e Renda Fixa, que
+          // usam soma incremental com reversão por delta). Por isso, em vez de
+          // ajustar o total manualmente aqui, a edição do valor líquido apenas
+          // atualiza o dado de origem do fundo e reaproveita o próprio
+          // pipeline de renderização/atualização já usado pelo botão de excluir.
+          aoEditarCelula(tdValorLiq, function(novoTxt) {
+            var novoNum = parseNumeroBR(novoTxt);
+            fundo.valorLiquido = isNaN(novoNum) ? null : novoNum;
+            renderizarCetip();
+            concluir();
+          });
 
           // Coluna 9: excluir fundo da análise
           var tdAcao = D.createElement('td');
