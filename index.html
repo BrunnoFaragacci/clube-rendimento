@@ -2889,11 +2889,35 @@ h2{font-size:32px;letter-spacing:-.02em;}
       // além de mais rápida no total, permite que só o ticker que realmente
       // falhar apareça como "Erro" na tabela — sem derrubar o lote inteiro.
       var tickers = lote.map(function(a) { return a.ticker; }).join(',');
+      // Duas chamadas por ticker: a primeira, "base" (sem dividends/módulos
+      // restritos), é sempre permitida pelo plano atual da Brapi, inclusive
+      // para FIIs, e serve para descobrir o quoteType real do ativo. O plano
+      // bloqueia dividends=true e os módulos defaultKeyStatistics/
+      // financialData especificamente para FUNDs (403), então pedir isso já
+      // na primeira chamada fazia todo FII do lote "estourar" em erro e sumir
+      // da tabela por completo (mesma causa raiz já corrigida na Pesquisa de
+      // Ativos). Com o tipo confirmado pela própria Brapi, só pedimos os
+      // módulos completos para ações; para FIIs pedimos apenas o que o plano
+      // libera (summaryProfile), preservando preço/quoteType/nome da base.
       var url = Promise.all(lote.map(function(a) {
-        var urlAtivo = BRAPI_PROXY + '/quote/' + encodeURIComponent(a.ticker) +
-          '?fundamental=true&dividends=true&modules=defaultKeyStatistics,financialData,summaryProfile';
-        return fetchComRetry(urlAtivo)
-          .then(function(d) { return (d && d.results && d.results[0]) ? d.results[0] : null; })
+        var urlBase = BRAPI_PROXY + '/quote/' + encodeURIComponent(a.ticker);
+        return fetchComRetry(urlBase)
+          .then(function(dBase) {
+            var base = (dBase && dBase.results && dBase.results[0]) ? dBase.results[0] : null;
+            if (!base) return null;
+            var tipo = (base.quoteType || '').toUpperCase();
+            var ehFundo = tipo === 'FUND' || a.segmentoPlanilha === 'fiis';
+            var urlCompleta = ehFundo
+              ? BRAPI_PROXY + '/quote/' + encodeURIComponent(a.ticker) + '?modules=summaryProfile'
+              : BRAPI_PROXY + '/quote/' + encodeURIComponent(a.ticker) +
+                '?fundamental=true&dividends=true&modules=defaultKeyStatistics,financialData,summaryProfile';
+            return fetchComRetry(urlCompleta)
+              .then(function(dCompleta) {
+                var completa = (dCompleta && dCompleta.results && dCompleta.results[0]) ? dCompleta.results[0] : null;
+                return completa ? Object.assign({}, base, completa) : base;
+              })
+              .catch(function() { return base; });
+          })
           .catch(function() { return null; });
       })).then(function(itens) {
         return { results: itens.filter(function(it) { return it; }) };
@@ -2928,8 +2952,16 @@ h2{font-size:32px;letter-spacing:-.02em;}
       // acima. Consultado só para os tickers já identificados, pela própria
       // planilha, como FIIs. Se o plano não tiver acesso a esse endpoint ou a
       // chamada falhar por qualquer motivo, cai silenciosamente no rótulo
-      // genérico "FII" já existente.
-      var tickersFIISegLote = lote.filter(function(a) { return a.segmentoPlanilha === 'fiis'; }).map(function(a) { return a.ticker; });
+      // genérico "FII" já existente. Além do rótulo de seção da própria
+      // planilha (nem sempre reconhecido, dependendo do layout do extrato),
+      // usa também o padrão de ticker "XXXX11" da B3 como sinal extra — só
+      // quando a planilha não classificou o ativo como "Ações" — para não
+      // deixar de buscar segmento/vacância de um FII cuja seção não foi
+      // identificada corretamente.
+      var tickersFIISegLote = lote.filter(function(a) {
+        return a.segmentoPlanilha === 'fiis' ||
+          (a.segmentoPlanilha !== 'acoes' && /^[A-Z]{4}11$/.test(a.ticker));
+      }).map(function(a) { return a.ticker; });
       var promFIISeg = tickersFIISegLote.length
         ? fetchComTimeout(BRAPI_PROXY + '/v2/fii/indicators?symbols=' + encodeURIComponent(tickersFIISegLote.join(',')))
             .then(function(r) { return r.ok ? r.json() : { fiis: [] }; }).catch(function() { return { fiis: [] }; })
@@ -3039,19 +3071,22 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var quoteType = (dado.quoteType || '').toUpperCase();
             var longName  = (dado.longName || dado.shortName || '').toUpperCase();
             var isETF = quoteType === 'ETF' || longName.indexOf('ETF') !== -1;
-            // A origem identificada na própria planilha (seção "Ações" ou
-            // "Fundos Imobiliários" do extrato) é o critério mais confiável:
-            // a brapi nem sempre marca quoteType==='FUND' para todos os FIIs.
-            // Só recorremos à heurística por nome/quoteType quando a origem
-            // não pôde ser determinada (ativo sem seção correspondente).
+            // O quoteType/nome devolvido pela própria Brapi (sempre disponível
+            // agora, já que a chamada "base" nunca é bloqueada pelo plano,
+            // nem para FIIs) é o critério mais confiável e por isso vem
+            // primeiro. O rótulo de seção identificado na planilha ("Ações"
+            // vs. "Fundos Imobiliários" do extrato) entra só como reforço,
+            // para os poucos casos em que a Brapi não classifica o ativo
+            // claramente como FUND. Antes, quando a planilha classificava
+            // (incorretamente) um FII como "acoes", a checagem por quoteType
+            // sequer rodava — o ativo ficava marcado como ação para sempre e
+            // a linha inteira desaparecia da tabela ao filtrar só por FIIs.
             var isFII = !isETF && (
-              at.segmentoPlanilha === 'fiis' ||
-              (at.segmentoPlanilha !== 'acoes' && (
-                quoteType === 'FUND' ||
-                longName.indexOf('FUNDO DE INVESTIMENTO IMOBILI') !== -1 ||
-                longName.indexOf('FDO INV IMOB') !== -1 ||
-                (longName.indexOf('FUNDO') !== -1 && longName.indexOf('IMOBILI') !== -1)
-              ))
+              quoteType === 'FUND' ||
+              longName.indexOf('FUNDO DE INVESTIMENTO IMOBILI') !== -1 ||
+              longName.indexOf('FDO INV IMOB') !== -1 ||
+              (longName.indexOf('FUNDO') !== -1 && longName.indexOf('IMOBILI') !== -1) ||
+              at.segmentoPlanilha === 'fiis'
             );
             var fiiSeg = mapaFIISeg[at.ticker];
             // O campo segmentoAtuacao da brapi frequentemente retorna o rótulo
