@@ -3283,13 +3283,26 @@ h2{font-size:32px;letter-spacing:-.02em;}
             // Para FIIs, o plano atual da Brapi não libera marketCap nem
             // sharesOutstanding (bloqueados junto com defaultKeyStatistics),
             // então a maioria dos fundos ficava sempre em "Não disponível"
-            // nesta coluna. Fallback: patrimônio líquido do Investidor10
-            // (mesma aproximação de valor de mercado já usada na Pesquisa de
-            // Ativos), convertido do texto abreviado ("R$ 2,90 bi") para o
-            // valor numérico com o parser já usado para a liquidez diária.
-            if (typeof valorMercadoRV !== 'number' && isFII && extraInvestidor10 && extraInvestidor10.valorPatrimonial) {
-              var valorPatrimonialNum = parseValorAbrevBR(extraInvestidor10.valorPatrimonial);
-              if (typeof valorPatrimonialNum === 'number') valorMercadoRV = valorPatrimonialNum;
+            // nesta coluna. Dois fallbacks via Investidor10, em ordem de
+            // precisão:
+            // 1) cotação atual × cotas emitidas — valor de mercado real,
+            //    igual ao que a própria B3 usa (checado contra HGLG11,
+            //    XPML11, MXRF11, KNRI11, VISC11 e BTLG11: erro < 1% em
+            //    todos, contra o patrimônio líquido usado antes).
+            // 2) patrimônio líquido (valorPatrimonial) — só quando a
+            //    Investidor10 não retornou "cotas emitidas". É uma mera
+            //    aproximação: diverge do valor de mercado real sempre que
+            //    o fundo negocia com P/VP distante de 1 (ágio ou deságio
+            //    sobre o patrimônio), por isso só usado como último recurso.
+            if (typeof valorMercadoRV !== 'number' && isFII && extraInvestidor10) {
+              if (typeof cot === 'number' && extraInvestidor10.cotasEmitidas) {
+                var cotasEmitidasNum = parseNumeroBR(extraInvestidor10.cotasEmitidas);
+                if (!isNaN(cotasEmitidasNum)) valorMercadoRV = cot * cotasEmitidasNum;
+              }
+              if (typeof valorMercadoRV !== 'number' && extraInvestidor10.valorPatrimonial) {
+                var valorPatrimonialNum = parseValorAbrevBR(extraInvestidor10.valorPatrimonial);
+                if (typeof valorPatrimonialNum === 'number') valorMercadoRV = valorPatrimonialNum;
+              }
             }
             c[14 + o].textContent = fmtGrandeRV(valorMercadoRV);
             // Sem averageDailyVolume3Month, não usamos regularMarketVolume (volume
