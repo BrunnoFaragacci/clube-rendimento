@@ -1910,6 +1910,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '<div class="resumo-card"><span class="resumo-label">Variação total (R$)</span><span class="resumo-valor" id="tot-var-rv">—</span></div>' +
         '<div class="resumo-card resumo-card-verde"><span class="resumo-label">Total de dividendos a pagar</span><span class="resumo-valor resumo-valor-verde" id="tot-div-rv">—</span></div>' +
         '<div class="resumo-card resumo-card-verde"><span class="resumo-label">Yield da carteira (mês)</span><span class="resumo-valor resumo-valor-verde" id="tot-yield-rv">—</span></div>' +
+        '<div class="resumo-card resumo-card-verde"><span class="resumo-label">Yield on cost (mês)</span><span class="resumo-valor resumo-valor-verde" id="tot-yield-cost-rv">—</span></div>' +
         resumoUpsideAcoes
       : '';
     var resumoRF = opcoes.rf
@@ -2024,7 +2025,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       '</div>'
     ) : '';
 
-        var numCards = (opcoes.rv?4:0) + ((opcoes.acoes && !opcoes.fiis)?1:0) + (opcoes.rf?2:0) + (opcoes.cetip?3:0);
+        var numCards = (opcoes.rv?5:0) + ((opcoes.acoes && !opcoes.fiis)?1:0) + (opcoes.rf?2:0) + (opcoes.cetip?3:0);
     var gridCols = 'repeat(' + numCards + ',1fr)';
 
     return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
@@ -2535,12 +2536,24 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var totDivRvAcum  = 0; // acumula dividendos a pagar (rate × quantidade)
     var totUltimoProvRV = 0; // acumula o último provento efetivamente pago (rate × quantidade) de ações e FIIs, para o DY da carteira inteira
     var totYieldRvEl  = D.getElementById('tot-yield-rv');
+    var totYieldCostRvEl = D.getElementById('tot-yield-cost-rv');
     // Yield da carteira = próximos dividendos anunciados ÷ total investido nos
     // ativos já carregados, em %. Recalculado a cada atualização de total (tanto
     // dividendos quanto valor investido), refletindo o progresso do carregamento.
     function atualizarYieldRV() {
-      if (!totYieldRvEl) return;
-      totYieldRvEl.textContent = totRV > 0 ? formatarNumero((totDivRvAcum / totRV) * 100, 2) + '%' : '—';
+      if (totYieldRvEl) {
+        totYieldRvEl.textContent = totRV > 0 ? formatarNumero((totDivRvAcum / totRV) * 100, 2) + '%' : '—';
+      }
+      // Yield on cost = dividendos a pagar ÷ total investido (custo de aquisição),
+      // em vez do valor atual de mercado usado no "Yield da carteira" acima. O
+      // total investido é obtido revertendo a variação já acumulada (totVarRV é
+      // cotação atual − preço médio, por posição): total investido = valor atual
+      // − variação total. Se a carteira está no prejuízo (variação negativa), o
+      // total investido fica maior que o valor atual, como esperado.
+      if (totYieldCostRvEl) {
+        var totalInvestidoRV = totRV - totVarRV;
+        totYieldCostRvEl.textContent = totalInvestidoRV > 0 ? formatarNumero((totDivRvAcum / totalInvestidoRV) * 100, 2) + '%' : '—';
+      }
     }
     var totUpsideRvEl = D.getElementById('tot-upside-rv');
     var totUpsideNumerador   = 0; // soma de (valor total × upside XP) por ação com preço-alvo cadastrado
