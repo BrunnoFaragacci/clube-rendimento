@@ -3280,15 +3280,6 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var extraInvestidor10 = mapaFIIExtra[at.ticker];
             var valorMercadoRV = dado.marketCap || est.marketCap ||
               ((typeof cot === 'number' && typeof est.sharesOutstanding === 'number') ? cot * est.sharesOutstanding : null);
-            if (isFII) {
-              console.warn('DEBUG-MCAP', at.ticker, {
-                dadoMarketCap: dado.marketCap, estMarketCap: est.marketCap, cot: cot,
-                temExtra: !!extraInvestidor10,
-                cotasEmitidas: extraInvestidor10 && extraInvestidor10.cotasEmitidas,
-                valorPatrimonial: extraInvestidor10 && extraInvestidor10.valorPatrimonial,
-                valorMercadoRVInicial: valorMercadoRV
-              });
-            }
             // Para FIIs, o plano atual da Brapi não libera marketCap nem
             // sharesOutstanding (bloqueados junto com defaultKeyStatistics),
             // então a maioria dos fundos ficava sempre em "Não disponível"
