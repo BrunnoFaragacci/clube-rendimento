@@ -2921,16 +2921,17 @@ h2{font-size:32px;letter-spacing:-.02em;}
       // além de mais rápida no total, permite que só o ticker que realmente
       // falhar apareça como "Erro" na tabela — sem derrubar o lote inteiro.
       var tickers = lote.map(function(a) { return a.ticker; }).join(',');
-      // Duas chamadas por ticker: a primeira, "base" (sem dividends/módulos
-      // restritos), é sempre permitida pelo plano atual da Brapi, inclusive
-      // para FIIs, e serve para descobrir o quoteType real do ativo. O plano
-      // bloqueia dividends=true e os módulos defaultKeyStatistics/
-      // financialData especificamente para FUNDs (403), então pedir isso já
-      // na primeira chamada fazia todo FII do lote "estourar" em erro e sumir
-      // da tabela por completo (mesma causa raiz já corrigida na Pesquisa de
-      // Ativos). Com o tipo confirmado pela própria Brapi, só pedimos os
-      // módulos completos para ações; para FIIs pedimos apenas o que o plano
-      // libera (summaryProfile), preservando preço/quoteType/nome da base.
+      // Duas (ou três) chamadas por ticker: a primeira, "base" (sem dividends/
+      // módulos restritos), é sempre permitida pelo plano atual da Brapi,
+      // inclusive para FIIs, e serve para descobrir o quoteType real do
+      // ativo. O plano atual só libera o módulo summaryProfile — e rejeita a
+      // requisição inteira se qualquer outro módulo pedido junto não estiver
+      // liberado (não retorna parcialmente só o que é permitido). Por isso,
+      // para ações, summaryProfile (segmento) é pedido em uma chamada
+      // separada de defaultKeyStatistics/financialData (P/L, P/VP, DY, ROE):
+      // assim, o bloqueio de plano nesses dois módulos não derruba também o
+      // segmento, que sozinho é permitido. Para FIIs, só se pede
+      // summaryProfile mesmo (único módulo liberado para FUNDs também).
       var url = Promise.all(lote.map(function(a) {
         var urlBase = BRAPI_PROXY + '/quote/' + encodeURIComponent(a.ticker);
         return fetchComRetry(urlBase)
@@ -2939,16 +2940,27 @@ h2{font-size:32px;letter-spacing:-.02em;}
             if (!base) return null;
             var tipo = (base.quoteType || '').toUpperCase();
             var ehFundo = tipo === 'FUND' || a.segmentoPlanilha === 'fiis';
-            var urlCompleta = ehFundo
-              ? BRAPI_PROXY + '/quote/' + encodeURIComponent(a.ticker) + '?modules=summaryProfile'
-              : BRAPI_PROXY + '/quote/' + encodeURIComponent(a.ticker) +
-                '?fundamental=true&dividends=true&modules=defaultKeyStatistics,financialData,summaryProfile';
-            return fetchComRetry(urlCompleta)
-              .then(function(dCompleta) {
-                var completa = (dCompleta && dCompleta.results && dCompleta.results[0]) ? dCompleta.results[0] : null;
-                return completa ? Object.assign({}, base, completa) : base;
-              })
-              .catch(function() { return base; });
+
+            var urlSummary = BRAPI_PROXY + '/quote/' + encodeURIComponent(a.ticker) + '?modules=summaryProfile';
+            if (ehFundo) {
+              return fetchComRetry(urlSummary)
+                .then(function(dCompleta) {
+                  var completa = (dCompleta && dCompleta.results && dCompleta.results[0]) ? dCompleta.results[0] : null;
+                  return completa ? Object.assign({}, base, completa) : base;
+                })
+                .catch(function() { return base; });
+            }
+
+            var urlFundamentals = BRAPI_PROXY + '/quote/' + encodeURIComponent(a.ticker) +
+              '?fundamental=true&dividends=true&modules=defaultKeyStatistics,financialData';
+            return Promise.all([
+              fetchComRetry(urlSummary).catch(function() { return null; }),
+              fetchComRetry(urlFundamentals).catch(function() { return null; })
+            ]).then(function(resultados) {
+              var rSummary = (resultados[0] && resultados[0].results && resultados[0].results[0]) || null;
+              var rFund = (resultados[1] && resultados[1].results && resultados[1].results[0]) || null;
+              return Object.assign({}, base, rSummary || {}, rFund || {});
+            });
           })
           .catch(function() { return null; });
       })).then(function(itens) {
@@ -3021,12 +3033,30 @@ h2{font-size:32px;letter-spacing:-.02em;}
           }))
         : Promise.resolve([]);
 
+      // Fallback via Investidor10 (Edge Function acoes-dados-extra) para P/VP,
+      // Dividend Yield e ROE de ações — mesmo problema de plano que os FIIs
+      // (defaultKeyStatistics/financialData bloqueados na Brapi), buscado só
+      // para os tickers desta página que não são candidatos a FII.
+      var tickersAcoesLote = lote.filter(function(a) {
+        return tickersFIISegLote.indexOf(a.ticker) === -1;
+      }).map(function(a) { return a.ticker; });
+      var promAcoesExtra = tickersAcoesLote.length
+        ? Promise.all(tickersAcoesLote.map(function(tk) {
+            var urlExtra = _SB_URL + '/functions/v1/acoes-dados-extra?ticker=' + encodeURIComponent(tk);
+            return fetchComTimeout(urlExtra, { headers: { 'Authorization': 'Bearer ' + _SB_KEY, 'apikey': _SB_KEY } })
+              .then(function(r) { return r.ok ? r.json() : null; })
+              .then(function(d) { return (d && !d.error) ? { ticker: tk, dados: d } : null; })
+              .catch(function() { return null; });
+          }))
+        : Promise.resolve([]);
+
       return Promise.all([
         url,
         promXP,
         promFIISeg,
         promFIIProps,
-        promFIIExtra
+        promFIIExtra,
+        promAcoesExtra
       ])
         .then(function(resultados) {
           var data = resultados[0];
@@ -3034,6 +3064,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
           var dadosFIISeg = resultados[2] || { fiis: [] };
           var mapaFIIExtra = {};
           (resultados[4] || []).forEach(function(item) { if (item && item.ticker) mapaFIIExtra[item.ticker] = item.dados; });
+          var mapaAcoesExtra = {};
+          (resultados[5] || []).forEach(function(item) { if (item && item.ticker) mapaAcoesExtra[item.ticker] = item.dados; });
           var dadosFIIProps = resultados[3] || { fiis: [] };
           var mapa = {};
           (data.results || []).forEach(function(r) { if (r.symbol) mapa[r.symbol] = r; });
@@ -3257,32 +3289,36 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var entrada = dadosGraficoRV.find(function(d) { return d._idx === globalIdx; });
             if (entrada) { entrada.segmento = segNome; entrada.quoteType = quoteType; }
 
-            // Indicadores fundamentalistas — para FIIs, o plano atual da Brapi
-            // não libera P/VP nem Dividend Yield (bloqueados junto com
-            // defaultKeyStatistics/financialData), então cai no fallback do
-            // Investidor10 (mesma fonte já usada na Pesquisa de Ativos) quando
-            // esses dados vêm vazios da Brapi.
+            // Indicadores fundamentalistas — o plano atual da Brapi não libera
+            // defaultKeyStatistics/financialData nem para FIIs nem para ações,
+            // então cai no fallback do Investidor10 (fii-dados-extra para FIIs,
+            // acoes-dados-extra para ações) quando esses dados vêm vazios da Brapi.
             var extraFundInd10 = mapaFIIExtra[at.ticker];
+            var extraAcaoInd10 = mapaAcoesExtra[at.ticker];
             c[6 + o].textContent  = typeof dado.priceEarnings === 'number'      ? formatarNumero(dado.priceEarnings, 2)            : 'Não disponível';
-            // dados.pvp e dados.dividendYield12m vêm da Edge Function do Investidor10
-            // como strings já formatadas no padrão brasileiro (ex.: "1,05" e "8,52%"),
-            // não como números — por isso são convertidos aqui em vez de comparados
-            // com typeof === 'number' (checagem que nunca era verdadeira e fazia o
-            // fallback ficar sempre em "Não disponível" mesmo com o dado disponível).
+            // dados.pvp e dados.dividendYield12m do fii-dados-extra vêm como
+            // strings no padrão brasileiro (ex.: "1,05" e "8,52%"), por isso são
+            // convertidos aqui; os equivalentes do acoes-dados-extra já vêm como
+            // números simples (extraídos de atributos data-current-value do
+            // Investidor10), sem precisar de parsing.
             var pvpFallback = (isFII && extraFundInd10 && extraFundInd10.pvp) ?
-              parseFloat(String(extraFundInd10.pvp).replace(',', '.')) : NaN;
+              parseFloat(String(extraFundInd10.pvp).replace(',', '.')) :
+              (!isFII && !isETF && extraAcaoInd10 && typeof extraAcaoInd10.pvp === 'number') ? extraAcaoInd10.pvp : NaN;
             var pvpVal = typeof est.priceToBook === 'number' ? est.priceToBook :
               (isFinite(pvpFallback) ? pvpFallback : null);
             c[7 + o].textContent  = pvpVal !== null                              ? formatarNumero(pvpVal, 2)                        : 'Não disponível';
             var dyCalculado = calcularDYPreciso(dado);
             var dyFallbackStr = (isFII && extraFundInd10 && extraFundInd10.dividendYield12m) ?
               String(extraFundInd10.dividendYield12m) : '';
-            var dyFallback = dyFallbackStr ? parseFloat(dyFallbackStr.replace('%', '').trim().replace(',', '.')) : NaN;
+            var dyFallback = dyFallbackStr ? parseFloat(dyFallbackStr.replace('%', '').trim().replace(',', '.')) :
+              (!isFII && !isETF && extraAcaoInd10 && typeof extraAcaoInd10.dividendYield12m === 'number' ? extraAcaoInd10.dividendYield12m : NaN);
             var dyVal = dyCalculado !== null ? dyCalculado : (typeof est.dividendYield === 'number' ? est.dividendYield * 100 :
               (isFinite(dyFallback) ? dyFallback : null));
             c[8 + o].textContent  = dyVal !== null                               ? formatarNumero(dyVal, 2) + '%'                   : 'Não disponível';
             if (entrada && dyVal !== null) entrada.dy = dyVal;
-            c[9 + o].textContent  = typeof fin.returnOnEquity === 'number'       ? formatarNumero(fin.returnOnEquity * 100, 2) + '%': 'Não disponível';
+            var roeFallback = (!isFII && !isETF && extraAcaoInd10 && typeof extraAcaoInd10.roe === 'number') ? extraAcaoInd10.roe : NaN;
+            var roeVal = typeof fin.returnOnEquity === 'number' ? fin.returnOnEquity * 100 : (isFinite(roeFallback) ? roeFallback : null);
+            c[9 + o].textContent  = roeVal !== null                              ? formatarNumero(roeVal, 2) + '%'                  : 'Não disponível';
 
             // Valor de mercado e liquidez diária (dados já vêm no /api/quote/ principal,
             // com fallback para dados calculados/Investidor10 quando a Brapi não retorna
