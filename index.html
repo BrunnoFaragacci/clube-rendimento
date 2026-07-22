@@ -3228,7 +3228,14 @@ h2{font-size:32px;letter-spacing:-.02em;}
               longName.indexOf('ETF') !== -1 ||
               longName.indexOf('FUNDO DE IND') !== -1 ||
               longName.indexOf('INDEX FUND') !== -1;
-            var isFII = !isETF && (
+            // BDR (Brazilian Depositary Receipt) — a B3 reserva a faixa de
+            // sufixo numérico 31 a 39 exclusivamente para programas de BDR
+            // (níveis I/II/III, patrocinado ou não), nunca usada por ações
+            // domésticas (que vão de 3 a 9) nem por FIIs/ETFs/units (11) —
+            // por isso o padrão de ticker é um sinal confiável, sem precisar
+            // de outra chamada à Brapi só para essa classificação.
+            var isBDR = !isETF && /3[1-9]$/.test(at.ticker);
+            var isFII = !isETF && !isBDR && (
               quoteType === 'FUND' ||
               longName.indexOf('FUNDO DE INVESTIMENTO IMOBILI') !== -1 ||
               longName.indexOf('FDO INV IMOB') !== -1 ||
@@ -3244,6 +3251,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var segNome;
             if (isETF) {
               segNome = 'ETF';
+            } else if (isBDR) {
+              segNome = 'BDR';
             } else if (isFII) {
               var extraSegFII = mapaFIIExtra[at.ticker];
               var candidatosSeg = [
