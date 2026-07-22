@@ -276,6 +276,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         <div class="nav-dropdown" id="dropdown-renda-fixa" hidden>
           <button type="button" class="nav-dropdown-item" id="link-nav-tesouro-direto">Taxas do Tesouro Direto ↗</button>
           <button type="button" class="nav-dropdown-item" id="link-nav-focus">Boletim Focus (BCB) ↗</button>
+          <button type="button" class="nav-dropdown-item" id="link-nav-basileia">Índice de Basileia (Bancos) ↗</button>
         </div>
       </div>
     </nav>
@@ -8258,6 +8259,199 @@ var FOCUS_URL = 'https://segeufywrjmstfmfscdi.supabase.co/functions/v1/focus-bol
 </html>`);
   }
 
+  // Lista fixa dos emissores de CDB/LCI/LCD mais comuns na análise de
+  // carteira dos clientes, além dos maiores bancos do país — exibidos de
+  // imediato ao abrir a página. Qualquer outra instituição pode ser
+  // consultada pelo campo de busca (via bcb-sync, modo buscar_por_nome).
+  var BANCOS_BASILEIA = [
+    { nome: 'Banco do Brasil', cnpj8: '00000000' },
+    { nome: 'Caixa Econômica Federal', cnpj8: '00360305' },
+    { nome: 'Itaú Unibanco', cnpj8: '60701190' },
+    { nome: 'Bradesco', cnpj8: '60746948' },
+    { nome: 'Santander', cnpj8: '90400888' },
+    { nome: 'BTG Pactual', cnpj8: '30306294' },
+    { nome: 'Safra', cnpj8: '58160789' },
+    { nome: 'Votorantim', cnpj8: '59588111' },
+    { nome: 'Banco ABC Brasil', cnpj8: '28195667' },
+    { nome: 'Banco Daycoval', cnpj8: '62232889' },
+    { nome: 'Banco Sofisa', cnpj8: '60889128' },
+    { nome: 'Banco Inter', cnpj8: '00416968' },
+    { nome: 'Banco Pan', cnpj8: '59285411' },
+    { nome: 'Banco Original', cnpj8: '92894922' },
+    { nome: 'Banco Pine', cnpj8: '62144175' },
+    { nome: 'PicPay Bank', cnpj8: '09516419' },
+    { nome: 'Banco BMG', cnpj8: '61186680' },
+    { nome: 'Banco C6', cnpj8: '31872495' },
+    { nome: 'Banco Agibank', cnpj8: '10664513' },
+    { nome: 'Banco Fator', cnpj8: '33644196' },
+    { nome: 'Banco Luso Brasileiro', cnpj8: '59118133' },
+    { nome: 'Banco Stellantis', cnpj8: '62237425' }
+  ];
+
+  function abrirBasileia() {
+    var win = window.open('', '_blank');
+    if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
+    escreverConteudoJanela(win, `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Índice de Basileia dos Bancos — Clube do Rendimento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--line:#E2E2E2;--orange:#111111;--og:#000000;--green:#16A34A;--red:#DC2626;--radius:16px;--shadow:0 10px 28px rgba(0,0,0,.08);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-soft);color:var(--ink);min-height:100vh;}
+.nav{background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;}
+.nav-brand{font-weight:700;font-size:15px;text-decoration:none;color:var(--ink);}
+.container{max-width:900px;margin:0 auto;padding:32px 20px;}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:600;color:var(--og);margin-bottom:14px;}
+.eyebrow::before{content:"";width:18px;height:2px;background:var(--orange);display:inline-block;}
+h1{font-size:26px;font-weight:700;margin-bottom:8px;}
+.basileia-sub{font-size:13.5px;color:var(--ink-soft);margin-bottom:24px;line-height:1.5;max-width:640px;}
+.basileia-busca{display:flex;gap:10px;margin-bottom:8px;max-width:520px;}
+.basileia-busca input{flex:1;padding:10px 14px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13.5px;color:var(--ink);}
+.basileia-busca input:focus{outline:none;border-color:var(--orange);}
+.basileia-busca button{padding:10px 18px;border:none;border-radius:8px;background:var(--orange);color:#fff;font-family:inherit;font-weight:600;font-size:13.5px;cursor:pointer;}
+.basileia-busca button:disabled{opacity:.6;cursor:default;}
+.basileia-busca-status{font-size:12.5px;color:var(--ink-soft);min-height:18px;margin-bottom:16px;}
+.basileia-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);box-shadow:var(--shadow);}
+.basileia-table{width:100%;border-collapse:collapse;min-width:520px;}
+.basileia-table thead th{background:var(--orange);color:#fff;text-align:left;padding:13px 16px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
+.basileia-table tbody td{padding:14px 16px;border-bottom:1px solid var(--line);font-size:14px;white-space:nowrap;}
+.basileia-table tbody tr:last-child td{border-bottom:none;}
+.basileia-table tbody tr:hover td{background:var(--bg-soft);}
+.basileia-nome{font-weight:600;color:var(--ink);}
+.basileia-valor{font-weight:700;}
+.basileia-nota{margin-top:16px;font-size:12.5px;color:var(--ink-soft);line-height:1.5;max-width:640px;}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <a href="javascript:window.close()" class="nav-brand">← Clube do Rendimento</a>
+</header>
+
+<div class="container">
+  <span class="eyebrow">Renda Fixa</span>
+  <h1>Índice de Basileia dos Bancos</h1>
+  <p class="basileia-sub">Indicador de solidez financeira de cada instituição: quanto maior, mais capital próprio o banco tem frente aos riscos que carrega. Dados oficiais do Banco Central do Brasil (BCB), atualizados trimestralmente.</p>
+
+  <div class="basileia-busca">
+    <input type="text" id="basileia-busca-input" placeholder="Buscar outro banco/instituição (ex.: Banco XP)...">
+    <button type="button" id="basileia-busca-btn">Buscar</button>
+  </div>
+  <p class="basileia-busca-status" id="basileia-busca-status"></p>
+
+  <div class="basileia-table-wrap">
+    <table class="basileia-table">
+      <thead><tr><th>Instituição</th><th>Índice de Basileia</th><th>Período</th></tr></thead>
+      <tbody id="basileia-corpo"></tbody>
+    </table>
+  </div>
+  <p class="basileia-nota">Fonte: Banco Central do Brasil — IF.Data (Informações de Capital, nível de conglomerado prudencial). O mínimo regulatório exigido pelo CMN é de 8%; bancos sistemicamente importantes têm exigência adicional (adicional de capital principal).</p>
+</div>
+
+<script>
+var BCB_SYNC_URL = 'https://segeufywrjmstfmfscdi.supabase.co/functions/v1/bcb-sync';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZ2V1Znl3cmptc3RmbWZzY2RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzY0OTgsImV4cCI6MjA5ODQxMjQ5OH0.TUrp35SEI2NXdU1ZY7IEcdRm8VLLfLwAVWUtqjafElI';
+var BANCOS = ${JSON.stringify(BANCOS_BASILEIA)};
+
+function fmtPct(v) {
+  if (typeof v !== 'number' || isNaN(v)) return '—';
+  return (v * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+}
+function fmtPeriodo(am) {
+  if (!am || String(am).length !== 6) return '—';
+  var s = String(am);
+  return s.substring(4, 6) + '/' + s.substring(0, 4);
+}
+function chamarBcbSync(body) {
+  return fetch(BCB_SYNC_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_KEY, 'apikey': SB_KEY },
+    body: JSON.stringify(body)
+  }).then(function(r) { return r.json(); }).catch(function(e) { return { ok: false, error: String(e && e.message || e) }; });
+}
+
+var corpo = document.getElementById('basileia-corpo');
+var linhasPorCnpj = {};
+
+function criarLinha(nome) {
+  var tr = document.createElement('tr');
+  var tdNome = document.createElement('td');
+  tdNome.className = 'basileia-nome';
+  tdNome.textContent = nome;
+  var tdValor = document.createElement('td');
+  tdValor.className = 'basileia-valor';
+  tdValor.textContent = 'Consultando...';
+  var tdPeriodo = document.createElement('td');
+  tdPeriodo.textContent = '—';
+  tr.appendChild(tdNome); tr.appendChild(tdValor); tr.appendChild(tdPeriodo);
+  return tr;
+}
+function preencherLinha(tr, nome, basileia, periodo) {
+  tr.children[0].textContent = nome;
+  tr.children[1].textContent = fmtPct(basileia);
+  tr.children[2].textContent = fmtPeriodo(periodo);
+}
+
+BANCOS.forEach(function(b) {
+  var tr = criarLinha(b.nome);
+  corpo.appendChild(tr);
+  linhasPorCnpj[b.cnpj8] = tr;
+  chamarBcbSync({ modo: 'upsert', cnpj8: b.cnpj8, nome_instituicao: b.nome }).then(function(resp) {
+    if (resp && resp.ok && resp.dados) {
+      preencherLinha(tr, b.nome, resp.dados.basileia, resp.dados.periodo);
+    } else {
+      preencherLinha(tr, b.nome, null, null);
+    }
+  });
+});
+
+var buscaInput = document.getElementById('basileia-busca-input');
+var buscaBtn = document.getElementById('basileia-busca-btn');
+var buscaStatus = document.getElementById('basileia-busca-status');
+
+function buscarBanco() {
+  var nome = (buscaInput.value || '').trim();
+  if (!nome) return;
+  buscaBtn.disabled = true;
+  buscaStatus.textContent = 'Consultando "' + nome + '" no Banco Central...';
+  chamarBcbSync({ modo: 'buscar_por_nome', nome: nome }).then(function(resp) {
+    buscaBtn.disabled = false;
+    if (!resp || !resp.ok) {
+      buscaStatus.textContent = 'Não foi possível consultar agora. Tente novamente em instantes.';
+      return;
+    }
+    if (!resp.encontrado) {
+      buscaStatus.textContent = 'Nenhuma instituição encontrada para "' + nome + '".';
+      return;
+    }
+    buscaStatus.textContent = '';
+    var tr = linhasPorCnpj[resp.cnpj8];
+    if (!tr) {
+      tr = criarLinha(resp.nome_instituicao);
+      corpo.appendChild(tr);
+      linhasPorCnpj[resp.cnpj8] = tr;
+    }
+    if (resp.dados) {
+      preencherLinha(tr, resp.nome_instituicao, resp.dados.basileia, resp.dados.periodo);
+    } else {
+      preencherLinha(tr, resp.nome_instituicao, null, null);
+    }
+    buscaInput.value = '';
+  });
+}
+buscaBtn.addEventListener('click', buscarBanco);
+buscaInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') buscarBanco(); });
+<\/script>
+</body>
+</html>`);
+  }
+
   function abrirCalculadoras() {
     var win = window.open('', '_blank');
     if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
@@ -11492,6 +11686,7 @@ document.querySelectorAll('.tab').forEach(function(btn){
   document.getElementById('link-nav-medo-ganancia').addEventListener('click', abrirCripto);
   document.getElementById('link-nav-tesouro-direto').addEventListener('click', abrirRendaFixa);
   document.getElementById('link-nav-focus').addEventListener('click', abrirFocus);
+  document.getElementById('link-nav-basileia').addEventListener('click', abrirBasileia);
 
   document.addEventListener('DOMContentLoaded', function() {
     // Tentar re-inicializar o cliente Supabase se não carregou na primeira execução
