@@ -4452,13 +4452,28 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
           D.body.appendChild(captura);
 
+          // Largura/altura reais do conteúdo, medidas após o layout (captura
+          // já está no DOM). Precisam ser passadas explicitamente ao
+          // html2canvas: sem isso, a biblioteca limita a captura à altura da
+          // janela do navegador, então com muitos fundos cetipados (tabela
+          // mais alta que a janela) a imagem sai cortada/desajustada.
+          var larguraCaptura = captura.scrollWidth;
+          var alturaCaptura = captura.scrollHeight;
+
           function encerrar(msgFinal, restaurarApos) {
             btnPrintCetip.disabled = false;
             btnPrintCetip.textContent = msgFinal || textoOriginal;
             if (restaurarApos) setTimeout(function() { btnPrintCetip.textContent = textoOriginal; }, 2000);
           }
 
-          H2C(captura, { backgroundColor: '#ffffff', scale: 2 }).then(function(canvas) {
+          H2C(captura, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            width: larguraCaptura,
+            height: alturaCaptura,
+            windowWidth: larguraCaptura,
+            windowHeight: alturaCaptura
+          }).then(function(canvas) {
             D.body.removeChild(captura);
             canvas.toBlob(function(blob) {
               if (!blob) { encerrar(); novaJanela.alert('Não foi possível gerar a imagem.'); return; }
