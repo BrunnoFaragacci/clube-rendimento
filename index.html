@@ -8259,53 +8259,15 @@ var FOCUS_URL = 'https://segeufywrjmstfmfscdi.supabase.co/functions/v1/focus-bol
 </html>`);
   }
 
-  // Lista fixa dos emissores de CDB/LCI/LCD mais comuns na análise de
-  // carteira dos clientes, além dos maiores bancos do país — exibidos de
-  // imediato ao abrir a página. Qualquer outra instituição pode ser
-  // consultada pelo campo de busca (via bcb-sync, modo buscar_por_nome).
-  var BANCOS_BASILEIA = [
-    { nome: 'Banco do Brasil', cnpj8: '00000000' },
-    { nome: 'Caixa Econômica Federal', cnpj8: '00360305' },
-    { nome: 'Itaú Unibanco', cnpj8: '60701190' },
-    { nome: 'Bradesco', cnpj8: '60746948' },
-    { nome: 'Santander', cnpj8: '90400888' },
-    { nome: 'BTG Pactual', cnpj8: '30306294' },
-    { nome: 'Safra', cnpj8: '58160789' },
-    { nome: 'Votorantim', cnpj8: '59588111' },
-    { nome: 'Banco ABC Brasil', cnpj8: '28195667' },
-    { nome: 'Banco Daycoval', cnpj8: '62232889' },
-    { nome: 'Banco Sofisa', cnpj8: '60889128' },
-    { nome: 'Banco Inter', cnpj8: '00416968' },
-    { nome: 'Banco Pan', cnpj8: '59285411' },
-    { nome: 'Banco Original', cnpj8: '92894922' },
-    { nome: 'Banco Pine', cnpj8: '62144175' },
-    { nome: 'PicPay Bank', cnpj8: '09516419' },
-    { nome: 'Banco BMG', cnpj8: '61186680' },
-    { nome: 'Banco C6', cnpj8: '31872495' },
-    { nome: 'Banco Agibank', cnpj8: '10664513' },
-    { nome: 'Banco Fator', cnpj8: '33644196' },
-    { nome: 'Banco Luso Brasileiro', cnpj8: '59118133' },
-    { nome: 'Banco Stellantis', cnpj8: '62237425' },
-    { nome: 'Banco XP', cnpj8: '33264668' },
-    { nome: 'Banco Volkswagen', cnpj8: '59109165' },
-    { nome: 'Mercado Crédito (Mercado Livre)', cnpj8: '37679449' },
-    { nome: 'Nu Pagamentos (Nubank)', cnpj8: '18236120' },
-    { nome: 'Neon Financeira', cnpj8: '11285104' },
-    { nome: 'Banco Paulista', cnpj8: '61820817' },
-    { nome: 'BRB — Banco de Brasília', cnpj8: '00000208' },
-    { nome: 'Banco do Nordeste', cnpj8: '07237373' },
-    { nome: 'Banco Semear', cnpj8: '00795423' },
-    { nome: 'Omni Banco', cnpj8: '60850229' },
-    { nome: 'Banco Bari', cnpj8: '00556603' },
-    { nome: 'Banco Alfa', cnpj8: '03323840' },
-    { nome: 'Banco Triângulo', cnpj8: '17351180' },
-    { nome: 'Banco Crefisa', cnpj8: '61033106' },
-    { nome: 'Banco BS2', cnpj8: '71027866' },
-    { nome: 'Banco Rendimento', cnpj8: '68900810' },
-    { nome: 'Banco Sicoob', cnpj8: '02038232' },
-    { nome: 'Banco Sicredi', cnpj8: '01181521' },
-    { nome: 'Banrisul', cnpj8: '92702067' }
-  ];
+  // Todos os bancos múltiplos/comerciais ativos no Brasil (154, via serviço
+  // "Instituições em Funcionamento" do BCB) mais algumas instituições que não
+  // são "banco" na classificação oficial mas são emissores comuns de CDB em
+  // carteiras de clientes (Mercado Crédito, Nu Pagamentos, Neon Financeira).
+  // Nomes dos bancos mais conhecidos foram simplificados manualmente; os
+  // demais usam o nome oficial do BCB. Qualquer instituição fora desta lista
+  // pode ser consultada pelo campo de busca (via bcb-sync, modo
+  // buscar_por_nome).
+  var BANCOS_BASILEIA = [{"nome":"Banco ABC Brasil","cnpj8":"28195667"},{"nome":"Banco ABN AMRO Clearing S.A.","cnpj8":"03532415"},{"nome":"Banco Afinz S.A. - Banco Múltiplo","cnpj8":"04814563"},{"nome":"Banco Agibank","cnpj8":"10664513"},{"nome":"Banco Alfa","cnpj8":"03323840"},{"nome":"Banco Andbank (Brasil) S.A.","cnpj8":"48795256"},{"nome":"Banco Arbi S.A.","cnpj8":"54403563"},{"nome":"Banco B3 S.A.","cnpj8":"00997185"},{"nome":"Banco Bandepe S.A.","cnpj8":"10866788"},{"nome":"Banco Bari","cnpj8":"00556603"},{"nome":"Banco Besa S.A.","cnpj8":"15124464"},{"nome":"Banco BMG","cnpj8":"61186680"},{"nome":"Banco BMG Consignado S.A.","cnpj8":"50585090"},{"nome":"Banco BMG Soluções Financeiras S.A.","cnpj8":"62421979"},{"nome":"Banco BNP PARIBAS Brasil S.A.","cnpj8":"01522368"},{"nome":"Banco Bocom BBM S.A.","cnpj8":"15114366"},{"nome":"Banco Bradescard S.A.","cnpj8":"04184779"},{"nome":"Banco Bradesco BBI S.A.","cnpj8":"06271464"},{"nome":"Banco Bradesco Berj S.A.","cnpj8":"33147315"},{"nome":"Banco Bradesco Financiamentos S.A.","cnpj8":"07207996"},{"nome":"Banco Brasileiro de Crédito Sociedade Anônima","cnpj8":"01852137"},{"nome":"Banco BS2","cnpj8":"71027866"},{"nome":"Banco BV S.A.","cnpj8":"01858774"},{"nome":"Banco C6","cnpj8":"31872495"},{"nome":"Banco C6 Consignado S.A.","cnpj8":"61348538"},{"nome":"Banco Caixa Geral - Brasil S.A.","cnpj8":"33466988"},{"nome":"Banco Cargill S.A.","cnpj8":"03609817"},{"nome":"Banco Caterpillar S.A.","cnpj8":"02658435"},{"nome":"Banco Cedula S.A.","cnpj8":"33132044"},{"nome":"Banco Citibank S.A.","cnpj8":"33479023"},{"nome":"Banco Classico S.A.","cnpj8":"31597552"},{"nome":"Banco CNH Industrial Capital S.A.","cnpj8":"02992446"},{"nome":"Banco Crédit Agricole Brasil S.A.","cnpj8":"75647891"},{"nome":"Banco Crefisa","cnpj8":"61033106"},{"nome":"Banco CSF S.A.","cnpj8":"08357240"},{"nome":"Banco da Amazonia S.A.","cnpj8":"04902979"},{"nome":"Banco da China Brasil S.A.","cnpj8":"10690848"},{"nome":"Banco Daycoval","cnpj8":"62232889"},{"nome":"Banco de La Nación Argentina","cnpj8":"33042151"},{"nome":"Banco de la Provincia de Buenos Aires","cnpj8":"44189447"},{"nome":"Banco de Lage Landen Brasil S.A.","cnpj8":"05040481"},{"nome":"Banco Digimais S.A.","cnpj8":"92874270"},{"nome":"Banco Digio S.A.","cnpj8":"27098060"},{"nome":"Banco do Brasil","cnpj8":"00000000"},{"nome":"Banco do Estado de Sergipe S.A.","cnpj8":"13009717"},{"nome":"Banco do Estado do Pará S.A.","cnpj8":"04913711"},{"nome":"Banco do Nordeste","cnpj8":"07237373"},{"nome":"Banco Fator","cnpj8":"33644196"},{"nome":"Banco Fibra S.A.","cnpj8":"58616418"},{"nome":"Banco Finaxis S.A.","cnpj8":"11758741"},{"nome":"Banco Genial S.A.","cnpj8":"45246410"},{"nome":"Banco GM S.A.","cnpj8":"59274605"},{"nome":"Banco Guanabara S.A.","cnpj8":"31880826"},{"nome":"Banco Honda S.A.","cnpj8":"03634220"},{"nome":"Banco HSBC S.A.","cnpj8":"53518684"},{"nome":"Banco Hyundai Capital Brasil S.A.","cnpj8":"30172491"},{"nome":"Banco IBM S.A.","cnpj8":"34270520"},{"nome":"Banco Inbursa S.A.","cnpj8":"04866275"},{"nome":"Banco Industrial do Brasil S.A.","cnpj8":"31895683"},{"nome":"Banco Inter","cnpj8":"00416968"},{"nome":"Banco Investcred Unibanco S.A.","cnpj8":"61182408"},{"nome":"Banco Itaú Veículos S.A.","cnpj8":"61190658"},{"nome":"Banco Itaubank S.A.","cnpj8":"60394079"},{"nome":"Banco Itaucard S.A.","cnpj8":"17192451"},{"nome":"Banco J. Safra S.A.","cnpj8":"03017677"},{"nome":"Banco J.P. Morgan S.A.","cnpj8":"33172537"},{"nome":"Banco John Deere S.A.","cnpj8":"91884981"},{"nome":"Banco KDB do Brasil S.A.","cnpj8":"07656500"},{"nome":"Banco KEB Hana do Brasil S.A.","cnpj8":"02318507"},{"nome":"Banco Komatsu do Brasil S.A.","cnpj8":"23903068"},{"nome":"Banco Losango S.A. - Banco Múltiplo","cnpj8":"33254319"},{"nome":"Banco Luso Brasileiro","cnpj8":"59118133"},{"nome":"Banco Mercantil do Brasil S.A.","cnpj8":"17184037"},{"nome":"Banco Mercedes-benz do Brasil S.A.","cnpj8":"60814191"},{"nome":"Banco Mizuho do Brasil S.A.","cnpj8":"61088183"},{"nome":"Banco Moneo S.A.","cnpj8":"07441209"},{"nome":"Banco Morgan Stanley S.A.","cnpj8":"02801938"},{"nome":"Banco Mufg Brasil S.A.","cnpj8":"60498557"},{"nome":"Banco Nacional S.A.","cnpj8":"17157777"},{"nome":"Banco Original","cnpj8":"92894922"},{"nome":"Banco Paccar S.A.","cnpj8":"28517628"},{"nome":"Banco Pan","cnpj8":"59285411"},{"nome":"Banco Paulista","cnpj8":"61820817"},{"nome":"Banco Pine","cnpj8":"62144175"},{"nome":"Banco Rabobank International Brasil S.A.","cnpj8":"01023570"},{"nome":"Banco Randon S.A.","cnpj8":"11476673"},{"nome":"Banco RCI Brasil S.A.","cnpj8":"62307848"},{"nome":"Banco Rendimento","cnpj8":"68900810"},{"nome":"Banco Ribeirao Preto S.A.","cnpj8":"00517645"},{"nome":"Banco RNX S.A.","cnpj8":"80271455"},{"nome":"Banco Rodobens S.A.","cnpj8":"33603457"},{"nome":"Banco Sany Brasil S.A.","cnpj8":"60935819"},{"nome":"Banco Semear","cnpj8":"00795423"},{"nome":"Banco Senff S.A.","cnpj8":"11970623"},{"nome":"Banco Sicoob","cnpj8":"02038232"},{"nome":"Banco Sicredi","cnpj8":"01181521"},{"nome":"Banco Sistema S.A.","cnpj8":"76543115"},{"nome":"Banco Societe Generale Brasil S.A.","cnpj8":"61533584"},{"nome":"Banco Sofisa","cnpj8":"60889128"},{"nome":"Banco Stellantis","cnpj8":"62237425"},{"nome":"Banco Stonex S.A.","cnpj8":"28811341"},{"nome":"Banco Sumitomo Mitsui Brasileiro S.A.","cnpj8":"60518222"},{"nome":"Banco Topázio S.A.","cnpj8":"07679404"},{"nome":"Banco Toyota do Brasil S.A.","cnpj8":"03215790"},{"nome":"Banco Traton Brasil S.A.","cnpj8":"52067630"},{"nome":"Banco Travelex S.A.","cnpj8":"11703662"},{"nome":"Banco Triângulo","cnpj8":"17351180"},{"nome":"Banco Tricury S.A.","cnpj8":"57839805"},{"nome":"Banco UBS (Brasil) S.A.","cnpj8":"32062580"},{"nome":"Banco Volkswagen","cnpj8":"59109165"},{"nome":"Banco Volvo Brasil S.A.","cnpj8":"58017179"},{"nome":"Banco VR S.A.","cnpj8":"78626983"},{"nome":"Banco Western Union do Brasil S.A.","cnpj8":"13720915"},{"nome":"Banco Woori Bank do Brasil S.A.","cnpj8":"15357060"},{"nome":"Banco Xcmg Brasil S.A.","cnpj8":"36658769"},{"nome":"Banco XP","cnpj8":"33264668"},{"nome":"Banco Yamaha Motor do Brasil S.A.","cnpj8":"10371492"},{"nome":"Bancoseguro S.A.","cnpj8":"10264663"},{"nome":"Banestes S.A. Banco do Estado do Espirito Santo","cnpj8":"28127603"},{"nome":"Bank OF America Merrill Lynch Banco Múltiplo S.A.","cnpj8":"62073200"},{"nome":"Bank OF China (Brasil) Banco Múltiplo S/A","cnpj8":"07450604"},{"nome":"Banrisul","cnpj8":"92702067"},{"nome":"BNY Mellon Banco S.A.","cnpj8":"42272526"},{"nome":"Bradesco","cnpj8":"60746948"},{"nome":"Braza Bank S.A. Banco de Câmbio","cnpj8":"19307785"},{"nome":"BRB — Banco de Brasília","cnpj8":"00000208"},{"nome":"BTG Pactual","cnpj8":"30306294"},{"nome":"Caixa Econômica Federal","cnpj8":"00360305"},{"nome":"Citibank N.A.","cnpj8":"33042953"},{"nome":"Daycoval Leasing - Banco Múltiplo S.A.","cnpj8":"43818780"},{"nome":"Deutsche Bank S.A. - Banco Alemao","cnpj8":"62331228"},{"nome":"Deutsche Sparkassen Leasing do Brasil Banco Múltiplo S.A.","cnpj8":"23511655"},{"nome":"Ebury Banco de Câmbio S.A.","cnpj8":"13059145"},{"nome":"Goldman Sachs do Brasil Banco Multiplo S.A.","cnpj8":"04332281"},{"nome":"ICBC do Brasil Banco Múltiplo S.A.","cnpj8":"17453575"},{"nome":"Intesa Sanpaolo Brasil S.A. - Banco Múltiplo","cnpj8":"55230916"},{"nome":"Intex Bank Banco de Câmbio S.A.","cnpj8":"02992317"},{"nome":"Itaú Unibanco","cnpj8":"60701190"},{"nome":"Itaú Unibanco Holding S.A.","cnpj8":"60872504"},{"nome":"JPMORGAN Chase Bank, National Association","cnpj8":"46518205"},{"nome":"Kirton Bank S.A. - Banco Múltiplo","cnpj8":"01701201"},{"nome":"Mercado Crédito (Mercado Livre)","cnpj8":"37679449"},{"nome":"Moneycorp Banco de Câmbio S.A.","cnpj8":"08609934"},{"nome":"Neon Financeira","cnpj8":"11285104"},{"nome":"Novo Banco Continental S.A. - Banco Múltiplo","cnpj8":"74828799"},{"nome":"Nu Pagamentos (Nubank)","cnpj8":"18236120"},{"nome":"Omni Banco","cnpj8":"60850229"},{"nome":"Ouribank S.A. Banco Múltiplo","cnpj8":"78632767"},{"nome":"Paraná Banco S.A.","cnpj8":"14388334"},{"nome":"PicPay Bank","cnpj8":"09516419"},{"nome":"Safra","cnpj8":"58160789"},{"nome":"Santander","cnpj8":"90400888"},{"nome":"Scania Banco S.A.","cnpj8":"11417016"},{"nome":"Scotiabank Brasil S.A. Banco Múltiplo","cnpj8":"29030467"},{"nome":"Social Bank Banco Múltiplo S/A","cnpj8":"15173776"},{"nome":"State Street Brasil S.A. - Banco Comercial","cnpj8":"09274232"},{"nome":"Votorantim","cnpj8":"59588111"}];
 
   function abrirBasileia() {
     var win = window.open('', '_blank');
@@ -8365,7 +8327,7 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 <div class="container">
   <span class="eyebrow">Renda Fixa</span>
   <h1>Índice de Basileia dos Bancos</h1>
-  <p class="basileia-sub">Indicador de solidez financeira de cada instituição: quanto maior, mais capital próprio o banco tem frente aos riscos que carrega. Dados oficiais do Banco Central do Brasil (BCB), atualizados trimestralmente.</p>
+  <p class="basileia-sub">Indicador de solidez financeira de cada instituição: quanto maior, mais capital próprio o banco tem frente aos riscos que carrega. Todos os bancos ativos no Brasil (157 instituições), consultados ao vivo no Banco Central (BCB) a cada abertura da página — o carregamento completo pode levar alguns minutos.</p>
 
   <div class="basileia-legenda">
     <div class="basileia-legenda-item"><span class="basileia-dot basileia-dot-atencao"></span>Abaixo de 11% — atenção, perto do mínimo regulatório</div>
@@ -8378,6 +8340,7 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
     <button type="button" id="basileia-busca-btn">Buscar</button>
   </div>
   <p class="basileia-busca-status" id="basileia-busca-status"></p>
+  <p class="basileia-busca-status" id="basileia-progresso"></p>
 
   <div class="basileia-table-wrap">
     <table class="basileia-table">
@@ -8441,18 +8404,40 @@ function preencherLinha(tr, nome, basileia, periodo) {
   tr.children[2].textContent = fmtPeriodo(periodo);
 }
 
+// Todas as linhas aparecem de imediato (com "Consultando...", ver criarLinha),
+// mas as consultas ao BCB são feitas em lotes pequenos — com 157 instituições,
+// disparar tudo de uma vez sobrecarregaria a API do BCB e a Edge Function
+// desnecessariamente. Cada lote só avança depois que o anterior termina.
+var progresso = document.getElementById('basileia-progresso');
+var LOTE_BANCOS = 12;
+var totalCarregado = 0;
+
 BANCOS.forEach(function(b) {
   var tr = criarLinha(b.nome);
   corpo.appendChild(tr);
   linhasPorCnpj[b.cnpj8] = tr;
-  chamarBcbSync({ modo: 'upsert', cnpj8: b.cnpj8, nome_instituicao: b.nome }).then(function(resp) {
-    if (resp && resp.ok && resp.dados) {
-      preencherLinha(tr, b.nome, resp.dados.basileia, resp.dados.periodo);
-    } else {
-      preencherLinha(tr, b.nome, null, null);
-    }
-  });
 });
+
+function processarLoteBancos(inicio) {
+  if (inicio >= BANCOS.length) {
+    if (progresso) progresso.textContent = '';
+    return;
+  }
+  var lote = BANCOS.slice(inicio, inicio + LOTE_BANCOS);
+  Promise.all(lote.map(function(b) {
+    return chamarBcbSync({ modo: 'upsert', cnpj8: b.cnpj8, nome_instituicao: b.nome }).then(function(resp) {
+      var tr = linhasPorCnpj[b.cnpj8];
+      if (resp && resp.ok && resp.dados) {
+        preencherLinha(tr, b.nome, resp.dados.basileia, resp.dados.periodo);
+      } else {
+        preencherLinha(tr, b.nome, null, null);
+      }
+      totalCarregado++;
+      if (progresso) progresso.textContent = 'Consultando o Banco Central... ' + totalCarregado + ' de ' + BANCOS.length + ' instituições.';
+    });
+  })).then(function() { processarLoteBancos(inicio + LOTE_BANCOS); });
+}
+processarLoteBancos(0);
 
 var buscaInput = document.getElementById('basileia-busca-input');
 var buscaBtn = document.getElementById('basileia-busca-btn');
