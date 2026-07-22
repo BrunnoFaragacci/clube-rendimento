@@ -2349,6 +2349,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var dadosGraficoRV = []; // acumula dados de cada ativo para gerar gráficos
     var todosAtivos    = []; // todos os ativos (RV + RF + Cetip) para diversificação
     var fiiTickers     = []; // tickers de FIIs identificados, para buscar o portfólio de cada fundo
+    var mapaFIICnpj    = {}; // ticker -> CNPJ (via summaryProfile da Brapi), para o fallback de composição via CVM
 
     var temPM = ativos.some(function(a) { return typeof a.precoMedio === 'number' && !isNaN(a.precoMedio) && a.precoMedio > 0; });
     var colRV = ['Ativo','Segmento','Quantidade'];
@@ -2852,7 +2853,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         if (totRvEl) totRvEl.textContent = 'R$ ' + formatarNumero(totRV, 2);
         atualizarYieldRV();
         gerarGraficosRV(dadosGraficoRV, D, novaJanela);
-        return processarComposicaoFII(0);
+        return processarComposicaoFII();
       }
       if (cancelado()) return;
 
@@ -3147,14 +3148,17 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
             if (isFII && opcoes.fiis && fiiTickers.indexOf(at.ticker) === -1) {
               fiiTickers.push(at.ticker);
+              // CNPJ do fundo, já presente de graça no summaryProfile (chamada
+              // nunca bloqueada pelo plano da Brapi) — usado como fallback via
+              // CVM quando o relatório /v2/fii/reports não estiver disponível.
+              if (perf.cnpj) mapaFIICnpj[at.ticker] = String(perf.cnpj).replace(/\D/g, '');
             }
 
             // Filtrar por tipo selecionado: ocultar linha (e excluir dos totais/
             // gráficos, ver abaixo) se o tipo do ativo não foi marcado para análise.
             var linhaVisivel = true;
             if (isFII && !opcoes.fiis)   linhaVisivel = false;
-            if (!isFII && !isETF && !opcoes.acoes) linhaVisivel = false;
-            if (isETF && !opcoes.acoes && !opcoes.fiis) linhaVisivel = false;
+            if (!isFII && !opcoes.acoes) linhaVisivel = false;
             if (!linhaVisivel) {
               var trEl = c[0] && c[0].parentNode;
               if (trEl) trEl.style.display = 'none';
@@ -3492,31 +3496,62 @@ h2{font-size:32px;letter-spacing:-.02em;}
     // ── Portfólio dos FIIs — composição patrimonial de cada fundo ──────────
     // Usa o endpoint /api/v2/fii/reports da brapi, que traz o relatório
     // gerencial mensal enviado à CVM (imóveis, CRI/LCI, cotas de outros FIIs,
-    // caixa/renda fixa e recebíveis). Processado em série (um fundo por vez)
-    // para não sobrecarregar a API; falhas em um fundo não impedem os demais.
-    function processarComposicaoFII(idx) {
-      if (idx >= fiiTickers.length) {
+    // caixa/renda fixa e recebíveis). Consultado em paralelo para todos os
+    // fundos — a maioria retorna erro instantâneo de plano (o relatório só
+    // está liberado para poucos tickers no plano atual da Brapi), então
+    // esperar um fundo por vez só somava tempo sem necessidade. Falhas em
+    // um fundo não impedem os demais; a ordem de exibição dos cartões segue
+    // sempre a ordem de fiiTickers, independente da ordem de resposta.
+    function processarComposicaoFII() {
+      if (!fiiTickers.length) {
         return processarRFPos(0);
       }
       if (cancelado()) return;
 
-      var ticker = fiiTickers[idx];
-      statusR.textContent = 'Portfólio do fundo ' + (idx + 1) + '/' + fiiTickers.length + ': ' + ticker;
+      statusR.textContent = 'Portfólio dos FIIs: consultando ' + fiiTickers.length + ' fundo(s)...';
 
-      var url = BRAPI_PROXY + '/v2/fii/reports?symbols=' + encodeURIComponent(ticker);
-      return fetch(url)
-        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-        .then(function(d) {
-          var lista = (d && d.reports) || [];
-          // O relatório mais recente é identificado pela maior referenceDate.
-          lista.sort(function(a, b) { return new Date(b.referenceDate || 0) - new Date(a.referenceDate || 0); });
-          renderizarComposicaoFII(ticker, lista.length ? lista[0] : null);
-        })
-        .catch(function(e) {
-          console.warn('Portfólio FII ' + ticker + ':', e.message || e);
-          renderizarComposicaoFII(ticker, null);
-        })
-        .then(function() { return processarComposicaoFII(idx + 1); });
+      return Promise.all(fiiTickers.map(function(ticker) {
+        var url = BRAPI_PROXY + '/v2/fii/reports?symbols=' + encodeURIComponent(ticker);
+        return fetch(url)
+          .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+          .then(function(d) {
+            var lista = (d && d.reports) || [];
+            // O relatório mais recente é identificado pela maior referenceDate.
+            lista.sort(function(a, b) { return new Date(b.referenceDate || 0) - new Date(a.referenceDate || 0); });
+            return { ticker: ticker, rep: lista.length ? lista[0] : null };
+          })
+          .catch(function(e) {
+            console.warn('Portfólio FII ' + ticker + ':', e.message || e);
+            return { ticker: ticker, rep: null };
+          });
+      })).then(function(resultados) {
+        if (cancelado()) return;
+
+        // Fallback: fundos sem relatório na Brapi (bloqueado pelo plano atual)
+        // são buscados de uma vez só na tabela fii_composicao_cvm, sincronizada
+        // semanalmente a partir do Informe Mensal Estruturado da própria CVM —
+        // mesma fonte de origem que a Brapi usa, casada aqui pelo CNPJ já
+        // conhecido de cada ticker (mapaFIICnpj).
+        var semRelatorio = resultados.filter(function(r) { return !r.rep && mapaFIICnpj[r.ticker]; });
+        if (!semRelatorio.length || !window.supabaseClient) {
+          resultados.forEach(function(res) { renderizarComposicaoFII(res.ticker, res.rep, null); });
+          return processarRFPos(0);
+        }
+
+        var cnpjs = semRelatorio.map(function(r) { return mapaFIICnpj[r.ticker]; });
+        return Promise.resolve(window.supabaseClient.from('fii_composicao_cvm').select('*').in('cnpj', cnpjs))
+          .catch(function() { return { data: [] }; })
+          .then(function(resp) {
+            if (cancelado()) return;
+            var porCnpj = {};
+            (resp && resp.data || []).forEach(function(row) { porCnpj[row.cnpj] = row; });
+            resultados.forEach(function(res) {
+              var cvmRow = !res.rep ? porCnpj[mapaFIICnpj[res.ticker]] : null;
+              renderizarComposicaoFII(res.ticker, res.rep, cvmRow || null);
+            });
+            return processarRFPos(0);
+          });
+      });
     }
 
     function formatarPeriodoFII(dataRef) {
@@ -3527,7 +3562,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
       return mes + '/' + d.getUTCFullYear();
     }
 
-    function renderizarComposicaoFII(ticker, rep) {
+    // ticker: código do fundo. rep: relatório da Brapi (/v2/fii/reports),
+    // quando disponível no plano atual. cvmRow: linha da tabela
+    // fii_composicao_cvm (fallback direto na CVM), usada somente quando rep
+    // for null — ver processarComposicaoFII acima.
+    function renderizarComposicaoFII(ticker, rep, cvmRow) {
       var grid = D.getElementById('fii-comp-grid');
       if (!grid) return;
 
@@ -3547,7 +3586,32 @@ h2{font-size:32px;letter-spacing:-.02em;}
       tituloWrap.appendChild(subtitulo);
       cabecalho.appendChild(tituloWrap);
 
-      var periodoTxt = rep ? formatarPeriodoFII(rep.referenceDate) : '';
+      // Categorias de composição, a partir da fonte disponível: relatório da
+      // Brapi preferencialmente, ou o fallback direto da CVM (mesma fonte de
+      // origem) quando o plano atual da Brapi bloquear o relatório deste
+      // ticker.
+      var periodoTxt = '';
+      var categorias = null;
+      if (rep) {
+        periodoTxt = formatarPeriodoFII(rep.referenceDate);
+        categorias = [
+          { nome: 'Caixa e renda fixa', valor: (rep.liquidityNeeds || 0) + (rep.governmentBonds || 0) + (rep.privateBonds || 0) + (rep.fixedIncomeFunds || 0) },
+          { nome: 'Imóveis', valor: (rep.realEstateAssets || 0) + (rep.realEstateCompanyShares || 0) + (rep.realEstateCompanyUnits || 0) },
+          { nome: 'CRI/LCI', valor: (rep.cri || 0) + (rep.lci || 0) },
+          { nome: 'Cotas de outros FIIs', valor: rep.fiiHoldings || 0 },
+          { nome: 'Recebíveis', valor: rep.receivables || ((rep.rentalReceivables || 0) + (rep.otherReceivables || 0)) }
+        ];
+      } else if (cvmRow) {
+        periodoTxt = formatarPeriodoFII(cvmRow.referencia);
+        categorias = [
+          { nome: 'Caixa e renda fixa', valor: cvmRow.caixa_renda_fixa || 0 },
+          { nome: 'Imóveis', valor: cvmRow.imoveis || 0 },
+          { nome: 'CRI/LCI', valor: cvmRow.cri_lci || 0 },
+          { nome: 'Cotas de outros FIIs', valor: cvmRow.cotas_fii || 0 },
+          { nome: 'Recebíveis', valor: cvmRow.recebiveis || 0 }
+        ];
+      }
+
       if (periodoTxt) {
         var badge = D.createElement('span');
         badge.className = 'fii-comp-badge';
@@ -3556,7 +3620,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       }
       card.appendChild(cabecalho);
 
-      if (!rep) {
+      if (!categorias) {
         var msg = D.createElement('p');
         msg.className = 'fii-comp-indisponivel';
         msg.textContent = 'Composição não disponível para este fundo no momento.';
@@ -3565,15 +3629,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         return;
       }
 
-      // Agrupa os campos do relatório CVM em categorias de composição.
-      var categorias = [
-        { nome: 'Caixa e renda fixa', valor: (rep.liquidityNeeds || 0) + (rep.governmentBonds || 0) + (rep.privateBonds || 0) + (rep.fixedIncomeFunds || 0) },
-        { nome: 'Imóveis', valor: (rep.realEstateAssets || 0) + (rep.realEstateCompanyShares || 0) + (rep.realEstateCompanyUnits || 0) },
-        { nome: 'CRI/LCI', valor: (rep.cri || 0) + (rep.lci || 0) },
-        { nome: 'Cotas de outros FIIs', valor: rep.fiiHoldings || 0 },
-        { nome: 'Recebíveis', valor: rep.receivables || ((rep.rentalReceivables || 0) + (rep.otherReceivables || 0)) }
-      ].filter(function(c) { return c.valor > 0; });
-
+      categorias = categorias.filter(function(c) { return c.valor > 0; });
       var totalComp = categorias.reduce(function(s, c) { return s + c.valor; }, 0);
       if (!totalComp) {
         var msg2 = D.createElement('p');
@@ -3599,6 +3655,15 @@ h2{font-size:32px;letter-spacing:-.02em;}
         legenda.appendChild(linha);
       });
       card.appendChild(legenda);
+
+      if (!rep && cvmRow) {
+        var fonte = D.createElement('p');
+        fonte.className = 'fii-comp-subtitulo';
+        fonte.style.marginTop = '10px';
+        fonte.textContent = 'Fonte: dados abertos da CVM.';
+        card.appendChild(fonte);
+      }
+
       grid.appendChild(card);
     }
 
