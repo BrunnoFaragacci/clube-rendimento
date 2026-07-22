@@ -2354,6 +2354,24 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var mapaFIICnpj    = {}; // ticker -> CNPJ (via summaryProfile da Brapi), para o fallback de composição via CVM
     var quadrantesOcultos = []; // { card, nome } dos quadrantes de resumo ocultados nesta análise
 
+    // Lista oficial de BDRs negociados na B3, buscada uma única vez por
+    // análise via /quote/list?type=bdr (endpoint de busca da Brapi, liberado
+    // no plano atual, devolve todos de uma vez — 855 tickers em uma
+    // chamada). É a fonte de verdade para a classificação de BDR; o padrão
+    // de sufixo de ticker (31-39, faixa que a B3 reserva para BDR) serve só
+    // como reforço, para o raríssimo caso da lista não carregar a tempo do
+    // primeiro lote. Confirmado por varredura: de 855 BDRs listados hoje,
+    // apenas 1 (PPLA11) foge do padrão de sufixo — datado a fonte oficial
+    // resolve mesmo essa exceção.
+    var bdrSet = null;
+    var promBDRSet = fetch(BRAPI_PROXY + '/quote/list?type=bdr&limit=1000')
+      .then(function(r) { return r.ok ? r.json() : { stocks: [] }; })
+      .then(function(d) {
+        bdrSet = {};
+        (d.stocks || []).forEach(function(s) { if (s.stock) bdrSet[s.stock] = true; });
+      })
+      .catch(function() { bdrSet = {}; });
+
     var temPM = ativos.some(function(a) { return typeof a.precoMedio === 'number' && !isNaN(a.precoMedio) && a.precoMedio > 0; });
     var colRV = ['Ativo','Segmento','Quantidade'];
     if (temPM) colRV.push('Preço médio');
@@ -3228,13 +3246,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
               longName.indexOf('ETF') !== -1 ||
               longName.indexOf('FUNDO DE IND') !== -1 ||
               longName.indexOf('INDEX FUND') !== -1;
-            // BDR (Brazilian Depositary Receipt) — a B3 reserva a faixa de
-            // sufixo numérico 31 a 39 exclusivamente para programas de BDR
-            // (níveis I/II/III, patrocinado ou não), nunca usada por ações
-            // domésticas (que vão de 3 a 9) nem por FIIs/ETFs/units (11) —
-            // por isso o padrão de ticker é um sinal confiável, sem precisar
-            // de outra chamada à Brapi só para essa classificação.
-            var isBDR = !isETF && /3[1-9]$/.test(at.ticker);
+            // BDR (Brazilian Depositary Receipt) — bdrSet (ver início de
+            // executarAnalise) é a lista oficial vinda da própria Brapi; o
+            // padrão de sufixo 31-39 (faixa que a B3 reserva para BDR,
+            // nunca usada por ações domésticas nem por FIIs/ETFs/units) é
+            // reforço para o caso raro de bdrSet ainda não ter carregado.
+            var isBDR = !isETF && ((bdrSet && bdrSet[at.ticker] === true) || /3[1-9]$/.test(at.ticker));
             var isFII = !isETF && !isBDR && (
               quoteType === 'FUND' ||
               longName.indexOf('FUNDO DE INVESTIMENTO IMOBILI') !== -1 ||
@@ -5247,11 +5264,17 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
 
     // ── Chain starter: inicia a cadeia de processamento ──────────────────────
-    var inicio = opcoes.rv
-      ? processarRV(0)
-      : opcoes.rf
-        ? Promise.resolve().then(function() { return processarRFPos(0); })
-        : Promise.resolve().then(function() { return processarCetip(); });
+    // Espera bdrSet (lista oficial de BDRs) carregar antes do primeiro lote,
+    // para a classificação de BDR já sair correta desde a primeira linha —
+    // é só mais uma chamada em paralelo às demais requisições iniciais, não
+    // atrasa perceptivelmente o carregamento.
+    var inicio = promBDRSet.then(function() {
+      return opcoes.rv
+        ? processarRV(0)
+        : opcoes.rf
+          ? processarRFPos(0)
+          : processarCetip();
+    });
 
     if (inicio && typeof inicio.catch === 'function') {
       inicio.catch(function(e) {
