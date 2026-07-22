@@ -8285,7 +8285,26 @@ var FOCUS_URL = 'https://segeufywrjmstfmfscdi.supabase.co/functions/v1/focus-bol
     { nome: 'Banco Agibank', cnpj8: '10664513' },
     { nome: 'Banco Fator', cnpj8: '33644196' },
     { nome: 'Banco Luso Brasileiro', cnpj8: '59118133' },
-    { nome: 'Banco Stellantis', cnpj8: '62237425' }
+    { nome: 'Banco Stellantis', cnpj8: '62237425' },
+    { nome: 'Banco XP', cnpj8: '33264668' },
+    { nome: 'Banco Volkswagen', cnpj8: '59109165' },
+    { nome: 'Mercado Crédito (Mercado Livre)', cnpj8: '37679449' },
+    { nome: 'Nu Pagamentos (Nubank)', cnpj8: '18236120' },
+    { nome: 'Neon Financeira', cnpj8: '11285104' },
+    { nome: 'Banco Paulista', cnpj8: '61820817' },
+    { nome: 'BRB — Banco de Brasília', cnpj8: '00000208' },
+    { nome: 'Banco do Nordeste', cnpj8: '07237373' },
+    { nome: 'Banco Semear', cnpj8: '00795423' },
+    { nome: 'Omni Banco', cnpj8: '60850229' },
+    { nome: 'Banco Bari', cnpj8: '00556603' },
+    { nome: 'Banco Alfa', cnpj8: '03323840' },
+    { nome: 'Banco Triângulo', cnpj8: '17351180' },
+    { nome: 'Banco Crefisa', cnpj8: '61033106' },
+    { nome: 'Banco BS2', cnpj8: '71027866' },
+    { nome: 'Banco Rendimento', cnpj8: '68900810' },
+    { nome: 'Banco Sicoob', cnpj8: '02038232' },
+    { nome: 'Banco Sicredi', cnpj8: '01181521' },
+    { nome: 'Banrisul', cnpj8: '92702067' }
   ];
 
   function abrirBasileia() {
@@ -8301,7 +8320,7 @@ var FOCUS_URL = 'https://segeufywrjmstfmfscdi.supabase.co/functions/v1/focus-bol
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--line:#E2E2E2;--orange:#111111;--og:#000000;--green:#16A34A;--red:#DC2626;--radius:16px;--shadow:0 10px 28px rgba(0,0,0,.08);}
+:root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--line:#E2E2E2;--orange:#111111;--og:#000000;--green:#16A34A;--amber:#D97706;--red:#DC2626;--radius:16px;--shadow:0 10px 28px rgba(0,0,0,.08);}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-soft);color:var(--ink);min-height:100vh;}
 .nav{background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;}
@@ -8310,7 +8329,16 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
 .eyebrow{display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:600;color:var(--og);margin-bottom:14px;}
 .eyebrow::before{content:"";width:18px;height:2px;background:var(--orange);display:inline-block;}
 h1{font-size:26px;font-weight:700;margin-bottom:8px;}
-.basileia-sub{font-size:13.5px;color:var(--ink-soft);margin-bottom:24px;line-height:1.5;max-width:640px;}
+.basileia-sub{font-size:13.5px;color:var(--ink-soft);margin-bottom:16px;line-height:1.5;max-width:640px;}
+.basileia-legenda{display:flex;flex-wrap:wrap;gap:10px 20px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;margin-bottom:24px;box-shadow:var(--shadow);}
+.basileia-legenda-item{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-soft);}
+.basileia-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.basileia-dot-atencao{background:var(--red);}
+.basileia-dot-adequado{background:var(--amber);}
+.basileia-dot-solido{background:var(--green);}
+.basileia-valor-atencao{color:var(--red);}
+.basileia-valor-adequado{color:var(--amber);}
+.basileia-valor-solido{color:var(--green);}
 .basileia-busca{display:flex;gap:10px;margin-bottom:8px;max-width:520px;}
 .basileia-busca input{flex:1;padding:10px 14px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13.5px;color:var(--ink);}
 .basileia-busca input:focus{outline:none;border-color:var(--orange);}
@@ -8339,6 +8367,12 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
   <h1>Índice de Basileia dos Bancos</h1>
   <p class="basileia-sub">Indicador de solidez financeira de cada instituição: quanto maior, mais capital próprio o banco tem frente aos riscos que carrega. Dados oficiais do Banco Central do Brasil (BCB), atualizados trimestralmente.</p>
 
+  <div class="basileia-legenda">
+    <div class="basileia-legenda-item"><span class="basileia-dot basileia-dot-atencao"></span>Abaixo de 11% — atenção, perto do mínimo regulatório</div>
+    <div class="basileia-legenda-item"><span class="basileia-dot basileia-dot-adequado"></span>11% a 14% — adequado</div>
+    <div class="basileia-legenda-item"><span class="basileia-dot basileia-dot-solido"></span>Acima de 14% — sólido</div>
+  </div>
+
   <div class="basileia-busca">
     <input type="text" id="basileia-busca-input" placeholder="Buscar outro banco/instituição (ex.: Banco XP)...">
     <button type="button" id="basileia-busca-btn">Buscar</button>
@@ -8351,7 +8385,7 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
       <tbody id="basileia-corpo"></tbody>
     </table>
   </div>
-  <p class="basileia-nota">Fonte: Banco Central do Brasil — IF.Data (Informações de Capital, nível de conglomerado prudencial). O mínimo regulatório exigido pelo CMN é de 8%; bancos sistemicamente importantes têm exigência adicional (adicional de capital principal).</p>
+  <p class="basileia-nota">Fonte: Banco Central do Brasil — IF.Data (Informações de Capital, nível de conglomerado prudencial). O mínimo regulatório é de 10,5% (8% de exigência básica + 2,5% de adicional de conservação de capital); bancos sistemicamente importantes têm exigência adicional própria. A faixa de referência acima (atenção/adequado/sólido) é uma leitura de mercado sobre a margem de segurança acima desse mínimo, não um critério oficial do BCB.</p>
 </div>
 
 <script>
@@ -8362,6 +8396,14 @@ var BANCOS = ${JSON.stringify(BANCOS_BASILEIA)};
 function fmtPct(v) {
   if (typeof v !== 'number' || isNaN(v)) return '—';
   return (v * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+}
+// Classifica o valor na mesma escala da legenda (ver <div class="basileia-legenda">).
+function classificarBasileia(v) {
+  if (typeof v !== 'number' || isNaN(v)) return '';
+  var pct = v * 100;
+  if (pct < 11) return 'basileia-valor-atencao';
+  if (pct < 14) return 'basileia-valor-adequado';
+  return 'basileia-valor-solido';
 }
 function fmtPeriodo(am) {
   if (!am || String(am).length !== 6) return '—';
@@ -8395,6 +8437,7 @@ function criarLinha(nome) {
 function preencherLinha(tr, nome, basileia, periodo) {
   tr.children[0].textContent = nome;
   tr.children[1].textContent = fmtPct(basileia);
+  tr.children[1].className = 'basileia-valor ' + classificarBasileia(basileia);
   tr.children[2].textContent = fmtPeriodo(periodo);
 }
 
