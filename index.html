@@ -469,7 +469,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
   }
 
   function formatarCompacto(valor) {
-    if (typeof valor !== 'number' || isNaN(valor)) return 'Não disponível';
+    if (typeof valor !== 'number' || isNaN(valor)) return '—';
     var abs = Math.abs(valor);
     var sinal = valor < 0 ? '-' : '';
     if (abs >= 1e9) return sinal + 'R$ ' + formatarNumero(abs / 1e9, 2) + ' bi';
@@ -2977,7 +2977,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         tr.appendChild(cel(D, formatarNumero(at.quantidade, 0)));
         if (temPM) {
           tr.appendChild(cel(D, typeof at.precoMedio === 'number'
-            ? 'R$ ' + formatarNumero(at.precoMedio, 2) : 'Não disponível'));
+            ? 'R$ ' + formatarNumero(at.precoMedio, 2) : '—'));
         }
         tr.appendChild(cel(D, 'Consultando...'));         // cotação
         tr.appendChild(cel(D, '—'));                      // valor total
@@ -3186,7 +3186,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           function preencherXP(c, o, ticker, vt, incluirNoTotalUpside) {
             var xp = mapaXP[ticker];
             if (!xp || xp.preco_alvo === null || xp.preco_alvo === undefined) {
-              c[12 + o].textContent = 'Não disponível';
+              c[12 + o].textContent = '—';
               c[13 + o].textContent = '—';
               return;
             }
@@ -3347,7 +3347,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
                 });
               }
             } else {
-              c[3 + o].textContent = 'Não disponível';
+              c[3 + o].textContent = '—';
             }
 
             // Variação — rentabilidade do cliente: cotação atual frente ao preço
@@ -3409,7 +3409,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
             // acoes-dados-extra para ações) quando esses dados vêm vazios da Brapi.
             var extraFundInd10 = mapaFIIExtra[at.ticker];
             var extraAcaoInd10 = mapaAcoesExtra[at.ticker];
-            c[6 + o].textContent  = typeof dado.priceEarnings === 'number'      ? formatarNumero(dado.priceEarnings, 2)            : 'Não disponível';
+            c[6 + o].textContent  = typeof dado.priceEarnings === 'number'      ? formatarNumero(dado.priceEarnings, 2)            : '—';
             // dados.pvp e dados.dividendYield12m do fii-dados-extra vêm como
             // strings no padrão brasileiro (ex.: "1,05" e "8,52%"), por isso são
             // convertidos aqui; os equivalentes do acoes-dados-extra já vêm como
@@ -3420,7 +3420,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
               (!isFII && !isETF && extraAcaoInd10 && typeof extraAcaoInd10.pvp === 'number') ? extraAcaoInd10.pvp : NaN;
             var pvpVal = typeof est.priceToBook === 'number' ? est.priceToBook :
               (isFinite(pvpFallback) ? pvpFallback : null);
-            c[7 + o].textContent  = pvpVal !== null                              ? formatarNumero(pvpVal, 2)                        : 'Não disponível';
+            c[7 + o].textContent  = pvpVal !== null                              ? formatarNumero(pvpVal, 2)                        : '—';
             var dyCalculado = calcularDYPreciso(dado);
             var dyFallbackStr = (isFII && extraFundInd10 && extraFundInd10.dividendYield12m) ?
               String(extraFundInd10.dividendYield12m) : '';
@@ -3428,17 +3428,17 @@ h2{font-size:32px;letter-spacing:-.02em;}
               (!isFII && !isETF && extraAcaoInd10 && typeof extraAcaoInd10.dividendYield12m === 'number' ? extraAcaoInd10.dividendYield12m : NaN);
             var dyVal = dyCalculado !== null ? dyCalculado : (typeof est.dividendYield === 'number' ? est.dividendYield * 100 :
               (isFinite(dyFallback) ? dyFallback : null));
-            c[8 + o].textContent  = dyVal !== null                               ? formatarNumero(dyVal, 2) + '%'                   : 'Não disponível';
+            c[8 + o].textContent  = dyVal !== null                               ? formatarNumero(dyVal, 2) + '%'                   : '—';
             if (entrada && dyVal !== null) entrada.dy = dyVal;
             var roeFallback = (!isFII && !isETF && extraAcaoInd10 && typeof extraAcaoInd10.roe === 'number') ? extraAcaoInd10.roe : NaN;
             var roeVal = typeof fin.returnOnEquity === 'number' ? fin.returnOnEquity * 100 : (isFinite(roeFallback) ? roeFallback : null);
-            c[9 + o].textContent  = roeVal !== null                              ? formatarNumero(roeVal, 2) + '%'                  : 'Não disponível';
+            c[9 + o].textContent  = roeVal !== null                              ? formatarNumero(roeVal, 2) + '%'                  : '—';
 
             // Valor de mercado e liquidez diária (dados já vêm no /api/quote/ principal,
             // com fallback para dados calculados/Investidor10 quando a Brapi não retorna
             // — mesma lógica já aplicada na Pesquisa de Ativos para um único FII).
             function fmtGrandeRV(v) {
-              if (typeof v !== 'number' || !v) return 'Não disponível';
+              if (typeof v !== 'number' || !v) return '—';
               if (Math.abs(v) >= 1e9) return 'R$ ' + formatarNumero(v / 1e9, 2) + ' bi';
               if (Math.abs(v) >= 1e6) return 'R$ ' + formatarNumero(v / 1e6, 2) + ' mi';
               if (Math.abs(v) >= 1e3) return 'R$ ' + formatarNumero(v / 1e3, 2) + ' k';
@@ -3483,7 +3483,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
             } else if (extraInvestidor10 && extraInvestidor10.liquidezDiaria) {
               c[15 + o].textContent = extraInvestidor10.liquidezDiaria + '/dia';
             } else {
-              c[15 + o].textContent = 'Não disponível';
+              c[15 + o].textContent = '—';
             }
             if (isFII) {
               // O vacancyRate por imóvel da brapi.dev/api/v2/fii/properties
@@ -3500,7 +3500,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
               } else if (typeof vacMedia === 'number') {
                 c[16 + o].textContent = formatarNumero(vacMedia * 100, 2) + '%';
               } else {
-                c[16 + o].textContent = 'Não disponível';
+                c[16 + o].textContent = '—';
               }
             } else {
               c[16 + o].textContent = '—';
@@ -4573,7 +4573,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           // Coluna 3: quantidade de cotas
           tr.appendChild(cel(D, typeof fundo.qtdCotas === 'number'
             ? formatarNumero(fundo.qtdCotas, 0)
-            : 'Não disponível'));
+            : '—'));
 
           // Coluna 4: valor da cota (da planilha, ou da base de dados como fallback)
           var valorCota = (typeof fundo.valorCotaPlanilha === 'number')
@@ -4581,18 +4581,18 @@ h2{font-size:32px;letter-spacing:-.02em;}
             : fundo.valorCotaBase;
           tr.appendChild(cel(D, typeof valorCota === 'number'
             ? 'R$ ' + formatarNumero(valorCota, 2)
-            : 'Não disponível'));
+            : '—'));
 
           // Coluna 5: valor líquido
           var tdValorLiq = cel(D, typeof fundo.valorLiquido === 'number'
             ? 'R$ ' + formatarNumero(fundo.valorLiquido, 2)
-            : 'Não disponível');
+            : '—');
           tr.appendChild(tdValorLiq);
 
           // Coluna 6: dia de pagamento
           tr.appendChild(cel(D, typeof fundo.diaPagamento === 'number'
             ? fundo.diaPagamento + 'º dia útil'
-            : 'Não disponível'));
+            : '—'));
 
           // Colunas 7 e 8: último dividendo pago (total) e yield do mês (%),
           // calculados a partir do evento mais recente em ultimosEventos.
@@ -4605,14 +4605,14 @@ h2{font-size:32px;letter-spacing:-.02em;}
             : null;
           tr.appendChild(cel(D, typeof dividendoTotalLinha === 'number'
             ? 'R$ ' + formatarNumero(dividendoTotalLinha, 2)
-            : 'Não disponível'));
+            : '—'));
 
           var yieldMesLinha = (ultimoEvento && typeof valorCotaParaCalculo === 'number' && valorCotaParaCalculo > 0)
             ? (Number(ultimoEvento.valorCota) / valorCotaParaCalculo) * 100
             : null;
           var tdYield = cel(D, typeof yieldMesLinha === 'number'
             ? formatarNumero(yieldMesLinha, 2) + '%'
-            : 'Não disponível');
+            : '—');
           if (typeof yieldMesLinha === 'number') tdYield.className = 'pos';
           tr.appendChild(tdYield);
 
