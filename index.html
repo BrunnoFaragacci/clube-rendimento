@@ -332,6 +332,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
         <label><input type="checkbox" id="check-fiis"> Fundos Imobiliários</label>
         <label><input type="checkbox" id="check-rf"> Renda fixa</label>
         <label><input type="checkbox" id="check-cetip"> Fundos Cetipados</label>
+        <label><input type="checkbox" id="check-previdencia"> Previdência Privada</label>
+        <label><input type="checkbox" id="check-coe"> COE</label>
+        <label><input type="checkbox" id="check-tesouro"> Tesouro Direto</label>
         <label style="font-weight:600;border-left:1px solid var(--line);padding-left:14px;margin-left:2px;"><input type="checkbox" id="check-tudo"> Análise total da carteira</label>
         <button type="button" class="btn btn-primary" id="btn-analisar" disabled>Analisar carteira</button>
       </div>
@@ -488,6 +491,13 @@ h2{font-size:32px;letter-spacing:-.02em;}
     if (typeof valor === 'number') return valor;
     var texto = String(valor === undefined || valor === null ? '' : valor).trim()
       .replace(/R\$\s?/gi, '').trim();
+    if (!texto) return NaN;
+    return Number(texto.replace(/\./g, '').replace(',', '.'));
+  }
+
+  function parsePercentualBR(valor) {
+    if (typeof valor === 'number') return valor;
+    var texto = String(valor === undefined || valor === null ? '' : valor).trim().replace('%', '').trim();
     if (!texto) return NaN;
     return Number(texto.replace(/\./g, '').replace(',', '.'));
   }
@@ -680,15 +690,19 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var fiis  = document.getElementById('check-fiis').checked;
     var rf    = document.getElementById('check-rf').checked;
     var cetip = document.getElementById('check-cetip').checked;
-    document.getElementById('btn-analisar').disabled = !arquivoSelecionado || (!acoes && !fiis && !rf && !cetip);
+    var previdencia = document.getElementById('check-previdencia').checked;
+    var coe   = document.getElementById('check-coe').checked;
+    var tesouro = document.getElementById('check-tesouro').checked;
+    document.getElementById('btn-analisar').disabled = !arquivoSelecionado ||
+      (!acoes && !fiis && !rf && !cetip && !previdencia && !coe && !tesouro);
   }
 
   // Tornar os checkboxes mutuamente exclusivos (apenas um por vez) — exceto
-  // quando "Análise total da carteira" está marcada, caso em que os quatro
+  // quando "Análise total da carteira" está marcada, caso em que todos
   // ficam ativos ao mesmo tempo, mostrando o resumo completo e todos os
   // gráficos (inclusive "Alocação da carteira", que só aparece com 2+
   // classes selecionadas).
-  var _todosChecks = ['check-acoes','check-fiis','check-rf','check-cetip'];
+  var _todosChecks = ['check-acoes','check-fiis','check-rf','check-cetip','check-previdencia','check-coe','check-tesouro'];
   var modoTudoAtivo = false;
   function selecionarUnico(idMarcado) {
     if (modoTudoAtivo) { atualizarBotaoAnalisar(); return; }
@@ -698,17 +712,19 @@ h2{font-size:32px;letter-spacing:-.02em;}
     atualizarBotaoAnalisar();
   }
   // Mantém o checkbox "Análise total" sincronizado: só permanece marcado
-  // enquanto as quatro classes continuarem selecionadas.
+  // enquanto todas as classes continuarem selecionadas.
   function sincronizarCheckTudo() {
     var todasMarcadas = _todosChecks.every(function(id) { return document.getElementById(id).checked; });
     var checkTudoEl = document.getElementById('check-tudo');
     if (checkTudoEl.checked !== todasMarcadas) checkTudoEl.checked = todasMarcadas;
     modoTudoAtivo = todasMarcadas;
   }
-  document.getElementById('check-acoes').addEventListener('change', function(){ if(this.checked) selecionarUnico('check-acoes'); else atualizarBotaoAnalisar(); sincronizarCheckTudo(); });
-  document.getElementById('check-fiis').addEventListener('change',  function(){ if(this.checked) selecionarUnico('check-fiis');  else atualizarBotaoAnalisar(); sincronizarCheckTudo(); });
-  document.getElementById('check-rf').addEventListener('change',    function(){ if(this.checked) selecionarUnico('check-rf');    else atualizarBotaoAnalisar(); sincronizarCheckTudo(); });
-  document.getElementById('check-cetip').addEventListener('change', function(){ if(this.checked) selecionarUnico('check-cetip'); else atualizarBotaoAnalisar(); sincronizarCheckTudo(); });
+  _todosChecks.forEach(function(id) {
+    document.getElementById(id).addEventListener('change', function() {
+      if (this.checked) selecionarUnico(id); else atualizarBotaoAnalisar();
+      sincronizarCheckTudo();
+    });
+  });
   document.getElementById('check-tudo').addEventListener('change', function() {
     modoTudoAtivo = this.checked;
     if (this.checked) {
@@ -723,7 +739,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var fiis  = document.getElementById('check-fiis').checked;
     var rf    = document.getElementById('check-rf').checked;
     var cetip = document.getElementById('check-cetip').checked;
-    if (!acoes && !fiis && !rf && !cetip) return;
+    var previdencia = document.getElementById('check-previdencia').checked;
+    var coe   = document.getElementById('check-coe').checked;
+    var tesouro = document.getElementById('check-tesouro').checked;
+    if (!acoes && !fiis && !rf && !cetip && !previdencia && !coe && !tesouro) return;
 
     var status = document.getElementById('carteira-status');
     document.getElementById('btn-analisar').disabled = true;
@@ -737,7 +756,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
       return;
     }
 
-    var opcoesAnalise = { rv: acoes || fiis, acoes: acoes, fiis: fiis, rf: rf, cetip: cetip };
+    var opcoesAnalise = {
+      rv: acoes || fiis, acoes: acoes, fiis: fiis, rf: rf, cetip: cetip,
+      previdencia: previdencia, coe: coe, tesouro: tesouro
+    };
     iniciarAnalise(arquivoSelecionado, novaJanela, opcoesAnalise);
   });
 
@@ -748,8 +770,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var ativos = opcoes.rv ? extrairAtivos(linhas) : [];
       var rf = opcoes.rf ? extrairRendaFixa(linhas) : [];
       var cetipExtraidos = opcoes.cetip ? extrairFundosCetipados(linhas) : [];
+      var previdenciaItens = opcoes.previdencia ? extrairPrevidenciaPrivada(linhas) : [];
+      var coeItens = opcoes.coe ? extrairCOE(linhas) : [];
+      var tesouroItens = opcoes.tesouro ? extrairTesouroDiretoPlanilha(linhas) : [];
 
-      if (!ativos.length && !rf.length && !cetipExtraidos.length) {
+      if (!ativos.length && !rf.length && !cetipExtraidos.length &&
+          !previdenciaItens.length && !coeItens.length && !tesouroItens.length) {
         status.textContent = 'Não foi possível identificar ativos do tipo selecionado no conteúdo informado.';
         if (novaJanela && !novaJanela.closed) novaJanela.close();
         document.getElementById('btn-analisar').disabled = false;
@@ -759,7 +785,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       status.textContent = 'Cruzando fundos cetipados com a base de dados...';
       combinarComBaseCetipados(cetipExtraidos).then(function(cetipFundos) {
         status.textContent = '';
-        executarAnalise(ativos, rf, cetipFundos, novaJanela, opcoes);
+        executarAnalise(ativos, rf, cetipFundos, previdenciaItens, coeItens, tesouroItens, novaJanela, opcoes);
       });
     } catch (e) {
       console.error(e);
@@ -821,6 +847,92 @@ h2{font-size:32px;letter-spacing:-.02em;}
     return '';
   }
 
+  // ---------- Suporte ao "novo modelo" de planilha (extrato "Sua carteira") ----------
+  // A partir de meados de 2026, a XP passou a exportar a posição consolidada em
+  // outro layout: cada bloco de sub-categoria ("13,6% | Pós-Fixado") tem seu
+  // próprio cabeçalho de colunas (nomes/ordem diferentes por seção, e às vezes
+  // diferentes do modelo antigo para a MESMA seção), e cada macro-categoria
+  // (Ações, Renda Fixa, Fundos de Investimentos, Fundos Imobiliários, Tesouro
+  // Direto, Previdência Privada, COE) aparece antes como uma linha de rótulo
+  // "puro" (sem "%|"), com o total da categoria. As funções abaixo dão suporte
+  // a esse modelo em paralelo ao antigo — os extratores de cada categoria
+  // tentam os dois formatos e combinam o que encontrarem (um arquivo real só
+  // corresponde a um dos dois, então não há risco de duplicar dados).
+  var MACRO_SECOES_NOVA_PLANILHA = {
+    'acoes': 'acoes',
+    'fundos imobiliarios': 'fiis',
+    'renda fixa': 'rf',
+    'fundos de investimento': 'cetip',
+    'fundos de investimentos': 'cetip',
+    'tesouro direto': 'tesouro',
+    'previdencia privada': 'previdencia',
+    'coe': 'coe'
+  };
+
+  // Reconhece um cabeçalho de sub-bloco do novo modelo: primeira célula no
+  // padrão "X%|Rótulo" (com ou sem espaços ao redor da barra) E pelo menos uma
+  // célula de texto (não numérica) nas colunas seguintes — o que distingue um
+  // cabeçalho de verdade de uma linha de TOTAL da macro-categoria, que também
+  // usa o padrão "X%|Rótulo" no modelo antigo (ex.: "40,6%|Renda Fixa") mas só
+  // tem um valor em R$ solto em alguma coluna à direita, sem rótulos de coluna.
+  function pareceCabecalhoGenerico(linha) {
+    if (!Array.isArray(linha) || linha.length < 2) return false;
+    if (!/^[\d.,]+%\s*\|/.test(String(linha[0]).trim())) return false;
+    for (var k = 1; k < linha.length; k++) {
+      var txt = normalizar(linha[k]);
+      if (!txt) continue;
+      return isNaN(parseNumeroBR(linha[k]));
+    }
+    return false;
+  }
+
+  // Anda para trás a partir de um cabeçalho de sub-bloco até achar a linha de
+  // rótulo "puro" da macro-categoria (ex.: "Renda Fixa", "Fundos Imobiliários"),
+  // usada no novo modelo para indicar a que categoria aquele bloco pertence.
+  function encontrarMacroSecaoNovoFormato(linhas, headerIdx) {
+    for (var k = headerIdx - 1; k >= 0; k--) {
+      var l = linhas[k];
+      var cel0 = l && l[0];
+      var texto = normalizar(cel0);
+      if (!texto) continue;
+      if (MACRO_SECOES_NOVA_PLANILHA.hasOwnProperty(texto)) return MACRO_SECOES_NOVA_PLANILHA[texto];
+    }
+    return null;
+  }
+
+  // Rótulo do sub-bloco (ex.: "Pós-Fixado", "Inflação"), usado como categoria
+  // de diversificação — mesmo formato usado pelo modelo antigo.
+  function rotuloSubBloco(linha) {
+    var partes = String(linha[0]).split('|');
+    return partes.length > 1 ? partes[1].trim() : '';
+  }
+
+  // Acha o índice da coluna cujo nome normalizado contém "inclui" e, se
+  // informado, NÃO contém "exclui" (para diferenciar colunas parecidas, ex.:
+  // "Valor aplicado" vs. "Valor aplicado original").
+  function idxColuna(cab, inclui, exclui) {
+    return cab.findIndex(function(h) {
+      return h.indexOf(inclui) !== -1 && (!exclui || h.indexOf(exclui) === -1);
+    });
+  }
+
+  // Lê as linhas de dado de um sub-bloco do novo modelo, a partir do índice do
+  // seu cabeçalho, até a próxima linha em branco ou o próximo cabeçalho.
+  function lerLinhasBloco(linhas, headerIdx) {
+    var cab = linhas[headerIdx].map(normalizar);
+    var dados = [];
+    var j = headerIdx + 1;
+    while (j < linhas.length) {
+      var ld = linhas[j];
+      if (!Array.isArray(ld) || !ld.length) break;
+      var nome = String(ld[0] === undefined || ld[0] === null ? '' : ld[0]).trim();
+      if (!nome || /^[\d.,]+%/.test(nome)) break;
+      dados.push(ld);
+      j++;
+    }
+    return { cab: cab, linhas: dados, fimIdx: j };
+  }
+
   function extrairAtivos(linhas) {
     var blocos = [];
     var padrao = /^[A-Z]{4}\d{1,2}$/;
@@ -861,6 +973,35 @@ h2{font-size:32px;letter-spacing:-.02em;}
         j++;
       }
       i = j - 1;
+    }
+
+    // Novo modelo de planilha: Ações e Fundos Imobiliários vêm em sub-blocos
+    // próprios ("9,2% | Renda Variável Brasil", "3% | Fundos Listados"), com o
+    // nome/ticker do ativo na coluna A (sem cabeçalho literal "Ativo") — a
+    // macro-categoria (Ações vs. Fundos Imobiliários) é identificada pela
+    // linha de rótulo que precede o sub-bloco, não pelo texto do sub-bloco.
+    for (var iN = 0; iN < linhas.length; iN++) {
+      if (!pareceCabecalhoGenerico(linhas[iN])) continue;
+      var macroN = encontrarMacroSecaoNovoFormato(linhas, iN);
+      if (macroN !== 'acoes' && macroN !== 'fiis') continue;
+      var blocoN = lerLinhasBloco(linhas, iN);
+      var idxQtdN = idxColuna(blocoN.cab, 'qtd');
+      if (idxQtdN === -1) idxQtdN = idxColuna(blocoN.cab, 'quantidade');
+      var idxPMN = idxColuna(blocoN.cab, 'preco medio');
+      blocoN.linhas.forEach(function(ld) {
+        var ticker = String(ld[0] === undefined || ld[0] === null ? '' : ld[0]).trim().toUpperCase();
+        if (!padrao.test(ticker)) return;
+        if (padraoSubscricao.test(ticker) || padraoSubscricaoAcao.test(ticker)) return;
+        var qtd = idxQtdN !== -1 ? parseNumeroBR(ld[idxQtdN]) : NaN;
+        if (isNaN(qtd) || qtd <= 0) return;
+        var atN = { ticker: ticker, quantidade: qtd, segmentoPlanilha: macroN };
+        if (idxPMN !== -1) {
+          var pmN = parseNumeroBR(ld[idxPMN]);
+          if (!isNaN(pmN) && pmN > 0) atN.precoMedio = pmN;
+        }
+        blocos.push(atN);
+      });
+      iN = blocoN.fimIdx - 1;
     }
 
     var mapa = new Map();
@@ -930,6 +1071,41 @@ h2{font-size:32px;letter-spacing:-.02em;}
         j++;
       }
       i = j - 1;
+    }
+
+    // Novo modelo de planilha: colunas reordenadas/renomeadas ("Posição a
+    // mercado", "Data aplicação", "Data vencimento", "Taxa a mercado" etc.),
+    // identificado pela macro-categoria "Renda Fixa" que precede o sub-bloco.
+    for (var iN = 0; iN < linhas.length; iN++) {
+      if (!pareceCabecalhoGenerico(linhas[iN])) continue;
+      if (encontrarMacroSecaoNovoFormato(linhas, iN) !== 'rf') continue;
+      var categoriaN = rotuloSubBloco(linhas[iN]);
+      var blocoN = lerLinhasBloco(linhas, iN);
+      var cabN       = blocoN.cab;
+      var idxAplN    = idxColuna(cabN, 'aplicacao', 'valor');
+      var idxTaxaN   = idxColuna(cabN, 'taxa');
+      var idxVencN   = idxColuna(cabN, 'vencimento');
+      var idxPosN    = idxColuna(cabN, 'posicao');
+      var idxValAplN = idxColuna(cabN, 'valor aplicado', 'original');
+      var idxValLiqN = idxColuna(cabN, 'liquido');
+      blocoN.linhas.forEach(function(ld) {
+        var desc = String(ld[0] === undefined || ld[0] === null ? '' : ld[0]).trim();
+        var sep = separarTipoEmissor(desc);
+        var posVal = idxPosN !== -1 ? parseNumeroBR(ld[idxPosN]) : NaN;
+        var aplVal = idxValAplN !== -1 ? parseNumeroBR(ld[idxValAplN]) : NaN;
+        var liqVal = idxValLiqN !== -1 ? parseNumeroBR(ld[idxValLiqN]) : NaN;
+        itens.push({
+          descricao: desc, tipo: sep.tipo, emissor: sep.emissor, categoria: categoriaN,
+          aplicacao: idxAplN !== -1 ? String(ld[idxAplN] || '').trim() : '',
+          taxa: idxTaxaN !== -1 ? String(ld[idxTaxaN] || '').trim() : '',
+          vencimento: idxVencN !== -1 ? String(ld[idxVencN] || '').trim() : '',
+          posicao: isNaN(posVal) ? null : posVal,
+          valorAplicado: isNaN(aplVal) ? null : aplVal,
+          valorLiquido: isNaN(liqVal) ? null : liqVal,
+          cupons: null
+        });
+      });
+      iN = blocoN.fimIdx - 1;
     }
     return itens;
   }
@@ -1031,11 +1207,45 @@ h2{font-size:32px;letter-spacing:-.02em;}
           valorCotaPlanilha: isNaN(valorCota) ? null : valorCota,
           qtdCotas: isNaN(qtdCotas) ? null : qtdCotas,
           posicao: isNaN(posicao) ? null : posicao,
-          valorLiquido: isNaN(valorLiquido) ? null : valorLiquido
+          valorLiquido: isNaN(valorLiquido) ? null : valorLiquido,
+          rentabilidadeLiquida: null,
+          rentabilidadeBruta: null
         });
         j++;
       }
       i = j - 1;
+    }
+
+    // Novo modelo de planilha: sem "Data cota"/"Valor cota"/"Qtd. cotas" — em
+    // vez disso, a XP já manda pronta a rentabilidade líquida/bruta do
+    // período, usada diretamente como valorização das cotas (ver quadrante
+    // "Valorização" na tabela de Fundos Cetipados).
+    for (var iN = 0; iN < linhas.length; iN++) {
+      if (!pareceCabecalhoGenerico(linhas[iN])) continue;
+      if (encontrarMacroSecaoNovoFormato(linhas, iN) !== 'cetip') continue;
+      var blocoN = lerLinhasBloco(linhas, iN);
+      var cabN = blocoN.cab;
+      var idxPosN       = idxColuna(cabN, 'posicao');
+      var idxRentLiqN   = idxColuna(cabN, 'rentabilidade liquida');
+      var idxRentBrutaN = idxColuna(cabN, 'rentabilidade bruta');
+      var idxValLiqN    = idxColuna(cabN, 'liquido');
+      blocoN.linhas.forEach(function(ld) {
+        var nomeN = String(ld[0] === undefined || ld[0] === null ? '' : ld[0]).trim();
+        var posicaoN = idxPosN !== -1 ? parseNumeroBR(ld[idxPosN]) : NaN;
+        var valorLiquidoN = idxValLiqN !== -1 ? parseNumeroBR(ld[idxValLiqN]) : NaN;
+        var rentLiqN = idxRentLiqN !== -1 ? parsePercentualBR(ld[idxRentLiqN]) : NaN;
+        var rentBrutaN = idxRentBrutaN !== -1 ? parsePercentualBR(ld[idxRentBrutaN]) : NaN;
+        itens.push({
+          nome: nomeN,
+          valorCotaPlanilha: null,
+          qtdCotas: null,
+          posicao: isNaN(posicaoN) ? null : posicaoN,
+          valorLiquido: isNaN(valorLiquidoN) ? null : valorLiquidoN,
+          rentabilidadeLiquida: isNaN(rentLiqN) ? null : rentLiqN,
+          rentabilidadeBruta: isNaN(rentBrutaN) ? null : rentBrutaN
+        });
+      });
+      iN = blocoN.fimIdx - 1;
     }
     return itens;
   }
@@ -1076,6 +1286,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
           valorCotaBase:     match ? (match.cota || match.valor_cota) : null,
           posicao:           fundo.posicao,
           valorLiquido:      fundo.valorLiquido,
+          rentabilidadeLiquida: fundo.rentabilidadeLiquida,
+          rentabilidadeBruta:   fundo.rentabilidadeBruta,
           diaPagamento:      match ? (match.diaPagamento || match.dia_pagamento) : null,
           tipo:              match ? match.tipo             : null,
           gestora:           match ? match.gestora          : null,
@@ -1097,6 +1309,100 @@ h2{font-size:32px;letter-spacing:-.02em;}
       // na tabela com quase todos os campos como "Não disponível".
       .filter(function(f) { return f.encontradoNaBase; });
     });
+  }
+
+  // ---------- Previdência Privada, COE e Tesouro Direto (novo modelo) ----------
+  // As três só existem no novo modelo de planilha (o modelo antigo não traz
+  // essas categorias no extrato de posição consolidada), por isso não têm
+  // uma versão "modelo antigo" a mesclar — encontrarMacroSecaoNovoFormato
+  // simplesmente não encontra nada quando a planilha é do modelo antigo, e as
+  // funções abaixo retornam array vazio nesse caso.
+  function extrairPrevidenciaPrivada(linhas) {
+    var itens = [];
+    for (var i = 0; i < linhas.length; i++) {
+      if (!pareceCabecalhoGenerico(linhas[i])) continue;
+      if (encontrarMacroSecaoNovoFormato(linhas, i) !== 'previdencia') continue;
+      var categoria = rotuloSubBloco(linhas[i]);
+      var bloco = lerLinhasBloco(linhas, i);
+      var cab = bloco.cab;
+      var idxPos       = idxColuna(cab, 'posicao');
+      var idxRent      = idxColuna(cab, 'rentabilidade', 'bruto');
+      var idxValAplic  = idxColuna(cab, 'valor aplicado');
+      bloco.linhas.forEach(function(ld) {
+        var nome = String(ld[0] === undefined || ld[0] === null ? '' : ld[0]).trim();
+        var posVal = idxPos !== -1 ? parseNumeroBR(ld[idxPos]) : NaN;
+        var rentVal = idxRent !== -1 ? parsePercentualBR(ld[idxRent]) : NaN;
+        var aplVal = idxValAplic !== -1 ? parseNumeroBR(ld[idxValAplic]) : NaN;
+        itens.push({
+          nome: nome, categoria: categoria,
+          posicao: isNaN(posVal) ? null : posVal,
+          rentabilidade: isNaN(rentVal) ? null : rentVal,
+          valorAplicado: isNaN(aplVal) ? null : aplVal
+        });
+      });
+      i = bloco.fimIdx - 1;
+    }
+    return itens;
+  }
+
+  function extrairCOE(linhas) {
+    var itens = [];
+    for (var i = 0; i < linhas.length; i++) {
+      if (!pareceCabecalhoGenerico(linhas[i])) continue;
+      if (encontrarMacroSecaoNovoFormato(linhas, i) !== 'coe') continue;
+      var categoria = rotuloSubBloco(linhas[i]);
+      var bloco = lerLinhasBloco(linhas, i);
+      var cab = bloco.cab;
+      var idxPos      = idxColuna(cab, 'posicao');
+      var idxRent     = idxColuna(cab, 'rentabilidade', 'bruto');
+      var idxValAplic = idxColuna(cab, 'valor aplicado');
+      var idxVenc     = idxColuna(cab, 'vencimento');
+      bloco.linhas.forEach(function(ld) {
+        var nome = String(ld[0] === undefined || ld[0] === null ? '' : ld[0]).trim();
+        var posVal = idxPos !== -1 ? parseNumeroBR(ld[idxPos]) : NaN;
+        var rentVal = idxRent !== -1 ? parsePercentualBR(ld[idxRent]) : NaN;
+        var aplVal = idxValAplic !== -1 ? parseNumeroBR(ld[idxValAplic]) : NaN;
+        itens.push({
+          nome: nome, categoria: categoria,
+          posicao: isNaN(posVal) ? null : posVal,
+          rentabilidade: isNaN(rentVal) ? null : rentVal,
+          valorAplicado: isNaN(aplVal) ? null : aplVal,
+          vencimento: idxVenc !== -1 ? String(ld[idxVenc] || '').trim() : ''
+        });
+      });
+      i = bloco.fimIdx - 1;
+    }
+    return itens;
+  }
+
+  function extrairTesouroDiretoPlanilha(linhas) {
+    var itens = [];
+    for (var i = 0; i < linhas.length; i++) {
+      if (!pareceCabecalhoGenerico(linhas[i])) continue;
+      if (encontrarMacroSecaoNovoFormato(linhas, i) !== 'tesouro') continue;
+      var categoria = rotuloSubBloco(linhas[i]);
+      var bloco = lerLinhasBloco(linhas, i);
+      var cab = bloco.cab;
+      var idxPos      = idxColuna(cab, 'posicao');
+      var idxValAplic = idxColuna(cab, 'total aplicado');
+      var idxQtd      = idxColuna(cab, 'qtd');
+      var idxVenc     = idxColuna(cab, 'vencimento');
+      bloco.linhas.forEach(function(ld) {
+        var nome = String(ld[0] === undefined || ld[0] === null ? '' : ld[0]).trim();
+        var posVal = idxPos !== -1 ? parseNumeroBR(ld[idxPos]) : NaN;
+        var aplVal = idxValAplic !== -1 ? parseNumeroBR(ld[idxValAplic]) : NaN;
+        var qtdVal = idxQtd !== -1 ? parseNumeroBR(ld[idxQtd]) : NaN;
+        itens.push({
+          nome: nome, categoria: categoria,
+          posicao: isNaN(posVal) ? null : posVal,
+          valorAplicado: isNaN(aplVal) ? null : aplVal,
+          quantidade: isNaN(qtdVal) ? null : qtdVal,
+          vencimento: idxVenc !== -1 ? String(ld[idxVenc] || '').trim() : ''
+        });
+      });
+      i = bloco.fimIdx - 1;
+    }
+    return itens;
   }
 
   /* — brapi: cotações e fundamentais (renda variável) — */
@@ -1763,7 +2069,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
   /* ===================== PÁGINA DE RESULTADO ===================== */
 
-  function gerarHTML(colRV, colRFPos, colRFEmis, colCetip, opcoes, totaisRF, totaisCetip) {
+  function gerarHTML(colRV, colRFPos, colRFEmis, colCetip, colPrevidencia, colCOE, colTesouro, opcoes, totaisRF, totaisCetip, totPrevidencia, totCOE, totTesouroPlanilha) {
     var cabRV = colRV.map(function(c) { return '<th>' + c + '</th>'; }).join('');
     var cabRFPos = colRFPos.map(function(c) {
       var cls = c === 'Cupons pagos até o momento' ? ' class="col-cupons"' : '';
@@ -1771,6 +2077,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
     }).join('');
     var cabRFEmis = colRFEmis.map(function(c) { return '<th>' + c + '</th>'; }).join('');
     var cabCetip = colCetip.map(function(c) { return '<th>' + c + '</th>'; }).join('');
+    var cabPrevidencia = colPrevidencia.map(function(c) { return '<th>' + c + '</th>'; }).join('');
+    var cabCOE = colCOE.map(function(c) { return '<th>' + c + '</th>'; }).join('');
+    var cabTesouro = colTesouro.map(function(c) { return '<th>' + c + '</th>'; }).join('');
 
     var sGraficosRV = opcoes.rv
       ? '<h2 class="quadro-titulo graf-toggle" id="graf-toggle-btn" style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;">' +
@@ -1923,6 +2232,27 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '<div class="resumo-card resumo-card-verde cetip-print-card"><span class="resumo-label" id="tot-div-label">Rendimentos cetipados</span><span class="resumo-valor resumo-valor-verde" id="tot-div-recente">—</span></div>' +
         '<div class="resumo-card resumo-card-verde cetip-print-card"><span class="resumo-label">DY da carteira inteira (último mês)</span><span class="resumo-valor resumo-valor-verde" id="tot-dy-carteira-mes">—</span></div>'
       : '';
+    var resumoPrevidencia = opcoes.previdencia
+      ? '<div class="resumo-card"><span class="resumo-label">Total em previdência privada</span><span class="resumo-valor">R$ ' + formatarNumero(totPrevidencia, 2) + '</span></div>'
+      : '';
+    var resumoCOE = opcoes.coe
+      ? '<div class="resumo-card"><span class="resumo-label">Total em COE</span><span class="resumo-valor">R$ ' + formatarNumero(totCOE, 2) + '</span></div>'
+      : '';
+    var resumoTesouro = opcoes.tesouro
+      ? '<div class="resumo-card"><span class="resumo-label">Total no Tesouro Direto</span><span class="resumo-valor">R$ ' + formatarNumero(totTesouroPlanilha, 2) + '</span></div>'
+      : '';
+    var sPrevidencia = opcoes.previdencia
+      ? '<h2 class="quadro-titulo" style="border-top:1px solid var(--line);padding-top:20px;margin-top:4px;">Previdência Privada</h2>' +
+        '<div class="table-wrap"><table class="tabela-com-exclusao"><thead><tr>' + cabPrevidencia + '</tr></thead><tbody id="previdencia-corpo"></tbody></table></div>'
+      : '';
+    var sCOE = opcoes.coe
+      ? '<h2 class="quadro-titulo" style="border-top:1px solid var(--line);padding-top:20px;margin-top:4px;">COE</h2>' +
+        '<div class="table-wrap"><table class="tabela-com-exclusao"><thead><tr>' + cabCOE + '</tr></thead><tbody id="coe-corpo"></tbody></table></div>'
+      : '';
+    var sTesouro = opcoes.tesouro
+      ? '<h2 class="quadro-titulo" style="border-top:1px solid var(--line);padding-top:20px;margin-top:4px;">Tesouro Direto</h2>' +
+        '<div class="table-wrap"><table class="tabela-com-exclusao"><thead><tr>' + cabTesouro + '</tr></thead><tbody id="tesouro-analise-corpo"></tbody></table></div>'
+      : '';
     // Seção de diversificação: só aparece quando há RV ou Cetip (não faz sentido para RF puro)
     var temAtivosParaDiv = opcoes.rv;
     var sDiversificacao = temAtivosParaDiv ? (
@@ -2026,7 +2356,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
       '</div>'
     ) : '';
 
-        var numCards = (opcoes.rv?5:0) + ((opcoes.acoes && !opcoes.fiis)?1:0) + (opcoes.rf?2:0) + (opcoes.cetip?3:0);
+        var numCards = (opcoes.rv?5:0) + ((opcoes.acoes && !opcoes.fiis)?1:0) + (opcoes.rf?2:0) + (opcoes.cetip?3:0) +
+          (opcoes.previdencia?1:0) + (opcoes.coe?1:0) + (opcoes.tesouro?1:0);
     var gridCols = 'repeat(' + numCards + ',1fr)';
 
     return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
@@ -2047,10 +2378,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
       '</div>' +
       '<p id="email-status" style="display:none;font-size:12.5px;color:var(--ink-soft);margin:8px 0 0;"></p>' +
       '<p id="status" style="display:none;">Consultando dados Clube do Rendimento...</p>' +
-      '<div class="resumo" id="resumo-grid" style="--resumo-cols:' + gridCols + ';">' + resumoRV + resumoRF + resumoCetip +
+      '<div class="resumo" id="resumo-grid" style="--resumo-cols:' + gridCols + ';">' + resumoRV + resumoRF + resumoCetip + resumoPrevidencia + resumoCOE + resumoTesouro +
       '</div>' +
       '<div class="quadrantes-ocultos-barra" id="quadrantes-ocultos-barra"></div>' +
-      sAlocacaoCarteira + sDiversificacao + sGraficosRV + sRV + sFIIComposicao + sDarf + sRF + sCetip +
+      sAlocacaoCarteira + sDiversificacao + sGraficosRV + sRV + sFIIComposicao + sDarf + sRF + sCetip + sPrevidencia + sCOE + sTesouro +
       '</div>' +
       '<script src=\"https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js\"><\/script>' +
       '<script src=\"https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2/dist/chartjs-plugin-datalabels.min.js\"><\/script>' +
@@ -2346,7 +2677,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
   /* ===================== EXECUÇÃO DA ANÁLISE ===================== */
 
-  function executarAnalise(ativos, rfItens, cetipFundos, novaJanela, opcoes) {
+  function executarAnalise(ativos, rfItens, cetipFundos, previdenciaItens, coeItens, tesouroItens, novaJanela, opcoes) {
     var status = document.getElementById('carteira-status');
     var botao = document.getElementById('btn-analisar');
     var dadosGraficoRV = []; // acumula dados de cada ativo para gerar gráficos
@@ -2379,13 +2710,19 @@ h2{font-size:32px;letter-spacing:-.02em;}
     colRV.push('Cotação atual','Valor total','Variação','P/L','P/VP','Dividend Yield (12m)','ROE','Próximos proventos','Total de proventos','Preço Alvo (XP)','Upside (XP)','Valor de mercado','Liquidez diária','Vacância média','');
     var colRFPos = ['Ativo','Tipo','Aplicação','Vencimento','Taxa','Valor aplicado','Posição','Valor líquido','Cupons pagos até o momento','Lucro (R$)','Lucro (%)',''];
     var colRFEmis = ['Ativo','Instituição/emissor identificado','Caixa','Receita líquida','Lucro/Prejuízo','Dívida bruta','Dívida líquida','EBITDA','Dívida bruta/EBITDA','Margem líquida','Índice de Basileia (bancos)'];
-    var colCetip = ['', 'Fundo', 'Qtd. cotas', 'Valor da cota', 'Valor líquido', 'Dia pag. rendimento', 'Último dividendo pago', 'Yield (mês)', ''];
+    var colCetip = ['', 'Fundo', 'Qtd. cotas', 'Valor da cota', 'Valorização', 'Valor líquido', 'Dia pag. rendimento', 'Último dividendo pago', 'Yield (mês)', ''];
+    var colPrevidencia = ['Fundo', 'Categoria', 'Posição', 'Rentabilidade', 'Valor aplicado'];
+    var colCOE = ['Operação', 'Categoria', 'Posição', 'Rentabilidade', 'Valor aplicado', 'Vencimento'];
+    var colTesouro = ['Título', 'Categoria', 'Posição', 'Quantidade', 'Valor aplicado', 'Vencimento'];
 
     if (!novaJanela || novaJanela.closed) return;
 
     var totaisRF = calcularTotaisRF(rfItens);
     var totaisCetip = calcularTotaisCetip(cetipFundos);
-    var html = gerarHTML(colRV, colRFPos, colRFEmis, colCetip, opcoes, totaisRF, totaisCetip);
+    var totPrevidencia = previdenciaItens.reduce(function(acc, i) { return acc + (i.posicao || 0); }, 0);
+    var totCOE = coeItens.reduce(function(acc, i) { return acc + (i.posicao || 0); }, 0);
+    var totTesouroPlanilha = tesouroItens.reduce(function(acc, i) { return acc + (i.posicao || 0); }, 0);
+    var html = gerarHTML(colRV, colRFPos, colRFEmis, colCetip, colPrevidencia, colCOE, colTesouro, opcoes, totaisRF, totaisCetip, totPrevidencia, totCOE, totTesouroPlanilha);
     escreverConteudoJanela(novaJanela, html);
     novaJanela.focus();
 
@@ -2412,7 +2749,55 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var btnRecarregarTudo = D.getElementById('btn-recarregar-tudo');
     if (btnRecarregarTudo) {
       btnRecarregarTudo.addEventListener('click', function() {
-        executarAnalise(ativos, rfItens, cetipFundos, novaJanela, opcoes);
+        executarAnalise(ativos, rfItens, cetipFundos, previdenciaItens, coeItens, tesouroItens, novaJanela, opcoes);
+      });
+    }
+
+    // Previdência Privada, COE e Tesouro Direto: sem cotação/dado externo a
+    // buscar (não são negociados na B3), então a tabela é populada direto a
+    // partir do que já foi lido da planilha — sem enriquecimento assíncrono,
+    // ao contrário de Ações/FIIs e Renda Fixa.
+    function preencherTabelaSimples(corpoId, itens, linhas) {
+      var corpo = D.getElementById(corpoId);
+      if (!corpo) return;
+      corpo.innerHTML = '';
+      if (!itens.length) return;
+      itens.forEach(function(item, idx) {
+        var tr = D.createElement('tr');
+        linhas(item, idx).forEach(function(texto) { tr.appendChild(cel(D, texto)); });
+        corpo.appendChild(tr);
+      });
+    }
+    if (opcoes.previdencia) {
+      preencherTabelaSimples('previdencia-corpo', previdenciaItens, function(item) {
+        return [
+          item.nome, item.categoria || '—',
+          typeof item.posicao === 'number' ? 'R$ ' + formatarNumero(item.posicao, 2) : '—',
+          typeof item.rentabilidade === 'number' ? formatarNumero(item.rentabilidade, 2) + '%' : '—',
+          typeof item.valorAplicado === 'number' ? 'R$ ' + formatarNumero(item.valorAplicado, 2) : '—'
+        ];
+      });
+    }
+    if (opcoes.coe) {
+      preencherTabelaSimples('coe-corpo', coeItens, function(item) {
+        return [
+          item.nome, item.categoria || '—',
+          typeof item.posicao === 'number' ? 'R$ ' + formatarNumero(item.posicao, 2) : '—',
+          typeof item.rentabilidade === 'number' ? formatarNumero(item.rentabilidade, 2) + '%' : '—',
+          typeof item.valorAplicado === 'number' ? 'R$ ' + formatarNumero(item.valorAplicado, 2) : '—',
+          item.vencimento || '—'
+        ];
+      });
+    }
+    if (opcoes.tesouro) {
+      preencherTabelaSimples('tesouro-analise-corpo', tesouroItens, function(item) {
+        return [
+          item.nome, item.categoria || '—',
+          typeof item.posicao === 'number' ? 'R$ ' + formatarNumero(item.posicao, 2) : '—',
+          typeof item.quantidade === 'number' ? formatarNumero(item.quantidade, 2) : '—',
+          typeof item.valorAplicado === 'number' ? 'R$ ' + formatarNumero(item.valorAplicado, 2) : '—',
+          item.vencimento || '—'
+        ];
       });
     }
 
@@ -4530,7 +4915,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         if (!cetipFundos.length) {
           var trVazio = D.createElement('tr');
           var tdVazio = D.createElement('td');
-          tdVazio.colSpan = 9;
+          tdVazio.colSpan = 10;
           tdVazio.textContent = 'Nenhum fundo cetipado identificado nesta planilha.';
           trVazio.appendChild(tdVazio);
           corpoCetip.appendChild(trVazio);
@@ -4599,18 +4984,30 @@ h2{font-size:32px;letter-spacing:-.02em;}
             ? 'R$ ' + formatarNumero(valorCota, 2)
             : '—'));
 
-          // Coluna 5: valor líquido
+          // Coluna 5: valorização das cotas — vem pronta da planilha (modelo
+          // novo, campo "Rentabilidade Líquida"); no modelo antigo não há
+          // custo de aquisição registrado na seção de Fundos Cetipados, então
+          // não é possível calculá-la e a célula mostra "—".
+          var tdValorizacao = cel(D, typeof fundo.rentabilidadeLiquida === 'number'
+            ? formatarNumero(fundo.rentabilidadeLiquida, 2) + '%'
+            : '—');
+          if (typeof fundo.rentabilidadeLiquida === 'number') {
+            tdValorizacao.className = fundo.rentabilidadeLiquida >= 0 ? 'pos' : 'neg';
+          }
+          tr.appendChild(tdValorizacao);
+
+          // Coluna 6: valor líquido
           var tdValorLiq = cel(D, typeof fundo.valorLiquido === 'number'
             ? 'R$ ' + formatarNumero(fundo.valorLiquido, 2)
             : '—');
           tr.appendChild(tdValorLiq);
 
-          // Coluna 6: dia de pagamento
+          // Coluna 7: dia de pagamento
           tr.appendChild(cel(D, typeof fundo.diaPagamento === 'number'
             ? fundo.diaPagamento + 'º dia útil'
             : '—'));
 
-          // Colunas 7 e 8: último dividendo pago (total) e yield do mês (%),
+          // Colunas 8 e 9: último dividendo pago (total) e yield do mês (%),
           // calculados a partir do evento mais recente em ultimosEventos.
           var ultimoEvento = null;
           if (fundo.ultimosEventos && fundo.ultimosEventos.length) {
@@ -4653,7 +5050,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
             concluir();
           });
 
-          // Coluna 9: excluir fundo da análise
+          // Coluna 10: excluir fundo da análise
           var tdAcao = D.createElement('td');
           tdAcao.style.textAlign = 'center';
           var btnExcluir = D.createElement('button');
@@ -4678,7 +5075,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           trDet.className = 'cetip-detalhe';
 
           var tdDet = D.createElement('td');
-          tdDet.colSpan = 9;
+          tdDet.colSpan = 10;
 
           var grid = D.createElement('div');
           grid.className = 'cetip-detalhe-grid';
