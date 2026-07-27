@@ -326,6 +326,13 @@ h2{font-size:32px;letter-spacing:-.02em;}
         <span id="arquivo-nome" class="upload-filename">Nenhum arquivo selecionado.</span>
       </div>
 
+      <div class="upload-box" id="upload-box-arquivo2" style="margin-top:10px;" hidden>
+        <label for="arquivo-planilha2" class="btn btn-ghost btn-small">+ Planilha complementar (opcional)</label>
+        <input type="file" id="arquivo-planilha2" accept=".xlsx,.xls,.csv" hidden>
+        <span id="arquivo-nome2" class="upload-filename">Nenhum arquivo selecionado.</span>
+        <p class="table-note" style="margin-top:6px;width:100%;">Use quando a mesma carteira tiver sido exportada em dois modelos diferentes de planilha — os dados dos dois arquivos são combinados, preenchendo o que faltar em um com o que existir no outro.</p>
+      </div>
+
       <div class="opcoes-analise" id="opcoes-analise" hidden>
         <span class="opcoes-analise-titulo">O que você quer analisar?</span>
         <label><input type="checkbox" id="check-acoes" checked> Ações</label>
@@ -674,6 +681,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
   /* ===================== CARTEIRA — UPLOAD ===================== */
 
   var arquivoSelecionado = null;
+  var arquivoSelecionado2 = null;
   var cuponsPagosPorAtivo = new Map();
   var TIPOS_RF = ['CDB','CRI','CRA','DEB','LCA','LCI','LCD'];
 
@@ -682,7 +690,19 @@ h2{font-size:32px;letter-spacing:-.02em;}
     arquivoSelecionado = arq;
     document.getElementById('arquivo-nome').textContent = arq ? arq.name : 'Nenhum arquivo selecionado.';
     document.getElementById('opcoes-analise').hidden = !arq;
+    document.getElementById('upload-box-arquivo2').hidden = !arq;
     atualizarBotaoAnalisar();
+  });
+
+  // Planilha complementar (opcional): usada quando a mesma carteira foi
+  // exportada em dois modelos diferentes, cada um com informações que
+  // faltam no outro (ex.: o modelo novo traz rentabilidade líquida/bruta dos
+  // fundos cetipados, mas não a quantidade de cotas; o modelo antigo traz a
+  // quantidade de cotas, mas não a rentabilidade) — ver mesclarPorChave.
+  document.getElementById('arquivo-planilha2').addEventListener('change', function(ev) {
+    var arq = ev.target.files[0] || null;
+    arquivoSelecionado2 = arq;
+    document.getElementById('arquivo-nome2').textContent = arq ? arq.name : 'Nenhum arquivo selecionado.';
   });
 
   function atualizarBotaoAnalisar() {
@@ -760,12 +780,37 @@ h2{font-size:32px;letter-spacing:-.02em;}
       rv: acoes || fiis, acoes: acoes, fiis: fiis, rf: rf, cetip: cetip,
       previdencia: previdencia, coe: coe, tesouro: tesouro
     };
-    iniciarAnalise(arquivoSelecionado, novaJanela, opcoesAnalise);
+    iniciarAnalise(arquivoSelecionado, arquivoSelecionado2, novaJanela, opcoesAnalise);
   });
 
-  // Processa a estrutura de "linhas" (array de arrays) extraída do arquivo
-  // Excel/CSV enviado pelo usuário.
-  function processarLinhasCarteira(linhas, novaJanela, opcoes, status) {
+  // Mescla duas listas de itens da mesma categoria (ex.: fundos cetipados
+  // extraídos da planilha principal e da complementar), casando os itens
+  // pela chave (ticker, ou nome/descrição normalizados). Quando um campo
+  // está vazio no item principal mas preenchido no complementar, o valor
+  // complementar é aproveitado — item novo (presente só no complementar)
+  // também entra. Não sobrescreve nenhum campo já preenchido no principal.
+  function mesclarPorChave(chaveFn, principal, complementar) {
+    if (!complementar || !complementar.length) return principal;
+    var mapa = new Map();
+    principal.forEach(function(item) { mapa.set(chaveFn(item), item); });
+    complementar.forEach(function(item) {
+      var chave = chaveFn(item);
+      var existente = mapa.get(chave);
+      if (!existente) { mapa.set(chave, item); return; }
+      Object.keys(item).forEach(function(k) {
+        var vazio = existente[k] === null || existente[k] === undefined || existente[k] === '';
+        var preenchido = item[k] !== null && item[k] !== undefined && item[k] !== '';
+        if (vazio && preenchido) existente[k] = item[k];
+      });
+    });
+    return Array.from(mapa.values());
+  }
+
+  // Processa a estrutura de "linhas" (array de arrays) extraída do(s)
+  // arquivo(s) Excel/CSV enviado(s) pelo usuário. Quando há uma planilha
+  // complementar (linhas2), cada categoria é extraída dos dois arquivos e
+  // mesclada por mesclarPorChave.
+  function processarLinhasCarteira(linhas, linhas2, novaJanela, opcoes, status) {
     try {
       var ativos = opcoes.rv ? extrairAtivos(linhas) : [];
       var rf = opcoes.rf ? extrairRendaFixa(linhas) : [];
@@ -773,6 +818,15 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var previdenciaItens = opcoes.previdencia ? extrairPrevidenciaPrivada(linhas) : [];
       var coeItens = opcoes.coe ? extrairCOE(linhas) : [];
       var tesouroItens = opcoes.tesouro ? extrairTesouroDiretoPlanilha(linhas) : [];
+
+      if (linhas2) {
+        if (opcoes.rv) ativos = mesclarPorChave(function(a) { return a.ticker; }, ativos, extrairAtivos(linhas2));
+        if (opcoes.rf) rf = mesclarPorChave(function(r) { return normalizar(r.descricao); }, rf, extrairRendaFixa(linhas2));
+        if (opcoes.cetip) cetipExtraidos = mesclarPorChave(function(c) { return normalizar(c.nome); }, cetipExtraidos, extrairFundosCetipados(linhas2));
+        if (opcoes.previdencia) previdenciaItens = mesclarPorChave(function(p) { return normalizar(p.nome); }, previdenciaItens, extrairPrevidenciaPrivada(linhas2));
+        if (opcoes.coe) coeItens = mesclarPorChave(function(p) { return normalizar(p.nome); }, coeItens, extrairCOE(linhas2));
+        if (opcoes.tesouro) tesouroItens = mesclarPorChave(function(p) { return normalizar(p.nome); }, tesouroItens, extrairTesouroDiretoPlanilha(linhas2));
+      }
 
       if (!ativos.length && !rf.length && !cetipExtraidos.length &&
           !previdenciaItens.length && !coeItens.length && !tesouroItens.length) {
@@ -795,30 +849,37 @@ h2{font-size:32px;letter-spacing:-.02em;}
     }
   }
 
-  function iniciarAnalise(arquivo, novaJanela, opcoes) {
+  function lerPlanilha(arquivo) {
+    return new Promise(function(resolve, reject) {
+      var leitor = new FileReader();
+      leitor.onload = function(ev) {
+        try {
+          var dados = new Uint8Array(ev.target.result);
+          var planilha = XLSX.read(dados, { type: 'array' });
+          var aba = planilha.Sheets[planilha.SheetNames[0]];
+          resolve(XLSX.utils.sheet_to_json(aba, { header: 1, defval: '' }));
+        } catch (e) { reject(e); }
+      };
+      leitor.onerror = function() { reject(new Error('Não foi possível ler o arquivo selecionado.')); };
+      leitor.readAsArrayBuffer(arquivo);
+    });
+  }
+
+  function iniciarAnalise(arquivo, arquivo2, novaJanela, opcoes) {
     var status = document.getElementById('carteira-status');
     status.textContent = 'Lendo planilha...';
 
-    var leitor = new FileReader();
-    leitor.onload = function(ev) {
-      try {
-        var dados = new Uint8Array(ev.target.result);
-        var planilha = XLSX.read(dados, { type: 'array' });
-        var aba = planilha.Sheets[planilha.SheetNames[0]];
-        var linhas = XLSX.utils.sheet_to_json(aba, { header: 1, defval: '' });
-        processarLinhasCarteira(linhas, novaJanela, opcoes, status);
-      } catch (e) {
-        console.error(e);
-        status.textContent = 'Erro ao ler o arquivo. Verifique se o formato é .xlsx ou .csv.';
-        if (novaJanela && !novaJanela.closed) novaJanela.close();
-        document.getElementById('btn-analisar').disabled = false;
-      }
-    };
-    leitor.onerror = function() {
-      status.textContent = 'Não foi possível ler o arquivo selecionado.';
+    var promessas = [lerPlanilha(arquivo)];
+    if (arquivo2) promessas.push(lerPlanilha(arquivo2));
+
+    Promise.all(promessas).then(function(resultados) {
+      processarLinhasCarteira(resultados[0], resultados[1] || null, novaJanela, opcoes, status);
+    }).catch(function(e) {
+      console.error(e);
+      status.textContent = 'Erro ao ler o arquivo. Verifique se o formato é .xlsx ou .csv.';
+      if (novaJanela && !novaJanela.closed) novaJanela.close();
       document.getElementById('btn-analisar').disabled = false;
-    };
-    leitor.readAsArrayBuffer(arquivo);
+    });
   }
 
   /* ===================== EXTRAÇÃO DA PLANILHA ===================== */
