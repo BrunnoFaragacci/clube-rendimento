@@ -9042,7 +9042,11 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
 .eyebrow{display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:600;color:var(--og);margin-bottom:14px;}
 .eyebrow::before{content:"";width:18px;height:2px;background:var(--orange);display:inline-block;}
 h1{font-size:26px;font-weight:700;margin-bottom:8px;}
-.cp-sub{font-size:13.5px;color:var(--ink-soft);margin-bottom:20px;line-height:1.5;max-width:760px;}
+.cp-legenda{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;box-shadow:var(--shadow);}
+.cp-legenda-titulo{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:10px;}
+.cp-legenda-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px 24px;}
+.cp-legenda-grid div{font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+.cp-legenda-grid strong{color:var(--ink);}
 .cp-busca-status{font-size:12.5px;color:var(--ink-soft);min-height:18px;margin-bottom:12px;}
 .cp-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);box-shadow:var(--shadow);margin-bottom:18px;}
 .cp-table{width:100%;border-collapse:collapse;min-width:1180px;}
@@ -9067,7 +9071,21 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 <div class="container">
   <span class="eyebrow">Renda Fixa</span>
   <h1>Análise de Crédito Privado</h1>
-  <p class="cp-sub">Indicadores financeiros de empresas emissoras de debêntures, CRI e CRA comuns em carteiras de renda fixa — mesma lista de emissores do Guia de Análises de Renda Fixa da XP — a partir do último balanço anual (DFP) enviado à CVM. Inclui empresas sem ação negociada em bolsa (ex.: Aegea Saneamento), desde que registradas como companhia aberta para emissão de dívida pública. Bancos, emissores estrangeiros e empresas cuja dívida é registrada pela securitizadora (sem CNPJ próprio na CVM) não têm demonstrações nessa base e por isso não aparecem aqui.</p>
+  <div class="cp-legenda">
+    <span class="cp-legenda-titulo">O que significa cada indicador</span>
+    <div class="cp-legenda-grid">
+      <div><strong>Referência</strong> — data de fim do exercício social a que os números se referem (fechamento do último balanço anual disponível).</div>
+      <div><strong>Receita Líquida</strong> — total vendido pela empresa no ano, já descontados impostos sobre vendas e devoluções.</div>
+      <div><strong>EBITDA</strong> — lucro operacional antes de juros, impostos, depreciação e amortização; mede a geração de caixa do negócio, sem o efeito da estrutura de capital.</div>
+      <div><strong>Margem EBITDA</strong> — EBITDA dividido pela Receita Líquida; quanto maior, mais eficiente é a operação.</div>
+      <div><strong>Lucro Líquido</strong> — resultado final do ano, depois de juros, impostos e todas as despesas.</div>
+      <div><strong>Caixa</strong> — dinheiro e aplicações de liquidez imediata disponíveis no balanço.</div>
+      <div><strong>Dívida Bruta</strong> — soma de todos os empréstimos, financiamentos e debêntures, de curto e longo prazo.</div>
+      <div><strong>Dívida Líquida</strong> — Dívida Bruta menos o Caixa disponível; quanto a empresa efetivamente deve, se usasse todo o caixa para abater dívida.</div>
+      <div><strong>Dív.Líq./EBITDA</strong> — quantos anos de geração de caixa seriam necessários para quitar a Dívida Líquida; principal indicador de alavancagem usado no mercado de crédito.</div>
+      <div><strong>Liquidez Corrente</strong> — Ativo Circulante dividido pelo Passivo Circulante; mede a capacidade de pagar as obrigações de curto prazo.</div>
+    </div>
+  </div>
 
   <p class="cp-busca-status" id="cp-status">Carregando indicadores...</p>
 
