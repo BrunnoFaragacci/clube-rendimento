@@ -9049,7 +9049,7 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 .cp-legenda-grid strong{color:var(--ink);}
 .cp-busca-status{font-size:12.5px;color:var(--ink-soft);min-height:18px;margin-bottom:12px;}
 .cp-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);box-shadow:var(--shadow);margin-bottom:18px;}
-.cp-table{width:100%;border-collapse:collapse;min-width:1180px;}
+.cp-table{width:100%;border-collapse:collapse;min-width:1280px;}
 .cp-table thead th{background:var(--orange);color:#fff;text-align:left;padding:13px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
 .cp-table tbody td{padding:13px 16px;border-bottom:1px solid var(--line);font-size:13.5px;white-space:nowrap;}
 .cp-table tbody tr:last-child td{border-bottom:none;}
@@ -9074,6 +9074,7 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
   <div class="cp-legenda">
     <span class="cp-legenda-titulo">O que significa cada indicador</span>
     <div class="cp-legenda-grid">
+      <div><strong>Rating</strong> — nota de crédito mais recente encontrada (agência entre parênteses), pesquisada manualmente; sem atualização automática. "—" quando não localizada.</div>
       <div><strong>Referência</strong> — data de fim do exercício social a que os números se referem (fechamento do último balanço anual disponível).</div>
       <div><strong>Receita Líquida</strong> — total vendido pela empresa no ano, já descontados impostos sobre vendas e devoluções.</div>
       <div><strong>EBITDA</strong> — lucro operacional antes de juros, impostos, depreciação e amortização; mede a geração de caixa do negócio, sem o efeito da estrutura de capital.</div>
@@ -9092,7 +9093,7 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
   <div class="cp-table-wrap">
     <table class="cp-table">
       <thead><tr>
-        <th>Empresa</th><th>Referência</th><th>Receita Líquida</th><th>EBITDA</th>
+        <th>Empresa</th><th>Rating</th><th>Referência</th><th>Receita Líquida</th><th>EBITDA</th>
         <th>Margem EBITDA</th><th>Lucro Líquido</th><th>Caixa</th>
         <th>Dívida Bruta</th><th>Dívida Líquida</th><th>Dív.Líq./EBITDA</th><th>Liquidez Corrente</th>
       </tr></thead>
@@ -9105,6 +9106,7 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
     <strong>EBITDA</strong> é uma aproximação (Resultado Antes do Resultado Financeiro e dos Tributos + Depreciação/Amortização apurada na Demonstração do Fluxo de Caixa), não a "EBITDA ajustado" que a própria empresa costuma divulgar em relatórios de resultados — pode haver diferença por itens não recorrentes.
     <strong>Dív.Líq./EBITDA</strong> classificado como sólido (verde) até 2,5x, adequado (âmbar) até 4x e atenção (vermelho) acima disso — uma leitura geral de mercado, não um critério oficial.
     Não há fonte pública para Covenants (cláusula contratual da escritura de emissão de cada dívida), por isso não aparecem aqui.
+    <strong>Rating</strong> vem de pesquisa manual (S&P, Moody's, Fitch ou agências locais como SR Rating/Austin Rating), sem fonte pública única/estruturada — diferente dos demais indicadores desta tabela, não é atualizado automaticamente e pode ficar desatualizado com o tempo.
     Bancos que não emitem dívida pública registrada na CVM (ex.: Banco Master, C6 Bank) não têm demonstrações nesta base — para bancos, ver "Índice de Basileia" neste mesmo menu.
   </p>
 </div>
@@ -9127,6 +9129,10 @@ function fmtPct(v) {
 function fmtX(v) {
   if (typeof v !== 'number' || isNaN(v)) return '—';
   return v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'x';
+}
+function fmtRating(rating, agencia) {
+  if (!rating) return '—';
+  return rating + (agencia ? ' <span style="color:var(--ink-soft);font-weight:400;">(' + agencia + ')</span>' : '');
 }
 function fmtData(iso) {
   if (!iso) return '—';
@@ -9161,6 +9167,7 @@ fetch(SB_URL + '/rest/v1/credito_privado_indicadores?select=*&order=nome.asc', {
       var celAlav = l.div_liq_ebitda;
       return '<tr>' +
         '<td class="cp-nome">' + l.nome + '</td>' +
+        '<td>' + fmtRating(l.rating, l.rating_agencia) + '</td>' +
         '<td>' + fmtData(l.referencia) + '</td>' +
         '<td>' + fmtMoeda(l.receita_liquida) + '</td>' +
         '<td>' + fmtMoeda(l.ebitda) + '</td>' +
