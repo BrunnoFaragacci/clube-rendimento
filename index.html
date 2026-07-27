@@ -277,6 +277,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           <button type="button" class="nav-dropdown-item" id="link-nav-tesouro-direto">Taxas do Tesouro Direto ↗</button>
           <button type="button" class="nav-dropdown-item" id="link-nav-focus">Boletim Focus (BCB) ↗</button>
           <button type="button" class="nav-dropdown-item" id="link-nav-basileia">Índice de Basileia (Bancos) ↗</button>
+          <button type="button" class="nav-dropdown-item" id="link-nav-credito-privado">Análise de Crédito Privado ↗</button>
         </div>
       </div>
     </nav>
@@ -9019,6 +9020,146 @@ buscaInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') busc
 </html>`);
   }
 
+  function abrirCreditoPrivado() {
+    var win = window.open('', '_blank');
+    if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
+    escreverConteudoJanela(win, `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Análise de Crédito Privado — Clube do Rendimento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--line:#E2E2E2;--orange:#111111;--og:#000000;--green:#16A34A;--amber:#D97706;--red:#DC2626;--radius:16px;--shadow:0 10px 28px rgba(0,0,0,.08);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-soft);color:var(--ink);min-height:100vh;}
+.nav{background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;}
+.nav-brand{font-weight:700;font-size:15px;text-decoration:none;color:var(--ink);}
+.container{max-width:1200px;margin:0 auto;padding:32px 20px;}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:600;color:var(--og);margin-bottom:14px;}
+.eyebrow::before{content:"";width:18px;height:2px;background:var(--orange);display:inline-block;}
+h1{font-size:26px;font-weight:700;margin-bottom:8px;}
+.cp-sub{font-size:13.5px;color:var(--ink-soft);margin-bottom:20px;line-height:1.5;max-width:760px;}
+.cp-busca-status{font-size:12.5px;color:var(--ink-soft);min-height:18px;margin-bottom:12px;}
+.cp-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);box-shadow:var(--shadow);margin-bottom:18px;}
+.cp-table{width:100%;border-collapse:collapse;min-width:1180px;}
+.cp-table thead th{background:var(--orange);color:#fff;text-align:left;padding:13px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
+.cp-table tbody td{padding:13px 16px;border-bottom:1px solid var(--line);font-size:13.5px;white-space:nowrap;}
+.cp-table tbody tr:last-child td{border-bottom:none;}
+.cp-table tbody tr:hover td{background:var(--bg-soft);}
+.cp-nome{font-weight:600;color:var(--ink);}
+.cp-valor-atencao{color:var(--red);font-weight:700;}
+.cp-valor-adequado{color:var(--amber);font-weight:700;}
+.cp-valor-solido{color:var(--green);font-weight:700;}
+.cp-nota{margin-top:16px;font-size:12.5px;color:var(--ink-soft);line-height:1.6;max-width:760px;}
+.cp-nota strong{color:var(--ink);}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <a href="javascript:window.close()" class="nav-brand">← Clube do Rendimento</a>
+</header>
+
+<div class="container">
+  <span class="eyebrow">Renda Fixa</span>
+  <h1>Análise de Crédito Privado</h1>
+  <p class="cp-sub">Indicadores financeiros das principais empresas emissoras de debêntures, CRI e CRA em carteiras de renda fixa, a partir do último balanço anual (DFP) enviado à CVM — inclusive empresas sem ação negociada em bolsa, desde que registradas como companhia aberta para emissão de dívida pública.</p>
+
+  <p class="cp-busca-status" id="cp-status">Carregando indicadores...</p>
+
+  <div class="cp-table-wrap">
+    <table class="cp-table">
+      <thead><tr>
+        <th>Empresa</th><th>Referência</th><th>Receita Líquida</th><th>EBITDA</th>
+        <th>Margem EBITDA</th><th>Lucro Líquido</th><th>Caixa</th>
+        <th>Dívida Bruta</th><th>Dívida Líquida</th><th>Dív.Líq./EBITDA</th><th>Liquidez Corrente</th>
+      </tr></thead>
+      <tbody id="cp-corpo"></tbody>
+    </table>
+  </div>
+
+  <p class="cp-nota">
+    Fonte: CVM — Demonstrações Financeiras Padronizadas (DFP, anual), dados.cvm.gov.br. Valores em R$ milhões/bilhões, conforme o porte da empresa.
+    <strong>EBITDA</strong> é uma aproximação (Resultado Antes do Resultado Financeiro e dos Tributos + Depreciação/Amortização apurada na Demonstração do Fluxo de Caixa), não a "EBITDA ajustado" que a própria empresa costuma divulgar em relatórios de resultados — pode haver diferença por itens não recorrentes.
+    <strong>Dív.Líq./EBITDA</strong> classificado como sólido (verde) até 2,5x, adequado (âmbar) até 4x e atenção (vermelho) acima disso — uma leitura geral de mercado, não um critério oficial.
+    Não há fonte pública para Covenants (cláusula contratual da escritura de emissão de cada dívida), por isso não aparecem aqui.
+    Bancos que não emitem dívida pública registrada na CVM (ex.: Banco Master, C6 Bank) não têm demonstrações nesta base — para bancos, ver "Índice de Basileia" neste mesmo menu.
+  </p>
+</div>
+
+<script>
+var SB_URL = 'https://segeufywrjmstfmfscdi.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZ2V1Znl3cmptc3RmbWZzY2RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzY0OTgsImV4cCI6MjA5ODQxMjQ5OH0.TUrp35SEI2NXdU1ZY7IEcdRm8VLLfLwAVWUtqjafElI';
+
+function fmtMoeda(valorMil) {
+  if (typeof valorMil !== 'number' || isNaN(valorMil)) return '—';
+  var milhoes = valorMil / 1000;
+  var abs = Math.abs(milhoes);
+  if (abs >= 1000) return 'R$ ' + (milhoes / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' bi';
+  return 'R$ ' + milhoes.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mi';
+}
+function fmtPct(v) {
+  if (typeof v !== 'number' || isNaN(v)) return '—';
+  return (v * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+}
+function fmtX(v) {
+  if (typeof v !== 'number' || isNaN(v)) return '—';
+  return v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'x';
+}
+function fmtData(iso) {
+  if (!iso) return '—';
+  var p = String(iso).split('-');
+  return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : '—';
+}
+function classificarAlavancagem(v) {
+  if (typeof v !== 'number' || isNaN(v) || v < 0) return '';
+  if (v <= 2.5) return 'cp-valor-solido';
+  if (v <= 4) return 'cp-valor-adequado';
+  return 'cp-valor-atencao';
+}
+
+var corpo = document.getElementById('cp-corpo');
+var status = document.getElementById('cp-status');
+
+fetch(SB_URL + '/rest/v1/credito_privado_indicadores?select=*&order=nome.asc', {
+  headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+})
+  .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then(function(linhas) {
+    if (!linhas || !linhas.length) {
+      status.textContent = 'Nenhum dado disponível no momento.';
+      return;
+    }
+    status.textContent = '';
+    corpo.innerHTML = linhas.map(function(l) {
+      var celAlav = l.div_liq_ebitda;
+      return '<tr>' +
+        '<td class="cp-nome">' + l.nome + '</td>' +
+        '<td>' + fmtData(l.referencia) + '</td>' +
+        '<td>' + fmtMoeda(l.receita_liquida) + '</td>' +
+        '<td>' + fmtMoeda(l.ebitda) + '</td>' +
+        '<td>' + fmtPct(l.margem_ebitda) + '</td>' +
+        '<td>' + fmtMoeda(l.lucro_liquido) + '</td>' +
+        '<td>' + fmtMoeda(l.caixa) + '</td>' +
+        '<td>' + fmtMoeda(l.divida_bruta) + '</td>' +
+        '<td>' + fmtMoeda(l.divida_liquida) + '</td>' +
+        '<td class="' + classificarAlavancagem(celAlav) + '">' + fmtX(celAlav) + '</td>' +
+        '<td>' + fmtX(l.liquidez_corrente) + '</td>' +
+        '</tr>';
+    }).join('');
+  })
+  .catch(function(e) {
+    status.textContent = 'Não foi possível carregar os indicadores agora. Tente novamente em instantes.';
+  });
+<\/script>
+</body>
+</html>`);
+  }
+
   function abrirCalculadoras() {
     var win = window.open('', '_blank');
     if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
@@ -12254,6 +12395,7 @@ document.querySelectorAll('.tab').forEach(function(btn){
   document.getElementById('link-nav-tesouro-direto').addEventListener('click', abrirRendaFixa);
   document.getElementById('link-nav-focus').addEventListener('click', abrirFocus);
   document.getElementById('link-nav-basileia').addEventListener('click', abrirBasileia);
+  document.getElementById('link-nav-credito-privado').addEventListener('click', abrirCreditoPrivado);
 
   document.addEventListener('DOMContentLoaded', function() {
     // Tentar re-inicializar o cliente Supabase se não carregou na primeira execução
