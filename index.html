@@ -9123,7 +9123,11 @@ function classificarAlavancagem(v) {
 }
 
 var corpo = document.getElementById('cp-corpo');
-var status = document.getElementById('cp-status');
+// Nome "status" colide com a propriedade global window.status (barra de
+// status legada do navegador): "var status = elemento" nunca guarda o
+// elemento de verdade nesse escopo, e "status.textContent = ..." falha em
+// silêncio (sem erro no console). Por isso "statusEl".
+var statusEl = document.getElementById('cp-status');
 
 fetch(SB_URL + '/rest/v1/credito_privado_indicadores?select=*&order=nome.asc', {
   headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
@@ -9131,10 +9135,10 @@ fetch(SB_URL + '/rest/v1/credito_privado_indicadores?select=*&order=nome.asc', {
   .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
   .then(function(linhas) {
     if (!linhas || !linhas.length) {
-      status.textContent = 'Nenhum dado disponível no momento.';
+      statusEl.textContent = 'Nenhum dado disponível no momento.';
       return;
     }
-    status.textContent = '';
+    statusEl.textContent = '';
     corpo.innerHTML = linhas.map(function(l) {
       var celAlav = l.div_liq_ebitda;
       return '<tr>' +
@@ -9153,7 +9157,7 @@ fetch(SB_URL + '/rest/v1/credito_privado_indicadores?select=*&order=nome.asc', {
     }).join('');
   })
   .catch(function(e) {
-    status.textContent = 'Não foi possível carregar os indicadores agora. Tente novamente em instantes.';
+    statusEl.textContent = 'Não foi possível carregar os indicadores agora. Tente novamente em instantes.';
   });
 <\/script>
 </body>
