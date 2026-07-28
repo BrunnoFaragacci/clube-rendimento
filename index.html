@@ -159,8 +159,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
 .td-nota{margin-left:auto;font-size:12.5px;color:var(--ink-soft);}
 .td-table-wrap{margin-top:16px;overflow:auto;border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--bg);box-shadow:var(--shadow-sm);}
 .td-table{width:100%;border-collapse:collapse;min-width:720px;}
-.td-table thead th{background:var(--orange);color:#fff;text-align:left;padding:13px 16px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
+.td-table thead th{background:var(--orange);color:#fff;text-align:left;padding:13px 16px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;position:relative;}
 .td-table tbody td{padding:12px 16px;border-bottom:1px solid var(--line);font-size:13.5px;white-space:nowrap;}
+.col-redimensionar{position:absolute;top:0;right:0;width:8px;height:100%;cursor:col-resize;user-select:none;z-index:4;}
+.col-redimensionar:hover{background:rgba(255,255,255,.25);}
+.col-arrastando{opacity:.4;}
+.col-alvo-drop{box-shadow:inset 3px 0 0 0 #fff;}
 .td-table tbody tr:last-child td{border-bottom:none;}
 .td-table tbody tr:hover td{background:var(--bg-soft);}
 .td-titulo-nome{font-weight:600;color:var(--ink);}
@@ -565,12 +569,13 @@ h2{font-size:32px;letter-spacing:-.02em;}
       seta.style.cssText = 'margin-left:5px;opacity:.7;font-size:10px;';
       th.appendChild(seta);
       th.addEventListener('click', function() {
+        var idx = Array.prototype.indexOf.call(th.parentNode.children, th);
         var direcao = direcaoPorColuna[idx] === 1 ? -1 : 1;
         direcaoPorColuna = {};
         direcaoPorColuna[idx] = direcao;
-        Array.prototype.forEach.call(ths, function(outroTh, outroIdx) {
+        Array.prototype.forEach.call(ths, function(outroTh) {
           var s = outroTh.querySelector('span');
-          if (s) s.textContent = outroIdx === idx ? (direcao === 1 ? '\u25b2' : '\u25bc') : '';
+          if (s) s.textContent = outroTh === th ? (direcao === 1 ? '\u25b2' : '\u25bc') : '';
         });
         var grupos = _agruparLinhasTabela(tbody);
         grupos.sort(function(gA, gB) {
@@ -3266,8 +3271,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
     // Colunas ajustáveis: arrastar a borda direita de um cabeçalho redimensiona
     // a coluna; arrastar o próprio cabeçalho para outra posição reordena a
-    // coluna inteira (cabeçalho + todas as linhas). Por ora, só na tabela de
-    // Tesouro Direto (ver tabela-tesouro).
+    // coluna inteira (cabeçalho + todas as linhas). Aplicado a todas as
+    // tabelas da análise (mesmo conjunto de MAPA_COLUNAS_TABELAS).
     function tornarColunasAjustaveis(tabela) {
       if (!tabela) return;
       var thead = tabela.querySelector('thead');
@@ -3345,7 +3350,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
         });
       });
     }
-    tornarColunasAjustaveis(D.getElementById('tabela-tesouro'));
+    Object.keys(MAPA_COLUNAS_TABELAS).forEach(function(idTabela) {
+      tornarColunasAjustaveis(D.getElementById(idTabela));
+    });
 
     if (opcoes.fiis) {
       ['fr-vacancia', 'fr-liquidez', 'fr-mercado'].forEach(function(id) {
@@ -9280,11 +9287,19 @@ h1{font-size:26px;font-weight:700;margin-bottom:24px;}
 .td-filtro.ativo{background:var(--orange);color:#fff;border-color:var(--orange);}
 .td-nota{margin-left:auto;font-size:12.5px;color:var(--ink-soft);}
 .filtro-tabela-input{padding:9px 14px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);width:280px;max-width:100%;background:#fff;margin-top:14px;display:block;}
+.col-redimensionar{position:absolute;top:0;right:0;width:8px;height:100%;cursor:col-resize;user-select:none;z-index:4;}
+.col-redimensionar:hover{background:rgba(255,255,255,.25);}
+.col-arrastando{opacity:.4;}
+.col-alvo-drop{box-shadow:inset 3px 0 0 0 #fff;}
 .filtro-tabela-input:focus{outline:none;border-color:var(--orange);}
 .td-table-wrap{margin-top:16px;overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);box-shadow:var(--shadow);}
 .td-table{width:100%;border-collapse:collapse;min-width:720px;}
-.td-table thead th{background:var(--orange);color:#fff;text-align:left;padding:13px 16px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
+.td-table thead th{background:var(--orange);color:#fff;text-align:left;padding:13px 16px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;position:relative;}
 .td-table tbody td{padding:12px 16px;border-bottom:1px solid var(--line);font-size:13.5px;white-space:nowrap;}
+.col-redimensionar{position:absolute;top:0;right:0;width:8px;height:100%;cursor:col-resize;user-select:none;z-index:4;}
+.col-redimensionar:hover{background:rgba(255,255,255,.25);}
+.col-arrastando{opacity:.4;}
+.col-alvo-drop{box-shadow:inset 3px 0 0 0 #fff;}
 .td-table tbody tr:last-child td{border-bottom:none;}
 .td-table tbody tr:hover td{background:var(--bg-soft);}
 .td-titulo-nome{font-weight:600;color:var(--ink);}
@@ -9362,11 +9377,15 @@ function tornarTabelaOrdenavel(tabela, filtroInput) {
     seta.style.cssText = 'margin-left:5px;opacity:.7;font-size:10px;';
     th.appendChild(seta);
     th.addEventListener('click', function() {
+      // Índice calculado na hora do clique (não capturado no fechamento):
+      // se a tabela permitir reordenar colunas, a posição de "th" pode ter
+      // mudado desde que o listener foi criado.
+      var idx = Array.prototype.indexOf.call(th.parentNode.children, th);
       var dir = dirCol[idx] === 1 ? -1 : 1;
       dirCol = {}; dirCol[idx] = dir;
-      Array.prototype.forEach.call(ths, function(o, oi) {
+      Array.prototype.forEach.call(ths, function(o) {
         var s = o.querySelector('span');
-        if (s) s.textContent = oi === idx ? (dir === 1 ? '▲' : '▼') : '';
+        if (s) s.textContent = o === th ? (dir === 1 ? '▲' : '▼') : '';
       });
       var linhas = Array.prototype.slice.call(tbody.children);
       linhas.sort(function(a, b) {
@@ -9386,6 +9405,81 @@ function tornarTabelaOrdenavel(tabela, filtroInput) {
       });
     });
   }
+}
+
+// Colunas ajustáveis: arrastar a borda direita de um cabeçalho redimensiona a
+// coluna; arrastar o próprio cabeçalho para outra posição reordena a coluna
+// inteira (cabeçalho + todas as linhas).
+function tornarColunasAjustaveis(tabela) {
+  if (!tabela) return;
+  var thead = tabela.querySelector('thead');
+  var tbodyAj = tabela.querySelector('tbody');
+  var linhaCab = thead && thead.querySelector('tr');
+  if (!linhaCab || !tbodyAj) return;
+  Array.prototype.forEach.call(linhaCab.children, function(th) {
+    var alca = document.createElement('div');
+    alca.className = 'col-redimensionar';
+    alca.title = 'Arraste para redimensionar';
+    th.appendChild(alca);
+    alca.addEventListener('mousedown', function(ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      var larguraInicial = th.offsetWidth;
+      var xInicial = ev.clientX;
+      function mover(e2) {
+        var novaLargura = Math.max(60, larguraInicial + (e2.clientX - xInicial));
+        th.style.width = novaLargura + 'px';
+        th.style.minWidth = novaLargura + 'px';
+      }
+      function soltar() {
+        document.removeEventListener('mousemove', mover);
+        document.removeEventListener('mouseup', soltar);
+      }
+      document.addEventListener('mousemove', mover);
+      document.addEventListener('mouseup', soltar);
+    });
+  });
+  var thArrastado = null;
+  function moverColuna(de, para) {
+    function reordenarLinha(linha) {
+      var celulas = Array.prototype.slice.call(linha.children);
+      if (de >= celulas.length || para >= celulas.length) return;
+      var el = celulas.splice(de, 1)[0];
+      celulas.splice(para, 0, el);
+      celulas.forEach(function(c) { linha.appendChild(c); });
+    }
+    reordenarLinha(linhaCab);
+    Array.prototype.forEach.call(tbodyAj.children, reordenarLinha);
+  }
+  Array.prototype.forEach.call(linhaCab.children, function(th) {
+    th.draggable = true;
+    th.title = (th.title ? th.title + ' · ' : '') + 'Arraste o cabeçalho para reordenar';
+    th.addEventListener('dragstart', function(ev) {
+      thArrastado = th;
+      th.classList.add('col-arrastando');
+      ev.dataTransfer.effectAllowed = 'move';
+      try { ev.dataTransfer.setData('text/plain', ''); } catch (e) {}
+    });
+    th.addEventListener('dragend', function() {
+      th.classList.remove('col-arrastando');
+      Array.prototype.forEach.call(linhaCab.children, function(t) { t.classList.remove('col-alvo-drop'); });
+    });
+    th.addEventListener('dragover', function(ev) {
+      if (!thArrastado || thArrastado === th) return;
+      ev.preventDefault();
+      th.classList.add('col-alvo-drop');
+    });
+    th.addEventListener('dragleave', function() { th.classList.remove('col-alvo-drop'); });
+    th.addEventListener('drop', function(ev) {
+      ev.preventDefault();
+      th.classList.remove('col-alvo-drop');
+      if (!thArrastado || thArrastado === th) return;
+      var de = Array.prototype.indexOf.call(linhaCab.children, thArrastado);
+      var para = Array.prototype.indexOf.call(linhaCab.children, th);
+      moverColuna(de, para);
+      thArrastado = null;
+    });
+  });
 }
 
 (function inicializarTesouroDireto() {
@@ -9462,6 +9556,7 @@ function tornarTabelaOrdenavel(tabela, filtroInput) {
       if (elDataBase) elDataBase.textContent = 'Data-base: ' + fmtDataBR(dataBase);
       renderizar();
       tornarTabelaOrdenavel(document.querySelector('.td-table'), document.getElementById('td-filtro-nome'));
+      tornarColunasAjustaveis(document.querySelector('.td-table'));
     })
     .catch(function() {
       corpo.innerHTML = '<tr><td colspan="6" class="td-vazio">Não foi possível carregar os dados do Tesouro Direto no momento.</td></tr>';
@@ -9499,7 +9594,11 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 .focus-sub{font-size:13.5px;color:var(--ink-soft);margin-bottom:24px;line-height:1.5;max-width:640px;}
 .focus-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);box-shadow:var(--shadow);}
 .focus-table{width:100%;border-collapse:collapse;min-width:520px;}
-.focus-table thead th{background:var(--orange);color:#fff;text-align:left;padding:13px 16px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
+.focus-table thead th{background:var(--orange);color:#fff;text-align:left;padding:13px 16px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;position:relative;}
+.col-redimensionar{position:absolute;top:0;right:0;width:8px;height:100%;cursor:col-resize;user-select:none;z-index:4;}
+.col-redimensionar:hover{background:rgba(255,255,255,.25);}
+.col-arrastando{opacity:.4;}
+.col-alvo-drop{box-shadow:inset 3px 0 0 0 #fff;}
 .focus-table tbody td{padding:14px 16px;border-bottom:1px solid var(--line);font-size:14px;white-space:nowrap;}
 .focus-table tbody tr:last-child td{border-bottom:none;}
 .focus-table tbody tr:hover td{background:var(--bg-soft);}
@@ -9571,11 +9670,15 @@ function tornarTabelaOrdenavel(tabela, filtroInput) {
     seta.style.cssText = 'margin-left:5px;opacity:.7;font-size:10px;';
     th.appendChild(seta);
     th.addEventListener('click', function() {
+      // Índice calculado na hora do clique (não capturado no fechamento):
+      // se a tabela permitir reordenar colunas, a posição de "th" pode ter
+      // mudado desde que o listener foi criado.
+      var idx = Array.prototype.indexOf.call(th.parentNode.children, th);
       var dir = dirCol[idx] === 1 ? -1 : 1;
       dirCol = {}; dirCol[idx] = dir;
-      Array.prototype.forEach.call(ths, function(o, oi) {
+      Array.prototype.forEach.call(ths, function(o) {
         var s = o.querySelector('span');
-        if (s) s.textContent = oi === idx ? (dir === 1 ? '▲' : '▼') : '';
+        if (s) s.textContent = o === th ? (dir === 1 ? '▲' : '▼') : '';
       });
       var linhas = Array.prototype.slice.call(tbody.children);
       linhas.sort(function(a, b) {
@@ -9595,6 +9698,81 @@ function tornarTabelaOrdenavel(tabela, filtroInput) {
       });
     });
   }
+}
+
+// Colunas ajustáveis: arrastar a borda direita de um cabeçalho redimensiona a
+// coluna; arrastar o próprio cabeçalho para outra posição reordena a coluna
+// inteira (cabeçalho + todas as linhas).
+function tornarColunasAjustaveis(tabela) {
+  if (!tabela) return;
+  var thead = tabela.querySelector('thead');
+  var tbodyAj = tabela.querySelector('tbody');
+  var linhaCab = thead && thead.querySelector('tr');
+  if (!linhaCab || !tbodyAj) return;
+  Array.prototype.forEach.call(linhaCab.children, function(th) {
+    var alca = document.createElement('div');
+    alca.className = 'col-redimensionar';
+    alca.title = 'Arraste para redimensionar';
+    th.appendChild(alca);
+    alca.addEventListener('mousedown', function(ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      var larguraInicial = th.offsetWidth;
+      var xInicial = ev.clientX;
+      function mover(e2) {
+        var novaLargura = Math.max(60, larguraInicial + (e2.clientX - xInicial));
+        th.style.width = novaLargura + 'px';
+        th.style.minWidth = novaLargura + 'px';
+      }
+      function soltar() {
+        document.removeEventListener('mousemove', mover);
+        document.removeEventListener('mouseup', soltar);
+      }
+      document.addEventListener('mousemove', mover);
+      document.addEventListener('mouseup', soltar);
+    });
+  });
+  var thArrastado = null;
+  function moverColuna(de, para) {
+    function reordenarLinha(linha) {
+      var celulas = Array.prototype.slice.call(linha.children);
+      if (de >= celulas.length || para >= celulas.length) return;
+      var el = celulas.splice(de, 1)[0];
+      celulas.splice(para, 0, el);
+      celulas.forEach(function(c) { linha.appendChild(c); });
+    }
+    reordenarLinha(linhaCab);
+    Array.prototype.forEach.call(tbodyAj.children, reordenarLinha);
+  }
+  Array.prototype.forEach.call(linhaCab.children, function(th) {
+    th.draggable = true;
+    th.title = (th.title ? th.title + ' · ' : '') + 'Arraste o cabeçalho para reordenar';
+    th.addEventListener('dragstart', function(ev) {
+      thArrastado = th;
+      th.classList.add('col-arrastando');
+      ev.dataTransfer.effectAllowed = 'move';
+      try { ev.dataTransfer.setData('text/plain', ''); } catch (e) {}
+    });
+    th.addEventListener('dragend', function() {
+      th.classList.remove('col-arrastando');
+      Array.prototype.forEach.call(linhaCab.children, function(t) { t.classList.remove('col-alvo-drop'); });
+    });
+    th.addEventListener('dragover', function(ev) {
+      if (!thArrastado || thArrastado === th) return;
+      ev.preventDefault();
+      th.classList.add('col-alvo-drop');
+    });
+    th.addEventListener('dragleave', function() { th.classList.remove('col-alvo-drop'); });
+    th.addEventListener('drop', function(ev) {
+      ev.preventDefault();
+      th.classList.remove('col-alvo-drop');
+      if (!thArrastado || thArrastado === th) return;
+      var de = Array.prototype.indexOf.call(linhaCab.children, thArrastado);
+      var para = Array.prototype.indexOf.call(linhaCab.children, th);
+      moverColuna(de, para);
+      thArrastado = null;
+    });
+  });
 }
 
 (function carregarFocus() {
@@ -9634,6 +9812,7 @@ function tornarTabelaOrdenavel(tabela, filtroInput) {
         nota.textContent = 'Fonte: Banco Central do Brasil — Sistema de Expectativas de Mercado. Última coleta considerada: ' + fmtDataBR(dados.dataColeta) + '.';
       }
       tornarTabelaOrdenavel(document.querySelector('.focus-table'));
+      tornarColunasAjustaveis(document.querySelector('.focus-table'));
     })
     .catch(function() {
       corpo.innerHTML = '<tr><td class="focus-vazio">Não foi possível carregar os dados do Boletim Focus no momento.</td></tr>';
@@ -9693,10 +9872,18 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 .basileia-busca button:disabled{opacity:.6;cursor:default;}
 .basileia-busca-status{font-size:12.5px;color:var(--ink-soft);min-height:18px;margin-bottom:16px;}
 .filtro-tabela-input{padding:9px 14px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);width:280px;max-width:100%;background:#fff;margin-bottom:14px;display:block;}
+.col-redimensionar{position:absolute;top:0;right:0;width:8px;height:100%;cursor:col-resize;user-select:none;z-index:4;}
+.col-redimensionar:hover{background:rgba(255,255,255,.25);}
+.col-arrastando{opacity:.4;}
+.col-alvo-drop{box-shadow:inset 3px 0 0 0 #fff;}
 .filtro-tabela-input:focus{outline:none;border-color:var(--orange);}
 .basileia-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);box-shadow:var(--shadow);}
 .basileia-table{width:100%;border-collapse:collapse;min-width:520px;}
-.basileia-table thead th{background:var(--orange);color:#fff;text-align:left;padding:13px 16px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
+.basileia-table thead th{background:var(--orange);color:#fff;text-align:left;padding:13px 16px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;position:relative;}
+.col-redimensionar{position:absolute;top:0;right:0;width:8px;height:100%;cursor:col-resize;user-select:none;z-index:4;}
+.col-redimensionar:hover{background:rgba(255,255,255,.25);}
+.col-arrastando{opacity:.4;}
+.col-alvo-drop{box-shadow:inset 3px 0 0 0 #fff;}
 .basileia-table tbody td{padding:14px 16px;border-bottom:1px solid var(--line);font-size:14px;white-space:nowrap;}
 .basileia-table tbody tr:last-child td{border-bottom:none;}
 .basileia-table tbody tr:hover td{background:var(--bg-soft);}
@@ -9847,11 +10034,15 @@ function tornarTabelaOrdenavel(tabela, filtroInput) {
     seta.style.cssText = 'margin-left:5px;opacity:.7;font-size:10px;';
     th.appendChild(seta);
     th.addEventListener('click', function() {
+      // Índice calculado na hora do clique (não capturado no fechamento):
+      // se a tabela permitir reordenar colunas, a posição de "th" pode ter
+      // mudado desde que o listener foi criado.
+      var idx = Array.prototype.indexOf.call(th.parentNode.children, th);
       var dir = dirCol[idx] === 1 ? -1 : 1;
       dirCol = {}; dirCol[idx] = dir;
-      Array.prototype.forEach.call(ths, function(o, oi) {
+      Array.prototype.forEach.call(ths, function(o) {
         var s = o.querySelector('span');
-        if (s) s.textContent = oi === idx ? (dir === 1 ? '▲' : '▼') : '';
+        if (s) s.textContent = o === th ? (dir === 1 ? '▲' : '▼') : '';
       });
       var linhas = Array.prototype.slice.call(tbody.children);
       linhas.sort(function(a, b) {
@@ -9872,7 +10063,83 @@ function tornarTabelaOrdenavel(tabela, filtroInput) {
     });
   }
 }
+
+// Colunas ajustáveis: arrastar a borda direita de um cabeçalho redimensiona a
+// coluna; arrastar o próprio cabeçalho para outra posição reordena a coluna
+// inteira (cabeçalho + todas as linhas).
+function tornarColunasAjustaveis(tabela) {
+  if (!tabela) return;
+  var thead = tabela.querySelector('thead');
+  var tbodyAj = tabela.querySelector('tbody');
+  var linhaCab = thead && thead.querySelector('tr');
+  if (!linhaCab || !tbodyAj) return;
+  Array.prototype.forEach.call(linhaCab.children, function(th) {
+    var alca = document.createElement('div');
+    alca.className = 'col-redimensionar';
+    alca.title = 'Arraste para redimensionar';
+    th.appendChild(alca);
+    alca.addEventListener('mousedown', function(ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      var larguraInicial = th.offsetWidth;
+      var xInicial = ev.clientX;
+      function mover(e2) {
+        var novaLargura = Math.max(60, larguraInicial + (e2.clientX - xInicial));
+        th.style.width = novaLargura + 'px';
+        th.style.minWidth = novaLargura + 'px';
+      }
+      function soltar() {
+        document.removeEventListener('mousemove', mover);
+        document.removeEventListener('mouseup', soltar);
+      }
+      document.addEventListener('mousemove', mover);
+      document.addEventListener('mouseup', soltar);
+    });
+  });
+  var thArrastado = null;
+  function moverColuna(de, para) {
+    function reordenarLinha(linha) {
+      var celulas = Array.prototype.slice.call(linha.children);
+      if (de >= celulas.length || para >= celulas.length) return;
+      var el = celulas.splice(de, 1)[0];
+      celulas.splice(para, 0, el);
+      celulas.forEach(function(c) { linha.appendChild(c); });
+    }
+    reordenarLinha(linhaCab);
+    Array.prototype.forEach.call(tbodyAj.children, reordenarLinha);
+  }
+  Array.prototype.forEach.call(linhaCab.children, function(th) {
+    th.draggable = true;
+    th.title = (th.title ? th.title + ' · ' : '') + 'Arraste o cabeçalho para reordenar';
+    th.addEventListener('dragstart', function(ev) {
+      thArrastado = th;
+      th.classList.add('col-arrastando');
+      ev.dataTransfer.effectAllowed = 'move';
+      try { ev.dataTransfer.setData('text/plain', ''); } catch (e) {}
+    });
+    th.addEventListener('dragend', function() {
+      th.classList.remove('col-arrastando');
+      Array.prototype.forEach.call(linhaCab.children, function(t) { t.classList.remove('col-alvo-drop'); });
+    });
+    th.addEventListener('dragover', function(ev) {
+      if (!thArrastado || thArrastado === th) return;
+      ev.preventDefault();
+      th.classList.add('col-alvo-drop');
+    });
+    th.addEventListener('dragleave', function() { th.classList.remove('col-alvo-drop'); });
+    th.addEventListener('drop', function(ev) {
+      ev.preventDefault();
+      th.classList.remove('col-alvo-drop');
+      if (!thArrastado || thArrastado === th) return;
+      var de = Array.prototype.indexOf.call(linhaCab.children, thArrastado);
+      var para = Array.prototype.indexOf.call(linhaCab.children, th);
+      moverColuna(de, para);
+      thArrastado = null;
+    });
+  });
+}
 tornarTabelaOrdenavel(document.querySelector('.basileia-table'), document.getElementById('basileia-filtro'));
+tornarColunasAjustaveis(document.querySelector('.basileia-table'));
 
 function processarLoteBancos(inicio) {
   if (inicio >= BANCOS.length) {
@@ -9965,10 +10232,18 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 .cp-legenda-grid strong{color:var(--ink);}
 .cp-busca-status{font-size:12.5px;color:var(--ink-soft);min-height:18px;margin-bottom:12px;}
 .filtro-tabela-input{padding:9px 14px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);width:280px;max-width:100%;background:#fff;margin-bottom:14px;display:block;}
+.col-redimensionar{position:absolute;top:0;right:0;width:8px;height:100%;cursor:col-resize;user-select:none;z-index:4;}
+.col-redimensionar:hover{background:rgba(255,255,255,.25);}
+.col-arrastando{opacity:.4;}
+.col-alvo-drop{box-shadow:inset 3px 0 0 0 #fff;}
 .filtro-tabela-input:focus{outline:none;border-color:var(--orange);}
 .cp-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);box-shadow:var(--shadow);margin-bottom:18px;}
 .cp-table{width:100%;border-collapse:collapse;min-width:1420px;}
-.cp-table thead th{background:var(--orange);color:#fff;text-align:left;padding:13px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
+.cp-table thead th{background:var(--orange);color:#fff;text-align:left;padding:13px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;position:relative;}
+.col-redimensionar{position:absolute;top:0;right:0;width:8px;height:100%;cursor:col-resize;user-select:none;z-index:4;}
+.col-redimensionar:hover{background:rgba(255,255,255,.25);}
+.col-arrastando{opacity:.4;}
+.col-alvo-drop{box-shadow:inset 3px 0 0 0 #fff;}
 .cp-table tbody td{padding:13px 16px;border-bottom:1px solid var(--line);font-size:13.5px;white-space:nowrap;}
 .cp-table tbody tr:last-child td{border-bottom:none;}
 .cp-table tbody tr:hover td{background:var(--bg-soft);}
@@ -10108,11 +10383,15 @@ function tornarTabelaOrdenavel(tabela, filtroInput) {
     seta.style.cssText = 'margin-left:5px;opacity:.7;font-size:10px;';
     th.appendChild(seta);
     th.addEventListener('click', function() {
+      // Índice calculado na hora do clique (não capturado no fechamento):
+      // se a tabela permitir reordenar colunas, a posição de "th" pode ter
+      // mudado desde que o listener foi criado.
+      var idx = Array.prototype.indexOf.call(th.parentNode.children, th);
       var dir = dirCol[idx] === 1 ? -1 : 1;
       dirCol = {}; dirCol[idx] = dir;
-      Array.prototype.forEach.call(ths, function(o, oi) {
+      Array.prototype.forEach.call(ths, function(o) {
         var s = o.querySelector('span');
-        if (s) s.textContent = oi === idx ? (dir === 1 ? '▲' : '▼') : '';
+        if (s) s.textContent = o === th ? (dir === 1 ? '▲' : '▼') : '';
       });
       var linhas = Array.prototype.slice.call(tbody.children);
       linhas.sort(function(a, b) {
@@ -10132,6 +10411,81 @@ function tornarTabelaOrdenavel(tabela, filtroInput) {
       });
     });
   }
+}
+
+// Colunas ajustáveis: arrastar a borda direita de um cabeçalho redimensiona a
+// coluna; arrastar o próprio cabeçalho para outra posição reordena a coluna
+// inteira (cabeçalho + todas as linhas).
+function tornarColunasAjustaveis(tabela) {
+  if (!tabela) return;
+  var thead = tabela.querySelector('thead');
+  var tbodyAj = tabela.querySelector('tbody');
+  var linhaCab = thead && thead.querySelector('tr');
+  if (!linhaCab || !tbodyAj) return;
+  Array.prototype.forEach.call(linhaCab.children, function(th) {
+    var alca = document.createElement('div');
+    alca.className = 'col-redimensionar';
+    alca.title = 'Arraste para redimensionar';
+    th.appendChild(alca);
+    alca.addEventListener('mousedown', function(ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      var larguraInicial = th.offsetWidth;
+      var xInicial = ev.clientX;
+      function mover(e2) {
+        var novaLargura = Math.max(60, larguraInicial + (e2.clientX - xInicial));
+        th.style.width = novaLargura + 'px';
+        th.style.minWidth = novaLargura + 'px';
+      }
+      function soltar() {
+        document.removeEventListener('mousemove', mover);
+        document.removeEventListener('mouseup', soltar);
+      }
+      document.addEventListener('mousemove', mover);
+      document.addEventListener('mouseup', soltar);
+    });
+  });
+  var thArrastado = null;
+  function moverColuna(de, para) {
+    function reordenarLinha(linha) {
+      var celulas = Array.prototype.slice.call(linha.children);
+      if (de >= celulas.length || para >= celulas.length) return;
+      var el = celulas.splice(de, 1)[0];
+      celulas.splice(para, 0, el);
+      celulas.forEach(function(c) { linha.appendChild(c); });
+    }
+    reordenarLinha(linhaCab);
+    Array.prototype.forEach.call(tbodyAj.children, reordenarLinha);
+  }
+  Array.prototype.forEach.call(linhaCab.children, function(th) {
+    th.draggable = true;
+    th.title = (th.title ? th.title + ' · ' : '') + 'Arraste o cabeçalho para reordenar';
+    th.addEventListener('dragstart', function(ev) {
+      thArrastado = th;
+      th.classList.add('col-arrastando');
+      ev.dataTransfer.effectAllowed = 'move';
+      try { ev.dataTransfer.setData('text/plain', ''); } catch (e) {}
+    });
+    th.addEventListener('dragend', function() {
+      th.classList.remove('col-arrastando');
+      Array.prototype.forEach.call(linhaCab.children, function(t) { t.classList.remove('col-alvo-drop'); });
+    });
+    th.addEventListener('dragover', function(ev) {
+      if (!thArrastado || thArrastado === th) return;
+      ev.preventDefault();
+      th.classList.add('col-alvo-drop');
+    });
+    th.addEventListener('dragleave', function() { th.classList.remove('col-alvo-drop'); });
+    th.addEventListener('drop', function(ev) {
+      ev.preventDefault();
+      th.classList.remove('col-alvo-drop');
+      if (!thArrastado || thArrastado === th) return;
+      var de = Array.prototype.indexOf.call(linhaCab.children, thArrastado);
+      var para = Array.prototype.indexOf.call(linhaCab.children, th);
+      moverColuna(de, para);
+      thArrastado = null;
+    });
+  });
 }
 
 var corpo = document.getElementById('cp-corpo');
@@ -10170,6 +10524,7 @@ fetch(SB_URL + '/rest/v1/credito_privado_indicadores?select=*&order=nome.asc', {
         '</tr>';
     }).join('');
     tornarTabelaOrdenavel(document.querySelector('.cp-table'), document.getElementById('cp-filtro'));
+    tornarColunasAjustaveis(document.querySelector('.cp-table'));
   })
   .catch(function(e) {
     statusEl.textContent = 'Não foi possível carregar os indicadores agora. Tente novamente em instantes.';
