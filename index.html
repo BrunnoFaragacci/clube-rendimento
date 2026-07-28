@@ -2369,6 +2369,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '<h3 class="subquadro-titulo">Ativos bancários — CDB, LCI, LCA, LCD</h3>' +
         toolbarColunas('tabela-rfpos-banco') +
         '<div class="table-wrap"><table id="tabela-rfpos-banco" class="tabela-rf-pos tabela-com-exclusao"><thead><tr>' + cabRFPos + '</tr></thead><tbody id="rfpos-banco-corpo"></tbody></table></div>' +
+        '<div id="bcb-rf-secao"></div>' +
         '<h3 class="subquadro-titulo">Crédito privado — CRI, CRA, debêntures</h3>' +
         toolbarColunas('tabela-rfpos-credito') +
         '<div class="table-wrap"><table id="tabela-rfpos-credito" class="tabela-rf-pos tabela-com-exclusao"><thead><tr>' + cabRFPos + '</tr></thead><tbody id="rfpos-credito-corpo"></tbody></table></div>' +
@@ -4558,7 +4559,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           totLucroRFEl.textContent = 'R$ ' + formatarNumero(totLucroRF, 2);
           totLucroRFEl.className = 'resumo-valor ' + (totLucroRF >= 0 ? 'pos' : 'neg');
         }
-        return processarCreditoPrivadoRF();
+        return processarIndicadoresBancariosRF();
       }
       if (cancelado()) return;
 
@@ -4745,6 +4746,91 @@ h2{font-size:32px;letter-spacing:-.02em;}
       return Promise.resolve().then(function() { return processarRFPos(i + 1); });
     }
 
+    // Indicadores fundamentalistas dos bancos emissores de ativos bancários
+    // (CDB/LCI/LCA/LCD) identificados na carteira — Índice de Basileia e
+    // demais dados via Banco Central (IF.Data), reaproveitando buscarInstituicaoBCB/
+    // buscarDadosBCB (cache-first na tabela bcb_dados_financeiros, com fallback
+    // ao vivo só para bancos ainda não cacheados — ver abrirBasileia).
+    function classificarBasileiaRF(v) {
+      if (typeof v !== 'number') return '';
+      var pct = v * 100;
+      if (pct < 11) return 'neg';
+      if (pct < 14) return '';
+      return 'pos';
+    }
+
+    function processarIndicadoresBancariosRF() {
+      if (!opcoes.rf) return processarCreditoPrivadoRF();
+      var secao = D.getElementById('bcb-rf-secao');
+      if (!secao) return processarCreditoPrivadoRF();
+
+      var emissoresSet = {};
+      rfItens.forEach(function(item) {
+        var tipoNorm = String(item.tipo || '').toUpperCase().trim();
+        if (TIPOS_RF_BANCARIO.indexOf(tipoNorm) === -1) return;
+        var nome = String(item.emissor || '').trim();
+        if (nome) emissoresSet[normalizar(nome)] = nome;
+      });
+      var emissores = Object.keys(emissoresSet).map(function(k) { return emissoresSet[k]; });
+      if (!emissores.length) return processarCreditoPrivadoRF();
+
+      function processarUm(i, linhas) {
+        if (i >= emissores.length || cancelado()) return linhas;
+        statusR.textContent = 'Buscando índice de Basileia: ' + (i + 1) + '/' + emissores.length + '...';
+        return buscarInstituicaoBCB(emissores[i]).then(function(inst) {
+          var cnpj8 = inst && inst.CNPJ ? String(inst.CNPJ).replace(/\D/g, '').slice(0, 8) : null;
+          if (!cnpj8) return processarUm(i + 1, linhas);
+          return buscarDadosBCB(cnpj8, inst.NOME_INSTITUICAO).then(function(dados) {
+            if (dados) linhas.push({ nome: inst.NOME_INSTITUICAO, dados: dados });
+            return processarUm(i + 1, linhas);
+          });
+        }).catch(function() { return processarUm(i + 1, linhas); });
+      }
+
+      return processarUm(0, []).then(function(linhas) {
+        if (cancelado()) return;
+        if (!linhas || !linhas.length) return processarCreditoPrivadoRF();
+
+        linhas.sort(function(a, b) { return String(a.nome || '').localeCompare(String(b.nome || '')); });
+
+        var h2 = D.createElement('h2');
+        h2.className = 'quadro-titulo';
+        h2.style.cssText = 'border-top:1px solid var(--line);padding-top:20px;margin-top:4px;';
+        h2.textContent = 'Indicadores fundamentalistas — Ativos Bancários';
+        secao.appendChild(h2);
+        var sub = D.createElement('p');
+        sub.className = 'subquadro-titulo';
+        sub.textContent = 'Índice de Basileia e demais indicadores dos bancos emissores identificados nesta carteira, via Banco Central (IF.Data).';
+        secao.appendChild(sub);
+
+        var wrap = D.createElement('div');
+        wrap.className = 'table-wrap';
+        var table = D.createElement('table');
+        table.innerHTML = '<thead><tr><th>Instituição</th><th>Período</th><th>Índice de Basileia</th>' +
+          '<th>Caixa (disponibilidades)</th><th>Captações</th><th>Lucro líquido</th><th>Receita</th></tr></thead><tbody></tbody>';
+        var tbody = table.querySelector('tbody');
+        linhas.forEach(function(l) {
+          var d = l.dados;
+          var tr = D.createElement('tr');
+          tr.appendChild(cel(D, l.nome || '—'));
+          tr.appendChild(cel(D, d.periodo ? formatarPeriodoBCB(d.periodo) : '—'));
+          var tdBas = cel(D, typeof d.basileia === 'number' ? formatarNumero(d.basileia * 100, 2) + '%' : '—');
+          var clsBas = classificarBasileiaRF(d.basileia);
+          if (clsBas) tdBas.className = clsBas;
+          tr.appendChild(tdBas);
+          tr.appendChild(cel(D, typeof d.caixa === 'number' ? formatarCompacto(d.caixa) : '—'));
+          tr.appendChild(cel(D, typeof d.captacoes === 'number' ? formatarCompacto(d.captacoes) : '—'));
+          tr.appendChild(cel(D, typeof d.lucro === 'number' ? formatarCompacto(d.lucro) : '—'));
+          tr.appendChild(cel(D, typeof d.receita === 'number' ? formatarCompacto(d.receita) : '—'));
+          tbody.appendChild(tr);
+        });
+        wrap.appendChild(table);
+        secao.appendChild(wrap);
+
+        return processarCreditoPrivadoRF();
+      });
+    }
+
     // Indicadores fundamentalistas dos emissores de Crédito Privado (CRI/CRA/
     // debêntures) identificados na carteira, cruzados com a tabela
     // credito_privado_indicadores (sincronizada a partir da DFP mais recente
@@ -4815,10 +4901,6 @@ h2{font-size:32px;letter-spacing:-.02em;}
           });
           wrap.appendChild(table);
           secao.appendChild(wrap);
-          var nota = D.createElement('p');
-          nota.className = 'nota';
-          nota.textContent = 'Valores convertidos de R$ mil (conforme reportado à CVM). Rating pesquisado manualmente, sem atualização automática. Análise completa em Renda Fixa → Análise de Crédito Privado.';
-          secao.appendChild(nota);
 
           return processarXP(0);
         });
