@@ -685,6 +685,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
   var arquivoSelecionado2 = null;
   var cuponsPagosPorAtivo = new Map();
   var TIPOS_RF = ['CDB','CRI','CRA','DEB','LCA','LCI','LCD'];
+  // Ativos bancários (emitidos por instituições financeiras, cobertos pelo FGC)
+  // vs. crédito privado (dívida de empresas não-financeiras) — usado para
+  // separar a tabela de posição em RF em duas (ver gerarHTML/processarRFPos).
+  var TIPOS_RF_BANCARIO = ['CDB','LCA','LCI','LCD'];
 
   document.getElementById('arquivo-planilha').addEventListener('change', function(ev) {
     var arq = ev.target.files[0] || null;
@@ -1534,6 +1538,119 @@ h2{font-size:32px;letter-spacing:-.02em;}
     return null;
   }
 
+  // — Crédito Privado (indicadores fundamentalistas via CVM, tabela
+  // credito_privado_indicadores) — mapeia o texto livre do emissor (extraído
+  // da planilha, ex.: "CRA SUZANO 2029") para o CNPJ8 correspondente na
+  // tabela. Entradas mais específicas (ex.: "CSN MINERACAO") vêm antes das
+  // mais genéricas ("CSN") para evitar casamento errado.
+  var CREDITO_PRIVADO_EMISSORES = [
+    { chaves: ['CSN MINERACAO','CSN MINERAÇÃO','CSNM'], cnpj8: '08902291' },
+    { chaves: ['CSN'], cnpj8: '33042730' },
+    { chaves: ['ORIGEM ENERGIA','ORIGEM'], cnpj8: '32021201' },
+    { chaves: ['MINERVA'], cnpj8: '67620377' },
+    { chaves: ['SIMPAR'], cnpj8: '07415333' },
+    { chaves: ['MRV'], cnpj8: '08343492' },
+    { chaves: ['JHSF'], cnpj8: '08294224' },
+    { chaves: ['DIRECIONAL'], cnpj8: '16614075' },
+    { chaves: ['TRISUL'], cnpj8: '08811643' },
+    { chaves: ['KLABIN'], cnpj8: '89637490' },
+    { chaves: ['VALE'], cnpj8: '33592510' },
+    { chaves: ['USIMINAS','USIM'], cnpj8: '60894730' },
+    { chaves: ['AEGEA'], cnpj8: '08827501' },
+    { chaves: ['EQUATORIAL'], cnpj8: '03220438' },
+    { chaves: ['JSL'], cnpj8: '52548435' },
+    { chaves: ['MOVIDA'], cnpj8: '21314559' },
+    { chaves: ['VAMOS'], cnpj8: '23373000' },
+    { chaves: ['NATURA'], cnpj8: '71673990' },
+    { chaves: ['CAMIL'], cnpj8: '64904295' },
+    { chaves: ['JBS'], cnpj8: '02916265' },
+    { chaves: ['BRASKEM'], cnpj8: '42150391' },
+    { chaves: ['RAIZEN','RAÍZEN'], cnpj8: '33453598' },
+    { chaves: ['CYRELA'], cnpj8: '73178600' },
+    { chaves: ['EVEN'], cnpj8: '43470988' },
+    { chaves: ['LOCALIZA'], cnpj8: '16670085' },
+    { chaves: ['SABESP'], cnpj8: '43776517' },
+    { chaves: ['CEMIG'], cnpj8: '17155730' },
+    { chaves: ['COPEL'], cnpj8: '76483817' },
+    { chaves: ['ENERGISA'], cnpj8: '00864214' },
+    { chaves: ['ENGIE'], cnpj8: '02474103' },
+    { chaves: ['MARFRIG','MBRF'], cnpj8: '03853896' },
+    { chaves: ['MERCANTIL DO BRASIL','BMERC'], cnpj8: '17184037' },
+    { chaves: ['J MACEDO','MACEDO'], cnpj8: '14998371' },
+    { chaves: ['BRF'], cnpj8: '01838723' },
+    { chaves: ['ASSAI','SENDAS'], cnpj8: '06057223' },
+    { chaves: ['GPA','PAO DE ACUCAR'], cnpj8: '47508411' },
+    { chaves: ['ZAMP'], cnpj8: '13574594' },
+    { chaves: ['JALLES'], cnpj8: '02635522' },
+    { chaves: ['SAO MARTINHO'], cnpj8: '51466860' },
+    { chaves: ['BRK AMBIENTAL','BRK'], cnpj8: '24396489' },
+    { chaves: ['CTEEP','ISA ENERGIA','ISA CTEEP'], cnpj8: '02998611' },
+    { chaves: ['ENEVA'], cnpj8: '04423567' },
+    { chaves: ['NEOENERGIA'], cnpj8: '01083200' },
+    { chaves: ['IGUA SANEAMENTO','IGUA'], cnpj8: '08159965' },
+    { chaves: ['RIO+ SANEAMENTO','RIO MAIS SANEAMENTO'], cnpj8: '42292007' },
+    { chaves: ['AUREN'], cnpj8: '28594234' },
+    { chaves: ['ELETROBRAS','AXIA ENERGIA','AXIA'], cnpj8: '00001180' },
+    { chaves: ['CURY'], cnpj8: '08797760' },
+    { chaves: ['IGUATEMI'], cnpj8: '60543816' },
+    { chaves: ['MITRE'], cnpj8: '07882930' },
+    { chaves: ['BRAVA ENERGIA','BRAVA'], cnpj8: '12091809' },
+    { chaves: ['PRIO'], cnpj8: '10629105' },
+    { chaves: ['ANIMA'], cnpj8: '09288252' },
+    { chaves: ['COGNA'], cnpj8: '02800026' },
+    { chaves: ['DASA'], cnpj8: '61486650' },
+    { chaves: ['ONCOCLINICAS'], cnpj8: '12104241' },
+    { chaves: ["REDE D'OR",'REDE DOR','REDEDOR'], cnpj8: '06047087' },
+    { chaves: ['HAPVIDA'], cnpj8: '05197443' },
+    { chaves: ['INTERVIAS'], cnpj8: '03207703' },
+    { chaves: ['LITORAL SUL','AUTOPISTA LITORAL SUL'], cnpj8: '09313969' },
+    { chaves: ['METRORIO','METRO RIO'], cnpj8: '10324624' },
+    { chaves: ['ROTA DAS BANDEIRAS'], cnpj8: '10647979' },
+    { chaves: ['SANTOS BRASIL'], cnpj8: '02762121' },
+    { chaves: ['VERO'], cnpj8: '31748174' },
+    { chaves: ['PORTOBELLO','PBG'], cnpj8: '83475913' },
+    { chaves: ['LIGHT'], cnpj8: '03378521' },
+    { chaves: ['AMERICANAS'], cnpj8: '00776574' },
+    { chaves: ['AGROGALAXY'], cnpj8: '21240146' },
+    { chaves: ['RODOVIAS DO TIETE'], cnpj8: '10678505' },
+    { chaves: ['SUZANO'], cnpj8: '16404287' },
+    { chaves: ['GERDAU'], cnpj8: '33611500' },
+    { chaves: ['COSAN'], cnpj8: '50746577' },
+    { chaves: ['ULTRAPAR','ULTRA'], cnpj8: '33256439' },
+    { chaves: ['ECORODOVIAS'], cnpj8: '04149454' },
+    { chaves: ['HIDROVIAS'], cnpj8: '12648327' },
+    { chaves: ['RUMO'], cnpj8: '02387241' },
+    { chaves: ['VIBRA'], cnpj8: '34274233' },
+    { chaves: ['AZUL'], cnpj8: '09305994' },
+    { chaves: ['WEG'], cnpj8: '84429695' },
+    { chaves: ['AMBEV'], cnpj8: '07526557' },
+    { chaves: ['TIM'], cnpj8: '02421421' },
+    { chaves: ['CPFL'], cnpj8: '02429144' },
+    { chaves: ['ALUPAR'], cnpj8: '08364948' },
+    { chaves: ['COPASA'], cnpj8: '17281106' },
+    { chaves: ['PETROBRAS'], cnpj8: '33000167' },
+    { chaves: ['ALLOS','BR MALLS','ALIANSCE'], cnpj8: '05878397' },
+    { chaves: ['TAESA'], cnpj8: '07859971' },
+    { chaves: ['BOA SAFRA'], cnpj8: '10807374' },
+    { chaves: ['QUALICORP'], cnpj8: '11992680' },
+    { chaves: ['PATRIMAR'], cnpj8: '23236821' },
+    { chaves: ['MAESTRO LOCADORA','MAESTRO'], cnpj8: '08795211' },
+    { chaves: ['MAGAZINE LUIZA','MAGALU'], cnpj8: '47960950' },
+    { chaves: ['GRUPO MATEUS','MATEUS'], cnpj8: '24990777' }
+  ];
+
+  function cnpj8CreditoPrivado(emissor) {
+    if (!emissor) return null;
+    var txt = normalizar(emissor);
+    for (var i = 0; i < CREDITO_PRIVADO_EMISSORES.length; i++) {
+      var e = CREDITO_PRIVADO_EMISSORES[i];
+      for (var k = 0; k < e.chaves.length; k++) {
+        if (txt.indexOf(normalizar(e.chaves[k])) !== -1) return e.cnpj8;
+      }
+    }
+    return null;
+  }
+
   function extrairListaXP(doc, titulo) {
     var candidatos = Array.from(doc.querySelectorAll('p,h2,h3,h4,strong,b'));
     var marcador = candidatos.find(function(el) {
@@ -2247,8 +2364,13 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '</div>' +
         '<p class="subquadro-titulo">Posição e rentabilidade</p>' +
         '<div class="opcoes-tabela"><label><input type="checkbox" id="toggle-cupons" checked> Mostrar coluna de cupons pagos</label></div>' +
-        toolbarColunas('tabela-rfpos') +
-        '<div class="table-wrap"><table id="tabela-rfpos" class="tabela-rf-pos tabela-com-exclusao"><thead><tr>' + cabRFPos + '</tr></thead><tbody id="rfpos-corpo"></tbody></table></div>' +
+        '<h3 class="subquadro-titulo">Ativos bancários — CDB, LCI, LCA, LCD</h3>' +
+        toolbarColunas('tabela-rfpos-banco') +
+        '<div class="table-wrap"><table id="tabela-rfpos-banco" class="tabela-rf-pos tabela-com-exclusao"><thead><tr>' + cabRFPos + '</tr></thead><tbody id="rfpos-banco-corpo"></tbody></table></div>' +
+        '<h3 class="subquadro-titulo">Crédito privado — CRI, CRA, debêntures</h3>' +
+        toolbarColunas('tabela-rfpos-credito') +
+        '<div class="table-wrap"><table id="tabela-rfpos-credito" class="tabela-rf-pos tabela-com-exclusao"><thead><tr>' + cabRFPos + '</tr></thead><tbody id="rfpos-credito-corpo"></tbody></table></div>' +
+        '<div id="cp-rf-secao"></div>' +
         '<div id="xp-secao"></div>'
       : '';
     var sCetipDiv = '<div id="cetip-classe-secao"' + ((opcoes.cetip && totaisCetip && totaisCetip.total > 0) ? '' : ' hidden') + '>' +
@@ -2820,7 +2942,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     // de uma célula, como a de "últimos rendimentos" no detalhe de um fundo
     // cetipado.
     var MAPA_COLUNAS_TABELAS = {
-      'tabela-rv': colRV, 'tabela-rfpos': colRFPos, 'tabela-cetip': colCetip,
+      'tabela-rv': colRV, 'tabela-rfpos-banco': colRFPos, 'tabela-rfpos-credito': colRFPos, 'tabela-cetip': colCetip,
       'tabela-previdencia': colPrevidencia, 'tabela-coe': colCOE, 'tabela-tesouro': colTesouro
     };
     Array.prototype.forEach.call(D.querySelectorAll('.btn-colunas'), function(btn) {
@@ -3070,7 +3192,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
     var statusR = D.getElementById('status');
     var corpoRV = D.getElementById('rv-corpo');
-    var corpoRFPos = D.getElementById('rfpos-corpo');
+    var corpoRFPosBanco = D.getElementById('rfpos-banco-corpo');
+    var corpoRFPosCredito = D.getElementById('rfpos-credito-corpo');
     var corpoRFEmis = D.getElementById('rfemis-corpo');
     var corpoCetip = D.getElementById('cetip-analise-corpo');
     var totRvEl = D.getElementById('tot-rv');
@@ -3173,10 +3296,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
     }
 
     var toggleCupons = D.getElementById('toggle-cupons');
-    var tabelaRfPos = D.querySelector('.tabela-rf-pos');
-    if (toggleCupons && tabelaRfPos) {
+    var tabelasRfPos = D.querySelectorAll('.tabela-rf-pos');
+    if (toggleCupons && tabelasRfPos.length) {
       toggleCupons.addEventListener('change', function() {
-        tabelaRfPos.classList.toggle('cupons-ocultos', !toggleCupons.checked);
+        Array.prototype.forEach.call(tabelasRfPos, function(t) {
+          t.classList.toggle('cupons-ocultos', !toggleCupons.checked);
+        });
       });
     }
 
@@ -4344,7 +4469,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           totLucroRFEl.textContent = 'R$ ' + formatarNumero(totLucroRF, 2);
           totLucroRFEl.className = 'resumo-valor ' + (totLucroRF >= 0 ? 'pos' : 'neg');
         }
-        return processarRFEmis(0);
+        return processarCreditoPrivadoRF();
       }
       if (cancelado()) return;
 
@@ -4364,8 +4489,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
         totRFPorTipo[tipoNorm] = (totRFPorTipo[tipoNorm] || 0) + valor;
       }
 
-      // Criar linha na tabela RF de posição
-      if (corpoRFPos) {
+      // Criar linha na tabela RF de posição correta: bancários (CDB/LCI/LCA/
+      // LCD, cobertos pelo FGC) numa tabela, crédito privado (CRI/CRA/
+      // debêntures) noutra — ver TIPOS_RF_BANCARIO.
+      var corpoRFPosDestino = TIPOS_RF_BANCARIO.indexOf(tipoNorm) !== -1 ? corpoRFPosBanco : corpoRFPosCredito;
+      if (corpoRFPosDestino) {
         var valorAplicado = typeof item.valorAplicado === 'number' ? item.valorAplicado : null;
         var lucroRS  = (valor && valorAplicado) ? valor - valorAplicado : null;
         var lucroPct = (lucroRS !== null && valorAplicado) ? (lucroRS / valorAplicado) * 100 : null;
@@ -4455,7 +4583,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         tdAcaoRF.appendChild(btnExcluirRF);
         tr.appendChild(tdAcaoRF);
 
-        corpoRFPos.appendChild(tr);
+        corpoRFPosDestino.appendChild(tr);
 
         // Estado "vivo" desta linha (posição, valor aplicado e cupons),
         // reatribuído sempre que o usuário edita a célula correspondente —
@@ -4528,14 +4656,83 @@ h2{font-size:32px;letter-spacing:-.02em;}
       return Promise.resolve().then(function() { return processarRFPos(i + 1); });
     }
 
-    function processarRFEmis(i) {
-      // A seção "Análise do emissor" foi removida da Análise da carteira a
-      // pedido do usuário. A tabela (id="rfemis-corpo") não existe mais no
-      // HTML, então pulamos direto para a próxima etapa do pipeline sem fazer
-      // as buscas de rede (B3/CVM/BCB) que só alimentavam essa tabela — evita
-      // tanto um erro (appendChild em elemento inexistente) quanto chamadas
-      // desnecessárias.
-      return processarXP(0);
+    // Indicadores fundamentalistas dos emissores de Crédito Privado (CRI/CRA/
+    // debêntures) identificados na carteira, cruzados com a tabela
+    // credito_privado_indicadores (sincronizada a partir da DFP mais recente
+    // de cada empresa na CVM — ver abrirCreditoPrivado). Roda uma única
+    // consulta por análise, filtrando só os emissores realmente presentes.
+    function fmtMoedaCP(valorMil) {
+      return typeof valorMil === 'number' ? formatarCompacto(valorMil * 1000) : '—';
+    }
+
+    function processarCreditoPrivadoRF() {
+      if (!opcoes.rf) return processarXP(0);
+      var secao = D.getElementById('cp-rf-secao');
+      if (!secao) return processarXP(0);
+
+      var cnpjsSet = {};
+      rfItens.forEach(function(item) {
+        var tipoNorm = String(item.tipo || '').toUpperCase().trim();
+        if (TIPOS_RF_BANCARIO.indexOf(tipoNorm) !== -1) return;
+        var cnpj8 = cnpj8CreditoPrivado(item.emissor);
+        if (cnpj8) cnpjsSet[cnpj8] = true;
+      });
+      var listaCnpj8 = Object.keys(cnpjsSet);
+      if (!listaCnpj8.length || !window.supabaseClient) return processarXP(0);
+
+      return Promise.resolve(window.supabaseClient.from('credito_privado_indicadores').select('*').in('cnpj8', listaCnpj8))
+        .catch(function() { return { data: [] }; })
+        .then(function(resp) {
+          if (cancelado()) return;
+          var linhas = (resp && resp.data || []).slice().sort(function(a, b) {
+            return String(a.nome || '').localeCompare(String(b.nome || ''));
+          });
+          if (!linhas.length) return processarXP(0);
+
+          var h2 = D.createElement('h2');
+          h2.className = 'quadro-titulo';
+          h2.style.cssText = 'border-top:1px solid var(--line);padding-top:20px;margin-top:4px;';
+          h2.textContent = 'Indicadores fundamentalistas — Crédito Privado';
+          secao.appendChild(h2);
+          var sub = D.createElement('p');
+          sub.className = 'subquadro-titulo';
+          sub.textContent = 'Última DFP anual enviada à CVM pelos emissores de CRI/CRA/debêntures identificados nesta carteira.';
+          secao.appendChild(sub);
+
+          var wrap = D.createElement('div');
+          wrap.className = 'table-wrap';
+          var table = D.createElement('table');
+          table.innerHTML = '<thead><tr><th>Empresa</th><th>Rating</th><th>Referência</th><th>Receita líquida</th>' +
+            '<th>EBITDA</th><th>Margem EBITDA</th><th>Lucro líquido</th><th>Caixa</th><th>Dívida bruta</th>' +
+            '<th>Dívida líquida</th><th>Dív.líq./EBITDA</th><th>Liquidez corrente</th></tr></thead><tbody></tbody>';
+          var tbody = table.querySelector('tbody');
+          linhas.forEach(function(l) {
+            var tr = D.createElement('tr');
+            tr.appendChild(cel(D, l.nome || '—'));
+            tr.appendChild(cel(D, l.rating ? (l.rating + (l.rating_agencia ? ' (' + l.rating_agencia + ')' : '')) : '—'));
+            tr.appendChild(cel(D, l.referencia ? formatarPeriodoFII(l.referencia) : '—'));
+            tr.appendChild(cel(D, fmtMoedaCP(l.receita_liquida)));
+            tr.appendChild(cel(D, fmtMoedaCP(l.ebitda)));
+            tr.appendChild(cel(D, typeof l.margem_ebitda === 'number' ? formatarNumero(l.margem_ebitda, 1) + '%' : '—'));
+            tr.appendChild(cel(D, fmtMoedaCP(l.lucro_liquido)));
+            tr.appendChild(cel(D, fmtMoedaCP(l.caixa)));
+            tr.appendChild(cel(D, fmtMoedaCP(l.divida_bruta)));
+            tr.appendChild(cel(D, fmtMoedaCP(l.divida_liquida)));
+            var tdAlav = cel(D, typeof l.div_liq_ebitda === 'number' ? formatarNumero(l.div_liq_ebitda, 1) + 'x' : '—');
+            if (typeof l.div_liq_ebitda === 'number') tdAlav.className = l.div_liq_ebitda <= 2.5 ? 'pos' : (l.div_liq_ebitda > 4 ? 'neg' : '');
+            tr.appendChild(tdAlav);
+            tr.appendChild(cel(D, typeof l.liquidez_corrente === 'number' ? formatarNumero(l.liquidez_corrente, 2) : '—'));
+            tbody.appendChild(tr);
+          });
+          wrap.appendChild(table);
+          secao.appendChild(wrap);
+          var nota = D.createElement('p');
+          nota.className = 'nota';
+          nota.textContent = 'Valores convertidos de R$ mil (conforme reportado à CVM). Rating pesquisado manualmente, sem atualização automática. Análise completa em Renda Fixa → Análise de Crédito Privado.';
+          secao.appendChild(nota);
+
+          return processarXP(0);
+        });
     }
 
     // Paleta de cores da interface
