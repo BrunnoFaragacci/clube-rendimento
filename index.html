@@ -4948,21 +4948,17 @@ h2{font-size:32px;letter-spacing:-.02em;}
           h2.style.cssText = 'border-top:1px solid var(--line);padding-top:20px;margin-top:4px;';
           h2.textContent = 'Indicadores fundamentalistas — Crédito Privado';
           secao.appendChild(h2);
-          var sub = D.createElement('p');
-          sub.className = 'subquadro-titulo';
-          sub.textContent = 'Última DFP anual enviada à CVM pelos emissores de CRI/CRA/debêntures identificados nesta carteira.';
-          secao.appendChild(sub);
-
           var wrap = D.createElement('div');
           wrap.className = 'table-wrap';
           var table = D.createElement('table');
-          table.innerHTML = '<thead><tr><th>Empresa</th><th>Rating</th><th>Referência</th><th>Receita líquida</th>' +
+          table.innerHTML = '<thead><tr><th>Empresa</th><th>Segmento</th><th>Rating</th><th>Referência</th><th>Receita líquida</th>' +
             '<th>EBITDA</th><th>Margem EBITDA</th><th>Lucro líquido</th><th>Caixa</th><th>Dívida bruta</th>' +
             '<th>Dívida líquida</th><th>Dív.líq./EBITDA</th><th>Liquidez corrente</th></tr></thead><tbody></tbody>';
           var tbody = table.querySelector('tbody');
           linhas.forEach(function(l) {
             var tr = D.createElement('tr');
             tr.appendChild(cel(D, l.nome || '—'));
+            tr.appendChild(cel(D, l.segmento || '—'));
             tr.appendChild(cel(D, l.rating ? (l.rating + (l.rating_agencia ? ' (' + l.rating_agencia + ')' : '')) : '—'));
             tr.appendChild(cel(D, l.referencia ? formatarPeriodoFII(l.referencia) : '—'));
             tr.appendChild(cel(D, fmtMoedaCP(l.receita_liquida)));
@@ -5269,10 +5265,6 @@ h2{font-size:32px;letter-spacing:-.02em;}
       if (!slugs.length || novaJanela.closed) { processarCetip(); return; }
 
       var secao = D.getElementById('xp-secao');
-      var h2 = D.createElement('h2');
-      h2.className = 'quadro-titulo';
-      h2.textContent = 'Resumo de crédito — Guia de Análises XP';
-      secao.appendChild(h2);
 
       function processarSlug(j) {
         if (j >= slugs.length || novaJanela.closed) { processarCetip(); return; }
@@ -9496,7 +9488,7 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 .cp-legenda-grid strong{color:var(--ink);}
 .cp-busca-status{font-size:12.5px;color:var(--ink-soft);min-height:18px;margin-bottom:12px;}
 .cp-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);box-shadow:var(--shadow);margin-bottom:18px;}
-.cp-table{width:100%;border-collapse:collapse;min-width:1280px;}
+.cp-table{width:100%;border-collapse:collapse;min-width:1420px;}
 .cp-table thead th{background:var(--orange);color:#fff;text-align:left;padding:13px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
 .cp-table tbody td{padding:13px 16px;border-bottom:1px solid var(--line);font-size:13.5px;white-space:nowrap;}
 .cp-table tbody tr:last-child td{border-bottom:none;}
@@ -9521,6 +9513,7 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
   <div class="cp-legenda">
     <span class="cp-legenda-titulo">O que significa cada indicador</span>
     <div class="cp-legenda-grid">
+      <div><strong>Segmento</strong> — setor de atuação da empresa, classificado manualmente.</div>
       <div><strong>Rating</strong> — nota de crédito mais recente encontrada (agência entre parênteses), pesquisada manualmente; sem atualização automática. "—" quando não localizada.</div>
       <div><strong>Referência</strong> — data de fim do exercício social a que os números se referem (fechamento do último balanço anual disponível).</div>
       <div><strong>Receita Líquida</strong> — total vendido pela empresa no ano, já descontados impostos sobre vendas e devoluções.</div>
@@ -9540,7 +9533,7 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
   <div class="cp-table-wrap">
     <table class="cp-table">
       <thead><tr>
-        <th>Empresa</th><th>Rating</th><th>Referência</th><th>Receita Líquida</th><th>EBITDA</th>
+        <th>Empresa</th><th>Segmento</th><th>Rating</th><th>Referência</th><th>Receita Líquida</th><th>EBITDA</th>
         <th>Margem EBITDA</th><th>Lucro Líquido</th><th>Caixa</th>
         <th>Dívida Bruta</th><th>Dívida Líquida</th><th>Dív.Líq./EBITDA</th><th>Liquidez Corrente</th>
       </tr></thead>
@@ -9614,6 +9607,7 @@ fetch(SB_URL + '/rest/v1/credito_privado_indicadores?select=*&order=nome.asc', {
       var celAlav = l.div_liq_ebitda;
       return '<tr>' +
         '<td class="cp-nome">' + l.nome + '</td>' +
+        '<td>' + (l.segmento || '—') + '</td>' +
         '<td>' + fmtRating(l.rating, l.rating_agencia) + '</td>' +
         '<td>' + fmtData(l.referencia) + '</td>' +
         '<td>' + fmtMoeda(l.receita_liquida) + '</td>' +
