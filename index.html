@@ -495,6 +495,107 @@ h2{font-size:32px;letter-spacing:-.02em;}
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
   }
 
+  // ===================== Tabelas orden\u00e1veis/filtr\u00e1veis (gen\u00e9rico) =====================
+  // Utilit\u00e1rio reaproveit\u00e1vel por qualquer tabela do site (n\u00e3o s\u00f3 a An\u00e1lise de
+  // Carteira): clicar num cabe\u00e7alho ordena a tabela por aquela coluna
+  // (crescente/decrescente, com seta indicando o sentido); um <input> opcional
+  // filtra as linhas pela primeira coluna com r\u00f3tulo. Os r\u00f3tulos s\u00e3o lidos
+  // direto do texto de cada <th> \u2014 colunas sem texto (ex.: um toggle
+  // estrutural) ficam de fora automaticamente. Recebe D (o "document" certo,
+  // j\u00e1 que v\u00e1rias p\u00e1ginas do site s\u00e3o popups com seu pr\u00f3prio documento) e o
+  // elemento <table>; funciona com qualquer tabela <thead>/<tbody>.
+  function _chaveOrdenacaoTabela(txt) {
+    var t = String(txt || '').trim();
+    if (!t || t === '\u2014') return null;
+    var limpo = t.replace(/R\$\s?/gi, '').replace(/\s?[%x]$/i, '').trim();
+    var semMilhar = limpo.replace(/\./g, '').replace(',', '.');
+    if (/^-?\d+(\.\d+)?$/.test(semMilhar)) return { tipo: 'num', v: parseFloat(semMilhar) };
+    var m;
+    if ((m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t))) return { tipo: 'data', v: m[1] + m[2] + m[3] };
+    if ((m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t))) return { tipo: 'data', v: m[3] + m[2] + m[1] };
+    if ((m = /^(\d{2})\/(\d{4})$/.exec(t))) return { tipo: 'data', v: m[2] + m[1] };
+    return { tipo: 'texto', v: normalizar(t) };
+  }
+
+  function _compararCelulasTabela(txtA, txtB, direcao) {
+    var a = _chaveOrdenacaoTabela(txtA), b = _chaveOrdenacaoTabela(txtB);
+    if (a === null && b === null) return 0;
+    if (a === null) return 1;
+    if (b === null) return -1;
+    if (a.tipo === b.tipo) {
+      if (a.v < b.v) return -1 * direcao;
+      if (a.v > b.v) return 1 * direcao;
+      return 0;
+    }
+    return normalizar(txtA).localeCompare(normalizar(txtB)) * direcao;
+  }
+
+  // Agrupa cada linha de dados com eventuais linhas "anexadas" logo depois
+  // dela (ex.: o detalhe expans\u00edvel de um fundo cetipado, classe
+  // cetip-detalhe) \u2014 o grupo inteiro se move/esconde junto ao ordenar/filtrar.
+  function _agruparLinhasTabela(tbody) {
+    var grupos = [];
+    Array.prototype.forEach.call(tbody.children, function(tr) {
+      if (tr.classList.contains('cetip-detalhe')) {
+        if (grupos.length) grupos[grupos.length - 1].push(tr);
+        return;
+      }
+      grupos.push([tr]);
+    });
+    return grupos;
+  }
+
+  // tabela: elemento <table> (com <thead><tr><th>...</th></tr></thead> e
+  // <tbody>). filtroInput: elemento <input> opcional \u2014 se informado, filtra
+  // as linhas pela primeira coluna com r\u00f3tulo (ex.: "Ativo"/"Fundo"/"Nome").
+  function tornarTabelaOrdenavel(D, tabela, filtroInput) {
+    if (!tabela) return;
+    var tbody = tabela.querySelector('tbody');
+    if (!tbody) return;
+    var ths = tabela.querySelectorAll('thead > tr > th');
+    var direcaoPorColuna = {};
+    var idxFiltro = -1;
+    Array.prototype.forEach.call(ths, function(th, idx) {
+      var rotulo = th.textContent.trim();
+      if (!rotulo) return; // colunas estruturais (toggle, a\u00e7\u00e3o) sem r\u00f3tulo n\u00e3o ordenam
+      if (idxFiltro === -1) idxFiltro = idx;
+      th.style.cursor = 'pointer';
+      th.title = 'Clique para ordenar por ' + rotulo;
+      var seta = D.createElement('span');
+      seta.style.cssText = 'margin-left:5px;opacity:.7;font-size:10px;';
+      th.appendChild(seta);
+      th.addEventListener('click', function() {
+        var direcao = direcaoPorColuna[idx] === 1 ? -1 : 1;
+        direcaoPorColuna = {};
+        direcaoPorColuna[idx] = direcao;
+        Array.prototype.forEach.call(ths, function(outroTh, outroIdx) {
+          var s = outroTh.querySelector('span');
+          if (s) s.textContent = outroIdx === idx ? (direcao === 1 ? '\u25b2' : '\u25bc') : '';
+        });
+        var grupos = _agruparLinhasTabela(tbody);
+        grupos.sort(function(gA, gB) {
+          var tdA = gA[0].children[idx], tdB = gB[0].children[idx];
+          return _compararCelulasTabela(tdA ? tdA.textContent : '', tdB ? tdB.textContent : '', direcao);
+        });
+        grupos.forEach(function(grupo) {
+          grupo.forEach(function(tr) { tbody.appendChild(tr); });
+        });
+      });
+    });
+
+    if (filtroInput && idxFiltro !== -1) {
+      filtroInput.addEventListener('input', function() {
+        var termo = normalizar(filtroInput.value);
+        var grupos = _agruparLinhasTabela(tbody);
+        grupos.forEach(function(grupo) {
+          var td = grupo[0].children[idxFiltro];
+          var bate = !termo || normalizar(td ? td.textContent : '').indexOf(termo) !== -1;
+          grupo.forEach(function(tr) { tr.style.display = bate ? '' : 'none'; });
+        });
+      });
+    }
+  }
+
   function parseNumeroBR(valor) {
     if (typeof valor === 'number') return valor;
     var texto = String(valor === undefined || valor === null ? '' : valor).trim()
@@ -9010,6 +9111,8 @@ h1{font-size:26px;font-weight:700;margin-bottom:24px;}
 .td-filtro:hover{border-color:var(--orange);}
 .td-filtro.ativo{background:var(--orange);color:#fff;border-color:var(--orange);}
 .td-nota{margin-left:auto;font-size:12.5px;color:var(--ink-soft);}
+.filtro-tabela-input{padding:9px 14px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);width:280px;max-width:100%;background:#fff;margin-top:14px;display:block;}
+.filtro-tabela-input:focus{outline:none;border-color:var(--orange);}
 .td-table-wrap{margin-top:16px;overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);box-shadow:var(--shadow);}
 .td-table{width:100%;border-collapse:collapse;min-width:720px;}
 .td-table thead th{background:var(--orange);color:#fff;text-align:left;padding:13px 16px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
@@ -9036,6 +9139,7 @@ h1{font-size:26px;font-weight:700;margin-bottom:24px;}
     <button type="button" class="td-filtro" data-filtro="ipca">IPCA+</button>
     <span class="td-nota" id="td-data-base"></span>
   </div>
+  <input type="text" class="filtro-tabela-input" id="td-filtro-nome" placeholder="Filtrar por nome...">
   <div class="td-table-wrap">
     <table class="td-table">
       <thead><tr>
@@ -9049,6 +9153,72 @@ h1{font-size:26px;font-weight:700;margin-bottom:24px;}
 <script>
 var _SB_URL = 'https://segeufywrjmstfmfscdi.supabase.co';
 var _SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZ2V1Znl3cmptc3RmbWZzY2RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzY0OTgsImV4cCI6MjA5ODQxMjQ5OH0.TUrp35SEI2NXdU1ZY7IEcdRm8VLLfLwAVWUtqjafElI';
+
+// Ordenação (clique no cabeçalho) e filtro por nome — genérica, reaproveitada
+// em várias tabelas do site. Cada popup é um documento separado, então esta
+// função é duplicada localmente em vez de compartilhada.
+function _tabOrdChave(t) {
+  t = String(t || '').trim();
+  if (!t || t === '—') return null;
+  var l = t.replace(/R\$\s?/gi, '').replace(/\s?[%x]$/i, '').trim();
+  var s = l.replace(/\./g, '').replace(',', '.');
+  if (/^-?\d+(\.\d+)?$/.test(s)) return { t: 'n', v: parseFloat(s) };
+  var m;
+  if ((m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t))) return { t: 'd', v: m[1] + m[2] + m[3] };
+  if ((m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t))) return { t: 'd', v: m[3] + m[2] + m[1] };
+  if ((m = /^(\d{2})\/(\d{4})$/.exec(t))) return { t: 'd', v: m[2] + m[1] };
+  return { t: 's', v: t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() };
+}
+function _tabOrdNorm(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+function _tabOrdCmp(txtA, txtB, dir) {
+  var A = _tabOrdChave(txtA), B = _tabOrdChave(txtB);
+  if (A === null && B === null) return 0;
+  if (A === null) return 1;
+  if (B === null) return -1;
+  if (A.t === B.t) { if (A.v < B.v) return -1 * dir; if (A.v > B.v) return 1 * dir; return 0; }
+  return _tabOrdNorm(txtA).localeCompare(_tabOrdNorm(txtB)) * dir;
+}
+function tornarTabelaOrdenavel(tabela, filtroInput) {
+  if (!tabela) return;
+  var tbody = tabela.querySelector('tbody');
+  if (!tbody) return;
+  var ths = tabela.querySelectorAll('thead > tr > th');
+  var dirCol = {}, idxFiltro = -1;
+  Array.prototype.forEach.call(ths, function(th, idx) {
+    var rotulo = th.textContent.trim();
+    if (!rotulo) return;
+    if (idxFiltro === -1) idxFiltro = idx;
+    th.style.cursor = 'pointer';
+    th.title = 'Clique para ordenar por ' + rotulo;
+    var seta = document.createElement('span');
+    seta.style.cssText = 'margin-left:5px;opacity:.7;font-size:10px;';
+    th.appendChild(seta);
+    th.addEventListener('click', function() {
+      var dir = dirCol[idx] === 1 ? -1 : 1;
+      dirCol = {}; dirCol[idx] = dir;
+      Array.prototype.forEach.call(ths, function(o, oi) {
+        var s = o.querySelector('span');
+        if (s) s.textContent = oi === idx ? (dir === 1 ? '▲' : '▼') : '';
+      });
+      var linhas = Array.prototype.slice.call(tbody.children);
+      linhas.sort(function(a, b) {
+        var ta = a.children[idx], tb = b.children[idx];
+        return _tabOrdCmp(ta ? ta.textContent : '', tb ? tb.textContent : '', dir);
+      });
+      linhas.forEach(function(tr) { tbody.appendChild(tr); });
+    });
+  });
+  if (filtroInput && idxFiltro !== -1) {
+    filtroInput.addEventListener('input', function() {
+      var termo = _tabOrdNorm(filtroInput.value).trim();
+      Array.prototype.forEach.call(tbody.children, function(tr) {
+        var td = tr.children[idxFiltro];
+        var bate = !termo || _tabOrdNorm(td ? td.textContent : '').indexOf(termo) !== -1;
+        tr.style.display = bate ? '' : 'none';
+      });
+    });
+  }
+}
 
 (function inicializarTesouroDireto() {
   var corpo = document.getElementById('td-corpo');
@@ -9123,6 +9293,7 @@ var _SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJl
       var dataBase = dados.reduce(function(max, t) { return t.data_base > max ? t.data_base : max; }, '');
       if (elDataBase) elDataBase.textContent = 'Data-base: ' + fmtDataBR(dataBase);
       renderizar();
+      tornarTabelaOrdenavel(document.querySelector('.td-table'), document.getElementById('td-filtro-nome'));
     })
     .catch(function() {
       corpo.innerHTML = '<tr><td colspan="6" class="td-vazio">Não foi possível carregar os dados do Tesouro Direto no momento.</td></tr>';
@@ -9192,6 +9363,72 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 <script>
 var FOCUS_URL = 'https://segeufywrjmstfmfscdi.supabase.co/functions/v1/focus-boletim';
 
+// Ordenação (clique no cabeçalho) — genérica, reaproveitada em várias tabelas
+// do site. Cada popup é um documento separado, então esta função é
+// duplicada localmente em vez de compartilhada.
+function _tabOrdChave(t) {
+  t = String(t || '').trim();
+  if (!t || t === '—') return null;
+  var l = t.replace(/R\$\s?/gi, '').replace(/\s?[%x]$/i, '').trim();
+  var s = l.replace(/\./g, '').replace(',', '.');
+  if (/^-?\d+(\.\d+)?$/.test(s)) return { t: 'n', v: parseFloat(s) };
+  var m;
+  if ((m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t))) return { t: 'd', v: m[1] + m[2] + m[3] };
+  if ((m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t))) return { t: 'd', v: m[3] + m[2] + m[1] };
+  if ((m = /^(\d{2})\/(\d{4})$/.exec(t))) return { t: 'd', v: m[2] + m[1] };
+  return { t: 's', v: t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() };
+}
+function _tabOrdNorm(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+function _tabOrdCmp(txtA, txtB, dir) {
+  var A = _tabOrdChave(txtA), B = _tabOrdChave(txtB);
+  if (A === null && B === null) return 0;
+  if (A === null) return 1;
+  if (B === null) return -1;
+  if (A.t === B.t) { if (A.v < B.v) return -1 * dir; if (A.v > B.v) return 1 * dir; return 0; }
+  return _tabOrdNorm(txtA).localeCompare(_tabOrdNorm(txtB)) * dir;
+}
+function tornarTabelaOrdenavel(tabela, filtroInput) {
+  if (!tabela) return;
+  var tbody = tabela.querySelector('tbody');
+  if (!tbody) return;
+  var ths = tabela.querySelectorAll('thead > tr > th');
+  var dirCol = {}, idxFiltro = -1;
+  Array.prototype.forEach.call(ths, function(th, idx) {
+    var rotulo = th.textContent.trim();
+    if (!rotulo) return;
+    if (idxFiltro === -1) idxFiltro = idx;
+    th.style.cursor = 'pointer';
+    th.title = 'Clique para ordenar por ' + rotulo;
+    var seta = document.createElement('span');
+    seta.style.cssText = 'margin-left:5px;opacity:.7;font-size:10px;';
+    th.appendChild(seta);
+    th.addEventListener('click', function() {
+      var dir = dirCol[idx] === 1 ? -1 : 1;
+      dirCol = {}; dirCol[idx] = dir;
+      Array.prototype.forEach.call(ths, function(o, oi) {
+        var s = o.querySelector('span');
+        if (s) s.textContent = oi === idx ? (dir === 1 ? '▲' : '▼') : '';
+      });
+      var linhas = Array.prototype.slice.call(tbody.children);
+      linhas.sort(function(a, b) {
+        var ta = a.children[idx], tb = b.children[idx];
+        return _tabOrdCmp(ta ? ta.textContent : '', tb ? tb.textContent : '', dir);
+      });
+      linhas.forEach(function(tr) { tbody.appendChild(tr); });
+    });
+  });
+  if (filtroInput && idxFiltro !== -1) {
+    filtroInput.addEventListener('input', function() {
+      var termo = _tabOrdNorm(filtroInput.value).trim();
+      Array.prototype.forEach.call(tbody.children, function(tr) {
+        var td = tr.children[idxFiltro];
+        var bate = !termo || _tabOrdNorm(td ? td.textContent : '').indexOf(termo) !== -1;
+        tr.style.display = bate ? '' : 'none';
+      });
+    });
+  }
+}
+
 (function carregarFocus() {
   var corpo = document.getElementById('focus-corpo');
   var cabecalho = document.getElementById('focus-cabecalho');
@@ -9228,6 +9465,7 @@ var FOCUS_URL = 'https://segeufywrjmstfmfscdi.supabase.co/functions/v1/focus-bol
       if (nota && dados.dataColeta) {
         nota.textContent = 'Fonte: Banco Central do Brasil — Sistema de Expectativas de Mercado. Última coleta considerada: ' + fmtDataBR(dados.dataColeta) + '.';
       }
+      tornarTabelaOrdenavel(document.querySelector('.focus-table'));
     })
     .catch(function() {
       corpo.innerHTML = '<tr><td class="focus-vazio">Não foi possível carregar os dados do Boletim Focus no momento.</td></tr>';
@@ -9286,6 +9524,8 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 .basileia-busca button{padding:10px 18px;border:none;border-radius:8px;background:var(--orange);color:#fff;font-family:inherit;font-weight:600;font-size:13.5px;cursor:pointer;}
 .basileia-busca button:disabled{opacity:.6;cursor:default;}
 .basileia-busca-status{font-size:12.5px;color:var(--ink-soft);min-height:18px;margin-bottom:16px;}
+.filtro-tabela-input{padding:9px 14px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);width:280px;max-width:100%;background:#fff;margin-bottom:14px;display:block;}
+.filtro-tabela-input:focus{outline:none;border-color:var(--orange);}
 .basileia-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);box-shadow:var(--shadow);}
 .basileia-table{width:100%;border-collapse:collapse;min-width:520px;}
 .basileia-table thead th{background:var(--orange);color:#fff;text-align:left;padding:13px 16px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
@@ -9320,6 +9560,8 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
   </div>
   <p class="basileia-busca-status" id="basileia-busca-status"></p>
   <p class="basileia-busca-status" id="basileia-progresso"></p>
+
+  <input type="text" class="filtro-tabela-input" id="basileia-filtro" placeholder="Filtrar por nome...">
 
   <div class="basileia-table-wrap">
     <table class="basileia-table">
@@ -9396,6 +9638,73 @@ BANCOS.forEach(function(b) {
   corpo.appendChild(tr);
   linhasPorCnpj[b.cnpj8] = tr;
 });
+
+// Ordenação (clique no cabeçalho) e filtro por nome — genérico, reaproveitado
+// em várias tabelas do site. Cada popup é um documento separado, então esta
+// função é duplicada localmente em vez de compartilhada.
+function _tabOrdChave(t) {
+  t = String(t || '').trim();
+  if (!t || t === '—' || t === 'Consultando...') return null;
+  var l = t.replace(/R\$\s?/gi, '').replace(/\s?[%x]$/i, '').trim();
+  var s = l.replace(/\./g, '').replace(',', '.');
+  if (/^-?\d+(\.\d+)?$/.test(s)) return { t: 'n', v: parseFloat(s) };
+  var m;
+  if ((m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t))) return { t: 'd', v: m[1] + m[2] + m[3] };
+  if ((m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t))) return { t: 'd', v: m[3] + m[2] + m[1] };
+  if ((m = /^(\d{2})\/(\d{4})$/.exec(t))) return { t: 'd', v: m[2] + m[1] };
+  return { t: 's', v: t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() };
+}
+function _tabOrdNorm(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+function _tabOrdCmp(txtA, txtB, dir) {
+  var A = _tabOrdChave(txtA), B = _tabOrdChave(txtB);
+  if (A === null && B === null) return 0;
+  if (A === null) return 1;
+  if (B === null) return -1;
+  if (A.t === B.t) { if (A.v < B.v) return -1 * dir; if (A.v > B.v) return 1 * dir; return 0; }
+  return _tabOrdNorm(txtA).localeCompare(_tabOrdNorm(txtB)) * dir;
+}
+function tornarTabelaOrdenavel(tabela, filtroInput) {
+  if (!tabela) return;
+  var tbody = tabela.querySelector('tbody');
+  if (!tbody) return;
+  var ths = tabela.querySelectorAll('thead > tr > th');
+  var dirCol = {}, idxFiltro = -1;
+  Array.prototype.forEach.call(ths, function(th, idx) {
+    var rotulo = th.textContent.trim();
+    if (!rotulo) return;
+    if (idxFiltro === -1) idxFiltro = idx;
+    th.style.cursor = 'pointer';
+    th.title = 'Clique para ordenar por ' + rotulo;
+    var seta = document.createElement('span');
+    seta.style.cssText = 'margin-left:5px;opacity:.7;font-size:10px;';
+    th.appendChild(seta);
+    th.addEventListener('click', function() {
+      var dir = dirCol[idx] === 1 ? -1 : 1;
+      dirCol = {}; dirCol[idx] = dir;
+      Array.prototype.forEach.call(ths, function(o, oi) {
+        var s = o.querySelector('span');
+        if (s) s.textContent = oi === idx ? (dir === 1 ? '▲' : '▼') : '';
+      });
+      var linhas = Array.prototype.slice.call(tbody.children);
+      linhas.sort(function(a, b) {
+        var ta = a.children[idx], tb = b.children[idx];
+        return _tabOrdCmp(ta ? ta.textContent : '', tb ? tb.textContent : '', dir);
+      });
+      linhas.forEach(function(tr) { tbody.appendChild(tr); });
+    });
+  });
+  if (filtroInput && idxFiltro !== -1) {
+    filtroInput.addEventListener('input', function() {
+      var termo = _tabOrdNorm(filtroInput.value).trim();
+      Array.prototype.forEach.call(tbody.children, function(tr) {
+        var td = tr.children[idxFiltro];
+        var bate = !termo || _tabOrdNorm(td ? td.textContent : '').indexOf(termo) !== -1;
+        tr.style.display = bate ? '' : 'none';
+      });
+    });
+  }
+}
+tornarTabelaOrdenavel(document.querySelector('.basileia-table'), document.getElementById('basileia-filtro'));
 
 function processarLoteBancos(inicio) {
   if (inicio >= BANCOS.length) {
@@ -9487,6 +9796,8 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 .cp-legenda-grid div{font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
 .cp-legenda-grid strong{color:var(--ink);}
 .cp-busca-status{font-size:12.5px;color:var(--ink-soft);min-height:18px;margin-bottom:12px;}
+.filtro-tabela-input{padding:9px 14px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);width:280px;max-width:100%;background:#fff;margin-bottom:14px;display:block;}
+.filtro-tabela-input:focus{outline:none;border-color:var(--orange);}
 .cp-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);box-shadow:var(--shadow);margin-bottom:18px;}
 .cp-table{width:100%;border-collapse:collapse;min-width:1420px;}
 .cp-table thead th{background:var(--orange);color:#fff;text-align:left;padding:13px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
@@ -9529,6 +9840,8 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
   </div>
 
   <p class="cp-busca-status" id="cp-status">Carregando indicadores...</p>
+
+  <input type="text" class="filtro-tabela-input" id="cp-filtro" placeholder="Filtrar por nome...">
 
   <div class="cp-table-wrap">
     <table class="cp-table">
@@ -9586,6 +9899,73 @@ function classificarAlavancagem(v) {
   return 'cp-valor-atencao';
 }
 
+// Ordenação (clique no cabeçalho) e filtro por nome — genérico, reaproveitado
+// em várias tabelas do site (ver comentário maior na cópia usada na Análise
+// de Carteira). Cada popup é um documento separado, então esta função é
+// duplicada localmente em vez de compartilhada.
+function _tabOrdChave(t) {
+  t = String(t || '').trim();
+  if (!t || t === '—') return null;
+  var l = t.replace(/R\$\s?/gi, '').replace(/\s?[%x]$/i, '').trim();
+  var s = l.replace(/\./g, '').replace(',', '.');
+  if (/^-?\d+(\.\d+)?$/.test(s)) return { t: 'n', v: parseFloat(s) };
+  var m;
+  if ((m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t))) return { t: 'd', v: m[1] + m[2] + m[3] };
+  if ((m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t))) return { t: 'd', v: m[3] + m[2] + m[1] };
+  if ((m = /^(\d{2})\/(\d{4})$/.exec(t))) return { t: 'd', v: m[2] + m[1] };
+  return { t: 's', v: t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() };
+}
+function _tabOrdNorm(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+function _tabOrdCmp(txtA, txtB, dir) {
+  var A = _tabOrdChave(txtA), B = _tabOrdChave(txtB);
+  if (A === null && B === null) return 0;
+  if (A === null) return 1;
+  if (B === null) return -1;
+  if (A.t === B.t) { if (A.v < B.v) return -1 * dir; if (A.v > B.v) return 1 * dir; return 0; }
+  return _tabOrdNorm(txtA).localeCompare(_tabOrdNorm(txtB)) * dir;
+}
+function tornarTabelaOrdenavel(tabela, filtroInput) {
+  if (!tabela) return;
+  var tbody = tabela.querySelector('tbody');
+  if (!tbody) return;
+  var ths = tabela.querySelectorAll('thead > tr > th');
+  var dirCol = {}, idxFiltro = -1;
+  Array.prototype.forEach.call(ths, function(th, idx) {
+    var rotulo = th.textContent.trim();
+    if (!rotulo) return;
+    if (idxFiltro === -1) idxFiltro = idx;
+    th.style.cursor = 'pointer';
+    th.title = 'Clique para ordenar por ' + rotulo;
+    var seta = document.createElement('span');
+    seta.style.cssText = 'margin-left:5px;opacity:.7;font-size:10px;';
+    th.appendChild(seta);
+    th.addEventListener('click', function() {
+      var dir = dirCol[idx] === 1 ? -1 : 1;
+      dirCol = {}; dirCol[idx] = dir;
+      Array.prototype.forEach.call(ths, function(o, oi) {
+        var s = o.querySelector('span');
+        if (s) s.textContent = oi === idx ? (dir === 1 ? '▲' : '▼') : '';
+      });
+      var linhas = Array.prototype.slice.call(tbody.children);
+      linhas.sort(function(a, b) {
+        var ta = a.children[idx], tb = b.children[idx];
+        return _tabOrdCmp(ta ? ta.textContent : '', tb ? tb.textContent : '', dir);
+      });
+      linhas.forEach(function(tr) { tbody.appendChild(tr); });
+    });
+  });
+  if (filtroInput && idxFiltro !== -1) {
+    filtroInput.addEventListener('input', function() {
+      var termo = _tabOrdNorm(filtroInput.value).trim();
+      Array.prototype.forEach.call(tbody.children, function(tr) {
+        var td = tr.children[idxFiltro];
+        var bate = !termo || _tabOrdNorm(td ? td.textContent : '').indexOf(termo) !== -1;
+        tr.style.display = bate ? '' : 'none';
+      });
+    });
+  }
+}
+
 var corpo = document.getElementById('cp-corpo');
 // Nome "status" colide com a propriedade global window.status (barra de
 // status legada do navegador): "var status = elemento" nunca guarda o
@@ -9621,6 +10001,7 @@ fetch(SB_URL + '/rest/v1/credito_privado_indicadores?select=*&order=nome.asc', {
         '<td>' + fmtX(l.liquidez_corrente) + '</td>' +
         '</tr>';
     }).join('');
+    tornarTabelaOrdenavel(document.querySelector('.cp-table'), document.getElementById('cp-filtro'));
   })
   .catch(function(e) {
     statusEl.textContent = 'Não foi possível carregar os indicadores agora. Tente novamente em instantes.';
