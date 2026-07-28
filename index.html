@@ -3092,9 +3092,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var colRFPos = ['Ativo','Tipo','Aplicação','Vencimento','Taxa','Valor aplicado','Posição','Valor líquido','Cupons pagos até o momento','Lucro (R$)','Lucro (%)',''];
     var colRFEmis = ['Ativo','Instituição/emissor identificado','Caixa','Receita líquida','Lucro/Prejuízo','Dívida bruta','Dívida líquida','EBITDA','Dívida bruta/EBITDA','Margem líquida','Índice de Basileia (bancos)'];
     var colCetip = ['', 'Fundo', 'Qtd. cotas', 'Valor da cota', 'Valorização', 'Valor líquido', 'Dia pag. rendimento', 'Último dividendo pago', 'Yield (mês)', ''];
-    var colPrevidencia = ['Fundo', 'Categoria', 'Posição', 'Rentabilidade', 'Valor aplicado'];
-    var colCOE = ['Operação', 'Categoria', 'Posição', 'Rentabilidade', 'Valor aplicado', 'Vencimento'];
-    var colTesouro = ['Título', 'Categoria', 'Posição', 'Quantidade', 'Valor aplicado', 'Vencimento', 'Cupons pagos até o momento', 'Lucro (R$)', 'Lucro (%)'];
+    var colPrevidencia = ['Fundo', 'Categoria', 'Posição', 'Rentabilidade', 'Valor aplicado', ''];
+    var colCOE = ['Operação', 'Categoria', 'Posição', 'Rentabilidade', 'Valor aplicado', 'Vencimento', ''];
+    var colTesouro = ['Título', 'Categoria', 'Posição', 'Quantidade', 'Valor aplicado', 'Vencimento', 'Cupons pagos até o momento', 'Lucro (R$)', 'Lucro (%)', ''];
 
     if (!novaJanela || novaJanela.closed) return;
 
@@ -3384,6 +3384,20 @@ h2{font-size:32px;letter-spacing:-.02em;}
       itens.forEach(function(item, idx) {
         var tr = D.createElement('tr');
         linhas(item, idx).forEach(function(texto) { tr.appendChild(cel(D, texto)); });
+        Array.prototype.forEach.call(tr.children, function(td) { tornarCelulaEditavel(td); });
+        var tdAcao = D.createElement('td');
+        tdAcao.style.textAlign = 'center';
+        var btnExcluir = D.createElement('button');
+        btnExcluir.type = 'button';
+        btnExcluir.className = 'btn-excluir-linha';
+        btnExcluir.title = 'Remover este item da análise';
+        btnExcluir.textContent = '🗑️';
+        btnExcluir.addEventListener('click', function() {
+          if (!novaJanela.confirm('Remover "' + (item.nome || 'este item') + '" desta análise?')) return;
+          if (tr.parentNode) tr.parentNode.removeChild(tr);
+        });
+        tdAcao.appendChild(btnExcluir);
+        tr.appendChild(tdAcao);
         corpo.appendChild(tr);
       });
     }
@@ -3455,13 +3469,33 @@ h2{font-size:32px;letter-spacing:-.02em;}
           if (lucroPct !== null) tdLucPct.className = lucroPct >= 0 ? 'pos' : 'neg';
           tr.appendChild(tdLucPct);
 
+          var tdAcaoTesouro = D.createElement('td');
+          tdAcaoTesouro.style.textAlign = 'center';
+          var btnExcluirTesouro = D.createElement('button');
+          btnExcluirTesouro.type = 'button';
+          btnExcluirTesouro.className = 'btn-excluir-linha';
+          btnExcluirTesouro.title = 'Remover este título da análise';
+          btnExcluirTesouro.textContent = '🗑️';
+          tdAcaoTesouro.appendChild(btnExcluirTesouro);
+          tr.appendChild(tdAcaoTesouro);
+
           Array.prototype.forEach.call(tr.children, function(td) {
-            if (td !== tdCup) tornarCelulaEditavel(td);
+            if (td !== tdCup && td !== tdAcaoTesouro) tornarCelulaEditavel(td);
           });
 
           corpoTesouro.appendChild(tr);
 
           var posicaoAtual = valor, valorAplicadoAtual = valorAplicado, cuponsAtual = 0, lucroAtualRS = lucroRS;
+
+          btnExcluirTesouro.addEventListener('click', function() {
+            if (!novaJanela.confirm('Remover "' + (item.nome || 'este título') + '" desta análise?')) return;
+            totLucroTesouro -= (lucroAtualRS !== null ? lucroAtualRS : 0);
+            if (totLucroTesouroEl) {
+              totLucroTesouroEl.textContent = 'R$ ' + formatarNumero(totLucroTesouro, 2);
+              totLucroTesouroEl.className = 'resumo-valor ' + (totLucroTesouro >= 0 ? 'pos' : 'neg');
+            }
+            if (tr.parentNode) tr.parentNode.removeChild(tr);
+          });
           function recomputarLucroTesouro() {
             var novoLucroRS = (posicaoAtual !== null && valorAplicadoAtual !== null)
               ? posicaoAtual - valorAplicadoAtual + cuponsAtual : null;
@@ -5158,11 +5192,18 @@ h2{font-size:32px;letter-spacing:-.02em;}
           sub.textContent = 'Índice de Basileia e demais indicadores dos bancos emissores identificados nesta carteira, via Banco Central (IF.Data).';
           secao.appendChild(sub);
 
+          var filtroBcb = D.createElement('input');
+          filtroBcb.type = 'text';
+          filtroBcb.className = 'filtro-tabela-input';
+          filtroBcb.placeholder = 'Filtrar por nome...';
+          secao.appendChild(filtroBcb);
+
           var wrap = D.createElement('div');
           wrap.className = 'table-wrap';
           var table = D.createElement('table');
+          table.id = 'tabela-bcb-rf';
           table.innerHTML = '<thead><tr><th>Instituição</th><th>Período</th><th>Índice de Basileia</th>' +
-            '<th>Caixa (disponibilidades)</th><th>Captações</th><th>Lucro líquido</th><th>Receita</th></tr></thead><tbody></tbody>';
+            '<th>Caixa (disponibilidades)</th><th>Captações</th><th>Lucro líquido</th><th>Receita</th><th></th></tr></thead><tbody></tbody>';
           var tbody = table.querySelector('tbody');
           linhas.forEach(function(l) {
             var tr = D.createElement('tr');
@@ -5177,10 +5218,25 @@ h2{font-size:32px;letter-spacing:-.02em;}
               var v = l[campo] !== null && l[campo] !== undefined ? Number(l[campo]) : NaN;
               tr.appendChild(cel(D, !isNaN(v) ? formatarCompacto(v) : '—'));
             });
+            Array.prototype.forEach.call(tr.children, function(td) { habilitarMarcacaoManual(td); });
+            var tdAcao = D.createElement('td');
+            tdAcao.style.textAlign = 'center';
+            var btnExcluir = D.createElement('button');
+            btnExcluir.type = 'button';
+            btnExcluir.className = 'btn-excluir-linha';
+            btnExcluir.title = 'Remover esta instituição da lista';
+            btnExcluir.textContent = '🗑️';
+            btnExcluir.addEventListener('click', function() {
+              if (tr.parentNode) tr.parentNode.removeChild(tr);
+            });
+            tdAcao.appendChild(btnExcluir);
+            tr.appendChild(tdAcao);
             tbody.appendChild(tr);
           });
           wrap.appendChild(table);
           secao.appendChild(wrap);
+          tornarTabelaOrdenavel(D, table, filtroBcb);
+          tornarColunasAjustaveis(table);
 
           return processarCreditoPrivadoRF();
         });
@@ -5224,12 +5280,20 @@ h2{font-size:32px;letter-spacing:-.02em;}
           h2.style.cssText = 'border-top:1px solid var(--line);padding-top:20px;margin-top:4px;';
           h2.textContent = 'Indicadores fundamentalistas — Crédito Privado';
           secao.appendChild(h2);
+
+          var filtroCp = D.createElement('input');
+          filtroCp.type = 'text';
+          filtroCp.className = 'filtro-tabela-input';
+          filtroCp.placeholder = 'Filtrar por nome...';
+          secao.appendChild(filtroCp);
+
           var wrap = D.createElement('div');
           wrap.className = 'table-wrap';
           var table = D.createElement('table');
+          table.id = 'tabela-cp-rf';
           table.innerHTML = '<thead><tr><th>Empresa</th><th>Segmento</th><th>Rating</th><th>Referência</th><th>Receita líquida</th>' +
             '<th>EBITDA</th><th>Margem EBITDA</th><th>Lucro líquido</th><th>Caixa</th><th>Dívida bruta</th>' +
-            '<th>Dívida líquida</th><th>Dív.líq./EBITDA</th><th>Liquidez corrente</th></tr></thead><tbody></tbody>';
+            '<th>Dívida líquida</th><th>Dív.líq./EBITDA</th><th>Liquidez corrente</th><th></th></tr></thead><tbody></tbody>';
           var tbody = table.querySelector('tbody');
           linhas.forEach(function(l) {
             var tr = D.createElement('tr');
@@ -5248,10 +5312,25 @@ h2{font-size:32px;letter-spacing:-.02em;}
             if (typeof l.div_liq_ebitda === 'number') tdAlav.className = l.div_liq_ebitda <= 2.5 ? 'pos' : (l.div_liq_ebitda > 4 ? 'neg' : '');
             tr.appendChild(tdAlav);
             tr.appendChild(cel(D, typeof l.liquidez_corrente === 'number' ? formatarNumero(l.liquidez_corrente, 2) : '—'));
+            Array.prototype.forEach.call(tr.children, function(td) { habilitarMarcacaoManual(td); });
+            var tdAcao = D.createElement('td');
+            tdAcao.style.textAlign = 'center';
+            var btnExcluir = D.createElement('button');
+            btnExcluir.type = 'button';
+            btnExcluir.className = 'btn-excluir-linha';
+            btnExcluir.title = 'Remover esta empresa da lista';
+            btnExcluir.textContent = '🗑️';
+            btnExcluir.addEventListener('click', function() {
+              if (tr.parentNode) tr.parentNode.removeChild(tr);
+            });
+            tdAcao.appendChild(btnExcluir);
+            tr.appendChild(tdAcao);
             tbody.appendChild(tr);
           });
           wrap.appendChild(table);
           secao.appendChild(wrap);
+          tornarTabelaOrdenavel(D, table, filtroCp);
+          tornarColunasAjustaveis(table);
 
           return processarXP(0);
         });
