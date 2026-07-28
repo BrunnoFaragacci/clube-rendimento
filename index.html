@@ -2611,7 +2611,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
       ? '<div class="resumo-card"><span class="resumo-label">Total em COE</span><span class="resumo-valor">R$ ' + formatarNumero(totCOE, 2) + '</span></div>'
       : '';
     var resumoTesouro = opcoes.tesouro
-      ? '<div class="resumo-card"><span class="resumo-label">Total no Tesouro Direto</span><span class="resumo-valor">R$ ' + formatarNumero(totTesouroPlanilha, 2) + '</span></div>'
+      ? '<div class="resumo-card"><span class="resumo-label">Total no Tesouro Direto</span><span class="resumo-valor">R$ ' + formatarNumero(totTesouroPlanilha, 2) + '</span></div>' +
+        '<div class="resumo-card"><span class="resumo-label">Lucro total (R$)</span><span class="resumo-valor" id="tot-lucro-tesouro">—</span></div>'
       : '';
     var sPrevidencia = opcoes.previdencia
       ? '<div class="pdf-secao"><h2 class="quadro-titulo" style="border-top:1px solid var(--line);padding-top:20px;margin-top:4px;">Previdência Privada</h2>' +
@@ -2732,7 +2733,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     ) : '';
 
         var numCards = (opcoes.rv?5:0) + ((opcoes.acoes && !opcoes.fiis)?1:0) + (opcoes.rf?2:0) + (opcoes.cetip?3:0) +
-          (opcoes.previdencia?1:0) + (opcoes.coe?1:0) + (opcoes.tesouro?1:0);
+          (opcoes.previdencia?1:0) + (opcoes.coe?1:0) + (opcoes.tesouro?2:0);
     var gridCols = 'repeat(' + numCards + ',1fr)';
 
     return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
@@ -3088,7 +3089,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var colCetip = ['', 'Fundo', 'Qtd. cotas', 'Valor da cota', 'Valorização', 'Valor líquido', 'Dia pag. rendimento', 'Último dividendo pago', 'Yield (mês)', ''];
     var colPrevidencia = ['Fundo', 'Categoria', 'Posição', 'Rentabilidade', 'Valor aplicado'];
     var colCOE = ['Operação', 'Categoria', 'Posição', 'Rentabilidade', 'Valor aplicado', 'Vencimento'];
-    var colTesouro = ['Título', 'Categoria', 'Posição', 'Quantidade', 'Valor aplicado', 'Vencimento'];
+    var colTesouro = ['Título', 'Categoria', 'Posição', 'Quantidade', 'Valor aplicado', 'Vencimento', 'Cupons pagos até o momento', 'Lucro (R$)', 'Lucro (%)'];
 
     if (!novaJanela || novaJanela.closed) return;
 
@@ -3313,16 +3314,94 @@ h2{font-size:32px;letter-spacing:-.02em;}
         ];
       });
     }
+    // Tesouro Direto: mesma lógica de cupons/lucro editáveis já usada em
+    // Renda Fixa (ver processarRFPos) — cupons pagos é um campo editável (a
+    // planilha não traz esse dado), e o lucro é recalculado ao editar
+    // qualquer um dos três valores (posição, valor aplicado ou cupons).
     if (opcoes.tesouro) {
-      preencherTabelaSimples('tesouro-analise-corpo', tesouroItens, function(item) {
-        return [
-          item.nome, item.categoria || '—',
-          typeof item.posicao === 'number' ? 'R$ ' + formatarNumero(item.posicao, 2) : '—',
-          typeof item.quantidade === 'number' ? formatarNumero(item.quantidade, 2) : '—',
-          typeof item.valorAplicado === 'number' ? 'R$ ' + formatarNumero(item.valorAplicado, 2) : '—',
-          item.vencimento || '—'
-        ];
-      });
+      var corpoTesouro = D.getElementById('tesouro-analise-corpo');
+      if (corpoTesouro) {
+        corpoTesouro.innerHTML = '';
+        tesouroItens.forEach(function(item) {
+          var valor = typeof item.posicao === 'number' ? item.posicao : 0;
+          var valorAplicado = typeof item.valorAplicado === 'number' ? item.valorAplicado : null;
+          var lucroRS  = (valor && valorAplicado) ? valor - valorAplicado : null;
+          var lucroPct = (lucroRS !== null && valorAplicado) ? (lucroRS / valorAplicado) * 100 : null;
+          if (lucroRS !== null) totLucroTesouro += lucroRS;
+
+          var tr = D.createElement('tr');
+          tr.appendChild(cel(D, item.nome || '—'));
+          tr.appendChild(cel(D, item.categoria || '—'));
+          var tdPosicao = cel(D, valor > 0 ? 'R$ ' + formatarNumero(valor, 2) : '—');
+          tr.appendChild(tdPosicao);
+          tr.appendChild(cel(D, typeof item.quantidade === 'number' ? formatarNumero(item.quantidade, 2) : '—'));
+          var tdValAplic = cel(D, valorAplicado !== null ? 'R$ ' + formatarNumero(valorAplicado, 2) : '—');
+          tr.appendChild(tdValAplic);
+          tr.appendChild(cel(D, item.vencimento || '—'));
+
+          var tdCup = D.createElement('td');
+          tdCup.className = 'col-cupons';
+          tdCup.style.cssText = 'padding:8px 14px;vertical-align:middle;';
+          var inpCup = D.createElement('input');
+          inpCup.type = 'number';
+          inpCup.className = 'input-cupons';
+          inpCup.step = '0.01';
+          inpCup.min = '0';
+          inpCup.placeholder = 'R$ 0,00';
+          inpCup.title = 'Insira o valor de cupons pagos até o momento';
+          tdCup.appendChild(inpCup);
+          tr.appendChild(tdCup);
+
+          var tdLucRS = cel(D, lucroRS !== null ? 'R$ ' + formatarNumero(lucroRS, 2) : '—');
+          if (lucroRS !== null) tdLucRS.className = lucroRS >= 0 ? 'pos' : 'neg';
+          tr.appendChild(tdLucRS);
+          var tdLucPct = cel(D, lucroPct !== null ? formatarNumero(lucroPct, 2) + '%' : '—');
+          if (lucroPct !== null) tdLucPct.className = lucroPct >= 0 ? 'pos' : 'neg';
+          tr.appendChild(tdLucPct);
+
+          Array.prototype.forEach.call(tr.children, function(td) {
+            if (td !== tdCup) tornarCelulaEditavel(td);
+          });
+
+          corpoTesouro.appendChild(tr);
+
+          var posicaoAtual = valor, valorAplicadoAtual = valorAplicado, cuponsAtual = 0, lucroAtualRS = lucroRS;
+          function recomputarLucroTesouro() {
+            var novoLucroRS = (posicaoAtual !== null && valorAplicadoAtual !== null)
+              ? posicaoAtual - valorAplicadoAtual + cuponsAtual : null;
+            var novoLucroPct = (novoLucroRS !== null && valorAplicadoAtual)
+              ? (novoLucroRS / valorAplicadoAtual) * 100 : null;
+            tdLucRS.textContent  = novoLucroRS  !== null ? 'R$ ' + formatarNumero(novoLucroRS,  2) : '—';
+            tdLucRS.className    = novoLucroRS  !== null ? (novoLucroRS  >= 0 ? 'pos' : 'neg') : '';
+            tdLucPct.textContent = novoLucroPct !== null ? formatarNumero(novoLucroPct, 2) + '%' : '—';
+            tdLucPct.className   = novoLucroPct !== null ? (novoLucroPct >= 0 ? 'pos' : 'neg') : '';
+            totLucroTesouro += (novoLucroRS !== null ? novoLucroRS : 0) - (lucroAtualRS !== null ? lucroAtualRS : 0);
+            lucroAtualRS = novoLucroRS;
+            if (totLucroTesouroEl) {
+              totLucroTesouroEl.textContent = 'R$ ' + formatarNumero(totLucroTesouro, 2);
+              totLucroTesouroEl.className = 'resumo-valor ' + (totLucroTesouro >= 0 ? 'pos' : 'neg');
+            }
+          }
+          inpCup.addEventListener('input', function() {
+            cuponsAtual = parseFloat(inpCup.value) || 0;
+            recomputarLucroTesouro();
+          });
+          tdPosicao._recalcularAoEditar = function(novo) {
+            var v = parseNumeroBR(novo);
+            posicaoAtual = isNaN(v) ? null : v;
+            recomputarLucroTesouro();
+          };
+          tdValAplic._recalcularAoEditar = function(novo) {
+            var v = parseNumeroBR(novo);
+            valorAplicadoAtual = isNaN(v) ? null : v;
+            recomputarLucroTesouro();
+          };
+        });
+      }
+      if (totLucroTesouroEl) {
+        totLucroTesouroEl.textContent = 'R$ ' + formatarNumero(totLucroTesouro, 2);
+        totLucroTesouroEl.className = 'resumo-valor ' + (totLucroTesouro >= 0 ? 'pos' : 'neg');
+      }
     }
 
     // Botão "Exportar PDF": imprime só o resumo (quadrantes) e a tabela da
@@ -3512,6 +3591,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var totRfEl = D.getElementById('tot-rf');
     var totLucroRFEl = D.getElementById('tot-lucro-rf');
     var totLucroRF = 0; // acumula lucro (R$) de renda fixa, ajustado quando cupons são editados
+    var totLucroTesouroEl = D.getElementById('tot-lucro-tesouro');
+    var totLucroTesouro = 0; // acumula lucro (R$) do Tesouro Direto, ajustado quando cupons são editados
     var totRfTipoEls = {};
     TIPOS_RF.forEach(function(t) { totRfTipoEls[t] = D.getElementById('tot-rf-tipo-' + t); });
     var totCetipEl    = D.getElementById('tot-cetip');
