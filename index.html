@@ -5166,14 +5166,16 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var secao = D.getElementById('bcb-rf-secao');
       if (!secao) return processarCreditoPrivadoRF();
 
-      var cnpjsSet = {};
+      var totalPorCnpj8Bcb = {};
       rfItens.forEach(function(item) {
         var tipoNorm = String(item.tipo || '').toUpperCase().trim();
         if (TIPOS_RF_BANCARIO.indexOf(tipoNorm) === -1) return;
         var cnpj8 = cnpj8Bancario(item.emissor);
-        if (cnpj8) cnpjsSet[cnpj8] = true;
+        if (!cnpj8) return;
+        var valorItem = typeof item.posicao === 'number' ? item.posicao : (typeof item.valorLiquido === 'number' ? item.valorLiquido : 0);
+        totalPorCnpj8Bcb[cnpj8] = (totalPorCnpj8Bcb[cnpj8] || 0) + valorItem;
       });
-      var listaCnpj8 = Object.keys(cnpjsSet);
+      var listaCnpj8 = Object.keys(totalPorCnpj8Bcb);
       if (!listaCnpj8.length || !window.supabaseClient) return processarCreditoPrivadoRF();
 
       return Promise.resolve(window.supabaseClient.from('bcb_dados_financeiros').select('*').in('cnpj8', listaCnpj8))
@@ -5205,12 +5207,14 @@ h2{font-size:32px;letter-spacing:-.02em;}
           wrap.className = 'table-wrap';
           var table = D.createElement('table');
           table.id = 'tabela-bcb-rf';
-          table.innerHTML = '<thead><tr><th>Instituição</th><th>Período</th><th>Índice de Basileia</th>' +
+          table.innerHTML = '<thead><tr><th>Instituição</th><th>Total em Carteira</th><th>Período</th><th>Índice de Basileia</th>' +
             '<th>Caixa (disponibilidades)</th><th>Captações</th><th>Lucro líquido</th><th>Receita</th><th></th></tr></thead><tbody></tbody>';
           var tbody = table.querySelector('tbody');
           linhas.forEach(function(l) {
             var tr = D.createElement('tr');
             tr.appendChild(cel(D, l.nome_instituicao || '—'));
+            var totalCarteira = totalPorCnpj8Bcb[l.cnpj8] || 0;
+            tr.appendChild(cel(D, totalCarteira > 0 ? 'R$ ' + formatarNumero(totalCarteira, 2) : '—'));
             tr.appendChild(cel(D, l.periodo ? formatarPeriodoBCB(l.periodo) : '—'));
             var basileia = l.indice_basileia !== null && l.indice_basileia !== undefined ? Number(l.indice_basileia) : null;
             var tdBas = cel(D, basileia !== null ? formatarNumero(basileia * 100, 2) + '%' : '—');
@@ -5259,14 +5263,16 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var secao = D.getElementById('cp-rf-secao');
       if (!secao) return processarXP(0);
 
-      var cnpjsSet = {};
+      var totalPorCnpj8Cp = {};
       rfItens.forEach(function(item) {
         var tipoNorm = String(item.tipo || '').toUpperCase().trim();
         if (TIPOS_RF_BANCARIO.indexOf(tipoNorm) !== -1) return;
         var cnpj8 = cnpj8CreditoPrivado(item.emissor);
-        if (cnpj8) cnpjsSet[cnpj8] = true;
+        if (!cnpj8) return;
+        var valorItem = typeof item.posicao === 'number' ? item.posicao : (typeof item.valorLiquido === 'number' ? item.valorLiquido : 0);
+        totalPorCnpj8Cp[cnpj8] = (totalPorCnpj8Cp[cnpj8] || 0) + valorItem;
       });
-      var listaCnpj8 = Object.keys(cnpjsSet);
+      var listaCnpj8 = Object.keys(totalPorCnpj8Cp);
       if (!listaCnpj8.length || !window.supabaseClient) return processarXP(0);
 
       return Promise.resolve(window.supabaseClient.from('credito_privado_indicadores').select('*').in('cnpj8', listaCnpj8))
@@ -5294,13 +5300,15 @@ h2{font-size:32px;letter-spacing:-.02em;}
           wrap.className = 'table-wrap';
           var table = D.createElement('table');
           table.id = 'tabela-cp-rf';
-          table.innerHTML = '<thead><tr><th>Empresa</th><th>Segmento</th><th>Rating</th><th>Referência</th><th>Receita líquida</th>' +
+          table.innerHTML = '<thead><tr><th>Empresa</th><th>Total em Carteira</th><th>Segmento</th><th>Rating</th><th>Referência</th><th>Receita líquida</th>' +
             '<th>EBITDA</th><th>Margem EBITDA</th><th>Lucro líquido</th><th>Caixa</th><th>Dívida bruta</th>' +
             '<th>Dívida líquida</th><th>Dív.líq./EBITDA</th><th>Liquidez corrente</th><th></th></tr></thead><tbody></tbody>';
           var tbody = table.querySelector('tbody');
           linhas.forEach(function(l) {
             var tr = D.createElement('tr');
             tr.appendChild(cel(D, l.nome || '—'));
+            var totalCarteiraCp = totalPorCnpj8Cp[l.cnpj8] || 0;
+            tr.appendChild(cel(D, totalCarteiraCp > 0 ? 'R$ ' + formatarNumero(totalCarteiraCp, 2) : '—'));
             tr.appendChild(cel(D, l.segmento || '—'));
             tr.appendChild(cel(D, l.rating ? (l.rating + (l.rating_agencia ? ' (' + l.rating_agencia + ')' : '')) : '—'));
             tr.appendChild(cel(D, l.referencia ? formatarPeriodoFII(l.referencia) : '—'));
