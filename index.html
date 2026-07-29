@@ -5684,9 +5684,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var totalSemDados = totalPorEmissorSemDados[chave] || 0;
             trSem.appendChild(cel(D, totalSemDados > 0 ? 'R$ ' + formatarNumero(totalSemDados, 2) : '—'));
             var tdNota = cel(D, 'Companhia não é aberta na CVM — sem dados públicos disponíveis');
-            tdNota.colSpan = 12;
             tdNota.style.cssText = 'color:var(--ink-soft);font-style:italic;';
             trSem.appendChild(tdNota);
+            for (var iColSemDados = 0; iColSemDados < 11; iColSemDados++) {
+              trSem.appendChild(cel(D, '—'));
+            }
             Array.prototype.forEach.call(trSem.children, function(td) { tornarCelulaEditavel(td); });
             var tdAcaoSem = D.createElement('td');
             tdAcaoSem.style.textAlign = 'center';
