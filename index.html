@@ -9651,13 +9651,13 @@ var _SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJl
 function _tabOrdChave(t) {
   t = String(t || '').trim();
   if (!t || t === '—') return null;
-  var l = t.replace(/R\$\s?/gi, '').replace(/\s?[%x]$/i, '').trim();
-  var s = l.replace(/\./g, '').replace(',', '.');
-  if (/^-?\d+(\.\d+)?$/.test(s)) return { t: 'n', v: parseFloat(s) };
+  var l = t.replace(/R\\$\\s?/gi, '').replace(/\\s?[%x]$/i, '').trim();
+  var s = l.replace(/\\./g, '').replace(',', '.');
+  if (/^-?\\d+(\\.\\d+)?$/.test(s)) return { t: 'n', v: parseFloat(s) };
   var m;
-  if ((m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t))) return { t: 'd', v: m[1] + m[2] + m[3] };
-  if ((m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t))) return { t: 'd', v: m[3] + m[2] + m[1] };
-  if ((m = /^(\d{2})\/(\d{4})$/.exec(t))) return { t: 'd', v: m[2] + m[1] };
+  if ((m = /^(\\d{4})-(\\d{2})-(\\d{2})/.exec(t))) return { t: 'd', v: m[1] + m[2] + m[3] };
+  if ((m = /^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/.exec(t))) return { t: 'd', v: m[3] + m[2] + m[1] };
+  if ((m = /^(\\d{2})\\/(\\d{4})$/.exec(t))) return { t: 'd', v: m[2] + m[1] };
   return { t: 's', v: t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() };
 }
 function _tabOrdNorm(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
@@ -9995,13 +9995,13 @@ var FOCUS_URL = 'https://segeufywrjmstfmfscdi.supabase.co/functions/v1/focus-bol
 function _tabOrdChave(t) {
   t = String(t || '').trim();
   if (!t || t === '—') return null;
-  var l = t.replace(/R\$\s?/gi, '').replace(/\s?[%x]$/i, '').trim();
-  var s = l.replace(/\./g, '').replace(',', '.');
-  if (/^-?\d+(\.\d+)?$/.test(s)) return { t: 'n', v: parseFloat(s) };
+  var l = t.replace(/R\\$\\s?/gi, '').replace(/\\s?[%x]$/i, '').trim();
+  var s = l.replace(/\\./g, '').replace(',', '.');
+  if (/^-?\\d+(\\.\\d+)?$/.test(s)) return { t: 'n', v: parseFloat(s) };
   var m;
-  if ((m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t))) return { t: 'd', v: m[1] + m[2] + m[3] };
-  if ((m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t))) return { t: 'd', v: m[3] + m[2] + m[1] };
-  if ((m = /^(\d{2})\/(\d{4})$/.exec(t))) return { t: 'd', v: m[2] + m[1] };
+  if ((m = /^(\\d{4})-(\\d{2})-(\\d{2})/.exec(t))) return { t: 'd', v: m[1] + m[2] + m[3] };
+  if ((m = /^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/.exec(t))) return { t: 'd', v: m[3] + m[2] + m[1] };
+  if ((m = /^(\\d{2})\\/(\\d{4})$/.exec(t))) return { t: 'd', v: m[2] + m[1] };
   return { t: 's', v: t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() };
 }
 function _tabOrdNorm(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
@@ -10418,13 +10418,13 @@ BANCOS.forEach(function(b) {
 function _tabOrdChave(t) {
   t = String(t || '').trim();
   if (!t || t === '—' || t === 'Consultando...') return null;
-  var l = t.replace(/R\$\s?/gi, '').replace(/\s?[%x]$/i, '').trim();
-  var s = l.replace(/\./g, '').replace(',', '.');
-  if (/^-?\d+(\.\d+)?$/.test(s)) return { t: 'n', v: parseFloat(s) };
+  var l = t.replace(/R\\$\\s?/gi, '').replace(/\\s?[%x]$/i, '').trim();
+  var s = l.replace(/\\./g, '').replace(',', '.');
+  if (/^-?\\d+(\\.\\d+)?$/.test(s)) return { t: 'n', v: parseFloat(s) };
   var m;
-  if ((m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t))) return { t: 'd', v: m[1] + m[2] + m[3] };
-  if ((m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t))) return { t: 'd', v: m[3] + m[2] + m[1] };
-  if ((m = /^(\d{2})\/(\d{4})$/.exec(t))) return { t: 'd', v: m[2] + m[1] };
+  if ((m = /^(\\d{4})-(\\d{2})-(\\d{2})/.exec(t))) return { t: 'd', v: m[1] + m[2] + m[3] };
+  if ((m = /^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/.exec(t))) return { t: 'd', v: m[3] + m[2] + m[1] };
+  if ((m = /^(\\d{2})\\/(\\d{4})$/.exec(t))) return { t: 'd', v: m[2] + m[1] };
   return { t: 's', v: t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() };
 }
 function _tabOrdNorm(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
@@ -10817,13 +10817,13 @@ function classificarAlavancagem(v) {
 function _tabOrdChave(t) {
   t = String(t || '').trim();
   if (!t || t === '—') return null;
-  var l = t.replace(/R\$\s?/gi, '').replace(/\s?[%x]$/i, '').trim();
-  var s = l.replace(/\./g, '').replace(',', '.');
-  if (/^-?\d+(\.\d+)?$/.test(s)) return { t: 'n', v: parseFloat(s) };
+  var l = t.replace(/R\\$\\s?/gi, '').replace(/\\s?[%x]$/i, '').trim();
+  var s = l.replace(/\\./g, '').replace(',', '.');
+  if (/^-?\\d+(\\.\\d+)?$/.test(s)) return { t: 'n', v: parseFloat(s) };
   var m;
-  if ((m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t))) return { t: 'd', v: m[1] + m[2] + m[3] };
-  if ((m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t))) return { t: 'd', v: m[3] + m[2] + m[1] };
-  if ((m = /^(\d{2})\/(\d{4})$/.exec(t))) return { t: 'd', v: m[2] + m[1] };
+  if ((m = /^(\\d{4})-(\\d{2})-(\\d{2})/.exec(t))) return { t: 'd', v: m[1] + m[2] + m[3] };
+  if ((m = /^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/.exec(t))) return { t: 'd', v: m[3] + m[2] + m[1] };
+  if ((m = /^(\\d{2})\\/(\\d{4})$/.exec(t))) return { t: 'd', v: m[2] + m[1] };
   return { t: 's', v: t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() };
 }
 function _tabOrdNorm(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
