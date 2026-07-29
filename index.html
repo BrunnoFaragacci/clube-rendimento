@@ -14343,8 +14343,11 @@ document.querySelectorAll('.tab').forEach(function(btn){
     }
 
     // O plano da Brapi usado no proxy permite apenas 1 ativo por requisição,
-    // por isso cada símbolo é buscado individualmente (em paralelo) em vez de
-    // uma única chamada com a lista separada por vírgulas.
+    // por isso cada símbolo é buscado individualmente em vez de uma única
+    // chamada com a lista separada por vírgulas. As buscas são feitas em
+    // pequenos lotes (em vez de todas de uma vez) para não sobrecarregar o
+    // proxy logo na carga da página, o que fazia todas as requisições
+    // falharem juntas quando disparadas simultaneamente.
     function buscarCotacao(simbolo) {
       return fetch(BRAPI_PROXY + '/quote/' + encodeURIComponent(simbolo))
         .then(function(r) { return r.json(); })
@@ -14352,7 +14355,22 @@ document.querySelectorAll('.tab').forEach(function(btn){
         .catch(function() { return null; });
     }
 
-    Promise.all(SIMBOLOS.map(buscarCotacao))
+    function buscarEmLotes(simbolos, tamanhoLote) {
+      var resultados = [];
+      var i = 0;
+      function proximoLote() {
+        if (i >= simbolos.length) return Promise.resolve(resultados);
+        var lote = simbolos.slice(i, i + tamanhoLote);
+        i += tamanhoLote;
+        return Promise.all(lote.map(buscarCotacao)).then(function(r) {
+          resultados = resultados.concat(r);
+          return proximoLote();
+        });
+      }
+      return proximoLote();
+    }
+
+    buscarEmLotes(SIMBOLOS, 5)
       .then(function(resultados) {
         var lista = resultados.filter(function(r) { return r && r.symbol; });
         if (!lista.length) throw new Error('sem dados');
