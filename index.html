@@ -2659,8 +2659,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
             '<table class="darf-tabela"><thead><tr><th>Ativo</th><th>Classe</th><th>Data</th><th>Qtd.</th><th>Preço médio</th><th>Preço venda</th><th>Resultado</th><th></th></tr></thead>' +
             '<tbody id="darf-lancamentos-corpo"></tbody></table>' +
           '</div>' +
-          '<div class="darf-actions" id="darf-actions" style="display:none;">' +
+          '<div class="darf-actions" id="darf-actions" style="display:none;gap:10px;">' +
             '<button type="button" id="darf-calcular" class="btn btn-primary">Calcular DARF</button>' +
+            '<button type="button" id="darf-enviar-ordem" style="display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;">✉ Enviar ordem por e-mail</button>' +
           '</div>' +
           '<div class="darf-tabela-wrap" id="darf-resultado-wrap" style="display:none;">' +
             '<table class="darf-tabela"><thead><tr><th>Competência</th><th>Classe</th><th>Total vendido</th><th>Resultado do mês</th><th>Prejuízo compensado</th><th>Base de cálculo</th><th>Situação</th><th>DARF a pagar</th><th>Vencimento</th></tr></thead>' +
@@ -3024,7 +3025,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
    * 6015), aplicando as regras vigentes: ações 15% com isenção de R$20 mil
    * por mês em vendas; FIIs 20% sem isenção; compensação de prejuízo
    * separada por classe (ações não compensam com FIIs, e vice-versa). */
-  function inicializarDarf(D, ativos) {
+  function inicializarDarf(D, ativos, opcoes, novaJanela) {
     var inputAtivo = D.getElementById('darf-ativo');
     if (!inputAtivo) return;
     var elQtd = D.getElementById('darf-qtd');
@@ -3037,14 +3038,25 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var corpoLanc = D.getElementById('darf-lancamentos-corpo');
     var actionsEl = D.getElementById('darf-actions');
     var btnCalcular = D.getElementById('darf-calcular');
+    var btnEnviarOrdem = D.getElementById('darf-enviar-ordem');
     var wrapResultado = D.getElementById('darf-resultado-wrap');
     var corpoResultado = D.getElementById('darf-resultado-corpo');
 
     // Só ativos com preço médio identificado na planilha podem ser usados —
     // sem custo de aquisição não é possível calcular ganho de capital. O
     // campo "Ativo" é texto livre (ticker digitado), casado contra esta
-    // lista por nome — ver o clique de btnAdd mais abaixo.
-    var ativosComPM = ativos.filter(function(a) { return typeof a.precoMedio === 'number' && a.precoMedio > 0; });
+    // lista por nome — ver o clique de btnAdd mais abaixo. Também respeita
+    // o filtro "O que você quer analisar?": análise só de Ações não deve
+    // trazer FIIs para o DARF, e vice-versa (a.segmentoPlanilha vem direto
+    // da seção da planilha em que o ativo foi lido, mesmo campo já usado na
+    // coluna "Classe" da tabela de lançamentos).
+    var ativosComPM = ativos.filter(function(a) {
+      if (typeof a.precoMedio !== 'number' || a.precoMedio <= 0) return false;
+      var isFIIPlanilha = a.segmentoPlanilha === 'fiis';
+      if (isFIIPlanilha && !opcoes.fiis) return false;
+      if (!isFIIPlanilha && !opcoes.acoes) return false;
+      return true;
+    });
 
     if (!ativosComPM.length) {
       elErro.textContent = 'Nenhum ativo com preço médio identificado na planilha enviada — não é possível simular vendas.';
@@ -3083,7 +3095,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           + '</tr>';
       }).join('');
       wrapLanc.style.display = 'block';
-      actionsEl.style.display = 'block';
+      actionsEl.style.display = 'flex';
       wrapResultado.style.display = 'none';
     }
 
@@ -3148,6 +3160,63 @@ h2{font-size:32px;letter-spacing:-.02em;}
         var idx = parseInt(btn.getAttribute('data-idx'), 10);
         lancamentos.splice(idx, 1);
         renderizarLancamentos();
+      });
+    }
+
+    // Botão "Enviar ordem por e-mail": monta uma tabela (Ativo/Operação/
+    // Quantidade/Código/Preço — "Preço" sempre "MERCADO", ordem a mercado)
+    // com os ativos atuais de "lancamentos" (o que sobrou depois de excluir
+    // o que não vai ser negociado), copia como HTML para a área de
+    // transferência e abre o cliente de e-mail para colar (Ctrl+V) — o
+    // corpo do mailto: não suporta HTML, por isso a tabela vai por
+    // clipboard em vez de já vir pronta no e-mail.
+    if (btnEnviarOrdem) {
+      btnEnviarOrdem.addEventListener('click', function() {
+        if (!lancamentos.length) { novaJanela.alert('Não há ativos na tabela para gerar a ordem.'); return; }
+        abrirModalOrdemEmail(D, function(codigoCliente, operacao, statusEl) {
+          statusEl.textContent = 'Copiando…';
+          var celEstilo = 'border:1px solid #999;padding:8px 16px;text-align:center;';
+          var linhasHtml = lancamentos.map(function(l) {
+            return '<tr>' +
+              '<td style="' + celEstilo + '">' + l.ticker + '</td>' +
+              '<td style="' + celEstilo + '">' + operacao + '</td>' +
+              '<td style="' + celEstilo + '">' + formatarNumero(l.quantidade, 0) + '</td>' +
+              '<td style="' + celEstilo + '">' + codigoCliente + '</td>' +
+              '<td style="' + celEstilo + '">MERCADO</td>' +
+              '</tr>';
+          }).join('');
+          var tabelaHtml = '<table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;">' +
+            '<thead><tr>' +
+              '<th style="' + celEstilo + 'font-weight:700;">Ativo</th>' +
+              '<th style="' + celEstilo + 'font-weight:700;">Operação</th>' +
+              '<th style="' + celEstilo + 'font-weight:700;">Quantidade</th>' +
+              '<th style="' + celEstilo + 'font-weight:700;">Código</th>' +
+              '<th style="' + celEstilo + 'font-weight:700;">Preço</th>' +
+            '</tr></thead><tbody>' + linhasHtml + '</tbody></table>';
+
+          var tabelaTexto = 'Ativo\tOperação\tQuantidade\tCódigo\tPreço\n' + lancamentos.map(function(l) {
+            return l.ticker + '\t' + operacao + '\t' + formatarNumero(l.quantidade, 0) + '\t' + codigoCliente + '\tMERCADO';
+          }).join('\n');
+
+          var ClipboardItemCtor = novaJanela.ClipboardItem;
+          var clipboard = novaJanela.navigator && novaJanela.navigator.clipboard;
+          if (!clipboard || !clipboard.write || !ClipboardItemCtor) {
+            statusEl.textContent = 'Este navegador não permite copiar tabelas para a área de transferência.';
+            return false;
+          }
+          var blobHtml = new novaJanela.Blob([tabelaHtml], { type: 'text/html' });
+          var blobTexto = new novaJanela.Blob([tabelaTexto], { type: 'text/plain' });
+          return clipboard.write([new ClipboardItemCtor({ 'text/html': blobHtml, 'text/plain': blobTexto })]).then(function() {
+            var assunto = encodeURIComponent('Ordem de ' + operacao.toLowerCase() + ' — cliente ' + codigoCliente);
+            var corpo = encodeURIComponent('Olá,\n\nSegue ordem de ' + operacao.toLowerCase() + ' para o cliente ' + codigoCliente + '.\n\nCole aqui a tabela (Ctrl+V) — ela já foi copiada para a área de transferência.\n\nAtenciosamente.');
+            novaJanela.location.href = 'mailto:?subject=' + assunto + '&body=' + corpo;
+            statusEl.textContent = '✅ Tabela copiada! O Outlook foi aberto — cole (Ctrl+V) no corpo do e-mail.';
+            return true;
+          }).catch(function(e) {
+            statusEl.textContent = 'Não foi possível copiar a tabela: ' + e.message;
+            return false;
+          });
+        });
       });
     }
 
@@ -3467,6 +3536,98 @@ h2{font-size:32px;letter-spacing:-.02em;}
         btnConfirmar.disabled = false;
         btnCancelar.disabled = false;
         if (sucesso) setTimeout(function() { overlay.remove(); }, 800);
+      }).catch(function(e) {
+        btnConfirmar.disabled = false;
+        btnCancelar.disabled = false;
+        statusEl.textContent = 'Erro: ' + e.message;
+      });
+    });
+  }
+
+  // Modal para pedir o código do cliente e o tipo de operação (compra ou
+  // venda) antes de gerar a tabela de ordem por e-mail (DARF → "Enviar
+  // ordem por e-mail"). onConfirm(codigoCliente, operacao) é chamado só
+  // depois de os dois campos estarem preenchidos.
+  function abrirModalOrdemEmail(D, onConfirm) {
+    var overlay = D.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(17,17,17,.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;';
+
+    var card = D.createElement('div');
+    card.style.cssText = 'background:#fff;border-radius:14px;width:100%;max-width:380px;padding:24px;font-family:inherit;box-shadow:0 12px 32px rgba(0,0,0,.25);';
+
+    var titulo = D.createElement('h3');
+    titulo.textContent = 'Enviar ordem por e-mail';
+    titulo.style.cssText = 'margin:0 0 6px;font-size:16px;font-weight:600;color:#111;';
+    card.appendChild(titulo);
+
+    var sub = D.createElement('p');
+    sub.textContent = 'Monta a tabela com os ativos da simulação (o que não foi excluído acima) e copia para a área de transferência, para colar no e-mail.';
+    sub.style.cssText = 'margin:0 0 16px;font-size:12.5px;color:#5c5c5c;line-height:1.4;';
+    card.appendChild(sub);
+
+    var labelCodigo = D.createElement('label');
+    labelCodigo.textContent = 'Código do cliente';
+    labelCodigo.style.cssText = 'display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#5c5c5c;margin-bottom:5px;';
+    card.appendChild(labelCodigo);
+    var inputCodigo = D.createElement('input');
+    inputCodigo.type = 'text';
+    inputCodigo.placeholder = 'Ex.: 5528272';
+    inputCodigo.style.cssText = 'width:100%;padding:9px 10px;border:1.5px solid #E2E2E2;border-radius:8px;font-family:inherit;font-size:13.5px;color:#111;margin-bottom:14px;';
+    card.appendChild(inputCodigo);
+
+    var labelOp = D.createElement('label');
+    labelOp.textContent = 'Operação';
+    labelOp.style.cssText = 'display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#5c5c5c;margin-bottom:5px;';
+    card.appendChild(labelOp);
+    var opWrap = D.createElement('div');
+    opWrap.style.cssText = 'display:flex;border:1.5px solid #E2E2E2;border-radius:8px;overflow:hidden;margin-bottom:16px;';
+    var operacaoAtual = 'VENDA';
+    function estiloOp(btn, ativo) {
+      btn.style.cssText = 'flex:1;background:' + (ativo ? '#111' : 'none') + ';color:' + (ativo ? '#fff' : '#111') +
+        ';border:none;padding:9px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;';
+    }
+    var btnCompra = D.createElement('button');
+    btnCompra.type = 'button'; btnCompra.textContent = 'Compra';
+    var btnVenda = D.createElement('button');
+    btnVenda.type = 'button'; btnVenda.textContent = 'Venda';
+    estiloOp(btnCompra, false); estiloOp(btnVenda, true);
+    btnCompra.addEventListener('click', function() { operacaoAtual = 'COMPRA'; estiloOp(btnCompra, true); estiloOp(btnVenda, false); });
+    btnVenda.addEventListener('click', function() { operacaoAtual = 'VENDA'; estiloOp(btnCompra, false); estiloOp(btnVenda, true); });
+    opWrap.appendChild(btnCompra); opWrap.appendChild(btnVenda);
+    card.appendChild(opWrap);
+
+    var statusEl = D.createElement('p');
+    statusEl.style.cssText = 'font-size:12.5px;color:#5c5c5c;min-height:16px;margin:0 0 12px;';
+    card.appendChild(statusEl);
+
+    var acoes = D.createElement('div');
+    acoes.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;';
+    var btnCancelar = D.createElement('button');
+    btnCancelar.type = 'button';
+    btnCancelar.textContent = 'Cancelar';
+    btnCancelar.style.cssText = 'background:#fff;border:1.5px solid #E2E2E2;color:#111;font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;';
+    btnCancelar.addEventListener('click', function() { overlay.remove(); });
+    var btnConfirmar = D.createElement('button');
+    btnConfirmar.type = 'button';
+    btnConfirmar.textContent = 'Gerar tabela';
+    btnConfirmar.style.cssText = 'background:#111;border:1.5px solid #111;color:#fff;font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;';
+    acoes.appendChild(btnCancelar);
+    acoes.appendChild(btnConfirmar);
+    card.appendChild(acoes);
+
+    overlay.appendChild(card);
+    D.body.appendChild(overlay);
+    inputCodigo.focus();
+
+    btnConfirmar.addEventListener('click', function() {
+      var codigo = inputCodigo.value.trim();
+      if (!codigo) { statusEl.textContent = 'Informe o código do cliente.'; return; }
+      btnConfirmar.disabled = true;
+      btnCancelar.disabled = true;
+      Promise.resolve(onConfirm(codigo, operacaoAtual, statusEl)).then(function(sucesso) {
+        btnConfirmar.disabled = false;
+        btnCancelar.disabled = false;
+        if (sucesso) setTimeout(function() { overlay.remove(); }, 1400);
       }).catch(function(e) {
         btnConfirmar.disabled = false;
         btnCancelar.disabled = false;
@@ -3813,7 +3974,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     // código-fonte: por escopo/closure, o valor já está atribuído quando
     // aquele trecho de fato executa (assíncrono, após inicializarDarf
     // retornar). Ver darfApi.ativoAtualizado(at) em "at.cotacaoAtual = cot".
-    var darfApi = opcoes.rv ? inicializarDarf(D, ativos) : null;
+    var darfApi = opcoes.rv ? inicializarDarf(D, ativos, opcoes, novaJanela) : null;
 
     // Botão "Recarregar dados": refaz a análise inteira (RV, RF e Cetip) do
     // zero, com os mesmos ativos já lidos da carteira — útil quando alguma
