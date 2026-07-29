@@ -5542,25 +5542,56 @@ h2{font-size:32px;letter-spacing:-.02em;}
       if (!secao) return processarXP(0);
 
       var totalPorCnpj8Cp = {};
+      var nomeOriginalPorCnpj8Cp = {};
+      // Emissores da carteira sem correspondência na lista curada de
+      // companhias abertas (CREDITO_PRIVADO_EMISSORES) — normalmente porque
+      // a dívida foi registrada por uma securitizadora e a empresa em si não
+      // tem CNPJ próprio de companhia aberta na CVM (ver nota em
+      // credito-privado-sync). Agrupados pelo nome normalizado do emissor.
+      var totalPorEmissorSemDados = {};
+      var nomeExibidoEmissorSemDados = {};
       rfItens.forEach(function(item) {
         var tipoNorm = String(item.tipo || '').toUpperCase().trim();
         if (TIPOS_RF_BANCARIO.indexOf(tipoNorm) !== -1) return;
-        var cnpj8 = cnpj8CreditoPrivado(item.emissor);
-        if (!cnpj8) return;
         var valorItem = typeof item.posicao === 'number' ? item.posicao : (typeof item.valorLiquido === 'number' ? item.valorLiquido : 0);
-        totalPorCnpj8Cp[cnpj8] = (totalPorCnpj8Cp[cnpj8] || 0) + valorItem;
+        var cnpj8 = cnpj8CreditoPrivado(item.emissor);
+        if (cnpj8) {
+          totalPorCnpj8Cp[cnpj8] = (totalPorCnpj8Cp[cnpj8] || 0) + valorItem;
+          if (!nomeOriginalPorCnpj8Cp[cnpj8]) nomeOriginalPorCnpj8Cp[cnpj8] = item.emissor || item.descricao || '—';
+        } else {
+          var chaveEmissor = normalizar(item.emissor || item.descricao || '');
+          if (!chaveEmissor) return;
+          totalPorEmissorSemDados[chaveEmissor] = (totalPorEmissorSemDados[chaveEmissor] || 0) + valorItem;
+          nomeExibidoEmissorSemDados[chaveEmissor] = item.emissor || item.descricao || '—';
+        }
       });
       var listaCnpj8 = Object.keys(totalPorCnpj8Cp);
-      if (!listaCnpj8.length || !window.supabaseClient) return processarXP(0);
+      var chavesSemDados = Object.keys(totalPorEmissorSemDados);
+      if ((!listaCnpj8.length && !chavesSemDados.length) || !window.supabaseClient) return processarXP(0);
 
-      return Promise.resolve(window.supabaseClient.from('credito_privado_indicadores').select('*').in('cnpj8', listaCnpj8))
+      var consultaCp = listaCnpj8.length
+        ? Promise.resolve(window.supabaseClient.from('credito_privado_indicadores').select('*').in('cnpj8', listaCnpj8))
+        : Promise.resolve({ data: [] });
+
+      return consultaCp
         .catch(function() { return { data: [] }; })
         .then(function(resp) {
           if (cancelado()) return;
           var linhas = (resp && resp.data || []).slice().sort(function(a, b) {
             return String(a.nome || '').localeCompare(String(b.nome || ''));
           });
-          if (!linhas.length) return processarXP(0);
+          // Emissores identificados na carteira (cnpj8 encontrado), mas sem
+          // registro na tabela credito_privado_indicadores — mesma situação
+          // de "sem dados públicos", só que descoberta depois da consulta.
+          var cnpj8ComDados = {};
+          linhas.forEach(function(l) { cnpj8ComDados[l.cnpj8] = true; });
+          listaCnpj8.forEach(function(cnpj8) {
+            if (cnpj8ComDados[cnpj8]) return;
+            var chave = 'cnpj8:' + cnpj8;
+            totalPorEmissorSemDados[chave] = totalPorCnpj8Cp[cnpj8];
+            nomeExibidoEmissorSemDados[chave] = nomeOriginalPorCnpj8Cp[cnpj8] || cnpj8;
+          });
+          if (!linhas.length && !Object.keys(totalPorEmissorSemDados).length) return processarXP(0);
 
           var h2 = D.createElement('h2');
           h2.className = 'quadro-titulo';
@@ -5640,6 +5671,38 @@ h2{font-size:32px;letter-spacing:-.02em;}
             tr.appendChild(tdAcao);
             tbody.appendChild(tr);
           });
+
+          // Emissores da carteira sem dados públicos disponíveis (empresa não
+          // é companhia aberta na CVM, ou a dívida foi registrada só pela
+          // securitizadora) — mostrados com uma nota no lugar dos indicadores,
+          // em vez de simplesmente desaparecerem da tabela.
+          Object.keys(nomeExibidoEmissorSemDados).sort(function(a, b) {
+            return nomeExibidoEmissorSemDados[a].localeCompare(nomeExibidoEmissorSemDados[b]);
+          }).forEach(function(chave) {
+            var trSem = D.createElement('tr');
+            trSem.appendChild(cel(D, nomeExibidoEmissorSemDados[chave] || '—'));
+            var totalSemDados = totalPorEmissorSemDados[chave] || 0;
+            trSem.appendChild(cel(D, totalSemDados > 0 ? 'R$ ' + formatarNumero(totalSemDados, 2) : '—'));
+            var tdNota = cel(D, 'Companhia não é aberta na CVM — sem dados públicos disponíveis');
+            tdNota.colSpan = 12;
+            tdNota.style.cssText = 'color:var(--ink-soft);font-style:italic;';
+            trSem.appendChild(tdNota);
+            Array.prototype.forEach.call(trSem.children, function(td) { tornarCelulaEditavel(td); });
+            var tdAcaoSem = D.createElement('td');
+            tdAcaoSem.style.textAlign = 'center';
+            var btnExcluirSem = D.createElement('button');
+            btnExcluirSem.type = 'button';
+            btnExcluirSem.className = 'btn-excluir-linha';
+            btnExcluirSem.title = 'Remover esta empresa da lista';
+            btnExcluirSem.textContent = '🗑️';
+            btnExcluirSem.addEventListener('click', function() {
+              if (trSem.parentNode) trSem.parentNode.removeChild(trSem);
+            });
+            tdAcaoSem.appendChild(btnExcluirSem);
+            trSem.appendChild(tdAcaoSem);
+            tbody.appendChild(trSem);
+          });
+
           wrap.appendChild(table);
           secao.appendChild(wrap);
           tornarTabelaOrdenavel(D, table, filtroCp);
