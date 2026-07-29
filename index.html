@@ -11135,6 +11135,7 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
     <button type="button" class="calc-side-btn" data-alvo="p-pix-parcelado">Juros no Pix Parcelado</button>
     <button type="button" class="calc-side-btn" data-alvo="p-amortizacao">Amortização (SAC/Price)</button>
     <button type="button" class="calc-side-btn" data-alvo="p-aluguel-financiar">Aluguel x Financiamento</button>
+    <button type="button" class="calc-side-btn" data-alvo="p-imoveis-rf">Imóveis x Renda Fixa</button>
   </aside>
 
   <main class="calc-content">
@@ -11509,6 +11510,45 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
             <div class="calc-stat"><div class="calc-stat-label">Conclusão</div><div class="calc-stat-valor destaque" id="af-conclusao">—</div></div>
           </div>
           <p class="calc-nota">No cenário de aluguel, o valor da entrada e dos custos é investido desde o início, e a diferença mensal entre a parcela do financiamento e o aluguel também é investida todo mês, à rentabilidade informada. O patrimônio final é comparado ao valor total pago no financiamento (entrada + custos + todas as parcelas). Estimativa educacional que não considera a valorização do imóvel nem custos de manutenção.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-panel" id="p-imoveis-rf">
+      <div class="calc-panel-titulo">Imóveis x Renda Fixa</div>
+      <p class="calc-panel-sub">Compare o retorno real (acima da inflação) de um imóvel residencial alugado com uma alternativa em renda fixa, e simule o cenário de um cliente específico.</p>
+      <div class="calc-card" style="margin-bottom:20px;">
+        <div class="calc-panel-titulo" style="font-size:15px;margin-bottom:10px;">Contexto: o que os dados de mercado mostram</div>
+        <div class="calc-resultado-grid">
+          <div class="calc-stat"><div class="calc-stat-label">Imóvel c/ aluguel desde 2010</div><div class="calc-stat-valor" id="imv-ref-2010-imovel">334,93%</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Carteira IPCA+6 desde 2010</div><div class="calc-stat-valor destaque" id="imv-ref-2010-rf">440,11%</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Imóvel c/ aluguel desde 2015</div><div class="calc-stat-valor" id="imv-ref-2015-imovel">70,67%</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">CDI desde 2015</div><div class="calc-stat-valor destaque" id="imv-ref-2015-rf">131,78%</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Retorno real do imóvel desde 2015</div><div class="calc-stat-valor alerta" id="imv-ref-2015-real">IPCA − 1,11% a.a.</div></div>
+        </div>
+        <p class="calc-nota">Retorno médio nacional de imóveis residenciais (dados FipeZap) comparado a benchmarks de renda fixa no mesmo período. Ilustra que, na média histórica, imóveis residenciais alugados tendem a perder para a renda fixa em termos reais. A calculadora abaixo simula o cenário específico de um imóvel e cliente.</p>
+      </div>
+      <div class="calc-card">
+        <div class="calc-grid">
+          <div class="calc-field"><label for="imv-valor-compra">Valor de compra do imóvel (R$)</label><input type="number" id="imv-valor-compra" value="500000" min="0" step="1000"></div>
+          <div class="calc-field"><label for="imv-prazo">Prazo de posse (anos)</label><input type="number" id="imv-prazo" value="8" min="1" step="1"></div>
+          <div class="calc-field"><label for="imv-valorizacao">Valorização total do imóvel no período (%)</label><input type="number" id="imv-valorizacao" value="60" min="0" step="1"></div>
+          <div class="calc-field"><label for="imv-aluguel">Aluguel mensal (% do valor do imóvel)</label><input type="number" id="imv-aluguel" value="0.3" min="0" step="0.05"></div>
+          <div class="calc-field"><label for="imv-corretagem">Corretagem na venda (%)</label><input type="number" id="imv-corretagem" value="6" min="0" step="0.5"></div>
+          <div class="calc-field"><label for="imv-imposto">IR sobre o ganho de capital (%)</label><input type="number" id="imv-imposto" value="15" min="0" step="1"></div>
+          <div class="calc-field"><label for="imv-ipca">IPCA médio esperado (% ao ano)</label><input type="number" id="imv-ipca" value="4.5" min="0" step="0.1"></div>
+          <div class="calc-field"><label for="imv-rf-taxa">Taxa da alternativa em renda fixa (% ao ano)</label><input type="number" id="imv-rf-taxa" value="12" min="0" step="0.1"></div>
+        </div>
+        <div class="calc-actions"><button type="button" class="btn btn-primary" id="imv-calcular">Comparar</button></div>
+        <div class="calc-resultado" id="imv-resultado">
+          <div class="calc-resultado-grid">
+            <div class="calc-stat"><div class="calc-stat-label">Retorno real do imóvel (% a.a.)</div><div class="calc-stat-valor" id="imv-real-imovel">—</div></div>
+            <div class="calc-stat"><div class="calc-stat-label">Retorno real da renda fixa (% a.a.)</div><div class="calc-stat-valor" id="imv-real-rf">—</div></div>
+            <div class="calc-stat"><div class="calc-stat-label">Valor líquido final com o imóvel</div><div class="calc-stat-valor" id="imv-final-imovel">—</div></div>
+            <div class="calc-stat"><div class="calc-stat-label">Montante final na renda fixa</div><div class="calc-stat-valor" id="imv-final-rf">—</div></div>
+            <div class="calc-stat"><div class="calc-stat-label">Conclusão</div><div class="calc-stat-valor destaque" id="imv-conclusao">—</div></div>
+          </div>
+          <p class="calc-nota">O cenário do imóvel considera a venda ao final do prazo (descontando corretagem e IR sobre o ganho de capital) somada aos aluguéis recebidos mês a mês, sem reinvestimento. O cenário de renda fixa aplica a taxa informada ao mesmo capital inicial, com juros compostos anuais. Ambos os retornos reais são calculados descontando o IPCA médio informado. Estimativa educacional; não considera IR sobre o aluguel recebido, vacância, IPTU ou custos de manutenção do imóvel.</p>
         </div>
       </div>
     </div>
@@ -11924,6 +11964,42 @@ document.getElementById('af-calcular').addEventListener('click', function(){
   if (patrimonioAlugando > valorImovel) { elConcl.textContent = 'Alugar e investir tende a compensar mais'; }
   else { elConcl.textContent = 'Financiar tende a compensar mais'; }
   document.getElementById('af-resultado').classList.add('ativo');
+});
+
+/* Imóveis x Renda Fixa */
+document.getElementById('imv-calcular').addEventListener('click', function(){
+  var valorCompra = parseFloat(document.getElementById('imv-valor-compra').value) || 0;
+  var n = parseFloat(document.getElementById('imv-prazo').value) || 1;
+  var valorizacaoPct = parseFloat(document.getElementById('imv-valorizacao').value) || 0;
+  var aluguelPct = parseFloat(document.getElementById('imv-aluguel').value) || 0;
+  var corretagemPct = parseFloat(document.getElementById('imv-corretagem').value) || 0;
+  var impostoPct = parseFloat(document.getElementById('imv-imposto').value) || 0;
+  var ipcaAnual = parseFloat(document.getElementById('imv-ipca').value) || 0;
+  var rfTaxaAnual = parseFloat(document.getElementById('imv-rf-taxa').value) || 0;
+
+  var valorVenda = valorCompra * (1 + valorizacaoPct / 100);
+  var lucroBruto = valorVenda - valorCompra;
+  var corretagemValor = valorVenda * (corretagemPct / 100);
+  var baseImposto = Math.max(0, lucroBruto - corretagemValor);
+  var impostoValor = baseImposto * (impostoPct / 100);
+  var valorVendaLiquido = valorVenda - corretagemValor - impostoValor;
+  var totalAlugueis = valorCompra * (aluguelPct / 100) * 12 * n;
+  var finalImovel = valorVendaLiquido + totalAlugueis;
+  var retornoTotalNominalImovel = valorCompra > 0 ? (finalImovel / valorCompra) - 1 : 0;
+  var retornoAnualNominalImovel = Math.pow(1 + retornoTotalNominalImovel, 1 / n) - 1;
+  var retornoRealImovel = ((1 + retornoAnualNominalImovel) / (1 + ipcaAnual / 100)) - 1;
+
+  var finalRF = valorCompra * Math.pow(1 + rfTaxaAnual / 100, n);
+  var retornoRealRF = ((1 + rfTaxaAnual / 100) / (1 + ipcaAnual / 100)) - 1;
+
+  document.getElementById('imv-real-imovel').textContent = fPct(retornoRealImovel * 100);
+  document.getElementById('imv-real-rf').textContent = fPct(retornoRealRF * 100);
+  document.getElementById('imv-final-imovel').textContent = fBRL(finalImovel);
+  document.getElementById('imv-final-rf').textContent = fBRL(finalRF);
+  var elConclImv = document.getElementById('imv-conclusao');
+  if (retornoRealRF > retornoRealImovel) { elConclImv.textContent = 'Renda fixa venceu em termos reais'; }
+  else { elConclImv.textContent = 'Imóvel venceu em termos reais'; }
+  document.getElementById('imv-resultado').classList.add('ativo');
 });
 <\/script>
 </body>
