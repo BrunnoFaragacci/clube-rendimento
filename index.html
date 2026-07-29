@@ -2643,6 +2643,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       ? '<h2 class="quadro-titulo" style="border-top:1px solid var(--line);padding-top:20px;margin-top:4px;">Venda de ativos e cálculo de DARF</h2>' +
         '<p class="subquadro-titulo">Simule a venda de ações e/ou cotas de FII usando o preço médio já identificado na sua planilha, e calcule o DARF mensal devido (código 6015). Direitos de subscrição são sempre desconsiderados.</p>' +
         '<div class="darf-card">' +
+          '<button type="button" id="darf-add-todos" style="display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;margin-bottom:16px;">📋 Adicionar todos os ativos (para vender pela última cotação)</button>' +
           '<div class="darf-form-grid">' +
             '<div class="darf-field"><label for="darf-ativo">Ativo</label><select id="darf-ativo"></select></div>' +
             '<div class="darf-field"><label for="darf-qtd">Quantidade vendida</label><input type="number" id="darf-qtd" min="1" step="1"></div>' +
@@ -3110,6 +3111,45 @@ h2{font-size:32px;letter-spacing:-.02em;}
         });
 
         elQtd.value = ''; elPreco.value = ''; elCustos.value = '0';
+        renderizarLancamentos();
+      });
+    }
+
+    // Botão "Adicionar todos os ativos": lança de uma vez a venda da
+    // posição inteira de cada ativo (com preço médio identificado), pela
+    // última cotação já obtida na tabela de Ações/FIIs (at.cotacaoAtual —
+    // ver onde é gravada, na renderização da tabela de RV). Não sobrescreve
+    // lançamentos já existentes para o mesmo ticker (aditivo, não
+    // substitui) — o fluxo esperado é o usuário clicar uma vez e depois ir
+    // excluindo (🗑️/×) os ativos que não pretende vender de fato.
+    var btnAddTodos = D.getElementById('darf-add-todos');
+    if (btnAddTodos) {
+      btnAddTodos.addEventListener('click', function() {
+        elErro.style.display = 'none';
+        var dataStr = elData.value || new Date().toISOString().slice(0, 10);
+        var partes = dataStr.split('-');
+        var dataBR = partes[2] + '/' + partes[1] + '/' + partes[0];
+        var ano = parseInt(partes[0], 10), mes = parseInt(partes[1], 10);
+
+        var tickersJaLancados = {};
+        lancamentos.forEach(function(l) { tickersJaLancados[l.ticker] = true; });
+
+        var semCotacao = 0;
+        ativosComPM.forEach(function(ativo) {
+          if (tickersJaLancados[ativo.ticker]) return;
+          if (typeof ativo.cotacaoAtual !== 'number' || ativo.cotacaoAtual <= 0) { semCotacao++; return; }
+          if (typeof ativo.quantidade !== 'number' || ativo.quantidade <= 0) return;
+          lancamentos.push({
+            ticker: ativo.ticker, classe: ativo.segmentoPlanilha, precoMedio: ativo.precoMedio,
+            quantidade: ativo.quantidade, precoVenda: ativo.cotacaoAtual, custos: 0,
+            ano: ano, mes: mes, dataBR: dataBR
+          });
+        });
+
+        if (semCotacao > 0) {
+          elErro.textContent = semCotacao + ' ativo(s) ainda sem cotação carregada não foram adicionados — aguarde a tabela de Ações/FIIs terminar de carregar e clique de novo.';
+          elErro.style.display = 'block';
+        }
         renderizarLancamentos();
       });
     }
@@ -4993,6 +5033,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var cot = dado.regularMarketPrice;
             if (typeof cot === 'number') {
               c[3 + o].textContent = 'R$ ' + formatarNumero(cot, 2);
+              // Guardado no próprio item de "ativos" (mesmo array usado pelo
+              // DARF) para o botão "Adicionar todos os ativos" do DARF poder
+              // usar a última cotação sem precisar buscá-la de novo.
+              at.cotacaoAtual = cot;
               var vt = cot * at.quantidade;
               c[4 + o].textContent = 'R$ ' + formatarNumero(vt, 2);
               if (linhaVisivel) {
