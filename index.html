@@ -908,18 +908,18 @@ h2{font-size:32px;letter-spacing:-.02em;}
       alert('Faça login para carregar uma análise salva.');
       return;
     }
-    abrirModalCarregarAnalise(document, window, function(clienteId, clienteNome, statusEl) {
+    abrirModalCarregarAnalise(document, window, function(analiseId, rotulo, statusEl) {
       statusEl.textContent = 'Abrindo…';
       var novaJanela = window.open('', '_blank');
       if (!novaJanela) {
         statusEl.textContent = 'O navegador bloqueou a abertura de nova guia. Permita pop-ups e tente novamente.';
         return Promise.resolve(false);
       }
-      return supabaseClient.from('analises_salvas').select('dados').eq('user_id', sessaoAtual.user.id).eq('cliente_id', clienteId).single()
+      return supabaseClient.from('analises_salvas').select('dados').eq('user_id', sessaoAtual.user.id).eq('id', analiseId).single()
         .then(function(r) {
           if (r.error || !r.data) {
             novaJanela.close();
-            statusEl.textContent = 'Não foi possível carregar a análise salva de ' + clienteNome + '.';
+            statusEl.textContent = 'Não foi possível carregar a análise "' + rotulo + '".';
             return false;
           }
           var d = r.data.dados;
@@ -3223,13 +3223,37 @@ h2{font-size:32px;letter-spacing:-.02em;}
     }
   }
 
+  // Rótulo do "tipo" desta análise, a partir das categorias marcadas
+  // (opcoes) — é o que diferencia duas análises salvas do mesmo cliente
+  // (ex.: uma só de Ações e outra da carteira inteira), já que um cliente
+  // pode ter mais de uma análise salva. "Total da carteira" quando todas as
+  // 7 categorias estão marcadas (equivalente ao checkbox "Análise total").
+  function descreverTipoAnalise(opcoes) {
+    var CATEGORIAS = [
+      { chave: 'acoes', rotulo: 'Ações' },
+      { chave: 'fiis', rotulo: 'FIIs' },
+      { chave: 'rf', rotulo: 'Renda fixa' },
+      { chave: 'cetip', rotulo: 'Fundos Cetipados' },
+      { chave: 'previdencia', rotulo: 'Previdência Privada' },
+      { chave: 'coe', rotulo: 'COE' },
+      { chave: 'tesouro', rotulo: 'Tesouro Direto' }
+    ];
+    var marcadas = CATEGORIAS.filter(function(c) { return opcoes[c.chave]; });
+    if (marcadas.length === CATEGORIAS.length) return 'Total da carteira';
+    if (!marcadas.length) return 'Análise salva';
+    return marcadas.map(function(c) { return c.rotulo; }).join(', ');
+  }
+
   // Modal simples (dentro do próprio popup da análise, via D/novaJanela) para
   // escolher o cliente ao qual a análise salva ficará vinculada — reaproveita
   // a tabela "clientes" (já usada em Meus Clientes/Diversificação), com opção
-  // de cadastrar um cliente novo direto no modal. onConfirm(clienteId,
-  // clienteNome, statusEl) deve retornar uma Promise<boolean> (true fecha o
-  // modal após um instante; false/erro mantém aberto para nova tentativa).
-  function abrirModalSalvarAnalise(D, novaJanela, onConfirm) {
+  // de cadastrar um cliente novo direto no modal. Um mesmo cliente pode ter
+  // mais de uma análise salva, uma por "tipo" (ver descreverTipoAnalise) —
+  // salvar de novo com as MESMAS categorias marcadas sobrescreve; com
+  // categorias diferentes, cria uma nova. onConfirm(clienteId, clienteNome,
+  // statusEl) deve retornar uma Promise<boolean> (true fecha o modal após um
+  // instante; false/erro mantém aberto para nova tentativa).
+  function abrirModalSalvarAnalise(D, novaJanela, tipoAnalise, onConfirm) {
     var overlay = D.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(17,17,17,.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;';
 
@@ -3242,7 +3266,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     card.appendChild(titulo);
 
     var sub = D.createElement('p');
-    sub.textContent = 'Salva a composição atual da carteira. Ao reabrir, as cotações são buscadas de novo.';
+    sub.innerHTML = 'Salva a composição atual da carteira. Ao reabrir, as cotações são buscadas de novo.<br>Tipo desta análise: <b>' + tipoAnalise + '</b> — se o cliente já tiver uma análise salva desse mesmo tipo, ela será substituída.';
     sub.style.cssText = 'margin:0 0 16px;font-size:12.5px;color:#5c5c5c;line-height:1.4;';
     card.appendChild(sub);
 
@@ -3336,10 +3360,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
     });
   }
 
-  // Modal para escolher, entre os clientes com uma análise salva
-  // (analises_salvas), qual reabrir. Irmão de abrirModalSalvarAnalise, mas
-  // sem a opção de cadastrar cliente novo (não faz sentido carregar uma
-  // análise de um cliente que ainda não tem nenhuma salva).
+  // Modal para escolher, entre as análises salvas (analises_salvas), qual
+  // reabrir. Um mesmo cliente pode ter mais de uma (uma por "tipo" — ver
+  // descreverTipoAnalise), então cada linha do menu é "Cliente — Tipo", com
+  // o id da própria linha de analises_salvas como valor. Irmão de
+  // abrirModalSalvarAnalise, mas sem a opção de cadastrar cliente novo (não
+  // faz sentido carregar uma análise que ainda não existe).
   function abrirModalCarregarAnalise(D, jw, onConfirm) {
     var overlay = D.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(17,17,17,.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;';
@@ -3348,7 +3374,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     card.style.cssText = 'background:#fff;border-radius:14px;width:100%;max-width:380px;padding:24px;font-family:inherit;box-shadow:0 12px 32px rgba(0,0,0,.25);';
 
     var titulo = D.createElement('h3');
-    titulo.textContent = 'Carregar análise de qual cliente?';
+    titulo.textContent = 'Carregar qual análise salva?';
     titulo.style.cssText = 'margin:0 0 16px;font-size:16px;font-weight:600;color:#111;';
     card.appendChild(titulo);
 
@@ -3382,32 +3408,33 @@ h2{font-size:32px;letter-spacing:-.02em;}
     overlay.appendChild(card);
     D.body.appendChild(overlay);
 
-    supabaseClient.from('analises_salvas').select('cliente_id,atualizado_em,clientes(nome)')
+    supabaseClient.from('analises_salvas').select('id,tipo,atualizado_em,clientes(nome)')
       .eq('user_id', sessaoAtual.user.id).order('atualizado_em', { ascending: false }).then(function(r) {
         select.innerHTML = '';
         var linhas = r.data || [];
         if (!linhas.length) {
           var optVazio = D.createElement('option');
-          optVazio.textContent = 'Nenhum cliente com análise salva ainda';
+          optVazio.textContent = 'Nenhuma análise salva ainda';
           select.appendChild(optVazio);
           statusEl.textContent = 'Salve uma análise primeiro, pelo botão "💾 Salvar análise" dentro do resultado da análise.';
           return;
         }
         linhas.forEach(function(l) {
           var opt = D.createElement('option');
-          opt.value = l.cliente_id;
-          opt.textContent = (l.clientes && l.clientes.nome) ? l.clientes.nome : '(cliente removido)';
+          opt.value = l.id;
+          var nomeCliente = (l.clientes && l.clientes.nome) ? l.clientes.nome : '(cliente removido)';
+          opt.textContent = nomeCliente + ' — ' + l.tipo;
           select.appendChild(opt);
         });
         btnConfirmar.disabled = false;
       });
 
     btnConfirmar.addEventListener('click', function() {
-      var clienteId = select.value;
-      var clienteNome = select.options[select.selectedIndex].textContent;
+      var analiseId = select.value;
+      var rotulo = select.options[select.selectedIndex].textContent;
       btnConfirmar.disabled = true;
       btnCancelar.disabled = true;
-      Promise.resolve(onConfirm(clienteId, clienteNome, statusEl)).then(function(sucesso) {
+      Promise.resolve(onConfirm(analiseId, rotulo, statusEl)).then(function(sucesso) {
         btnConfirmar.disabled = false;
         btnCancelar.disabled = false;
         if (sucesso) setTimeout(function() { overlay.remove(); }, 800);
@@ -3784,7 +3811,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
           novaJanela.alert('Faça login no Clube do Rendimento (na aba principal) para salvar a análise.');
           return;
         }
-        abrirModalSalvarAnalise(D, novaJanela, function(clienteId, clienteNome, statusEl) {
+        var tipoAnalise = descreverTipoAnalise(opcoes);
+        abrirModalSalvarAnalise(D, novaJanela, tipoAnalise, function(clienteId, clienteNome, statusEl) {
           statusEl.textContent = 'Salvando…';
           var dadosSnapshot = {
             ativos: ativos, rf: rfItens, cetipFundos: cetipFundos,
@@ -3794,14 +3822,15 @@ h2{font-size:32px;letter-spacing:-.02em;}
           return supabaseClient.from('analises_salvas').upsert({
             user_id: sessaoAtual.user.id,
             cliente_id: clienteId,
+            tipo: tipoAnalise,
             dados: dadosSnapshot,
             atualizado_em: new Date().toISOString()
-          }, { onConflict: 'user_id,cliente_id' }).then(function(r) {
+          }, { onConflict: 'user_id,cliente_id,tipo' }).then(function(r) {
             if (r.error) {
               statusEl.textContent = 'Erro ao salvar: ' + r.error.message;
               return false;
             }
-            statusEl.textContent = '✅ Análise salva para ' + clienteNome + '.';
+            statusEl.textContent = '✅ Análise (' + tipoAnalise + ') salva para ' + clienteNome + '.';
             return true;
           });
         });
@@ -6602,15 +6631,28 @@ h2{font-size:32px;letter-spacing:-.02em;}
             ? 'R$ ' + formatarNumero(fundo.valorAplicado, 2)
             : '—'));
 
-          // Coluna 7: valorização das cotas — vem pronta da planilha (modelo
-          // novo, campo "Rentabilidade Líquida"); no modelo antigo não há
-          // custo de aquisição registrado na seção de Fundos Cetipados, então
-          // não é possível calculá-la e a célula mostra "—".
-          var tdValorizacao = cel(D, typeof fundo.rentabilidadeLiquida === 'number'
+          // Coluna 7: valorização das cotas — % vem pronto da planilha
+          // (modelo novo, campo "Rentabilidade Líquida"); no modelo antigo
+          // não há custo de aquisição registrado na seção de Fundos
+          // Cetipados, então não é possível calculá-la e a célula mostra
+          // "—". O ganho em R$ (linha menor, abaixo do %) é sempre o mesmo
+          // cálculo — valor líquido menos valor aplicado —, independente do
+          // modelo de planilha; por isso pode não bater exatamente com o %
+          // acima quando este vem pronto da XP (ex.: aporte/resgate parcial
+          // no meio do período que a rentabilidade % já embute e o R$ não).
+          var tdValorizacao = D.createElement('td');
+          tdValorizacao.textContent = typeof fundo.rentabilidadeLiquida === 'number'
             ? formatarNumero(fundo.rentabilidadeLiquida, 2) + '%'
-            : '—');
+            : '—';
           if (typeof fundo.rentabilidadeLiquida === 'number') {
             tdValorizacao.className = fundo.rentabilidadeLiquida >= 0 ? 'pos' : 'neg';
+          }
+          if (typeof fundo.valorLiquido === 'number' && typeof fundo.valorAplicado === 'number') {
+            var ganhoValorizacaoRS = fundo.valorLiquido - fundo.valorAplicado;
+            var spanGanhoRS = D.createElement('span');
+            spanGanhoRS.style.cssText = 'display:block;font-size:11.5px;font-weight:400;color:var(--ink-soft);';
+            spanGanhoRS.textContent = (ganhoValorizacaoRS >= 0 ? '+' : '') + 'R$ ' + formatarNumero(ganhoValorizacaoRS, 2);
+            tdValorizacao.appendChild(spanGanhoRS);
           }
           tr.appendChild(tdValorizacao);
 
