@@ -326,7 +326,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     <div class="container">
       <span class="eyebrow">Carteira</span>
       <h2>Análise de carteira por planilha</h2>
-      
+      <button type="button" class="btn btn-ghost btn-small" id="btn-carregar-analise-salva" style="margin-top:12px;">📂 Carregar análise salva de um cliente</button>
 
       <div class="upload-box" id="upload-box-arquivo" style="margin-top:32px;">
         <label for="arquivo-planilha" class="btn btn-ghost">Selecionar planilha</label>
@@ -897,6 +897,38 @@ h2{font-size:32px;letter-spacing:-.02em;}
     iniciarAnalise(arquivoSelecionado, arquivoSelecionado2, novaJanela, opcoesAnalise);
   });
 
+  // Botão "Carregar análise salva de um cliente": alternativa ao upload de
+  // planilha — reabre a análise a partir do snapshot gravado em
+  // analises_salvas (ver botão "💾 Salvar análise" dentro do popup da
+  // análise), chamando executarAnalise diretamente com os mesmos 6 arrays +
+  // opções salvos, sem precisar do arquivo original. Cotações e outros
+  // dados buscados ao vivo são recarregados normalmente nesse processo.
+  document.getElementById('btn-carregar-analise-salva').addEventListener('click', function() {
+    if (!sessaoAtual || !sessaoAtual.user) {
+      alert('Faça login para carregar uma análise salva.');
+      return;
+    }
+    abrirModalCarregarAnalise(document, window, function(clienteId, clienteNome, statusEl) {
+      statusEl.textContent = 'Abrindo…';
+      var novaJanela = window.open('', '_blank');
+      if (!novaJanela) {
+        statusEl.textContent = 'O navegador bloqueou a abertura de nova guia. Permita pop-ups e tente novamente.';
+        return Promise.resolve(false);
+      }
+      return supabaseClient.from('analises_salvas').select('dados').eq('user_id', sessaoAtual.user.id).eq('cliente_id', clienteId).single()
+        .then(function(r) {
+          if (r.error || !r.data) {
+            novaJanela.close();
+            statusEl.textContent = 'Não foi possível carregar a análise salva de ' + clienteNome + '.';
+            return false;
+          }
+          var d = r.data.dados;
+          executarAnalise(d.ativos, d.rf, d.cetipFundos, d.previdenciaItens, d.coeItens, d.tesouroItens, novaJanela, d.opcoes);
+          return true;
+        });
+    });
+  });
+
   // Mescla duas listas de itens da mesma categoria (ex.: fundos cetipados
   // extraídos da planilha principal e da complementar), casando os itens
   // pela chave (ticker, ou nome/descrição normalizados). Quando um campo
@@ -1387,7 +1419,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
           posicao: isNaN(posicao) ? null : posicao,
           valorLiquido: isNaN(valorLiquido) ? null : valorLiquido,
           rentabilidadeLiquida: null,
-          rentabilidadeBruta: null
+          rentabilidadeBruta: null,
+          valorAplicado: null // modelo antigo não traz custo de aquisição para Fundos Alternativos
         });
         j++;
       }
@@ -1407,12 +1440,14 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var idxRentLiqN   = idxColuna(cabN, 'rentabilidade liquida');
       var idxRentBrutaN = idxColuna(cabN, 'rentabilidade bruta');
       var idxValLiqN    = idxColuna(cabN, 'liquido');
+      var idxValAplicN  = idxColuna(cabN, 'valor aplicado');
       blocoN.linhas.forEach(function(ld) {
         var nomeN = String(ld[0] === undefined || ld[0] === null ? '' : ld[0]).trim();
         var posicaoN = idxPosN !== -1 ? parseNumeroBR(ld[idxPosN]) : NaN;
         var valorLiquidoN = idxValLiqN !== -1 ? parseNumeroBR(ld[idxValLiqN]) : NaN;
         var rentLiqN = idxRentLiqN !== -1 ? parsePercentualBR(ld[idxRentLiqN]) : NaN;
         var rentBrutaN = idxRentBrutaN !== -1 ? parsePercentualBR(ld[idxRentBrutaN]) : NaN;
+        var valorAplicadoN = idxValAplicN !== -1 ? parseNumeroBR(ld[idxValAplicN]) : NaN;
         itens.push({
           nome: nomeN,
           valorCotaPlanilha: null,
@@ -1420,7 +1455,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
           posicao: isNaN(posicaoN) ? null : posicaoN,
           valorLiquido: isNaN(valorLiquidoN) ? null : valorLiquidoN,
           rentabilidadeLiquida: isNaN(rentLiqN) ? null : rentLiqN,
-          rentabilidadeBruta: isNaN(rentBrutaN) ? null : rentBrutaN
+          rentabilidadeBruta: isNaN(rentBrutaN) ? null : rentBrutaN,
+          valorAplicado: isNaN(valorAplicadoN) ? null : valorAplicadoN
         });
       });
       iN = blocoN.fimIdx - 1;
@@ -1464,6 +1500,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
           valorCotaBase:     match ? (match.cota || match.valor_cota) : null,
           posicao:           fundo.posicao,
           valorLiquido:      fundo.valorLiquido,
+          valorAplicado:     fundo.valorAplicado,
+          // "Data da aplicação" não vem da planilha — usa a "Data de início"
+          // cadastrada para o fundo (fundos_cetipados.data_inicio), já que
+          // esses fundos costumam ser subscritos na oferta inicial.
+          dataAplicacao:     match ? match.data_inicio : null,
           rentabilidadeLiquida: fundo.rentabilidadeLiquida,
           rentabilidadeBruta:   fundo.rentabilidadeBruta,
           diaPagamento:      match ? (match.diaPagamento || match.dia_pagamento) : null,
@@ -2880,6 +2921,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       '<button type="button" id="btn-recarregar-tudo" style="display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;">↻ Recarregar dados</button>' +
       '<button type="button" id="btn-exportar-pdf" style="display:flex;align-items:center;gap:8px;background:var(--orange);border:1.5px solid var(--orange);color:#fff;font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;">⬇ Exportar PDF (resumo + carteira)</button>' +
       '<button type="button" id="btn-enviar-email" style="display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;">✉ Enviar por e-mail</button>' +
+      '<button type="button" id="btn-salvar-analise" style="display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;">💾 Salvar análise</button>' +
       '</div>' +
       '</div>' +
       '<p id="email-status" style="display:none;font-size:12.5px;color:var(--ink-soft);margin:8px 0 0;"></p>' +
@@ -3181,6 +3223,202 @@ h2{font-size:32px;letter-spacing:-.02em;}
     }
   }
 
+  // Modal simples (dentro do próprio popup da análise, via D/novaJanela) para
+  // escolher o cliente ao qual a análise salva ficará vinculada — reaproveita
+  // a tabela "clientes" (já usada em Meus Clientes/Diversificação), com opção
+  // de cadastrar um cliente novo direto no modal. onConfirm(clienteId,
+  // clienteNome, statusEl) deve retornar uma Promise<boolean> (true fecha o
+  // modal após um instante; false/erro mantém aberto para nova tentativa).
+  function abrirModalSalvarAnalise(D, novaJanela, onConfirm) {
+    var overlay = D.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(17,17,17,.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;';
+
+    var card = D.createElement('div');
+    card.style.cssText = 'background:#fff;border-radius:14px;width:100%;max-width:380px;padding:24px;font-family:inherit;box-shadow:0 12px 32px rgba(0,0,0,.25);';
+
+    var titulo = D.createElement('h3');
+    titulo.textContent = 'Salvar análise para qual cliente?';
+    titulo.style.cssText = 'margin:0 0 6px;font-size:16px;font-weight:600;color:#111;';
+    card.appendChild(titulo);
+
+    var sub = D.createElement('p');
+    sub.textContent = 'Salva a composição atual da carteira. Ao reabrir, as cotações são buscadas de novo.';
+    sub.style.cssText = 'margin:0 0 16px;font-size:12.5px;color:#5c5c5c;line-height:1.4;';
+    card.appendChild(sub);
+
+    var select = D.createElement('select');
+    select.style.cssText = 'width:100%;padding:9px 10px;border:1.5px solid #E2E2E2;border-radius:8px;font-family:inherit;font-size:13.5px;color:#111;margin-bottom:10px;';
+    var optCarregando = D.createElement('option');
+    optCarregando.textContent = 'Carregando clientes…';
+    select.appendChild(optCarregando);
+    card.appendChild(select);
+
+    var inputNovo = D.createElement('input');
+    inputNovo.type = 'text';
+    inputNovo.placeholder = 'Nome do novo cliente';
+    inputNovo.hidden = true;
+    inputNovo.style.cssText = 'width:100%;padding:9px 10px;border:1.5px solid #E2E2E2;border-radius:8px;font-family:inherit;font-size:13.5px;color:#111;margin-bottom:10px;';
+    card.appendChild(inputNovo);
+
+    var statusEl = D.createElement('p');
+    statusEl.style.cssText = 'font-size:12.5px;color:#5c5c5c;min-height:16px;margin:0 0 12px;';
+    card.appendChild(statusEl);
+
+    var acoes = D.createElement('div');
+    acoes.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;';
+    var btnCancelar = D.createElement('button');
+    btnCancelar.type = 'button';
+    btnCancelar.textContent = 'Cancelar';
+    btnCancelar.style.cssText = 'background:#fff;border:1.5px solid #E2E2E2;color:#111;font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;';
+    btnCancelar.addEventListener('click', function() { overlay.remove(); });
+    var btnConfirmar = D.createElement('button');
+    btnConfirmar.type = 'button';
+    btnConfirmar.textContent = 'Salvar';
+    btnConfirmar.style.cssText = 'background:#111;border:1.5px solid #111;color:#fff;font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;';
+    acoes.appendChild(btnCancelar);
+    acoes.appendChild(btnConfirmar);
+    card.appendChild(acoes);
+
+    overlay.appendChild(card);
+    D.body.appendChild(overlay);
+
+    var NOVO_CLIENTE_VALUE = '__novo__';
+    function atualizarVisibilidadeInputNovo() {
+      inputNovo.hidden = select.value !== NOVO_CLIENTE_VALUE;
+    }
+    select.addEventListener('change', atualizarVisibilidadeInputNovo);
+
+    supabaseClient.from('clientes').select('id,nome').eq('user_id', sessaoAtual.user.id).order('nome', { ascending: true }).then(function(r) {
+      select.innerHTML = '';
+      (r.data || []).forEach(function(c) {
+        var opt = D.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.nome;
+        select.appendChild(opt);
+      });
+      var optNovo = D.createElement('option');
+      optNovo.value = NOVO_CLIENTE_VALUE;
+      optNovo.textContent = '+ Novo cliente';
+      select.appendChild(optNovo);
+      if (!r.data || !r.data.length) { select.value = NOVO_CLIENTE_VALUE; atualizarVisibilidadeInputNovo(); }
+    });
+
+    btnConfirmar.addEventListener('click', function() {
+      var ehNovo = select.value === NOVO_CLIENTE_VALUE;
+      var nomeNovo = inputNovo.value.trim();
+      if (ehNovo && !nomeNovo) {
+        statusEl.textContent = 'Informe o nome do novo cliente.';
+        return;
+      }
+      btnConfirmar.disabled = true;
+      btnCancelar.disabled = true;
+      statusEl.textContent = ehNovo ? 'Cadastrando cliente…' : '';
+
+      var promClienteId = ehNovo
+        ? supabaseClient.from('clientes').insert({ nome: nomeNovo, user_id: sessaoAtual.user.id }).select('id,nome').single()
+            .then(function(r) {
+              if (r.error) throw new Error(r.error.message);
+              return { id: r.data.id, nome: r.data.nome };
+            })
+        : Promise.resolve({ id: select.value, nome: select.options[select.selectedIndex].textContent });
+
+      promClienteId.then(function(cliente) {
+        return onConfirm(cliente.id, cliente.nome, statusEl);
+      }).then(function(sucesso) {
+        btnConfirmar.disabled = false;
+        btnCancelar.disabled = false;
+        if (sucesso) setTimeout(function() { overlay.remove(); }, 1400);
+      }).catch(function(e) {
+        btnConfirmar.disabled = false;
+        btnCancelar.disabled = false;
+        statusEl.textContent = 'Erro: ' + e.message;
+      });
+    });
+  }
+
+  // Modal para escolher, entre os clientes com uma análise salva
+  // (analises_salvas), qual reabrir. Irmão de abrirModalSalvarAnalise, mas
+  // sem a opção de cadastrar cliente novo (não faz sentido carregar uma
+  // análise de um cliente que ainda não tem nenhuma salva).
+  function abrirModalCarregarAnalise(D, jw, onConfirm) {
+    var overlay = D.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(17,17,17,.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;';
+
+    var card = D.createElement('div');
+    card.style.cssText = 'background:#fff;border-radius:14px;width:100%;max-width:380px;padding:24px;font-family:inherit;box-shadow:0 12px 32px rgba(0,0,0,.25);';
+
+    var titulo = D.createElement('h3');
+    titulo.textContent = 'Carregar análise de qual cliente?';
+    titulo.style.cssText = 'margin:0 0 16px;font-size:16px;font-weight:600;color:#111;';
+    card.appendChild(titulo);
+
+    var select = D.createElement('select');
+    select.style.cssText = 'width:100%;padding:9px 10px;border:1.5px solid #E2E2E2;border-radius:8px;font-family:inherit;font-size:13.5px;color:#111;margin-bottom:10px;';
+    var optCarregando = D.createElement('option');
+    optCarregando.textContent = 'Carregando clientes…';
+    select.appendChild(optCarregando);
+    card.appendChild(select);
+
+    var statusEl = D.createElement('p');
+    statusEl.style.cssText = 'font-size:12.5px;color:#5c5c5c;min-height:16px;margin:0 0 12px;';
+    card.appendChild(statusEl);
+
+    var acoes = D.createElement('div');
+    acoes.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;';
+    var btnCancelar = D.createElement('button');
+    btnCancelar.type = 'button';
+    btnCancelar.textContent = 'Cancelar';
+    btnCancelar.style.cssText = 'background:#fff;border:1.5px solid #E2E2E2;color:#111;font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;';
+    btnCancelar.addEventListener('click', function() { overlay.remove(); });
+    var btnConfirmar = D.createElement('button');
+    btnConfirmar.type = 'button';
+    btnConfirmar.textContent = 'Carregar';
+    btnConfirmar.disabled = true;
+    btnConfirmar.style.cssText = 'background:#111;border:1.5px solid #111;color:#fff;font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;';
+    acoes.appendChild(btnCancelar);
+    acoes.appendChild(btnConfirmar);
+    card.appendChild(acoes);
+
+    overlay.appendChild(card);
+    D.body.appendChild(overlay);
+
+    supabaseClient.from('analises_salvas').select('cliente_id,atualizado_em,clientes(nome)')
+      .eq('user_id', sessaoAtual.user.id).order('atualizado_em', { ascending: false }).then(function(r) {
+        select.innerHTML = '';
+        var linhas = r.data || [];
+        if (!linhas.length) {
+          var optVazio = D.createElement('option');
+          optVazio.textContent = 'Nenhum cliente com análise salva ainda';
+          select.appendChild(optVazio);
+          statusEl.textContent = 'Salve uma análise primeiro, pelo botão "💾 Salvar análise" dentro do resultado da análise.';
+          return;
+        }
+        linhas.forEach(function(l) {
+          var opt = D.createElement('option');
+          opt.value = l.cliente_id;
+          opt.textContent = (l.clientes && l.clientes.nome) ? l.clientes.nome : '(cliente removido)';
+          select.appendChild(opt);
+        });
+        btnConfirmar.disabled = false;
+      });
+
+    btnConfirmar.addEventListener('click', function() {
+      var clienteId = select.value;
+      var clienteNome = select.options[select.selectedIndex].textContent;
+      btnConfirmar.disabled = true;
+      btnCancelar.disabled = true;
+      Promise.resolve(onConfirm(clienteId, clienteNome, statusEl)).then(function(sucesso) {
+        btnConfirmar.disabled = false;
+        btnCancelar.disabled = false;
+        if (sucesso) setTimeout(function() { overlay.remove(); }, 800);
+      }).catch(function(e) {
+        btnConfirmar.disabled = false;
+        btnCancelar.disabled = false;
+        statusEl.textContent = 'Erro: ' + e.message;
+      });
+    });
+  }
+
   /* ===================== EXECUÇÃO DA ANÁLISE ===================== */
 
   function executarAnalise(ativos, rfItens, cetipFundos, previdenciaItens, coeItens, tesouroItens, novaJanela, opcoes) {
@@ -3216,7 +3454,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     colRV.push('Cotação atual','Valor total','Variação','P/L','P/VP','Dividend Yield (12m)','ROE','Próximos proventos','Total de proventos','Preço Alvo (XP)','Upside (XP)','Valor de mercado','Liquidez diária','Vacância média','');
     var colRFPos = ['Ativo','Tipo','Aplicação','Vencimento','Taxa','Valor aplicado','Posição','Valor líquido','Cupons pagos até o momento','Lucro (R$)','Lucro (%)',''];
     var colRFEmis = ['Ativo','Instituição/emissor identificado','Caixa','Receita líquida','Lucro/Prejuízo','Dívida bruta','Dívida líquida','EBITDA','Dívida bruta/EBITDA','Margem líquida','Índice de Basileia (bancos)'];
-    var colCetip = ['', 'Fundo', 'Qtd. cotas', 'Valor da cota', 'Valorização', 'Valor líquido', 'Dia pag. rendimento', 'Último dividendo pago', 'Yield (mês)', ''];
+    var colCetip = ['', 'Fundo', 'Data da aplicação', 'Qtd. cotas', 'Valor da cota', 'Valor aplicado', 'Valorização', 'Valor líquido', 'Dia pag. rendimento', 'Último dividendo pago', 'Yield (mês)', ''];
     var colPrevidencia = ['Fundo', 'Categoria', 'Posição', 'Rentabilidade', 'Valor aplicado', 'Rendimento bruto', ''];
     var colCOE = ['Operação', 'Categoria', 'Posição', 'Rentabilidade', 'Valor aplicado', 'Vencimento', ''];
     var colTesouro = ['Título', 'Categoria', 'Posição', 'Quantidade', 'Valor aplicado', 'Vencimento', 'Cupons pagos até o momento', 'Lucro (R$)', 'Lucro (%)', ''];
@@ -3523,6 +3761,50 @@ h2{font-size:32px;letter-spacing:-.02em;}
     if (btnRecarregarTudo) {
       btnRecarregarTudo.addEventListener('click', function() {
         executarAnalise(ativos, rfItens, cetipFundos, previdenciaItens, coeItens, tesouroItens, novaJanela, opcoes);
+      });
+    }
+
+    // Botão "Salvar análise": grava em analises_salvas (Supabase) um snapshot
+    // dos mesmos 6 arrays + opções usados para gerar esta análise (ativos,
+    // rfItens, cetipFundos, previdenciaItens, coeItens, tesouroItens,
+    // opcoes) — os mesmos que "Recarregar dados" reaproveita acima. Isso
+    // preserva a composição da carteira e as poucas edições que já alteram
+    // esses objetos diretamente (Valor aplicado/Posição em Renda Fixa, Valor
+    // líquido em Fundos Cetipados — ver os aoEditarCelula correspondentes);
+    // as demais edições de célula (clique para editar em outras colunas,
+    // inclusive a marcação manual em vermelho) são só visuais no DOM do
+    // popup e não são gravadas. Cotações e outros dados buscados ao vivo
+    // (brapi etc.) também NÃO ficam presos no snapshot — são buscados de
+    // novo sempre que a análise salva é reaberta. Uma linha por cliente
+    // (salvar de novo sobrescreve a anterior).
+    var btnSalvarAnalise = D.getElementById('btn-salvar-analise');
+    if (btnSalvarAnalise) {
+      btnSalvarAnalise.addEventListener('click', function() {
+        if (!sessaoAtual || !sessaoAtual.user) {
+          novaJanela.alert('Faça login no Clube do Rendimento (na aba principal) para salvar a análise.');
+          return;
+        }
+        abrirModalSalvarAnalise(D, novaJanela, function(clienteId, clienteNome, statusEl) {
+          statusEl.textContent = 'Salvando…';
+          var dadosSnapshot = {
+            ativos: ativos, rf: rfItens, cetipFundos: cetipFundos,
+            previdenciaItens: previdenciaItens, coeItens: coeItens,
+            tesouroItens: tesouroItens, opcoes: opcoes
+          };
+          return supabaseClient.from('analises_salvas').upsert({
+            user_id: sessaoAtual.user.id,
+            cliente_id: clienteId,
+            dados: dadosSnapshot,
+            atualizado_em: new Date().toISOString()
+          }, { onConflict: 'user_id,cliente_id' }).then(function(r) {
+            if (r.error) {
+              statusEl.textContent = 'Erro ao salvar: ' + r.error.message;
+              return false;
+            }
+            statusEl.textContent = '✅ Análise salva para ' + clienteNome + '.';
+            return true;
+          });
+        });
       });
     }
 
@@ -6121,7 +6403,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           btnPrintCetip.textContent = 'Copiando…';
 
           var captura = D.createElement('div');
-          captura.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:28px;width:920px;' +
+          captura.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:28px;width:max-content;min-width:920px;' +
             'font-family:' + novaJanela.getComputedStyle(D.body).fontFamily + ';';
 
           var cardsWrap = D.createElement('div');
@@ -6142,6 +6424,16 @@ h2{font-size:32px;letter-spacing:-.02em;}
           var btnCloneRemover = secaoClone.querySelector('#btn-print-cetip');
           if (btnCloneRemover) btnCloneRemover.remove();
           secaoClone.classList.add('cetip-print-scope');
+          // A .table-wrap original tem overflow:auto e max-height:70vh (para
+          // caber na tela com scroll) — no clone isso faz o html2canvas
+          // capturar só a área visível/rolada, cortando colunas à direita e
+          // linhas abaixo. Removendo o clip, a tabela expande para o tamanho
+          // real do conteúdo antes da captura.
+          var tableWrapClone = secaoClone.querySelector('.table-wrap');
+          if (tableWrapClone) {
+            tableWrapClone.style.overflow = 'visible';
+            tableWrapClone.style.maxHeight = 'none';
+          }
           captura.appendChild(secaoClone);
 
           var estiloPrint = D.createElement('style');
@@ -6231,7 +6523,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         if (!cetipFundos.length) {
           var trVazio = D.createElement('tr');
           var tdVazio = D.createElement('td');
-          tdVazio.colSpan = 10;
+          tdVazio.colSpan = 12;
           tdVazio.textContent = 'Nenhum fundo cetipado identificado nesta planilha.';
           trVazio.appendChild(tdVazio);
           corpoCetip.appendChild(trVazio);
@@ -6287,12 +6579,16 @@ h2{font-size:32px;letter-spacing:-.02em;}
           }
           tr.appendChild(tdNome);
 
-          // Coluna 3: quantidade de cotas
+          // Coluna 3: data da aplicação — não vem da planilha, é a "Data de
+          // início" cadastrada para o fundo (ver combinarComBaseCetipados).
+          tr.appendChild(cel(D, fundo.dataAplicacao ? formatarDataBR(fundo.dataAplicacao) : '—'));
+
+          // Coluna 4: quantidade de cotas
           tr.appendChild(cel(D, typeof fundo.qtdCotas === 'number'
             ? formatarNumero(fundo.qtdCotas, 0)
             : '—'));
 
-          // Coluna 4: valor da cota (da planilha, ou da base de dados como fallback)
+          // Coluna 5: valor da cota (da planilha, ou da base de dados como fallback)
           var valorCota = (typeof fundo.valorCotaPlanilha === 'number')
             ? fundo.valorCotaPlanilha
             : fundo.valorCotaBase;
@@ -6300,7 +6596,13 @@ h2{font-size:32px;letter-spacing:-.02em;}
             ? 'R$ ' + formatarNumero(valorCota, 2)
             : '—'));
 
-          // Coluna 5: valorização das cotas — vem pronta da planilha (modelo
+          // Coluna 6: valor aplicado — vem da planilha (modelo novo); no
+          // modelo antigo essa seção não traz custo de aquisição.
+          tr.appendChild(cel(D, typeof fundo.valorAplicado === 'number'
+            ? 'R$ ' + formatarNumero(fundo.valorAplicado, 2)
+            : '—'));
+
+          // Coluna 7: valorização das cotas — vem pronta da planilha (modelo
           // novo, campo "Rentabilidade Líquida"); no modelo antigo não há
           // custo de aquisição registrado na seção de Fundos Cetipados, então
           // não é possível calculá-la e a célula mostra "—".
@@ -6312,18 +6614,18 @@ h2{font-size:32px;letter-spacing:-.02em;}
           }
           tr.appendChild(tdValorizacao);
 
-          // Coluna 6: valor líquido
+          // Coluna 8: valor líquido
           var tdValorLiq = cel(D, typeof fundo.valorLiquido === 'number'
             ? 'R$ ' + formatarNumero(fundo.valorLiquido, 2)
             : '—');
           tr.appendChild(tdValorLiq);
 
-          // Coluna 7: dia de pagamento
+          // Coluna 9: dia de pagamento
           tr.appendChild(cel(D, typeof fundo.diaPagamento === 'number'
             ? fundo.diaPagamento + 'º dia útil'
             : '—'));
 
-          // Colunas 8 e 9: último dividendo pago (total) e yield do mês (%),
+          // Colunas 10 e 11: último dividendo pago (total) e yield do mês (%),
           // calculados a partir do evento mais recente em ultimosEventos.
           var ultimoEvento = null;
           if (fundo.ultimosEventos && fundo.ultimosEventos.length) {
@@ -6366,7 +6668,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
             concluir();
           });
 
-          // Coluna 10: excluir fundo da análise
+          // Coluna 12: excluir fundo da análise
           var tdAcao = D.createElement('td');
           tdAcao.style.textAlign = 'center';
           var btnExcluir = D.createElement('button');
@@ -6391,7 +6693,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           trDet.className = 'cetip-detalhe';
 
           var tdDet = D.createElement('td');
-          tdDet.colSpan = 10;
+          tdDet.colSpan = 12;
 
           var grid = D.createElement('div');
           grid.className = 'cetip-detalhe-grid';
