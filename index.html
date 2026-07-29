@@ -4051,7 +4051,6 @@ h2{font-size:32px;letter-spacing:-.02em;}
       if (!td || td.dataset.editavel) return;
       td.dataset.editavel = '1';
       td.classList.add('cel-editavel');
-      td.title = 'Clique para editar · clique com o botão direito para marcar em vermelho';
       td.addEventListener('click', function() {
         if (td.querySelector('input')) return; // já em edição
         var valorAtual = td.textContent === '—' ? '' : td.textContent;
@@ -5444,7 +5443,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
           wrap.className = 'table-wrap';
           var table = D.createElement('table');
           table.id = 'tabela-bcb-rf';
-          table.innerHTML = '<thead><tr><th>Instituição</th><th>Total em Carteira</th><th>Período</th><th>Índice de Basileia</th>' +
+          table.innerHTML = '<thead><tr><th>Instituição</th><th>Total em Carteira</th><th>Período</th>' +
+            '<th class="th-tip">Índice de Basileia<div class="th-tip-box"><div class="th-tip-titulo">Índice de Basileia</div><div class="th-tip-desc">Mede o quanto do capital próprio do banco cobre os riscos assumidos em suas operações, servindo de colchão contra perdas inesperadas.</div><ul class="th-tip-lista"><li><strong>Fórmula:</strong> Patrimônio de Referência ÷ Ativos Ponderados pelo Risco</li><li><strong>Interpretação:</strong> O Banco Central exige um mínimo regulatório em torno de 11%; bancos com índices bem acima disso (14% ou mais) têm folga de capital mais confortável.</li></ul></div></th>' +
             '<th>Caixa (disponibilidades)</th><th>Captações</th><th>Lucro líquido</th><th>Receita</th><th></th></tr></thead><tbody></tbody>';
           var tbody = table.querySelector('tbody');
           linhas.forEach(function(l) {
@@ -5463,6 +5463,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
               tr.appendChild(cel(D, !isNaN(v) ? formatarCompacto(v) : '—'));
             });
             Array.prototype.forEach.call(tr.children, function(td) { tornarCelulaEditavel(td); });
+            if (basileia !== null) tdBas.title = 'Referência geral: mínimo regulatório do Banco Central em torno de 11%; acima de 14% indica folga de capital confortável.';
             var tdAcao = D.createElement('td');
             tdAcao.style.textAlign = 'center';
             var btnExcluir = D.createElement('button');
@@ -5541,7 +5542,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           table.innerHTML = '<thead><tr><th>Empresa</th><th>Total em Carteira</th><th>Segmento</th><th>Rating</th><th>Referência</th><th>Receita líquida</th>' +
             '<th>EBITDA</th>' +
             '<th class="th-tip">Margem EBITDA<div class="th-tip-box"><div class="th-tip-titulo">Margem EBITDA</div><div class="th-tip-desc">Revela o percentual de cada real faturado que efetivamente se transforma em caixa operacional puro, antes de juros e impostos.</div><ul class="th-tip-lista"><li><strong>Fórmula:</strong> EBITDA ÷ Receita Líquida</li><li><strong>Interpretação:</strong> Margens altas e crescentes sinalizam forte poder de preço e excelente controle de custos operacionais.</li></ul></div></th>' +
-            '<th>Margem EBITDA saudável (segmento)</th><th>Lucro líquido</th><th>Caixa</th><th>Dívida bruta</th>' +
+            '<th>Lucro líquido</th><th>Caixa</th><th>Dívida bruta</th>' +
             '<th>Dívida líquida</th>' +
             '<th class="th-tip">Dív.líq./EBITDA<div class="th-tip-box"><div class="th-tip-titulo">Dívida Líquida / EBITDA</div><div class="th-tip-desc">Indica quantos anos de geração de caixa operacional seriam necessários para amortizar totalmente a dívida líquida da companhia.</div><ul class="th-tip-lista"><li><strong>Fórmula:</strong> (Dívida Bruta − Caixa) ÷ EBITDA</li><li><strong>Interpretação:</strong> Para a maioria dos setores, valores abaixo de 2,5x ou 3,0x são considerados saudáveis e controlados.</li></ul></div></th>' +
             '<th class="th-tip">Liquidez corrente<div class="th-tip-box"><div class="th-tip-titulo">Liquidez Corrente</div><div class="th-tip-desc">Mede a capacidade de pagar obrigações de curto prazo (até 1 ano) usando os ativos conversíveis em dinheiro nesse mesmo período.</div><ul class="th-tip-lista"><li><strong>Fórmula:</strong> Ativo Circulante ÷ Passivo Circulante</li><li><strong>Interpretação:</strong> Acima de 1,0 indica que há folga financeira; abaixo de 1,0 sinaliza risco potencial de insolvência no curto prazo.</li></ul></div></th>' +
@@ -5564,7 +5565,6 @@ h2{font-size:32px;letter-spacing:-.02em;}
               tdMargem.className = margemEbitdaPct < faixaSaudavel[0] ? 'neg' : (margemEbitdaPct <= faixaSaudavel[1] ? 'pos' : '');
             }
             tr.appendChild(tdMargem);
-            tr.appendChild(cel(D, faixaSaudavel ? faixaSaudavel[0] + '% – ' + faixaSaudavel[1] + '%' : '—'));
             tr.appendChild(cel(D, fmtMoedaCP(l.lucro_liquido)));
             tr.appendChild(cel(D, fmtMoedaCP(l.caixa)));
             tr.appendChild(cel(D, fmtMoedaCP(l.divida_bruta)));
@@ -5575,14 +5575,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var tdLiquidez = cel(D, typeof l.liquidez_corrente === 'number' ? formatarNumero(l.liquidez_corrente, 2) : '—');
             tr.appendChild(tdLiquidez);
             Array.prototype.forEach.call(tr.children, function(td) { tornarCelulaEditavel(td); });
-            // Ao passar o mouse sobre o resultado, mostra a média/faixa saudável
-            // (adicionado depois de tornarCelulaEditavel para não ser sobrescrito
-            // pelo title padrão de "clique para editar").
+            // Ao passar o mouse sobre o resultado, mostra a faixa/referência saudável.
             if (faixaSaudavel) {
-              tdMargem.title += ' · Faixa saudável do segmento (' + (l.segmento || '—') + '): ' + faixaSaudavel[0] + '% a ' + faixaSaudavel[1] + '%';
+              tdMargem.title = 'Faixa saudável do segmento (' + (l.segmento || '—') + '): ' + faixaSaudavel[0] + '% a ' + faixaSaudavel[1] + '%';
             }
-            tdAlav.title += ' · Referência geral: abaixo de 2,5x–3,0x costuma ser saudável para a maioria dos setores.';
-            tdLiquidez.title += ' · Referência geral: acima de 1,0 indica folga financeira no curto prazo.';
+            tdAlav.title = 'Referência geral: abaixo de 2,5x–3,0x costuma ser saudável para a maioria dos setores.';
+            tdLiquidez.title = 'Referência geral: acima de 1,0 indica folga financeira no curto prazo.';
             var tdAcao = D.createElement('td');
             tdAcao.style.textAlign = 'center';
             var btnExcluir = D.createElement('button');
@@ -10309,6 +10307,7 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 .basileia-sub{font-size:13.5px;color:var(--ink-soft);margin-bottom:16px;line-height:1.5;max-width:640px;}
 .basileia-legenda{display:flex;flex-wrap:wrap;gap:10px 20px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;margin-bottom:24px;box-shadow:var(--shadow);}
 .basileia-legenda-item{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-soft);}
+.th-tip{position:relative;cursor:help;}.th-tip-box{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:6px;width:280px;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow);z-index:50;text-transform:none;font-weight:400;letter-spacing:normal;white-space:normal;cursor:auto;}.th-tip:hover .th-tip-box{display:block;}.th-tip-titulo{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:6px;}.th-tip-desc{font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:8px;}.th-tip-lista{margin:0;padding-left:16px;font-size:12px;color:var(--ink-soft);line-height:1.5;}.th-tip-lista li{margin-bottom:4px;}
 .basileia-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
 .basileia-dot-atencao{background:var(--red);}
 .basileia-dot-adequado{background:var(--amber);}
@@ -10374,7 +10373,7 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 
   <div class="basileia-table-wrap">
     <table class="basileia-table">
-      <thead><tr><th>Instituição</th><th>Índice de Basileia</th><th>Período</th><th></th></tr></thead>
+      <thead><tr><th>Instituição</th><th class="th-tip">Índice de Basileia<div class="th-tip-box"><div class="th-tip-titulo">Índice de Basileia</div><div class="th-tip-desc">Mede o quanto do capital próprio do banco cobre os riscos assumidos em suas operações, servindo de colchão contra perdas inesperadas.</div><ul class="th-tip-lista"><li><strong>Fórmula:</strong> Patrimônio de Referência ÷ Ativos Ponderados pelo Risco</li><li><strong>Interpretação:</strong> O mínimo regulatório do Banco Central é de 10,5%; bancos com índices bem acima disso (14% ou mais) têm folga de capital mais confortável.</li></ul></div></th><th>Período</th><th></th></tr></thead>
       <tbody id="basileia-corpo"></tbody>
     </table>
   </div>
@@ -10439,6 +10438,7 @@ function preencherLinha(tr, nome, basileia, periodo) {
   tr.children[0].textContent = nome;
   tr.children[1].textContent = fmtPct(basileia);
   tr.children[1].className = 'basileia-valor ' + classificarBasileia(basileia);
+  tr.children[1].title = 'Referência geral: mínimo regulatório de 10,5%; abaixo de 11% pede atenção, acima de 14% indica folga confortável.';
   tr.children[2].textContent = fmtPeriodo(periodo);
 }
 
@@ -10739,6 +10739,7 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 .cp-legenda-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px 24px;}
 .cp-legenda-grid div{font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
 .cp-legenda-grid strong{color:var(--ink);}
+.th-tip{position:relative;cursor:help;}.th-tip-box{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:6px;width:280px;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow);z-index:50;text-transform:none;font-weight:400;letter-spacing:normal;white-space:normal;cursor:auto;}.th-tip:hover .th-tip-box{display:block;}.th-tip-titulo{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:6px;}.th-tip-desc{font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:8px;}.th-tip-lista{margin:0;padding-left:16px;font-size:12px;color:var(--ink-soft);line-height:1.5;}.th-tip-lista li{margin-bottom:4px;}
 .cp-busca-status{font-size:12.5px;color:var(--ink-soft);min-height:18px;margin-bottom:12px;}
 .filtro-tabela-input{padding:9px 14px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);width:280px;max-width:100%;background:#fff;margin-bottom:14px;display:block;}
 .col-redimensionar{position:absolute;top:0;right:0;width:8px;height:100%;cursor:col-resize;user-select:none;z-index:4;}
@@ -10802,8 +10803,12 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
     <table class="cp-table">
       <thead><tr>
         <th>Empresa</th><th>Segmento</th><th>Rating</th><th>Referência</th><th>Receita Líquida</th><th>EBITDA</th>
-        <th>Margem EBITDA</th><th>Lucro Líquido</th><th>Caixa</th>
-        <th>Dívida Bruta</th><th>Dívida Líquida</th><th>Dív.Líq./EBITDA</th><th>Liquidez Corrente</th><th></th>
+        <th class="th-tip">Margem EBITDA<div class="th-tip-box"><div class="th-tip-titulo">Margem EBITDA</div><div class="th-tip-desc">Revela o percentual de cada real faturado que efetivamente se transforma em caixa operacional puro, antes de juros e impostos.</div><ul class="th-tip-lista"><li><strong>Fórmula:</strong> EBITDA ÷ Receita Líquida</li><li><strong>Interpretação:</strong> Margens altas e crescentes sinalizam forte poder de preço e excelente controle de custos operacionais.</li></ul></div></th>
+        <th>Lucro Líquido</th><th>Caixa</th>
+        <th>Dívida Bruta</th><th>Dívida Líquida</th>
+        <th class="th-tip">Dív.Líq./EBITDA<div class="th-tip-box"><div class="th-tip-titulo">Dívida Líquida / EBITDA</div><div class="th-tip-desc">Indica quantos anos de geração de caixa operacional seriam necessários para amortizar totalmente a dívida líquida da companhia.</div><ul class="th-tip-lista"><li><strong>Fórmula:</strong> (Dívida Bruta − Caixa) ÷ EBITDA</li><li><strong>Interpretação:</strong> Para a maioria dos setores, valores abaixo de 2,5x ou 3,0x são considerados saudáveis e controlados.</li></ul></div></th>
+        <th class="th-tip">Liquidez Corrente<div class="th-tip-box"><div class="th-tip-titulo">Liquidez Corrente</div><div class="th-tip-desc">Mede a capacidade de pagar obrigações de curto prazo (até 1 ano) usando os ativos conversíveis em dinheiro nesse mesmo período.</div><ul class="th-tip-lista"><li><strong>Fórmula:</strong> Ativo Circulante ÷ Passivo Circulante</li><li><strong>Interpretação:</strong> Acima de 1,0 indica que há folga financeira; abaixo de 1,0 sinaliza risco potencial de insolvência no curto prazo.</li></ul></div></th>
+        <th></th>
       </tr></thead>
       <tbody id="cp-corpo"></tbody>
     </table>
@@ -11046,6 +11051,27 @@ function tornarColunasAjustaveis(tabela) {
   });
 }
 
+// Faixa de referência (ilustrativa) de Margem EBITDA considerada saudável
+// para empresas de cada segmento — ver mesma tabela na Análise de Carteira.
+var EBITDA_SAUDAVEL_POR_SEGMENTO = {
+  'açúcar e etanol': [25, 35], 'agronegócio (sementes)': [15, 25], 'alimentação (fast food)': [15, 20],
+  'alimentos': [10, 15], 'alimentos (proteína animal)': [8, 12], 'bebidas': [20, 30],
+  'bens industriais (máquinas e equipamentos)': [12, 18], 'bens industriais (revestimentos cerâmicos)': [15, 22],
+  'construção civil': [15, 25], 'cosméticos e higiene': [15, 20], 'distribuição de combustíveis': [3, 6],
+  'educação': [25, 35], 'energia (açúcar, etanol e combustíveis)': [20, 30], 'energia (óleo e gás)': [30, 45],
+  'energia e diversificado': [25, 35], 'energia elétrica': [35, 45], 'energia elétrica (transmissão)': [70, 85],
+  'incorporação e shoppings': [40, 55], 'infraestrutura (portos)': [40, 50], 'infraestrutura (rodovias)': [55, 65],
+  'infraestrutura (transporte urbano)': [25, 35], 'locação de veículos': [40, 50], 'locação de veículos e equipamentos': [40, 50],
+  'logística (ferrovias)': [45, 55], 'logística (hidrovias)': [35, 45], 'logística e transporte': [15, 25],
+  'mineração': [35, 50], 'papel e celulose': [35, 45], 'petroquímico': [10, 20], 'saneamento': [40, 50],
+  'saúde': [15, 25], 'saúde (planos de saúde)': [8, 15], 'shoppings (real estate)': [65, 75],
+  'siderurgia': [15, 25], 'telecomunicações': [35, 45], 'transporte aéreo': [15, 25], 'varejo': [6, 10], 'varejo alimentar': [5, 9]
+};
+function faixaEbitdaSaudavel(segmento) {
+  if (!segmento) return null;
+  return EBITDA_SAUDAVEL_POR_SEGMENTO[String(segmento).toLowerCase().trim()] || null;
+}
+
 var corpo = document.getElementById('cp-corpo');
 // Nome "status" colide com a propriedade global window.status (barra de
 // status legada do navegador): "var status = elemento" nunca guarda o
@@ -11065,6 +11091,10 @@ fetch(SB_URL + '/rest/v1/credito_privado_indicadores?select=*&order=nome.asc', {
     statusEl.textContent = '';
     corpo.innerHTML = linhas.map(function(l) {
       var celAlav = l.div_liq_ebitda;
+      var faixaSaudavel = faixaEbitdaSaudavel(l.segmento);
+      var tituloMargem = faixaSaudavel ? 'Faixa saudável do segmento (' + (l.segmento || '—') + '): ' + faixaSaudavel[0] + '% a ' + faixaSaudavel[1] + '%' : '';
+      var tituloAlav = 'Referência geral: abaixo de 2,5x–3,0x costuma ser saudável para a maioria dos setores.';
+      var tituloLiq = 'Referência geral: acima de 1,0 indica folga financeira no curto prazo.';
       return '<tr>' +
         '<td class="cp-nome">' + l.nome + '</td>' +
         '<td>' + (l.segmento || '—') + '</td>' +
@@ -11072,13 +11102,13 @@ fetch(SB_URL + '/rest/v1/credito_privado_indicadores?select=*&order=nome.asc', {
         '<td>' + fmtData(l.referencia) + '</td>' +
         '<td>' + fmtMoeda(l.receita_liquida) + '</td>' +
         '<td>' + fmtMoeda(l.ebitda) + '</td>' +
-        '<td>' + fmtPct(l.margem_ebitda) + '</td>' +
+        '<td' + (tituloMargem ? ' title="' + tituloMargem + '"' : '') + '>' + fmtPct(l.margem_ebitda) + '</td>' +
         '<td>' + fmtMoeda(l.lucro_liquido) + '</td>' +
         '<td>' + fmtMoeda(l.caixa) + '</td>' +
         '<td>' + fmtMoeda(l.divida_bruta) + '</td>' +
         '<td>' + fmtMoeda(l.divida_liquida) + '</td>' +
-        '<td class="' + classificarAlavancagem(celAlav) + '">' + fmtX(celAlav) + '</td>' +
-        '<td>' + fmtX(l.liquidez_corrente) + '</td>' +
+        '<td class="' + classificarAlavancagem(celAlav) + '" title="' + tituloAlav + '">' + fmtX(celAlav) + '</td>' +
+        '<td title="' + tituloLiq + '">' + fmtX(l.liquidez_corrente) + '</td>' +
         '<td style="text-align:center;"><button type="button" class="btn-excluir-linha" title="Remover esta empresa da lista">🗑️</button></td>' +
         '</tr>';
     }).join('');
