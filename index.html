@@ -1749,7 +1749,22 @@ h2{font-size:32px;letter-spacing:-.02em;}
     { chaves: ['PATRIMAR'], cnpj8: '23236821' },
     { chaves: ['MAESTRO LOCADORA','MAESTRO'], cnpj8: '08795211' },
     { chaves: ['MAGAZINE LUIZA','MAGALU'], cnpj8: '47960950' },
-    { chaves: ['GRUPO MATEUS','MATEUS'], cnpj8: '24990777' }
+    { chaves: ['GRUPO MATEUS','MATEUS'], cnpj8: '24990777' },
+    // Emissores sem registro de companhia aberta na CVM (sociedades
+    // anônimas fechadas, dívida geralmente registrada por securitizadora)
+    // — dados financeiros pesquisados manualmente em fonte pública
+    // específica (ver credito_privado_indicadores, atualizado_em e
+    // referencia registram a data da pesquisa/período), sem atualização
+    // automática via CVM.
+    { chaves: ['OLFAR'], cnpj8: '91830836' },
+    { chaves: ['FS BIOENERGIA','FS BIO'], cnpj8: '20003699' },
+    { chaves: ['FS FLORESTAL'], cnpj8: '47242860' },
+    { chaves: ['CMAA'], cnpj8: '08493364' },
+    { chaves: ['ZILOR','ACUCAREIRA QUATA','AÇUCAREIRA QUATÁ'], cnpj8: '60855574' },
+    { chaves: ['COCAL'], cnpj8: '44373108' },
+    { chaves: ['LAR COOPERATIVA','LAR COOP'], cnpj8: '77752293' },
+    { chaves: ['ADUBOS ARAGUAIA','ARAGUAIA'], cnpj8: '03306578' },
+    { chaves: ['BILD'], cnpj8: '29998522' }
   ];
 
   function cnpj8CreditoPrivado(emissor) {
