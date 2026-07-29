@@ -3087,8 +3087,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
           + '<td class="ticker-tag">' + l.ticker + '</td>'
           + '<td>' + (l.classe === 'fiis' ? 'FII' : 'Ação') + '</td>'
           + '<td>' + l.dataBR + '</td>'
-          + '<td>' + formatarNumero(l.quantidade, 0) + '</td>'
-          + '<td>' + fmtBRLDarf(l.precoMedio) + '</td>'
+          + '<td class="darf-editavel" data-idx="' + idx + '" data-campo="quantidade" style="cursor:text;" title="Clique para editar">' + formatarNumero(l.quantidade, 0) + '</td>'
+          + '<td class="darf-editavel" data-idx="' + idx + '" data-campo="precoMedio" style="cursor:text;" title="Clique para editar">' + fmtBRLDarf(l.precoMedio) + '</td>'
           + '<td>' + fmtBRLDarf(l.precoVenda) + '</td>'
           + '<td class="' + (resultado >= 0 ? 'pos' : 'neg') + '">' + (resultado >= 0 ? '' : '-') + fmtBRLDarf(Math.abs(resultado)) + '</td>'
           + '<td><button type="button" class="darf-remover" data-idx="' + idx + '" title="Remover">×</button></td>'
@@ -3156,10 +3156,44 @@ h2{font-size:32px;letter-spacing:-.02em;}
     if (corpoLanc) {
       corpoLanc.addEventListener('click', function(ev) {
         var btn = ev.target.closest('.darf-remover');
-        if (!btn) return;
-        var idx = parseInt(btn.getAttribute('data-idx'), 10);
-        lancamentos.splice(idx, 1);
-        renderizarLancamentos();
+        if (btn) {
+          var idx = parseInt(btn.getAttribute('data-idx'), 10);
+          lancamentos.splice(idx, 1);
+          renderizarLancamentos();
+          return;
+        }
+        // Quantidade e Preço médio: clique para editar (mesmo padrão de
+        // "clique para editar" já usado nas outras tabelas da análise, só
+        // que implementado aqui à parte porque esta tabela é remontada via
+        // innerHTML — não usa D.createElement()/tornarCelulaEditavel).
+        var tdEd = ev.target.closest('.darf-editavel');
+        if (!tdEd || tdEd.querySelector('input')) return;
+        var idxEd = parseInt(tdEd.getAttribute('data-idx'), 10);
+        var campo = tdEd.getAttribute('data-campo');
+        var valorAtual = lancamentos[idxEd][campo];
+        var input = D.createElement('input');
+        input.type = 'text';
+        input.value = campo === 'quantidade' ? formatarNumero(valorAtual, 0) : formatarNumero(valorAtual, 2);
+        input.style.cssText = 'width:100%;min-width:60px;border:1px solid var(--orange);border-radius:4px;padding:2px 6px;font:inherit;color:inherit;';
+        tdEd.textContent = '';
+        tdEd.appendChild(input);
+        input.focus();
+        input.select();
+        var confirmado = false;
+        function confirmarEdicaoDarf(aplicar) {
+          if (confirmado) return;
+          confirmado = true;
+          if (aplicar) {
+            var novo = parseNumeroBR(input.value);
+            if (!isNaN(novo) && novo > 0) lancamentos[idxEd][campo] = novo;
+          }
+          renderizarLancamentos();
+        }
+        input.addEventListener('blur', function() { confirmarEdicaoDarf(true); });
+        input.addEventListener('keydown', function(ke) {
+          if (ke.key === 'Enter') { ke.preventDefault(); confirmarEdicaoDarf(true); }
+          else if (ke.key === 'Escape') { confirmarEdicaoDarf(false); }
+        });
       });
     }
 
