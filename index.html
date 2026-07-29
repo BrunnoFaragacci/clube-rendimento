@@ -14309,11 +14309,20 @@ document.querySelectorAll('.tab').forEach(function(btn){
     var track = document.getElementById('ticker-tape-track');
     if (!track) return;
 
+    // Índices exibidos primeiro (rótulo amigável distinto do símbolo usado na
+    // consulta), seguidos das ações mais líquidas do Ibovespa.
+    var INDICES = [
+      { simbolo: '^BVSP', rotulo: 'IBOVESPA' },
+      { simbolo: 'IFIX.SA', rotulo: 'IFIX' }
+    ];
     var TICKERS = [
       'PETR4','VALE3','ITUB4','BBDC4','BBAS3','ABEV3','WEGE3','ITSA4',
       'B3SA3','RENT3','EQTL3','SUZB3','RADL3','PRIO3','GGBR4','ELET3',
       'JBSS3','CSAN3','LREN3','HAPV3'
     ];
+    var ROTULOS = {};
+    INDICES.forEach(function(i) { ROTULOS[i.simbolo] = i.rotulo; });
+    var SIMBOLOS = INDICES.map(function(i) { return i.simbolo; }).concat(TICKERS);
 
     function fmtPreco(v) {
       return typeof v === 'number' ? 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
@@ -14327,18 +14336,25 @@ document.querySelectorAll('.tab').forEach(function(btn){
       var cls = pct === null ? '' : (pct >= 0 ? 'up' : 'down');
       var seta = pct === null ? '' : (pct >= 0 ? '▲' : '▼');
       return '<span class="ticker-tape-item">'
-        + '<span class="ticker-tape-sym">' + d.symbol + '</span>'
+        + '<span class="ticker-tape-sym">' + (ROTULOS[d.symbol] || d.symbol) + '</span>'
         + '<span class="ticker-tape-price">' + fmtPreco(d.regularMarketPrice) + '</span>'
         + '<span class="ticker-tape-chg ' + cls + '">' + seta + ' ' + fmtPct(pct) + '</span>'
         + '</span>';
     }
 
-    fetch(BRAPI_PROXY + '/quote/' + encodeURIComponent(TICKERS.join(',')))
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        var mapa = {};
-        (data.results || []).forEach(function(r) { if (r.symbol) mapa[r.symbol] = r; });
-        var lista = TICKERS.filter(function(t) { return mapa[t]; }).map(function(t) { return mapa[t]; });
+    // O plano da Brapi usado no proxy permite apenas 1 ativo por requisição,
+    // por isso cada símbolo é buscado individualmente (em paralelo) em vez de
+    // uma única chamada com a lista separada por vírgulas.
+    function buscarCotacao(simbolo) {
+      return fetch(BRAPI_PROXY + '/quote/' + encodeURIComponent(simbolo))
+        .then(function(r) { return r.json(); })
+        .then(function(data) { return (data && data.results && data.results[0]) || null; })
+        .catch(function() { return null; });
+    }
+
+    Promise.all(SIMBOLOS.map(buscarCotacao))
+      .then(function(resultados) {
+        var lista = resultados.filter(function(r) { return r && r.symbol; });
         if (!lista.length) throw new Error('sem dados');
         var itensHtml = lista.map(itemHtml).join('');
         // Duplica a lista para permitir loop contínuo via CSS (translateX -50%)
