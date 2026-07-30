@@ -342,32 +342,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           <span id="arquivo-nome2" class="upload-filename">Nenhum arquivo selecionado.</span>
         </div>
       </div>
-      <p class="table-note" style="margin-top:8px;">Envie a Detalhada e a Consolidada juntas para combinar as informações de cada uma — os dados são mesclados automaticamente, preenchendo o que faltar em uma com o que existir na outra.
-        <button type="button" id="btn-toggle-legenda-planilha" style="background:none;border:none;color:var(--ink);text-decoration:underline;cursor:pointer;font:inherit;padding:0;">Qual modelo de planilha usar?</button>
-      </p>
-
-      <div class="upload-legenda" id="upload-legenda" hidden style="margin-top:12px;border:1px solid var(--line);border-radius:var(--radius-lg);padding:20px 24px;background:var(--bg-soft);">
-        <p style="margin:0 0 14px;font-size:13.5px;color:var(--ink-soft);line-height:1.5;">Existem 2 modelos de planilha de posição da XP — <strong>Detalhada</strong> (extrato "Sua carteira") e <strong>Consolidada</strong> (extrato clássico "Carteira Distribuída"). Nem toda categoria funciona nos dois modelos; envie os dois arquivos juntos para ter a informação completa (principalmente em Fundos Cetipados, onde um modelo complementa o outro).</p>
-        <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
-          <thead><tr>
-            <th style="text-align:left;padding:7px 10px;border-bottom:1.5px solid var(--line);"></th>
-            <th style="text-align:left;padding:7px 10px;border-bottom:1.5px solid var(--line);">Detalhada</th>
-            <th style="text-align:left;padding:7px 10px;border-bottom:1.5px solid var(--line);">Consolidada</th>
-            <th style="text-align:left;padding:7px 10px;border-bottom:1.5px solid var(--line);">Obs.</th>
-          </tr></thead>
-          <tbody>
-            <tr><td style="padding:7px 10px;font-weight:600;border-bottom:1px solid var(--line);">Renda Fixa</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);color:var(--ink-soft);">As duas entregam o mesmo resultado individualmente</td></tr>
-            <tr><td style="padding:7px 10px;font-weight:600;border-bottom:1px solid var(--line);">COE</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Não funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);"></td></tr>
-            <tr><td style="padding:7px 10px;font-weight:600;border-bottom:1px solid var(--line);">Ações</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);color:var(--ink-soft);">As duas entregam o mesmo resultado individualmente</td></tr>
-            <tr><td style="padding:7px 10px;font-weight:600;border-bottom:1px solid var(--line);">Fundos Imobiliários</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);color:var(--ink-soft);">As duas entregam o mesmo resultado individualmente</td></tr>
-            <tr><td style="padding:7px 10px;font-weight:600;border-bottom:1px solid var(--line);">Fundos Cetipados</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Todas as infos (menos qtd. de cotas)</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Todas as infos (menos valorização)</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);color:var(--ink-soft);">Planilhas complementares — recomendado enviar as duas</td></tr>
-            <tr><td style="padding:7px 10px;font-weight:600;border-bottom:1px solid var(--line);">Previdência Privada</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Não funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);"></td></tr>
-            <tr><td style="padding:7px 10px;font-weight:600;">Tesouro Direto</td><td style="padding:7px 10px;">Funciona</td><td style="padding:7px 10px;">Não funciona</td><td style="padding:7px 10px;"></td></tr>
-          </tbody>
-        </table>
-        </div>
-      </div>
+      <p class="table-note" style="margin-top:8px;">Envie a Detalhada e a Consolidada juntas para combinar as informações de cada uma — os dados são mesclados automaticamente, preenchendo o que faltar em uma com o que existir na outra.</p>
 
       <div class="opcoes-analise" id="opcoes-analise" hidden>
         <span class="opcoes-analise-titulo">O que você quer analisar?</span>
@@ -850,14 +825,6 @@ h2{font-size:32px;letter-spacing:-.02em;}
     atualizarPreviewReconhecidos();
   });
 
-  var btnToggleLegenda = document.getElementById('btn-toggle-legenda-planilha');
-  if (btnToggleLegenda) {
-    btnToggleLegenda.addEventListener('click', function() {
-      var legenda = document.getElementById('upload-legenda');
-      legenda.hidden = !legenda.hidden;
-      btnToggleLegenda.textContent = legenda.hidden ? 'Qual modelo de planilha usar?' : 'Ocultar';
-    });
-  }
 
   // Pré-visualização: assim que o(s) arquivo(s) são escolhidos, faz uma
   // leitura rápida e local (sem buscar cotação nem nada ao vivo — só os
