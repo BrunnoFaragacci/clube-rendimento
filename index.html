@@ -846,6 +846,42 @@ h2{font-size:32px;letter-spacing:-.02em;}
     return { isento: false, aliquota: aliquotaRegressivaRF(dias) };
   }
 
+  // Referências usadas para converter a "Taxa" contratada (ex.: "100% CDI",
+  // "IPCA+7%") numa rentabilidade anual aproximada, mesma ordem de grandeza
+  // já usada nas calculadoras do site (CDI/Selic ~14,65%/14,75% a.a.) — a
+  // inflação usa uma média de referência de 5% a.a., por não haver como obter
+  // a inflação projetada real a partir da planilha do cliente.
+  var CDI_REFERENCIA_AA = 14.65;
+  var SELIC_REFERENCIA_AA = 14.75;
+  var IPCA_MEDIO_AA = 5.0;
+
+  function converterTaxaAnual(taxaStr) {
+    var norm = normalizar(taxaStr).replace(/\s+/g, ' ').trim();
+    if (!norm) return null;
+    var m;
+    m = /(\d+(?:[.,]\d+)?)\s*%\s*(?:do\s+)?cdi\b/.exec(norm);
+    if (m) { var p1 = parseFloat(m[1].replace(',', '.')); return isNaN(p1) ? null : CDI_REFERENCIA_AA * (p1 / 100); }
+    m = /cdi\s*\+\s*(\d+(?:[.,]\d+)?)\s*%?/.exec(norm);
+    if (m) { var p2 = parseFloat(m[1].replace(',', '.')); return isNaN(p2) ? null : CDI_REFERENCIA_AA + p2; }
+    m = /(\d+(?:[.,]\d+)?)\s*%\s*(?:da\s+)?selic\b/.exec(norm);
+    if (m) { var p3 = parseFloat(m[1].replace(',', '.')); return isNaN(p3) ? null : SELIC_REFERENCIA_AA * (p3 / 100); }
+    m = /selic\s*\+\s*(\d+(?:[.,]\d+)?)\s*%?/.exec(norm);
+    if (m) { var p4 = parseFloat(m[1].replace(',', '.')); return isNaN(p4) ? null : SELIC_REFERENCIA_AA + p4; }
+    m = /ipca\s*\+\s*(\d+(?:[.,]\d+)?)\s*%?/.exec(norm);
+    if (m) { var p5 = parseFloat(m[1].replace(',', '.')); return isNaN(p5) ? null : IPCA_MEDIO_AA + p5; }
+    return null;
+  }
+
+  // Mostra a taxa original junto com a rentabilidade anual convertida (ex.:
+  // "100% CDI = 14,65%"), quando reconhecível; formatos que já são uma taxa
+  // direta (prefixado) ou não reconhecidos ficam como estão, sem "=".
+  function formatarTaxaComConversao(taxaStr) {
+    var original = String(taxaStr || '').trim();
+    if (!original) return '—';
+    var convertido = converterTaxaAnual(original);
+    return convertido === null ? original : (original + ' = ' + formatarNumero(convertido, 2) + '%');
+  }
+
   // Os dois uploads são pares (nenhum é "principal") — usar só um dos dois
   // já é suficiente para analisar; usar os dois combina as informações de
   // cada modelo de planilha (Detalhada/Consolidada — ver a legenda acima e
@@ -1777,6 +1813,13 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var idxValAplic = idxColuna(cab, 'total aplicado');
       var idxQtd      = idxColuna(cab, 'qtd');
       var idxVenc     = idxColuna(cab, 'vencimento');
+      // "Taxa" e "Data de aplicação" nem sempre existem nas planilhas de
+      // Tesouro Direto (a maioria só traz a categoria — Prefixada/Pós-Fixado/
+      // Inflação — sem o percentual contratado); quando existirem, permitem
+      // a mesma conversão de taxa e o cálculo de Imposto usados em RF.
+      var idxTaxa     = idxColuna(cab, 'taxa');
+      var idxAplic    = idxColuna(cab, 'aplicacao', 'valor');
+      if (idxAplic === -1) idxAplic = idxColuna(cab, 'compra');
       bloco.linhas.forEach(function(ld) {
         var nome = String(ld[0] === undefined || ld[0] === null ? '' : ld[0]).trim();
         var posVal = idxPos !== -1 ? parseNumeroBR(ld[idxPos]) : NaN;
@@ -1787,7 +1830,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
           posicao: isNaN(posVal) ? null : posVal,
           valorAplicado: isNaN(aplVal) ? null : aplVal,
           quantidade: isNaN(qtdVal) ? null : qtdVal,
-          vencimento: idxVenc !== -1 ? String(ld[idxVenc] || '').trim() : ''
+          vencimento: idxVenc !== -1 ? String(ld[idxVenc] || '').trim() : '',
+          taxa: idxTaxa !== -1 ? String(ld[idxTaxa] || '').trim() : '',
+          aplicacao: idxAplic !== -1 ? String(ld[idxAplic] || '').trim() : ''
         });
       });
       i = bloco.fimIdx - 1;
@@ -3938,7 +3983,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var colCetip = ['', 'Fundo', 'Data da aplicação', 'Qtd. cotas', 'Valor da cota', 'Valor aplicado', 'Valorização', 'Valor líquido', 'Dia pag. rendimento', 'Último dividendo pago', 'Yield (mês)', ''];
     var colPrevidencia = ['Fundo', 'Categoria', 'Posição', 'Rentabilidade', 'Valor aplicado', 'Rendimento bruto', ''];
     var colCOE = ['Operação', 'Categoria', 'Posição', 'Rentabilidade', 'Valor aplicado', 'Vencimento', ''];
-    var colTesouro = ['Título', 'Categoria', 'Posição', 'Quantidade', 'Valor aplicado', 'Vencimento', 'Cupons pagos até o momento', 'Lucro (R$)', 'Lucro (%)', ''];
+    var colTesouro = ['Título', 'Categoria', 'Taxa', 'Imposto', 'Posição', 'Quantidade', 'Valor aplicado', 'Vencimento', 'Cupons pagos até o momento', 'Lucro (R$)', 'Lucro (%)', ''];
 
     if (!novaJanela || novaJanela.closed) return;
 
@@ -4460,6 +4505,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
           var tr = D.createElement('tr');
           tr.appendChild(cel(D, item.nome || '—'));
           tr.appendChild(cel(D, item.categoria || '—'));
+          tr.appendChild(cel(D, formatarTaxaComConversao(item.taxa || item.categoria)));
+          var tipoTesouro = String(item.nome || '').trim().split(' ')[0].toUpperCase();
+          var impostoTesouro = calcularImpostoRF(tipoTesouro, item.aplicacao);
+          tr.appendChild(cel(D, impostoTesouro.isento ? 'Isento' : (impostoTesouro.aliquota !== null ? formatarNumero(impostoTesouro.aliquota * 100, 1) + '%' : '—')));
           var tdPosicao = cel(D, valor > 0 ? 'R$ ' + formatarNumero(valor, 2) : '—');
           tr.appendChild(tdPosicao);
           tr.appendChild(cel(D, typeof item.quantidade === 'number' ? formatarNumero(item.quantidade, 2) : '—'));
@@ -6086,7 +6135,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         tr.appendChild(cel(D, item.tipo        || '—'));
         tr.appendChild(cel(D, item.aplicacao   || '—'));
         tr.appendChild(cel(D, item.vencimento  || '—'));
-        tr.appendChild(cel(D, item.taxa        || '—'));
+        tr.appendChild(cel(D, formatarTaxaComConversao(item.taxa)));
         var imposto = calcularImpostoRF(tipoNorm, item.aplicacao);
         tr.appendChild(cel(D, imposto.isento ? 'Isento' : (imposto.aliquota !== null ? formatarNumero(imposto.aliquota * 100, 1) + '%' : '—')));
         var tdValAplic = cel(D, valorAplicado  !== null ? 'R$ ' + formatarNumero(valorAplicado, 2) : '—');
