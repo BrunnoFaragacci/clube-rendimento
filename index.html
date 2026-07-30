@@ -815,10 +815,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
     verificarPlanilhaComplementarCetip();
   });
 
-  // A "Planilha 2" só é oferecida quando a primeira tem Fundos Cetipados —
-  // é a única categoria em que os dois modelos de planilha se completam
-  // (um traz quantidade de cotas, o outro traz valorização); para as
-  // demais categorias, um arquivo já basta.
+  // A "Planilha 2" só é oferecida quando a primeira tem Fundos Cetipados de
+  // verdade — ou seja, algum item da seção "Fundos de Investimento(s)" da
+  // planilha que bate com o cadastro do site (fundos_cetipados). Um item
+  // dessa seção que não está cadastrado é só um fundo de investimento
+  // qualquer, não um Cetipado, e não deve disparar a oferta da segunda
+  // planilha (ver encontrarFundoNoCadastro).
   var _cetipCheckSeq = 0;
   function verificarPlanilhaComplementarCetip() {
     var minhaSeq = ++_cetipCheckSeq;
@@ -835,9 +837,18 @@ h2{font-size:32px;letter-spacing:-.02em;}
     }
     lerPlanilha(arquivoSelecionado).then(function(linhas) {
       if (minhaSeq !== _cetipCheckSeq) return;
-      var temCetip = extrairFundosCetipados(linhas).length > 0;
-      boxArquivo2.hidden = !temCetip;
-      if (!temCetip && arquivoSelecionado2) { limparArquivo2(); atualizarBotaoAnalisar(); atualizarPreviewReconhecidos(); }
+      var cetipExtraidos = extrairFundosCetipados(linhas);
+      if (!cetipExtraidos.length) {
+        boxArquivo2.hidden = true;
+        if (arquivoSelecionado2) { limparArquivo2(); atualizarBotaoAnalisar(); atualizarPreviewReconhecidos(); }
+        return;
+      }
+      carregarCetipados().then(function(base) {
+        if (minhaSeq !== _cetipCheckSeq) return;
+        var temCetip = cetipExtraidos.some(function(fundo) { return !!encontrarFundoNoCadastro(fundo.nome, base); });
+        boxArquivo2.hidden = !temCetip;
+        if (!temCetip && arquivoSelecionado2) { limparArquivo2(); atualizarBotaoAnalisar(); atualizarPreviewReconhecidos(); }
+      });
     }).catch(function() {
       if (minhaSeq !== _cetipCheckSeq) return;
       boxArquivo2.hidden = true;
@@ -910,13 +921,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var promCetip = cetipExtraidos.length ? carregarCetipados() : Promise.resolve([]);
       promCetip.then(function(base) {
         if (minhaSeq !== _previewSeq) return;
-        var algumCetipReconhecido = cetipExtraidos.some(function(fundo) {
-          var nomeNorm = normalizar(fundo.nome);
-          return base.some(function(b) {
-            var bNorm = normalizar(b.nome);
-            return bNorm === nomeNorm || bNorm.indexOf(nomeNorm) !== -1 || nomeNorm.indexOf(bNorm) !== -1;
-          });
-        });
+        var algumCetipReconhecido = cetipExtraidos.some(function(fundo) { return !!encontrarFundoNoCadastro(fundo.nome, base); });
         marcarDisponivel('check-cetip', algumCetipReconhecido);
       });
     }).catch(function(e) {
@@ -1592,15 +1597,26 @@ h2{font-size:32px;letter-spacing:-.02em;}
     }
   }
 
+  // Um item extraído da seção "Fundos de Investimento(s)"/"Fundos
+  // Alternativos" da planilha só é de fato um Fundo Cetipado se estiver
+  // cadastrado na base do site (fundos_cetipados) — a seção da planilha
+  // sozinha não garante isso; pode ser qualquer fundo de investimento sem
+  // cotação pública que o site não tem por que rastrear. Usada em todo
+  // lugar que precisa saber "isso é realmente um Cetipado, ou só um fundo
+  // de investimento qualquer que a planilha trouxe?".
+  function encontrarFundoNoCadastro(nomeFundo, base) {
+    var nomeNorm = normalizar(nomeFundo);
+    return base.find(function(b) {
+      var bNorm = normalizar(b.nome);
+      return bNorm === nomeNorm || bNorm.indexOf(nomeNorm) !== -1 || nomeNorm.indexOf(bNorm) !== -1;
+    }) || null;
+  }
+
   function combinarComBaseCetipados(fundosExtraidos) {
     if (!fundosExtraidos.length) return Promise.resolve([]);
     return carregarCetipados().then(function(base) {
       return fundosExtraidos.map(function(fundo) {
-        var nomeNorm = normalizar(fundo.nome);
-        var match = base.find(function(b) {
-          var bNorm = normalizar(b.nome);
-          return bNorm === nomeNorm || bNorm.indexOf(nomeNorm) !== -1 || nomeNorm.indexOf(bNorm) !== -1;
-        });
+        var match = encontrarFundoNoCadastro(fundo.nome, base);
         return {
           nome:              fundo.nome,
           ticker:            match ? match.ticker           : null,
