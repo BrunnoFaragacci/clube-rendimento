@@ -116,10 +116,6 @@ h2{font-size:32px;letter-spacing:-.02em;}
 .upload-box{margin-top:40px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:28px;border:1.5px dashed var(--orange-light);border-radius:var(--radius-lg);background:linear-gradient(180deg,#fff,var(--bg-soft));box-shadow:var(--shadow-sm);transition:border-color .18s,box-shadow .18s;}
 .upload-box:hover{border-color:var(--orange);box-shadow:var(--shadow-md);}
 .upload-filename{font-size:13px;color:var(--ink-soft);font-weight:500;}
-.preview-reconhecidos-titulo{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);display:block;margin-bottom:8px;}
-.preview-pill{display:inline-block;font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:999px;margin:0 6px 6px 0;white-space:nowrap;}
-.preview-pill-ok{background:rgba(22,163,74,.12);color:#15803D;}
-.preview-pill-alerta{background:rgba(220,38,38,.1);color:#B91C1C;}
 .opcoes-analise{margin-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:22px 26px;border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--bg);box-shadow:var(--shadow-sm);font-size:14px;color:var(--ink);}
 .opcoes-analise-titulo{font-weight:700;font-size:13px;color:var(--ink-soft);margin-right:4px;}
 .opcoes-analise label{display:inline-flex;align-items:center;gap:8px;cursor:pointer;padding:9px 16px;border-radius:999px;border:1.5px solid var(--line);background:var(--bg-soft);font-weight:600;font-size:13.5px;transition:border-color .16s,background .16s,color .16s,transform .16s;}
@@ -372,8 +368,6 @@ h2{font-size:32px;letter-spacing:-.02em;}
         </table>
         </div>
       </div>
-
-      <div id="preview-reconhecidos" class="preview-reconhecidos" hidden style="margin-top:16px;border:1px solid var(--line);border-radius:var(--radius-lg);padding:18px 22px;"></div>
 
       <div class="opcoes-analise" id="opcoes-analise" hidden>
         <span class="opcoes-analise-titulo">O que você quer analisar?</span>
@@ -867,15 +861,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
   // Pré-visualização: assim que o(s) arquivo(s) são escolhidos, faz uma
   // leitura rápida e local (sem buscar cotação nem nada ao vivo — só os
-  // extratores de planilha já usados na análise de verdade) para mostrar em
-  // verde os ativos/itens que a planilha permitiu reconhecer, por
-  // categoria, antes mesmo de clicar em "Analisar carteira". Fundos
-  // Cetipados usam uma chamada extra (carregarCetipados) porque só entram
-  // na análise de verdade os que batem com o cadastro do site — os que não
-  // batem aparecem aqui em vermelho, já que seriam descartados silenciosamente.
-  // Marca (ou desmarca) o selo verde "disponível" no chip de uma categoria
-  // em "O que você quer analisar?", com base no que a pré-visualização
-  // encontrou na planilha.
+  // extratores de planilha já usados na análise de verdade) para marcar em
+  // verde, nos chips de "O que você quer analisar?", as categorias que a
+  // planilha permitiu reconhecer. Fundos Cetipados usam uma chamada extra
+  // (carregarCetipados) porque só entram na análise de verdade os que
+  // batem com o cadastro do site (ver combinarComBaseCetipados).
   var IDS_CATEGORIA_DISPONIVEL = ['check-acoes','check-fiis','check-rf','check-cetip','check-previdencia','check-coe','check-tesouro'];
   function marcarDisponivel(id, disponivel) {
     var chk = document.getElementById(id);
@@ -888,13 +878,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
   var _previewSeq = 0; // ignora respostas de leituras antigas se o usuário trocar o arquivo de novo rápido
   function atualizarPreviewReconhecidos() {
-    var painel = document.getElementById('preview-reconhecidos');
-    if (!painel) return;
     var minhaSeq = ++_previewSeq;
-    if (!arquivoSelecionado && !arquivoSelecionado2) { painel.hidden = true; painel.innerHTML = ''; resetarDisponibilidade(); return; }
-
-    painel.hidden = false;
-    painel.innerHTML = '<p class="table-note" style="margin:0;">Lendo planilha…</p>';
+    if (!arquivoSelecionado && !arquivoSelecionado2) { resetarDisponibilidade(); return; }
 
     var arquivos = [arquivoSelecionado, arquivoSelecionado2].filter(Boolean);
     Promise.all(arquivos.map(lerPlanilha)).then(function(resultados) {
@@ -918,22 +903,6 @@ h2{font-size:32px;letter-spacing:-.02em;}
         tesouroItens = mesclarPorChave(function(p) { return normalizar(p.nome); }, tesouroItens, extrairTesouroDiretoPlanilha(linhas2));
       }
 
-      function pill(texto, ok) {
-        return '<span class="preview-pill ' + (ok ? 'preview-pill-ok' : 'preview-pill-alerta') + '">' + texto + '</span>';
-      }
-      function blocoHtml(titulo, itens, rotuloFn) {
-        if (!itens.length) return '';
-        return '<div style="margin-bottom:12px;"><span class="preview-reconhecidos-titulo">' + titulo + ' (' + itens.length + ')</span>' +
-          itens.map(function(it) { return pill(rotuloFn(it), true); }).join('') + '</div>';
-      }
-
-      var htmlBlocos = '';
-      htmlBlocos += blocoHtml('Ações / FIIs', ativos, function(a) { return a.ticker; });
-      htmlBlocos += blocoHtml('Renda Fixa', rf, function(r) { return r.descricao; });
-      htmlBlocos += blocoHtml('Previdência Privada', previdenciaItens, function(p) { return p.nome; });
-      htmlBlocos += blocoHtml('COE', coeItens, function(p) { return p.nome; });
-      htmlBlocos += blocoHtml('Tesouro Direto', tesouroItens, function(p) { return p.nome; });
-
       marcarDisponivel('check-acoes', ativos.some(function(a) { return a.segmentoPlanilha !== 'fiis'; }));
       marcarDisponivel('check-fiis', ativos.some(function(a) { return a.segmentoPlanilha === 'fiis'; }));
       marcarDisponivel('check-rf', rf.length > 0);
@@ -946,34 +915,19 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var promCetip = cetipExtraidos.length ? carregarCetipados() : Promise.resolve([]);
       promCetip.then(function(base) {
         if (minhaSeq !== _previewSeq) return;
-        var htmlCetip = '';
-        var algumCetipReconhecido = false;
-        if (cetipExtraidos.length) {
-          var pills = cetipExtraidos.map(function(fundo) {
-            var nomeNorm = normalizar(fundo.nome);
-            var match = base.find(function(b) {
-              var bNorm = normalizar(b.nome);
-              return bNorm === nomeNorm || bNorm.indexOf(nomeNorm) !== -1 || nomeNorm.indexOf(bNorm) !== -1;
-            });
-            if (match) algumCetipReconhecido = true;
-            return pill(fundo.nome + (match ? '' : ' — sem cadastro'), !!match);
-          }).join('');
-          htmlCetip = '<div style="margin-bottom:12px;"><span class="preview-reconhecidos-titulo">Fundos Cetipados (' + cetipExtraidos.length + ')</span>' + pills + '</div>';
-        }
+        var algumCetipReconhecido = cetipExtraidos.some(function(fundo) {
+          var nomeNorm = normalizar(fundo.nome);
+          return base.some(function(b) {
+            var bNorm = normalizar(b.nome);
+            return bNorm === nomeNorm || bNorm.indexOf(nomeNorm) !== -1 || nomeNorm.indexOf(bNorm) !== -1;
+          });
+        });
         marcarDisponivel('check-cetip', algumCetipReconhecido);
-
-        var tudoVazio = !ativos.length && !rf.length && !previdenciaItens.length && !coeItens.length && !tesouroItens.length && !cetipExtraidos.length;
-        if (tudoVazio) {
-          painel.innerHTML = '<p class="table-note" style="margin:0;color:#B91C1C;">Não foi possível reconhecer nenhum ativo nessa planilha — confira se o arquivo é um extrato de posição da XP nos modelos Detalhada ou Consolidada.</p>';
-          return;
-        }
-        painel.innerHTML = '<p class="table-note" style="margin:0 0 12px;">Itens identificados na planilha — confira antes de analisar (vermelho = fundo cetipado sem cadastro no site, não entrará na análise):</p>' + htmlBlocos + htmlCetip;
       });
     }).catch(function(e) {
       if (minhaSeq !== _previewSeq) return;
       console.error(e);
       resetarDisponibilidade();
-      painel.innerHTML = '<p class="table-note" style="margin:0;color:#B91C1C;">Não foi possível ler o arquivo para pré-visualização.</p>';
     });
   }
 
