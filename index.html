@@ -810,6 +810,42 @@ h2{font-size:32px;letter-spacing:-.02em;}
     return normalizar(descricao).indexOf('tesouro') !== -1;
   }
 
+  // Isentos de IR para pessoa física por lei (LCI/LCA/LCD, além de CRI/CRA)
+  // — independe de prazo. Tudo que não é isento aqui (CDB, debênture comum,
+  // título público) segue a tabela regressiva do IR sobre renda fixa.
+  var TIPOS_RF_ISENTOS = ['LCI','LCA','LCD','CRI','CRA'];
+
+  // "dd/mm/aaaa" (formato de data já usado nas colunas "Aplicação"/
+  // "Vencimento" da planilha) para um Date — null se não for parseável.
+  function parseDataBRParaDate(str) {
+    var m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(str || '').trim());
+    if (!m) return null;
+    var d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // Tabela regressiva do IR sobre renda fixa (Lei 11.033/2004), pelo número
+  // de dias corridos entre a aplicação e hoje.
+  function aliquotaRegressivaRF(dias) {
+    if (dias <= 180) return 0.225;
+    if (dias <= 360) return 0.20;
+    if (dias <= 720) return 0.175;
+    return 0.15;
+  }
+
+  // Devolve { isento: bool, aliquota: number|null } para a coluna "Imposto"
+  // da tabela de posição de RF. aliquota só vem preenchida quando o ativo é
+  // tributado E a data de aplicação pôde ser lida da planilha; sem uma das
+  // duas, o valor fica null (célula mostra "—" em vez de um número errado).
+  function calcularImpostoRF(tipoNorm, dataAplicacaoStr) {
+    if (TIPOS_RF_ISENTOS.indexOf(tipoNorm) !== -1) return { isento: true, aliquota: null };
+    var dataApl = parseDataBRParaDate(dataAplicacaoStr);
+    if (!dataApl) return { isento: false, aliquota: null };
+    var dias = Math.floor((new Date() - dataApl) / 86400000);
+    if (dias < 0) return { isento: false, aliquota: null };
+    return { isento: false, aliquota: aliquotaRegressivaRF(dias) };
+  }
+
   // Os dois uploads são pares (nenhum é "principal") — usar só um dos dois
   // já é suficiente para analisar; usar os dois combina as informações de
   // cada modelo de planilha (Detalhada/Consolidada — ver a legenda acima e
@@ -3897,7 +3933,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var colRV = ['Ativo','Segmento','Quantidade'];
     if (temPM) colRV.push('Preço médio');
     colRV.push('Cotação atual','Valor total','Variação','P/L','P/VP','Dividend Yield (12m)','ROE','Próximos proventos','Total de proventos','Preço Alvo (XP)','Upside (XP)','Valor de mercado','Liquidez diária','Vacância média','');
-    var colRFPos = ['Ativo','Tipo','Aplicação','Vencimento','Taxa','Valor aplicado','Posição','Valor líquido','Cupons pagos até o momento','Lucro (R$)','Lucro (%)',''];
+    var colRFPos = ['Ativo','Tipo','Aplicação','Vencimento','Taxa','Imposto','Valor aplicado','Posição','Valor líquido','Cupons pagos até o momento','Lucro (R$)','Lucro (%)',''];
     var colRFEmis = ['Ativo','Instituição/emissor identificado','Caixa','Receita líquida','Lucro/Prejuízo','Dívida bruta','Dívida líquida','EBITDA','Dívida bruta/EBITDA','Margem líquida','Índice de Basileia (bancos)'];
     var colCetip = ['', 'Fundo', 'Data da aplicação', 'Qtd. cotas', 'Valor da cota', 'Valor aplicado', 'Valorização', 'Valor líquido', 'Dia pag. rendimento', 'Último dividendo pago', 'Yield (mês)', ''];
     var colPrevidencia = ['Fundo', 'Categoria', 'Posição', 'Rentabilidade', 'Valor aplicado', 'Rendimento bruto', ''];
@@ -4823,6 +4859,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       trTotal.appendChild(cel(D, '')); // Aplicação
       trTotal.appendChild(cel(D, '')); // Vencimento
       trTotal.appendChild(cel(D, '')); // Taxa
+      trTotal.appendChild(cel(D, '')); // Imposto
       refs.aplicado = cel(D, ''); trTotal.appendChild(refs.aplicado);
       refs.posicao  = cel(D, ''); trTotal.appendChild(refs.posicao);
       refs.liquido  = cel(D, ''); trTotal.appendChild(refs.liquido);
@@ -6050,6 +6087,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
         tr.appendChild(cel(D, item.aplicacao   || '—'));
         tr.appendChild(cel(D, item.vencimento  || '—'));
         tr.appendChild(cel(D, item.taxa        || '—'));
+        var imposto = calcularImpostoRF(tipoNorm, item.aplicacao);
+        tr.appendChild(cel(D, imposto.isento ? 'Isento' : (imposto.aliquota !== null ? formatarNumero(imposto.aliquota * 100, 1) + '%' : '—')));
         var tdValAplic = cel(D, valorAplicado  !== null ? 'R$ ' + formatarNumero(valorAplicado, 2) : '—');
         tr.appendChild(tdValAplic);
         var tdPosicao = cel(D, valor           > 0     ? 'R$ ' + formatarNumero(valor, 2)          : '—');
