@@ -329,20 +329,18 @@ h2{font-size:32px;letter-spacing:-.02em;}
       <h2>Análise de carteira por planilha</h2>
       <button type="button" class="btn btn-ghost btn-small" id="btn-carregar-analise-salva" style="margin-top:12px;">📂 Carregar análise salva de um cliente</button>
 
-      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:28px;">
-        <div class="upload-box" id="upload-box-arquivo" style="flex:1;min-width:280px;margin-top:0;">
-          <label for="arquivo-planilha" class="btn btn-ghost">Selecionar planilha 1</label>
-          <input type="file" id="arquivo-planilha" accept=".xlsx,.xls,.csv" hidden>
-          <span id="arquivo-nome" class="upload-filename">Nenhum arquivo selecionado.</span>
-        </div>
-
-        <div class="upload-box" id="upload-box-arquivo2" style="flex:1;min-width:280px;margin-top:0;">
-          <label for="arquivo-planilha2" class="btn btn-ghost">Selecionar planilha 2 (opcional)</label>
-          <input type="file" id="arquivo-planilha2" accept=".xlsx,.xls,.csv" hidden>
-          <span id="arquivo-nome2" class="upload-filename">Nenhum arquivo selecionado.</span>
-        </div>
+      <div class="upload-box" id="upload-box-arquivo" style="margin-top:28px;">
+        <label for="arquivo-planilha" class="btn btn-ghost">Selecionar planilha</label>
+        <input type="file" id="arquivo-planilha" accept=".xlsx,.xls,.csv" hidden>
+        <span id="arquivo-nome" class="upload-filename">Nenhum arquivo selecionado.</span>
       </div>
-      <p class="table-note" style="margin-top:8px;">Envie a Detalhada e a Consolidada juntas para combinar as informações de cada uma — os dados são mesclados automaticamente, preenchendo o que faltar em uma com o que existir na outra.</p>
+
+      <div class="upload-box" id="upload-box-arquivo2" style="margin-top:10px;" hidden>
+        <label for="arquivo-planilha2" class="btn btn-ghost btn-small">+ Planilha complementar de Fundos Cetipados</label>
+        <input type="file" id="arquivo-planilha2" accept=".xlsx,.xls,.csv" hidden>
+        <span id="arquivo-nome2" class="upload-filename">Nenhum arquivo selecionado.</span>
+        <p class="table-note" style="margin-top:6px;width:100%;">Identificamos Fundos Cetipados na sua planilha — envie também o outro modelo (Detalhada ou Consolidada) para completar as informações que só existem em um dos dois (quantidade de cotas ou valorização).</p>
+      </div>
 
       <div class="opcoes-analise" id="opcoes-analise" hidden>
         <span class="opcoes-analise-titulo">O que você quer analisar?</span>
@@ -814,7 +812,37 @@ h2{font-size:32px;letter-spacing:-.02em;}
     document.getElementById('opcoes-analise').hidden = !(arquivoSelecionado || arquivoSelecionado2);
     atualizarBotaoAnalisar();
     atualizarPreviewReconhecidos();
+    verificarPlanilhaComplementarCetip();
   });
+
+  // A "Planilha 2" só é oferecida quando a primeira tem Fundos Cetipados —
+  // é a única categoria em que os dois modelos de planilha se completam
+  // (um traz quantidade de cotas, o outro traz valorização); para as
+  // demais categorias, um arquivo já basta.
+  var _cetipCheckSeq = 0;
+  function verificarPlanilhaComplementarCetip() {
+    var minhaSeq = ++_cetipCheckSeq;
+    var boxArquivo2 = document.getElementById('upload-box-arquivo2');
+    function limparArquivo2() {
+      arquivoSelecionado2 = null;
+      document.getElementById('arquivo-nome2').textContent = 'Nenhum arquivo selecionado.';
+      document.getElementById('arquivo-planilha2').value = '';
+    }
+    if (!arquivoSelecionado) {
+      boxArquivo2.hidden = true;
+      if (arquivoSelecionado2) { limparArquivo2(); atualizarBotaoAnalisar(); atualizarPreviewReconhecidos(); }
+      return;
+    }
+    lerPlanilha(arquivoSelecionado).then(function(linhas) {
+      if (minhaSeq !== _cetipCheckSeq) return;
+      var temCetip = extrairFundosCetipados(linhas).length > 0;
+      boxArquivo2.hidden = !temCetip;
+      if (!temCetip && arquivoSelecionado2) { limparArquivo2(); atualizarBotaoAnalisar(); atualizarPreviewReconhecidos(); }
+    }).catch(function() {
+      if (minhaSeq !== _cetipCheckSeq) return;
+      boxArquivo2.hidden = true;
+    });
+  }
 
   document.getElementById('arquivo-planilha2').addEventListener('change', function(ev) {
     var arq = ev.target.files[0] || null;
