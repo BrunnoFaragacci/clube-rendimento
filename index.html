@@ -2652,7 +2652,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
             '<div class="darf-field"><label for="darf-preco">Preço de venda (R$)</label><input type="number" id="darf-preco" min="0" step="0.01"></div>' +
             '<div class="darf-field"><label for="darf-data">Data da venda</label><input type="date" id="darf-data"></div>' +
             '<div class="darf-field"><label for="darf-custos">Custos da operação (R$)</label><input type="number" id="darf-custos" min="0" step="0.01" value="0"></div>' +
-            '<div class="darf-field darf-field-btn"><button type="button" id="darf-add" class="btn btn-primary" style="padding:9px 18px;font-size:13px;">+ Adicionar venda</button></div>' +
+            '<div class="darf-field darf-field-btn"><button type="button" id="darf-add" style="display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:13px;padding:9px 18px;border-radius:8px;cursor:pointer;">+ Adicionar venda</button></div>' +
           '</div>' +
           '<p class="darf-erro" id="darf-erro" style="display:none;"></p>' +
           '<div class="darf-tabela-wrap" id="darf-lancamentos-wrap" style="display:none;">' +
@@ -2660,11 +2660,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
             '<tbody id="darf-lancamentos-corpo"></tbody></table>' +
           '</div>' +
           '<div class="darf-actions" id="darf-actions" style="display:none;gap:10px;">' +
-            '<button type="button" id="darf-calcular" class="btn btn-primary">Calcular DARF</button>' +
+            '<button type="button" id="darf-calcular" style="display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;">Calcular DARF</button>' +
             '<button type="button" id="darf-enviar-ordem" style="display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;">✉ Enviar ordem por e-mail</button>' +
           '</div>' +
           '<div class="darf-tabela-wrap" id="darf-resultado-wrap" style="display:none;">' +
-            '<table class="darf-tabela"><thead><tr><th>Competência</th><th>Classe</th><th>Total vendido</th><th>Resultado do mês</th><th>Prejuízo compensado</th><th>Base de cálculo</th><th>Situação</th><th>DARF a pagar</th><th>Vencimento</th></tr></thead>' +
+            '<table class="darf-tabela"><thead><tr><th>Competência</th><th>Classe</th><th>Total vendido</th><th>Resultado do mês</th><th>Prejuízo compensado</th><th>Base de cálculo</th><th>DARF a pagar</th><th>Vencimento</th></tr></thead>' +
             '<tbody id="darf-resultado-corpo"></tbody></table>' +
           '</div>' +
         '</div>' +
@@ -3071,6 +3071,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     }
 
     var lancamentos = [];
+    var linhasResultado = []; // preenchido por "Calcular DARF"; "Prejuízo compensado" fica editável (ver recalcularLinhaResultado)
 
     function fmtBRLDarf(v) { return 'R$ ' + formatarNumero(v, 2); }
 
@@ -3084,8 +3085,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
       corpoLanc.innerHTML = lancamentos.map(function(l, idx) {
         var resultado = (l.precoVenda - l.precoMedio) * l.quantidade - l.custos;
         return '<tr>'
-          + '<td class="ticker-tag">' + l.ticker + '</td>'
-          + '<td>' + (l.classe === 'fiis' ? 'FII' : 'Ação') + '</td>'
+          + '<td><span class="ticker-tag">' + l.ticker + '</span></td>'
+          + '<td><span class="ticker-tag">' + (l.classe === 'fiis' ? 'FII' : 'Ação') + '</span></td>'
           + '<td>' + l.dataBR + '</td>'
           + '<td class="darf-editavel" data-idx="' + idx + '" data-campo="quantidade" style="cursor:text;" title="Clique para editar">' + formatarNumero(l.quantidade, 0) + '</td>'
           + '<td class="darf-editavel" data-idx="' + idx + '" data-campo="precoMedio" style="cursor:text;" title="Clique para editar">' + fmtBRLDarf(l.precoMedio) + '</td>'
@@ -3277,6 +3278,70 @@ h2{font-size:32px;letter-spacing:-.02em;}
     }
     var NOME_MES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
+    // Recalcula base de cálculo e DARF a pagar de uma linha do resultado a
+    // partir do prejuízo compensado (editável — ver corpoResultado abaixo).
+    // Isento ou resultado ≤ 0 continuam sem base/DARF, independentemente do
+    // prejuízo informado (mesma regra da apuração original: isenção não
+    // consome prejuízo, e prejuízo do próprio mês não gera base positiva).
+    function recalcularLinhaResultado(l) {
+      if (l.isento || l.resultado <= 0) { l.prejuizoUsado = 0; l.baseCalculo = 0; l.darfValor = 0; return; }
+      var prejuizo = Math.max(0, Math.min(l.prejuizoUsado, l.resultado));
+      l.prejuizoUsado = prejuizo;
+      l.baseCalculo = l.resultado - prejuizo;
+      l.darfValor = l.baseCalculo * l.aliquota;
+    }
+
+    function renderizarResultado() {
+      corpoResultado.innerHTML = linhasResultado.map(function(l, idx) {
+        return '<tr>'
+          + '<td>' + l.competencia + '</td>'
+          + '<td><span class="ticker-tag">' + l.classe + '</span></td>'
+          + '<td>' + fmtBRLDarf(l.totalVendido) + '</td>'
+          + '<td class="' + (l.resultado >= 0 ? 'pos' : 'neg') + '">' + (l.resultado >= 0 ? '' : '-') + fmtBRLDarf(Math.abs(l.resultado)) + '</td>'
+          + '<td class="darf-editavel" data-idx="' + idx + '" data-campo="prejuizoUsado" style="cursor:text;" title="Clique para editar">' + (l.prejuizoUsado > 0 ? fmtBRLDarf(l.prejuizoUsado) : '—') + '</td>'
+          + '<td>' + fmtBRLDarf(l.baseCalculo) + '</td>'
+          + '<td>' + (l.darfValor > 0 ? fmtBRLDarf(l.darfValor) : '—') + '</td>'
+          + '<td>' + (l.darfValor > 0 ? l.vencimento : '—') + '</td>'
+          + '</tr>';
+      }).join('');
+      wrapResultado.style.display = 'block';
+    }
+
+    if (corpoResultado) {
+      corpoResultado.addEventListener('click', function(ev) {
+        var tdEd = ev.target.closest('.darf-editavel');
+        if (!tdEd || tdEd.querySelector('input')) return;
+        var idxEd = parseInt(tdEd.getAttribute('data-idx'), 10);
+        var linha = linhasResultado[idxEd];
+        var input = D.createElement('input');
+        input.type = 'text';
+        input.value = formatarNumero(linha.prejuizoUsado, 2);
+        input.style.cssText = 'width:100%;min-width:60px;border:1px solid var(--orange);border-radius:4px;padding:2px 6px;font:inherit;color:inherit;';
+        tdEd.textContent = '';
+        tdEd.appendChild(input);
+        input.focus();
+        input.select();
+        var confirmado = false;
+        function confirmarEdicaoResultado(aplicar) {
+          if (confirmado) return;
+          confirmado = true;
+          if (aplicar) {
+            var novo = parseNumeroBR(input.value);
+            if (!isNaN(novo) && novo >= 0) {
+              linha.prejuizoUsado = novo;
+              recalcularLinhaResultado(linha);
+            }
+          }
+          renderizarResultado();
+        }
+        input.addEventListener('blur', function() { confirmarEdicaoResultado(true); });
+        input.addEventListener('keydown', function(ke) {
+          if (ke.key === 'Enter') { ke.preventDefault(); confirmarEdicaoResultado(true); }
+          else if (ke.key === 'Escape') { confirmarEdicaoResultado(false); }
+        });
+      });
+    }
+
     if (btnCalcular) {
       btnCalcular.addEventListener('click', function() {
         // Agrupa por competência (ano-mês) e classe (ações/FIIs).
@@ -3299,7 +3364,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         });
 
         var prejuizoAcumulado = { acoes: 0, fiis: 0 };
-        var linhasResultado = [];
+        linhasResultado = [];
 
         listaGrupos.forEach(function(g) {
           var isFIIClasse = g.classe === 'fiis';
@@ -3332,30 +3397,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
           linhasResultado.push({
             competencia: NOME_MES[g.mes - 1] + '/' + g.ano, classe: isFIIClasse ? 'FII' : 'Ação',
             totalVendido: g.totalVendido, resultado: g.resultado, prejuizoUsado: prejuizoUsado,
-            baseCalculo: baseCalculo, isento: isento, darfValor: darfValor, vencimento: fmtDataBRObj(venc)
+            baseCalculo: baseCalculo, isento: isento, darfValor: darfValor, vencimento: fmtDataBRObj(venc),
+            aliquota: aliquota
           });
         });
 
-        corpoResultado.innerHTML = linhasResultado.map(function(l) {
-          var situacao;
-          if (l.resultado < 0) situacao = '<span class="neg">Prejuízo — sem DARF</span>';
-          else if (l.resultado === 0) situacao = 'Sem ganho nem perda';
-          else if (l.isento) situacao = '<span class="darf-isento">Isento (vendas ≤ R$ 20.000)</span>';
-          else if (l.darfValor <= 0) situacao = '<span class="darf-isento">Prejuízo compensado — sem DARF</span>';
-          else situacao = '<span class="darf-tributavel">DARF 6015 devido</span>';
-          return '<tr>'
-            + '<td>' + l.competencia + '</td>'
-            + '<td>' + l.classe + '</td>'
-            + '<td>' + fmtBRLDarf(l.totalVendido) + '</td>'
-            + '<td class="' + (l.resultado >= 0 ? 'pos' : 'neg') + '">' + (l.resultado >= 0 ? '' : '-') + fmtBRLDarf(Math.abs(l.resultado)) + '</td>'
-            + '<td>' + (l.prejuizoUsado > 0 ? fmtBRLDarf(l.prejuizoUsado) : '—') + '</td>'
-            + '<td>' + fmtBRLDarf(l.baseCalculo) + '</td>'
-            + '<td>' + situacao + '</td>'
-            + '<td>' + (l.darfValor > 0 ? fmtBRLDarf(l.darfValor) : '—') + '</td>'
-            + '<td>' + (l.darfValor > 0 ? l.vencimento : '—') + '</td>'
-            + '</tr>';
-        }).join('');
-        wrapResultado.style.display = 'block';
+        renderizarResultado();
       });
     }
 
