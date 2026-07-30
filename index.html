@@ -124,6 +124,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
 .opcoes-analise-titulo{font-weight:700;font-size:13px;color:var(--ink-soft);margin-right:4px;}
 .opcoes-analise label{display:inline-flex;align-items:center;gap:8px;cursor:pointer;padding:9px 16px;border-radius:999px;border:1.5px solid var(--line);background:var(--bg-soft);font-weight:600;font-size:13.5px;transition:border-color .16s,background .16s,color .16s,transform .16s;}
 .opcoes-analise label:hover{transform:translateY(-1px);}
+.opcoes-analise label.disponivel:not(:has(input:checked)){border-color:var(--green);background:rgba(22,163,74,.08);color:#15803D;}
 .opcoes-analise label:has(input:checked){border-color:var(--orange);background:var(--orange-light);color:var(--orange-dark);}
 .table-note{margin-top:18px;font-size:13px;color:var(--ink-soft);max-width:760px;}
 /* Notícias do mercado */
@@ -872,12 +873,25 @@ h2{font-size:32px;letter-spacing:-.02em;}
   // Cetipados usam uma chamada extra (carregarCetipados) porque só entram
   // na análise de verdade os que batem com o cadastro do site — os que não
   // batem aparecem aqui em vermelho, já que seriam descartados silenciosamente.
+  // Marca (ou desmarca) o selo verde "disponível" no chip de uma categoria
+  // em "O que você quer analisar?", com base no que a pré-visualização
+  // encontrou na planilha.
+  var IDS_CATEGORIA_DISPONIVEL = ['check-acoes','check-fiis','check-rf','check-cetip','check-previdencia','check-coe','check-tesouro'];
+  function marcarDisponivel(id, disponivel) {
+    var chk = document.getElementById(id);
+    var lbl = chk && chk.closest('label');
+    if (lbl) lbl.classList.toggle('disponivel', !!disponivel);
+  }
+  function resetarDisponibilidade() {
+    IDS_CATEGORIA_DISPONIVEL.forEach(function(id) { marcarDisponivel(id, false); });
+  }
+
   var _previewSeq = 0; // ignora respostas de leituras antigas se o usuário trocar o arquivo de novo rápido
   function atualizarPreviewReconhecidos() {
     var painel = document.getElementById('preview-reconhecidos');
     if (!painel) return;
     var minhaSeq = ++_previewSeq;
-    if (!arquivoSelecionado && !arquivoSelecionado2) { painel.hidden = true; painel.innerHTML = ''; return; }
+    if (!arquivoSelecionado && !arquivoSelecionado2) { painel.hidden = true; painel.innerHTML = ''; resetarDisponibilidade(); return; }
 
     painel.hidden = false;
     painel.innerHTML = '<p class="table-note" style="margin:0;">Lendo planilha…</p>';
@@ -920,12 +934,20 @@ h2{font-size:32px;letter-spacing:-.02em;}
       htmlBlocos += blocoHtml('COE', coeItens, function(p) { return p.nome; });
       htmlBlocos += blocoHtml('Tesouro Direto', tesouroItens, function(p) { return p.nome; });
 
+      marcarDisponivel('check-acoes', ativos.some(function(a) { return a.segmentoPlanilha !== 'fiis'; }));
+      marcarDisponivel('check-fiis', ativos.some(function(a) { return a.segmentoPlanilha === 'fiis'; }));
+      marcarDisponivel('check-rf', rf.length > 0);
+      marcarDisponivel('check-previdencia', previdenciaItens.length > 0);
+      marcarDisponivel('check-coe', coeItens.length > 0);
+      marcarDisponivel('check-tesouro', tesouroItens.length > 0);
+
       // Fundos Cetipados batem (ou não) contra o cadastro do site — só os
       // que batem entram de fato na análise (ver combinarComBaseCetipados).
       var promCetip = cetipExtraidos.length ? carregarCetipados() : Promise.resolve([]);
       promCetip.then(function(base) {
         if (minhaSeq !== _previewSeq) return;
         var htmlCetip = '';
+        var algumCetipReconhecido = false;
         if (cetipExtraidos.length) {
           var pills = cetipExtraidos.map(function(fundo) {
             var nomeNorm = normalizar(fundo.nome);
@@ -933,10 +955,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
               var bNorm = normalizar(b.nome);
               return bNorm === nomeNorm || bNorm.indexOf(nomeNorm) !== -1 || nomeNorm.indexOf(bNorm) !== -1;
             });
+            if (match) algumCetipReconhecido = true;
             return pill(fundo.nome + (match ? '' : ' — sem cadastro'), !!match);
           }).join('');
           htmlCetip = '<div style="margin-bottom:12px;"><span class="preview-reconhecidos-titulo">Fundos Cetipados (' + cetipExtraidos.length + ')</span>' + pills + '</div>';
         }
+        marcarDisponivel('check-cetip', algumCetipReconhecido);
 
         var tudoVazio = !ativos.length && !rf.length && !previdenciaItens.length && !coeItens.length && !tesouroItens.length && !cetipExtraidos.length;
         if (tudoVazio) {
@@ -948,6 +972,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     }).catch(function(e) {
       if (minhaSeq !== _previewSeq) return;
       console.error(e);
+      resetarDisponibilidade();
       painel.innerHTML = '<p class="table-note" style="margin:0;color:#B91C1C;">Não foi possível ler o arquivo para pré-visualização.</p>';
     });
   }
