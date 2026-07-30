@@ -3138,6 +3138,13 @@ h2{font-size:32px;letter-spacing:-.02em;}
     // recebida (ver o "at.cotacaoAtual = cot" na renderização da tabela de
     // RV) — por isso o retorno de inicializarDarf expõe ativoAtualizado.
     function tentarAdicionarAoDarf(ativo) {
+      // ativoAtualizado (chamada assíncrona, a cada cotação recebida) roda
+      // para TODOS os ativos da carteira, inclusive os ocultos pelo filtro
+      // "O que você quer analisar?" (a linha só fica escondida na tabela de
+      // RV — a cotação é buscada do mesmo jeito) — por isso é essencial
+      // conferir aqui de novo se o ativo passou no filtro de categoria
+      // (ativosComPM), e não só na primeira passada síncrona logo abaixo.
+      if (ativosComPM.indexOf(ativo) === -1) return;
       if (typeof ativo.cotacaoAtual !== 'number' || ativo.cotacaoAtual <= 0) return;
       if (typeof ativo.quantidade !== 'number' || ativo.quantidade <= 0) return;
       if (lancamentos.some(function(l) { return l.ticker === ativo.ticker && l._automatico; })) return;
