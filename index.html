@@ -328,18 +328,43 @@ h2{font-size:32px;letter-spacing:-.02em;}
       <h2>Análise de carteira por planilha</h2>
       <button type="button" class="btn btn-ghost btn-small" id="btn-carregar-analise-salva" style="margin-top:12px;">📂 Carregar análise salva de um cliente</button>
 
-      <div class="upload-box" id="upload-box-arquivo" style="margin-top:32px;">
-        <label for="arquivo-planilha" class="btn btn-ghost">Selecionar planilha</label>
-        <input type="file" id="arquivo-planilha" accept=".xlsx,.xls,.csv" hidden>
-        <span id="arquivo-nome" class="upload-filename">Nenhum arquivo selecionado.</span>
+      <div class="upload-legenda" style="margin-top:28px;border:1px solid var(--line);border-radius:var(--radius-lg);padding:20px 24px;background:var(--bg-soft);">
+        <p style="margin:0 0 14px;font-size:13.5px;color:var(--ink-soft);line-height:1.5;">Existem 2 modelos de planilha de posição da XP — <strong>Detalhada</strong> (extrato "Sua carteira") e <strong>Consolidada</strong> (extrato clássico "Carteira Distribuída"). Nem toda categoria funciona nos dois modelos; envie os dois arquivos juntos para ter a informação completa (principalmente em Fundos Cetipados, onde um modelo complementa o outro).</p>
+        <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+          <thead><tr>
+            <th style="text-align:left;padding:7px 10px;border-bottom:1.5px solid var(--line);"></th>
+            <th style="text-align:left;padding:7px 10px;border-bottom:1.5px solid var(--line);">Detalhada</th>
+            <th style="text-align:left;padding:7px 10px;border-bottom:1.5px solid var(--line);">Consolidada</th>
+            <th style="text-align:left;padding:7px 10px;border-bottom:1.5px solid var(--line);">Obs.</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:7px 10px;font-weight:600;border-bottom:1px solid var(--line);">Renda Fixa</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);color:var(--ink-soft);">As duas entregam o mesmo resultado individualmente</td></tr>
+            <tr><td style="padding:7px 10px;font-weight:600;border-bottom:1px solid var(--line);">COE</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Não funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);"></td></tr>
+            <tr><td style="padding:7px 10px;font-weight:600;border-bottom:1px solid var(--line);">Ações</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);color:var(--ink-soft);">As duas entregam o mesmo resultado individualmente</td></tr>
+            <tr><td style="padding:7px 10px;font-weight:600;border-bottom:1px solid var(--line);">Fundos Imobiliários</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);color:var(--ink-soft);">As duas entregam o mesmo resultado individualmente</td></tr>
+            <tr><td style="padding:7px 10px;font-weight:600;border-bottom:1px solid var(--line);">Fundos Cetipados</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Todas as infos (menos qtd. de cotas)</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Todas as infos (menos valorização)</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);color:var(--ink-soft);">Planilhas complementares — recomendado enviar as duas</td></tr>
+            <tr><td style="padding:7px 10px;font-weight:600;border-bottom:1px solid var(--line);">Previdência Privada</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);">Não funciona</td><td style="padding:7px 10px;border-bottom:1px solid var(--line);"></td></tr>
+            <tr><td style="padding:7px 10px;font-weight:600;">Tesouro Direto</td><td style="padding:7px 10px;">Funciona</td><td style="padding:7px 10px;">Não funciona</td><td style="padding:7px 10px;"></td></tr>
+          </tbody>
+        </table>
+        </div>
       </div>
 
-      <div class="upload-box" id="upload-box-arquivo2" style="margin-top:10px;" hidden>
-        <label for="arquivo-planilha2" class="btn btn-ghost btn-small">+ Planilha complementar (opcional)</label>
-        <input type="file" id="arquivo-planilha2" accept=".xlsx,.xls,.csv" hidden>
-        <span id="arquivo-nome2" class="upload-filename">Nenhum arquivo selecionado.</span>
-        <p class="table-note" style="margin-top:6px;width:100%;">Use quando a mesma carteira tiver sido exportada em dois modelos diferentes de planilha — os dados dos dois arquivos são combinados, preenchendo o que faltar em um com o que existir no outro.</p>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:20px;">
+        <div class="upload-box" id="upload-box-arquivo" style="flex:1;min-width:280px;margin-top:0;">
+          <label for="arquivo-planilha" class="btn btn-ghost">Selecionar planilha 1</label>
+          <input type="file" id="arquivo-planilha" accept=".xlsx,.xls,.csv" hidden>
+          <span id="arquivo-nome" class="upload-filename">Nenhum arquivo selecionado.</span>
+        </div>
+
+        <div class="upload-box" id="upload-box-arquivo2" style="flex:1;min-width:280px;margin-top:0;">
+          <label for="arquivo-planilha2" class="btn btn-ghost">Selecionar planilha 2 (opcional)</label>
+          <input type="file" id="arquivo-planilha2" accept=".xlsx,.xls,.csv" hidden>
+          <span id="arquivo-nome2" class="upload-filename">Nenhum arquivo selecionado.</span>
+        </div>
       </div>
+      <p class="table-note" style="margin-top:8px;">Envie a Detalhada e a Consolidada juntas para combinar as informações de cada uma (ver tabela acima) — os dados são mesclados automaticamente, preenchendo o que faltar em uma com o que existir na outra.</p>
 
       <div class="opcoes-analise" id="opcoes-analise" hidden>
         <span class="opcoes-analise-titulo">O que você quer analisar?</span>
@@ -799,24 +824,25 @@ h2{font-size:32px;letter-spacing:-.02em;}
   // separar a tabela de posição em RF em duas (ver gerarHTML/processarRFPos).
   var TIPOS_RF_BANCARIO = ['CDB','LCA','LCI','LCD'];
 
+  // Os dois uploads são pares (nenhum é "principal") — usar só um dos dois
+  // já é suficiente para analisar; usar os dois combina as informações de
+  // cada modelo de planilha (Detalhada/Consolidada — ver a legenda acima e
+  // mesclarPorChave), útil sobretudo para Fundos Cetipados, onde um modelo
+  // tem a quantidade de cotas e o outro a valorização.
   document.getElementById('arquivo-planilha').addEventListener('change', function(ev) {
     var arq = ev.target.files[0] || null;
     arquivoSelecionado = arq;
     document.getElementById('arquivo-nome').textContent = arq ? arq.name : 'Nenhum arquivo selecionado.';
-    document.getElementById('opcoes-analise').hidden = !arq;
-    document.getElementById('upload-box-arquivo2').hidden = !arq;
+    document.getElementById('opcoes-analise').hidden = !(arquivoSelecionado || arquivoSelecionado2);
     atualizarBotaoAnalisar();
   });
 
-  // Planilha complementar (opcional): usada quando a mesma carteira foi
-  // exportada em dois modelos diferentes, cada um com informações que
-  // faltam no outro (ex.: o modelo novo traz rentabilidade líquida/bruta dos
-  // fundos cetipados, mas não a quantidade de cotas; o modelo antigo traz a
-  // quantidade de cotas, mas não a rentabilidade) — ver mesclarPorChave.
   document.getElementById('arquivo-planilha2').addEventListener('change', function(ev) {
     var arq = ev.target.files[0] || null;
     arquivoSelecionado2 = arq;
     document.getElementById('arquivo-nome2').textContent = arq ? arq.name : 'Nenhum arquivo selecionado.';
+    document.getElementById('opcoes-analise').hidden = !(arquivoSelecionado || arquivoSelecionado2);
+    atualizarBotaoAnalisar();
   });
 
   function atualizarBotaoAnalisar() {
@@ -827,7 +853,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var previdencia = document.getElementById('check-previdencia').checked;
     var coe   = document.getElementById('check-coe').checked;
     var tesouro = document.getElementById('check-tesouro').checked;
-    document.getElementById('btn-analisar').disabled = !arquivoSelecionado ||
+    document.getElementById('btn-analisar').disabled = !(arquivoSelecionado || arquivoSelecionado2) ||
       (!acoes && !fiis && !rf && !cetip && !previdencia && !coe && !tesouro);
   }
 
@@ -868,7 +894,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
   });
 
   document.getElementById('btn-analisar').addEventListener('click', function() {
-    if (!arquivoSelecionado) return;
+    if (!arquivoSelecionado && !arquivoSelecionado2) return;
     var acoes = document.getElementById('check-acoes').checked;
     var fiis  = document.getElementById('check-fiis').checked;
     var rf    = document.getElementById('check-rf').checked;
@@ -1015,10 +1041,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var status = document.getElementById('carteira-status');
     status.textContent = 'Lendo planilha...';
 
-    var promessas = [lerPlanilha(arquivo)];
-    if (arquivo2) promessas.push(lerPlanilha(arquivo2));
+    // Os dois arquivos são pares — qualquer um sozinho basta; nenhum é
+    // "principal" (ver o par de uploads acima, sem mais planilha
+    // "complementar" separada).
+    var arquivos = [arquivo, arquivo2].filter(Boolean);
 
-    Promise.all(promessas).then(function(resultados) {
+    Promise.all(arquivos.map(lerPlanilha)).then(function(resultados) {
       processarLinhasCarteira(resultados[0], resultados[1] || null, novaJanela, opcoes, status);
     }).catch(function(e) {
       console.error(e);
