@@ -6115,19 +6115,24 @@ h2{font-size:32px;letter-spacing:-.02em;}
       if (corpoRFPosDestino) {
         var totTfLinha = destinoRF.tot;
         var valorAplicado = typeof item.valorAplicado === 'number' ? item.valorAplicado : null;
-        var lucroRS  = (valor && valorAplicado) ? valor - valorAplicado : null;
+        var valorLiquidoInicial = typeof item.valorLiquido === 'number' ? item.valorLiquido : null;
+        // Lucro (R$)/(%) usa o Valor líquido como valor atual (é o que o
+        // cliente efetivamente receberia hoje), não a Posição — por isso
+        // editar "Valor líquido" recalcula o Lucro; editar "Posição" só
+        // ajusta o total em Renda Fixa/diversificação (ver mais abaixo).
+        var lucroRS  = (valorLiquidoInicial !== null && valorAplicado !== null) ? valorLiquidoInicial - valorAplicado : null;
         var lucroPct = (lucroRS !== null && valorAplicado) ? (lucroRS / valorAplicado) * 100 : null;
 
         // Acumula no total de lucro RF (o valor inicial, sem cupons — as
-        // edições abaixo, tanto de cupons quanto de Valor aplicado/Posição,
-        // ajustam esse total pela diferença via recomputarLucroRF()).
+        // edições abaixo, tanto de cupons quanto de Valor aplicado/Valor
+        // líquido, ajustam esse total pela diferença via recomputarLucroRF()).
         if (lucroRS !== null) totLucroRF += lucroRS;
 
         // Acumula na linha de total (tfoot) da tabela correspondente
         // (bancários ou crédito privado) — ver totTfBanco/totTfCredito.
         totTfLinha.aplicado += valorAplicado || 0;
         totTfLinha.posicao += (valor && valor > 0) ? valor : 0;
-        totTfLinha.liquido += (typeof item.valorLiquido === 'number' ? item.valorLiquido : 0);
+        totTfLinha.liquido += valorLiquidoInicial || 0;
         if (lucroRS !== null) totTfLinha.lucro += lucroRS;
 
         var tr = D.createElement('tr');
@@ -6142,8 +6147,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
         tr.appendChild(tdValAplic);
         var tdPosicao = cel(D, valor           > 0     ? 'R$ ' + formatarNumero(valor, 2)          : '—');
         tr.appendChild(tdPosicao);
-        var tdLiq = cel(D, typeof item.valorLiquido === 'number'
-          ? 'R$ ' + formatarNumero(item.valorLiquido, 2) : '—');
+        var tdLiq = cel(D, valorLiquidoInicial !== null
+          ? 'R$ ' + formatarNumero(valorLiquidoInicial, 2) : '—');
         tr.appendChild(tdLiq);
 
         // Cupons — campo editável (coluna ocultável via toggle)
@@ -6208,7 +6213,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           }
           totTfLinha.aplicado -= (valorAplicadoAtual || 0);
           totTfLinha.posicao -= (posicaoAtual && posicaoAtual > 0) ? posicaoAtual : 0;
-          totTfLinha.liquido -= (typeof item.valorLiquido === 'number' ? item.valorLiquido : 0);
+          totTfLinha.liquido -= (valorLiquidoAtual || 0);
           totTfLinha.cupons -= cuponsAtual;
           totTfLinha.lucro -= (lucroAtualRS !== null ? lucroAtualRS : 0);
           atualizarTfootRF(destinoRF.getRefs(), totTfLinha);
@@ -6220,19 +6225,21 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
         corpoRFPosDestino.appendChild(tr);
 
-        // Estado "vivo" desta linha (posição, valor aplicado e cupons),
-        // reatribuído sempre que o usuário edita a célula correspondente —
-        // ao contrário de capturar esses valores só uma vez no momento da
-        // criação da linha, isso garante que qualquer uma das três edições
-        // (Valor aplicado, Posição ou Cupons pagos) recalcule Lucro (R$)/(%)
-        // usando sempre os valores mais recentes das outras duas.
+        // Estado "vivo" desta linha (posição, valor aplicado, valor líquido e
+        // cupons), reatribuído sempre que o usuário edita a célula
+        // correspondente — ao contrário de capturar esses valores só uma vez
+        // no momento da criação da linha, isso garante que qualquer uma das
+        // edições (Valor aplicado, Valor líquido ou Cupons pagos) recalcule
+        // Lucro (R$)/(%) usando sempre os valores mais recentes das outras.
+        // Posição não entra nessa conta — ver comentário no início do bloco.
         var posicaoAtual        = valor;
         var valorAplicadoAtual  = valorAplicado;
+        var valorLiquidoAtual   = valorLiquidoInicial;
         var cuponsAtual         = typeof item.cupons === 'number' ? item.cupons : 0;
 
         function recomputarLucroRF() {
-          var novoLucroRS = (posicaoAtual !== null && valorAplicadoAtual !== null)
-            ? posicaoAtual - valorAplicadoAtual + cuponsAtual
+          var novoLucroRS = (valorLiquidoAtual !== null && valorAplicadoAtual !== null)
+            ? valorLiquidoAtual - valorAplicadoAtual + cuponsAtual
             : null;
           var novoLucroPct = (novoLucroRS !== null && valorAplicadoAtual)
             ? (novoLucroRS / valorAplicadoAtual) * 100 : null;
@@ -6271,11 +6278,22 @@ h2{font-size:32px;letter-spacing:-.02em;}
           recomputarLucroRF();
         });
 
-        // Posição editada: além de recalcular o Lucro (R$)/(%) desta linha,
-        // ajusta o total em Renda Fixa (geral e por tipo) e a linha de total
-        // da tabela pela diferença — mesmo critério (só soma quando > 0) já
-        // usado na criação da linha e no botão de excluir, para que todos
-        // continuem consistentes.
+        // Valor líquido editado: é a base do Lucro (R$)/(%) — ver comentário
+        // no início do bloco — então recalcula o Lucro desta linha e ajusta
+        // a linha de total.
+        aoEditarCelula(tdLiq, function(novoTxt) {
+          var novoNum = parseNumeroBR(novoTxt);
+          var novoValLiq = isNaN(novoNum) ? null : novoNum;
+          totTfLinha.liquido += (novoValLiq || 0) - (valorLiquidoAtual || 0);
+          valorLiquidoAtual = novoValLiq;
+          recomputarLucroRF();
+        });
+
+        // Posição editada: ajusta o total em Renda Fixa (geral e por tipo) e
+        // a linha de total da tabela pela diferença — mesmo critério (só
+        // soma quando > 0) já usado na criação da linha e no botão de
+        // excluir. Não recalcula o Lucro (que usa Valor líquido, não
+        // Posição — ver comentário no início do bloco).
         aoEditarCelula(tdPosicao, function(novoTxt) {
           var novoNum = parseNumeroBR(novoTxt);
           var novoVal = isNaN(novoNum) ? null : novoNum;
@@ -6292,7 +6310,6 @@ h2{font-size:32px;letter-spacing:-.02em;}
           }
           valor = novoVal; // mantém o botão "excluir" (que lê 'valor') sincronizado
           posicaoAtual = novoVal;
-          recomputarLucroRF();
         });
       }
 
