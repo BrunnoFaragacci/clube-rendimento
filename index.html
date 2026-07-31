@@ -273,6 +273,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       <button type="button" class="btn-nav" id="btn-nav-pesquisa">Pesquisar ativo ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-valuation">Valuation ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-carteira-rec">Carteira Recomendada ↗</button>
+      <button type="button" class="btn-nav" id="btn-nav-seguros">Seguros e Previdência ↗</button>
       <div class="nav-dropdown-wrap">
         <button type="button" class="btn-nav nav-dropdown-trigger" id="btn-nav-cripto" aria-expanded="false">Cripto <span class="nav-caret">▾</span></button>
         <div class="nav-dropdown" id="dropdown-cripto" hidden>
@@ -12444,6 +12445,164 @@ fetch(SB_URL + '/rest/v1/credito_privado_indicadores?select=*&order=nome.asc', {
 </html>`);
   }
 
+  // Página "Seguros e Previdência" — por enquanto só a sub-aba "Simulador de
+  // Whole Life", com a mesma estrutura de abas laterais da página
+  // Calculadoras (calc-sidebar/calc-side-btn/calc-panel), para comportar
+  // novas sub-abas de seguros/previdência no futuro. É uma projeção
+  // ILUSTRATIVA (ver calc-nota no HTML) — não reproduz a tábua atuarial
+  // real de nenhuma seguradora, que depende de dados proprietários (idade,
+  // sexo, tabagismo etc.) não disponíveis aqui.
+  function abrirSegurosPrevidencia() {
+    var win = window.open('', '_blank');
+    if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
+    escreverConteudoJanela(win, `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Seguros e Previdência — Clube do Rendimento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--line:#E2E2E2;--orange:#111111;--og:#000000;--ol:#EAEAEA;--green:#16A34A;--red:#DC2626;--radius:16px;--radius-lg:24px;--shadow:0 10px 28px rgba(0,0,0,.08);--shadow-sm:0 2px 10px rgba(0,0,0,.05);}
+*{box-sizing:border-box;margin:0;padding:0;}
+[hidden]{display:none!important;}
+body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-soft);color:var(--ink);min-height:100vh;font-size:14px;}
+.nav{background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;}
+.nav-brand{font-weight:700;font-size:15px;text-decoration:none;color:var(--ink);}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:9px 18px;border-radius:8px;font-weight:600;font-size:13px;border:1px solid transparent;cursor:pointer;font-family:inherit;}
+.btn-primary{background:linear-gradient(135deg,var(--orange),var(--og));color:#fff;box-shadow:0 8px 18px rgba(0,0,0,.22);transition:transform .15s,box-shadow .15s;}.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 22px rgba(0,0,0,.28);}
+.calc-shell{display:flex;align-items:flex-start;}
+.calc-sidebar{width:280px;flex-shrink:0;background:#fff;border-right:1px solid var(--line);padding:24px 14px;position:sticky;top:57px;height:calc(100vh - 57px);overflow-y:auto;}
+.calc-sidebar-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);padding:0 10px 12px;}
+.calc-side-btn{display:block;width:100%;text-align:left;background:none;border:none;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;margin-bottom:2px;transition:background .15s,color .15s;}
+.calc-side-btn:hover{background:var(--bg-soft);color:var(--ink);}
+.calc-side-btn.ativo{background:#111111;color:#fff;}
+.calc-content{flex:1;padding:28px 32px 80px;max-width:900px;}
+.calc-panel{display:none;}
+.calc-panel.ativo{display:block;}
+.calc-panel-titulo{font-size:20px;font-weight:700;margin-bottom:4px;}
+.calc-panel-sub{font-size:13px;color:var(--ink-soft);margin-bottom:22px;line-height:1.5;}
+.calc-card{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);padding:26px 28px;box-shadow:var(--shadow-sm);}
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.calc-field{display:flex;flex-direction:column;gap:6px;}
+.calc-field label{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);}
+.calc-field input,.calc-field select{padding:10px 13px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:14px;color:var(--ink);background:var(--bg);width:100%;}
+.calc-field input:focus,.calc-field select:focus{outline:none;border-color:var(--orange);}
+.calc-actions{margin-top:20px;}
+.calc-resultado{margin-top:22px;padding-top:22px;border-top:1px solid var(--line);display:none;}
+.calc-resultado.ativo{display:block;}
+.calc-resultado-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-top:14px;}
+.calc-stat{background:var(--bg-soft);border-radius:var(--radius);padding:16px 18px;}
+.calc-stat-label{font-size:11.5px;color:var(--ink-soft);font-weight:600;text-transform:uppercase;letter-spacing:.02em;}
+.calc-stat-valor{font-size:20px;font-weight:700;margin-top:4px;color:var(--ink);}
+.calc-stat-valor.destaque{color:var(--green);}
+.calc-nota{font-size:12px;color:var(--ink-soft);margin-top:14px;line-height:1.5;}
+.calc-aviso{background:#fff3f0;border:1px solid var(--orange);border-radius:10px;padding:12px 16px;font-size:12.5px;color:#7a2e12;margin-bottom:20px;}
+.calc-tabela-wrap{margin-top:18px;overflow:auto;max-height:420px;}
+.calc-tabela{width:100%;border-collapse:collapse;min-width:520px;}
+.calc-tabela th{background:var(--orange);color:#fff;text-align:left;padding:11px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;position:sticky;top:0;}
+.calc-tabela td{padding:9px 14px;border-bottom:1px solid var(--line);font-size:13px;white-space:nowrap;}
+.calc-tabela tr:last-child td{border-bottom:none;}
+@media(max-width:860px){.calc-shell{flex-direction:column;}.calc-sidebar{width:100%;position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);display:flex;overflow-x:auto;padding:14px;gap:6px;}.calc-side-btn{width:auto;white-space:nowrap;margin-bottom:0;}.calc-sidebar-title{display:none;}.calc-content{padding:22px 18px 60px;max-width:none;}}
+@media(max-width:640px){.calc-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <a href="javascript:window.close()" class="nav-brand">← Clube do Rendimento</a>
+</header>
+
+<div class="calc-shell">
+  <aside class="calc-sidebar">
+    <div class="calc-sidebar-title">Seguros e Previdência</div>
+    <button type="button" class="calc-side-btn ativo" data-alvo="p-whole-life">Simulador de Whole Life</button>
+  </aside>
+  <main class="calc-content">
+
+    <div class="calc-panel ativo" id="p-whole-life">
+      <h1 class="calc-panel-titulo">Simulador de Whole Life</h1>
+      <p class="calc-panel-sub">Projeção do capital segurado, dos aportes e do valor de resgate de um seguro de vida inteira (Whole Life) com prazo de custeio determinado.</p>
+      <p class="calc-aviso">⚠ Simulação ilustrativa e aproximada, para fins didáticos. Não substitui uma cotação oficial da seguradora — prêmio e resgate reais dependem de tábuas atuariais próprias de cada produto (idade, sexo, tabagismo, classe de risco etc.), não reproduzidas aqui.</p>
+      <div class="calc-card">
+        <div class="calc-grid">
+          <div class="calc-field"><label for="wl-idade">Idade atual</label><input type="number" id="wl-idade" value="30" min="0" step="1"></div>
+          <div class="calc-field"><label for="wl-capital">Capital segurado (morte)</label><input type="number" id="wl-capital" value="600000" min="0" step="1000"></div>
+          <div class="calc-field"><label for="wl-premio">Prêmio anual (aporte)</label><input type="number" id="wl-premio" value="20000" min="0" step="100"></div>
+          <div class="calc-field"><label for="wl-prazo-custeio">Prazo de custeio (anos)</label><input type="number" id="wl-prazo-custeio" value="10" min="1" step="1"></div>
+          <div class="calc-field"><label for="wl-inflacao">Inflação anual do capital (%)</label><input type="number" id="wl-inflacao" value="5" min="0" step="0.1"></div>
+          <div class="calc-field"><label for="wl-retorno">Retorno estimado da reserva (% a.a.)</label><input type="number" id="wl-retorno" value="6" min="0" step="0.1"></div>
+          <div class="calc-field"><label for="wl-anos-projecao">Horizonte da projeção (anos)</label><input type="number" id="wl-anos-projecao" value="40" min="1" step="1"></div>
+        </div>
+        <div class="calc-actions"><button type="button" class="btn btn-primary" id="wl-calcular">Simular</button></div>
+        <div class="calc-resultado" id="wl-resultado">
+          <div class="calc-resultado-grid">
+            <div class="calc-stat"><div class="calc-stat-label">Total aportado</div><div class="calc-stat-valor" id="wl-total-aportado">—</div></div>
+            <div class="calc-stat"><div class="calc-stat-label">Capital segurado (final)</div><div class="calc-stat-valor" id="wl-capital-final">—</div></div>
+            <div class="calc-stat"><div class="calc-stat-label">Resgate estimado (final)</div><div class="calc-stat-valor destaque" id="wl-resgate-final">—</div></div>
+          </div>
+          <div class="calc-tabela-wrap">
+            <table class="calc-tabela">
+              <thead><tr><th>Idade</th><th>Capital segurado</th><th>Aporte do ano</th><th>Aporte acumulado</th><th>Resgate estimado</th></tr></thead>
+              <tbody id="wl-corpo"></tbody>
+            </table>
+          </div>
+          <p class="calc-nota">O capital segurado é corrigido pela inflação informada; o resgate assume que a reserva acumulada rende a taxa de retorno informada, sem descontar custo de seguro ou carregamento — uma simplificação didática, não a metodologia real da seguradora.</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+function fBRL(v){ return (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2}); }
+
+document.querySelectorAll('.calc-side-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.calc-side-btn').forEach(function(b){ b.classList.remove('ativo'); });
+    btn.classList.add('ativo');
+    document.querySelectorAll('.calc-panel').forEach(function(p){ p.classList.remove('ativo'); });
+    var alvo = document.getElementById(btn.dataset.alvo);
+    if (alvo) alvo.classList.add('ativo');
+  });
+});
+
+document.getElementById('wl-calcular').addEventListener('click', function(){
+  var idade         = parseInt(document.getElementById('wl-idade').value, 10) || 0;
+  var capitalInicial= parseFloat(document.getElementById('wl-capital').value) || 0;
+  var premioAnual   = parseFloat(document.getElementById('wl-premio').value) || 0;
+  var prazoCusteio  = parseInt(document.getElementById('wl-prazo-custeio').value, 10) || 0;
+  var inflacaoAA    = (parseFloat(document.getElementById('wl-inflacao').value) || 0) / 100;
+  var retornoAA     = (parseFloat(document.getElementById('wl-retorno').value) || 0) / 100;
+  var anosProjecao  = parseInt(document.getElementById('wl-anos-projecao').value, 10) || 0;
+
+  var aporteAcum = 0, reserva = 0, linhas = [];
+  for (var ano = 0; ano < anosProjecao; ano++) {
+    var capitalAno = capitalInicial * Math.pow(1 + inflacaoAA, ano);
+    var aporteDoAno = ano < prazoCusteio ? premioAnual : 0;
+    aporteAcum += aporteDoAno;
+    reserva = reserva * (1 + retornoAA) + aporteDoAno;
+    linhas.push({ idade: idade + ano, capital: capitalAno, aporteAno: aporteDoAno, aporteAcum: aporteAcum, resgate: reserva });
+  }
+
+  document.getElementById('wl-total-aportado').textContent = fBRL(aporteAcum);
+  document.getElementById('wl-capital-final').textContent = fBRL(linhas.length ? linhas[linhas.length - 1].capital : capitalInicial);
+  document.getElementById('wl-resgate-final').textContent = fBRL(reserva);
+
+  document.getElementById('wl-corpo').innerHTML = linhas.map(function(l){
+    return '<tr><td>' + l.idade + '</td><td>' + fBRL(l.capital) + '</td><td>' + fBRL(l.aporteAno) + '</td><td>' + fBRL(l.aporteAcum) + '</td><td>' + fBRL(l.resgate) + '</td></tr>';
+  }).join('');
+
+  document.getElementById('wl-resultado').classList.add('ativo');
+});
+<\/script>
+</body>
+</html>`);
+  }
+
   function abrirCalculadoras() {
     var win = window.open('', '_blank');
     if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
@@ -15750,6 +15909,7 @@ document.querySelectorAll('.tab').forEach(function(btn){
   });
 
   document.getElementById('btn-nav-calculadoras').addEventListener('click', abrirCalculadoras);
+  document.getElementById('btn-nav-seguros').addEventListener('click', abrirSegurosPrevidencia);
   document.getElementById('btn-nav-cetipados').addEventListener('click', abrirCetipados);
   document.getElementById('btn-nav-pesquisa').addEventListener('click', abrirPesquisaAtivo);
   document.getElementById('btn-nav-valuation').addEventListener('click', abrirValuationDCF);
