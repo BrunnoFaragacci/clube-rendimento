@@ -4580,11 +4580,34 @@ h2{font-size:32px;letter-spacing:-.02em;}
             recomputarRendimentoPrevidencia();
           };
 
-          // Reaplica edições salvas de uma análise anterior (ver edicoesManuais).
+          // Rendimento (R$) editado diretamente: sobrepõe o valor calculado
+          // por Posição/Valor aplicado — ajusta o quadrante de lucro total
+          // pela diferença frente ao valor anterior.
+          function aplicarRendimentoDiretoPrev(novoNum) {
+            if (isNaN(novoNum)) return;
+            totLucroPrevidencia += novoNum - (rendimentoAtual !== null ? rendimentoAtual : 0);
+            rendimentoAtual = novoNum;
+            tdRendimento.className = novoNum >= 0 ? 'pos' : 'neg';
+            if (totLucroPrevidenciaEl) {
+              totLucroPrevidenciaEl.textContent = 'R$ ' + formatarNumero(totLucroPrevidencia, 2);
+              totLucroPrevidenciaEl.className = 'resumo-valor ' + (totLucroPrevidencia >= 0 ? 'pos' : 'neg');
+            }
+          }
+          tdRendimento._recalcularAoEditar = function(novo) {
+            var novoNum = parseNumeroBR(novo);
+            aplicarRendimentoDiretoPrev(novoNum);
+            edicoesManuais.previdencia[idxPrev] = edicoesManuais.previdencia[idxPrev] || {};
+            edicoesManuais.previdencia[idxPrev].rendimento = novoNum;
+          };
+
+          // Reaplica edições salvas de uma análise anterior (ver
+          // edicoesManuais) — o Rendimento direto (se houver) vem por
+          // último, para prevalecer sobre o recálculo das outras duas.
           var edicaoPrevSalva = edicoesManuais.previdencia[idxPrev];
           if (edicaoPrevSalva) {
             aplicarEdicaoSalva(tdPosicaoPrev, edicaoPrevSalva.posicao);
             aplicarEdicaoSalva(tdValAplicPrev, edicaoPrevSalva.valorAplicado);
+            if (typeof edicaoPrevSalva.rendimento === 'number') aplicarRendimentoDiretoPrev(edicaoPrevSalva.rendimento);
           }
 
           btnExcluirPrev.addEventListener('click', function() {
@@ -4732,7 +4755,32 @@ h2{font-size:32px;letter-spacing:-.02em;}
             recomputarLucroTesouro();
           };
 
+          // Lucro (R$) editado diretamente: sobrepõe o valor calculado pelas
+          // outras colunas — ajusta Lucro (%) e o quadrante de lucro total
+          // pela diferença frente ao valor anterior.
+          function aplicarLucroDiretoTesouro(novoNum) {
+            if (isNaN(novoNum)) return;
+            totLucroTesouro += novoNum - (lucroAtualRS !== null ? lucroAtualRS : 0);
+            lucroAtualRS = novoNum;
+            tdLucRS.className = novoNum >= 0 ? 'pos' : 'neg';
+            var novoPct = valorAplicadoAtual ? (novoNum / valorAplicadoAtual) * 100 : null;
+            tdLucPct.textContent = novoPct !== null ? formatarNumero(novoPct, 2) + '%' : '—';
+            tdLucPct.className = novoPct !== null ? (novoPct >= 0 ? 'pos' : 'neg') : '';
+            if (totLucroTesouroEl) {
+              totLucroTesouroEl.textContent = 'R$ ' + formatarNumero(totLucroTesouro, 2);
+              totLucroTesouroEl.className = 'resumo-valor ' + (totLucroTesouro >= 0 ? 'pos' : 'neg');
+            }
+          }
+          tdLucRS._recalcularAoEditar = function(novo) {
+            var novoNum = parseNumeroBR(novo);
+            aplicarLucroDiretoTesouro(novoNum);
+            edicoesManuais.tesouro[idxTes] = edicoesManuais.tesouro[idxTes] || {};
+            edicoesManuais.tesouro[idxTes].lucro = novoNum;
+          };
+
           // Reaplica edições salvas de uma análise anterior (ver edicoesManuais).
+          // O Lucro direto (se houver) vem por último, para prevalecer sobre
+          // o recálculo das outras duas edições.
           var edicaoTesSalva = edicoesManuais.tesouro[idxTes];
           if (edicaoTesSalva) {
             aplicarEdicaoSalva(tdPosicao, edicaoTesSalva.posicao);
@@ -4742,6 +4790,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
               cuponsAtual = edicaoTesSalva.cupons;
               recomputarLucroTesouro();
             }
+            if (typeof edicaoTesSalva.lucro === 'number') aplicarLucroDiretoTesouro(edicaoTesSalva.lucro);
           }
         });
       }
@@ -6510,10 +6559,38 @@ h2{font-size:32px;letter-spacing:-.02em;}
           edicoesManuais.rf[i].posicao = novoVal;
         });
 
+        // Lucro (R$) editado diretamente: sobrepõe o valor calculado pelas
+        // outras colunas — ajusta Lucro (%) desta linha, o subtotal da
+        // tabela (tfoot) e o quadrante de lucro total, todos pela diferença
+        // frente ao valor anterior.
+        function aplicarLucroDiretoRF(novoNum) {
+          if (isNaN(novoNum)) return;
+          totLucroRF += novoNum - (lucroAtualRS !== null ? lucroAtualRS : 0);
+          totTfLinha.lucro += novoNum - (lucroAtualRS !== null ? lucroAtualRS : 0);
+          lucroAtualRS = novoNum;
+          tdLucRS.className = novoNum >= 0 ? 'pos' : 'neg';
+          var novoPct = valorAplicadoAtual ? (novoNum / valorAplicadoAtual) * 100 : null;
+          tdLucPct.textContent = novoPct !== null ? formatarNumero(novoPct, 2) + '%' : '—';
+          tdLucPct.className = novoPct !== null ? (novoPct >= 0 ? 'pos' : 'neg') : '';
+          if (totLucroRFEl) {
+            totLucroRFEl.textContent = 'R$ ' + formatarNumero(totLucroRF, 2);
+            totLucroRFEl.className = 'resumo-valor ' + (totLucroRF >= 0 ? 'pos' : 'neg');
+          }
+          atualizarTfootRF(destinoRF.getRefs(), totTfLinha);
+        }
+        aoEditarCelula(tdLucRS, function(novoTxt) {
+          var novoNum = parseNumeroBR(novoTxt);
+          aplicarLucroDiretoRF(novoNum);
+          edicoesManuais.rf[i] = edicoesManuais.rf[i] || {};
+          edicoesManuais.rf[i].lucro = novoNum;
+        });
+
         // Reaplica edições salvas de uma análise anterior (ver
         // edicoesManuais/aplicarEdicaoSalva) — cada chamada simula a mesma
         // edição que o usuário faria a mão, então os totais/tfoot já saem
-        // corretos sem duplicar lógica de recálculo.
+        // corretos sem duplicar lógica de recálculo. O Lucro direto (se
+        // houver) vem por último, para prevalecer sobre o recálculo das
+        // outras três edições.
         var edicaoRfSalva = edicoesManuais.rf[i];
         if (edicaoRfSalva) {
           aplicarEdicaoSalva(tdValAplic, edicaoRfSalva.valorAplicado);
@@ -6525,6 +6602,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
             cuponsAtual = edicaoRfSalva.cupons;
             recomputarLucroRF();
           }
+          if (typeof edicaoRfSalva.lucro === 'number') aplicarLucroDiretoRF(edicaoRfSalva.lucro);
         }
       }
 
