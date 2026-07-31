@@ -593,12 +593,18 @@ h2{font-size:32px;letter-spacing:-.02em;}
     });
 
     if (filtroInput && idxFiltro !== -1) {
+      // Busca em qualquer coluna com rótulo (não só a primeira) — mesmo
+      // critério usado no filtro da Análise de Carteira (ver MAPA_COLUNAS_TABELAS).
+      var idxComRotulo = [];
+      Array.prototype.forEach.call(ths, function(th, idx) { if (th.textContent.trim()) idxComRotulo.push(idx); });
       filtroInput.addEventListener('input', function() {
         var termo = normalizar(filtroInput.value);
         var grupos = _agruparLinhasTabela(tbody);
         grupos.forEach(function(grupo) {
-          var td = grupo[0].children[idxFiltro];
-          var bate = !termo || normalizar(td ? td.textContent : '').indexOf(termo) !== -1;
+          var bate = !termo || idxComRotulo.some(function(idx) {
+            var td = grupo[0].children[idx];
+            return normalizar(td ? td.textContent : '').indexOf(termo) !== -1;
+          });
           grupo.forEach(function(tr) { tr.style.display = bate ? '' : 'none'; });
         });
       });
@@ -4183,18 +4189,22 @@ h2{font-size:32px;letter-spacing:-.02em;}
         });
       });
 
-      // Filtro: primeira coluna com rótulo (Ativo/Fundo/Título/Operação — em
-      // Cetip o índice 0 é estrutural e vazio, então cai naturalmente na
-      // coluna "Fundo", que é a que faz sentido filtrar).
-      var idxFiltro = colunas.findIndex(function(c) { return c; });
+      // Filtro: busca em qualquer coluna com rótulo da linha (não só a
+      // primeira) — ex.: digitar "CDB" numa tabela de RF encontra tanto pelo
+      // nome do ativo quanto pelo Tipo, e digitar um emissor funciona mesmo
+      // em colunas que não são a primeira.
+      var idxColunasFiltro = [];
+      colunas.forEach(function(c, idx) { if (c) idxColunasFiltro.push(idx); });
       var input = D.querySelector('.filtro-tabela-input[data-tabela="' + idTabela + '"]');
-      if (idxFiltro === -1 || !input) return;
+      if (!idxColunasFiltro.length || !input) return;
       input.addEventListener('input', function() {
         var termo = normalizar(input.value);
         var grupos = agruparLinhasTabela(tbody);
         grupos.forEach(function(grupo) {
-          var td = grupo[0].children[idxFiltro];
-          var bate = !termo || normalizar(td ? td.textContent : '').indexOf(termo) !== -1;
+          var bate = !termo || idxColunasFiltro.some(function(idx) {
+            var td = grupo[0].children[idx];
+            return normalizar(td ? td.textContent : '').indexOf(termo) !== -1;
+          });
           grupo.forEach(function(tr) { tr.style.display = bate ? '' : 'none'; });
         });
       });
