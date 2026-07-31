@@ -2871,6 +2871,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       : '';
     var sRV = opcoes.rv
       ? '<div id="pdf-carteira-wrap" class="pdf-secao"><h2 class="quadro-titulo">' + tituloRV + '</h2>' + sLimitesRiscoFII +
+        '<p id="rv-aviso-pm" style="display:none;background:#fff3f0;border:1px solid var(--orange);color:var(--orange-dark);border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:12px;"></p>' +
         toolbarColunas('tabela-rv') +
         '<div class="table-wrap"><table id="tabela-rv" class="tabela-com-exclusao"><thead><tr>' + cabRV + '</tr></thead><tbody id="rv-corpo"></tbody></table></div></div>'
       : '';
@@ -3986,6 +3987,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var status = document.getElementById('carteira-status');
     var botao = document.getElementById('btn-analisar');
     var dadosGraficoRV = []; // acumula dados de cada ativo para gerar gráficos
+    var tickersSemPM   = []; // ativos sem Preço médio válido (ver aviso em processarRV)
     // Células da coluna "Taxa" (RF/Tesouro) que podem ter sido renderizadas
     // com o CDI/Selic de referência fixo (ver obterSelicAtual) antes da
     // busca da Selic vigente terminar — atualizadas com o valor real assim
@@ -5234,6 +5236,17 @@ h2{font-size:32px;letter-spacing:-.02em;}
         if (totRvEl) totRvEl.textContent = 'R$ ' + formatarNumero(totRV, 2);
         atualizarYieldRV();
         gerarGraficosRV(dadosGraficoRV, D, novaJanela);
+        var avisoPmEl = D.getElementById('rv-aviso-pm');
+        if (avisoPmEl) {
+          if (tickersSemPM.length) {
+            avisoPmEl.textContent = '⚠ Preço médio não informado para ' +
+              tickersSemPM.join(', ') + ' — a coluna "Variação" mostra a variação diária ' +
+              'de mercado para esses ativos, não a rentabilidade real do cliente.';
+            avisoPmEl.style.display = 'block';
+          } else {
+            avisoPmEl.style.display = 'none';
+          }
+        }
         return processarComposicaoFII();
       }
       if (cancelado()) return;
@@ -5640,6 +5653,13 @@ h2{font-size:32px;letter-spacing:-.02em;}
             // médio de compra informado na planilha (não a variação diária de
             // mercado). Só cai para a variação diária da Brapi quando o ativo não
             // tem preço médio válido (ex.: linha sem essa informação na planilha).
+            // Ativo sem Preço médio válido (planilha traz PM para outros
+            // ativos, mas não para este): a "Variação" abaixo cai para a
+            // variação diária de mercado em vez da rentabilidade real do
+            // cliente — sinalizado no aviso montado ao fim de processarRV.
+            if (temPM && linhaVisivel && !(typeof at.precoMedio === 'number' && at.precoMedio > 0)) {
+              tickersSemPM.push(at.ticker);
+            }
             if (typeof at.precoMedio === 'number' && at.precoMedio > 0 && typeof cot === 'number') {
               var variacaoPM = ((cot - at.precoMedio) / at.precoMedio) * 100;
               var posPM = variacaoPM >= 0;
