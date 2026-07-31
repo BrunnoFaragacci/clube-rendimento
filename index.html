@@ -855,6 +855,30 @@ h2{font-size:32px;letter-spacing:-.02em;}
   var SELIC_REFERENCIA_AA = 14.75;
   var IPCA_MEDIO_AA = 5.0;
 
+  // Busca a Selic vigente uma única vez por sessão (BrasilAPI, mesma fonte já
+  // usada em buscarSelic) e substitui CDI_REFERENCIA_AA/SELIC_REFERENCIA_AA
+  // pelo valor real assim que chega — os dois valores fixos acima seguem
+  // valendo como fallback caso a busca falhe ou ainda não tenha respondido.
+  var promiseSelicAtual = null;
+  function obterSelicAtual() {
+    if (!promiseSelicAtual) {
+      promiseSelicAtual = fetch('https://brasilapi.com.br/api/taxas/v1')
+        .then(function(r) { return r.json(); })
+        .then(function(taxas) {
+          var selic = taxas.find(function(t) { return t.nome === 'SELIC'; });
+          if (selic && selic.valor > 0) {
+            var td = parseFloat(selic.valor.toFixed(2));
+            SELIC_REFERENCIA_AA = td;
+            CDI_REFERENCIA_AA = td;
+            return td;
+          }
+          return null;
+        })
+        .catch(function() { return null; });
+    }
+    return promiseSelicAtual;
+  }
+
   function converterTaxaAnual(taxaStr) {
     var norm = normalizar(taxaStr).replace(/\s+/g, ' ').trim();
     if (!norm) return null;
@@ -3948,9 +3972,25 @@ h2{font-size:32px;letter-spacing:-.02em;}
   /* ===================== EXECUÇÃO DA ANÁLISE ===================== */
 
   function executarAnalise(ativos, rfItens, cetipFundos, previdenciaItens, coeItens, tesouroItens, novaJanela, opcoes) {
+    // Dispara a busca da Selic vigente o quanto antes (ver obterSelicAtual);
+    // como Renda Fixa e Tesouro Direto são montados de forma síncrona antes
+    // da resposta chegar, qualquer célula de "Taxa" já renderizada com o
+    // valor fixo de referência é reescrita aqui assim que o valor real chega
+    // (ver celulasTaxaParaAtualizar).
+    obterSelicAtual().then(function(selic) {
+      if (selic === null) return;
+      celulasTaxaParaAtualizar.forEach(function(c) {
+        c.td.textContent = formatarTaxaComConversao(c.taxa);
+      });
+    });
     var status = document.getElementById('carteira-status');
     var botao = document.getElementById('btn-analisar');
     var dadosGraficoRV = []; // acumula dados de cada ativo para gerar gráficos
+    // Células da coluna "Taxa" (RF/Tesouro) que podem ter sido renderizadas
+    // com o CDI/Selic de referência fixo (ver obterSelicAtual) antes da
+    // busca da Selic vigente terminar — atualizadas com o valor real assim
+    // que a resposta chega, mesmo para as que já foram montadas.
+    var celulasTaxaParaAtualizar = [];
     var todosAtivos    = []; // todos os ativos (RV + RF + Cetip) para diversificação
     var fiiTickers     = []; // tickers de FIIs identificados, para buscar o portfólio de cada fundo
     var mapaFIICnpj    = {}; // ticker -> CNPJ (via summaryProfile da Brapi), para o fallback de composição via CVM
@@ -4505,7 +4545,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
           var tr = D.createElement('tr');
           tr.appendChild(cel(D, item.nome || '—'));
           tr.appendChild(cel(D, item.categoria || '—'));
-          tr.appendChild(cel(D, formatarTaxaComConversao(item.taxa || item.categoria)));
+          var taxaOrigemTesouro = item.taxa || item.categoria;
+          var tdTaxaTesouro = cel(D, formatarTaxaComConversao(taxaOrigemTesouro));
+          celulasTaxaParaAtualizar.push({ td: tdTaxaTesouro, taxa: taxaOrigemTesouro });
+          tr.appendChild(tdTaxaTesouro);
           var tipoTesouro = String(item.nome || '').trim().split(' ')[0].toUpperCase();
           var impostoTesouro = calcularImpostoRF(tipoTesouro, item.aplicacao);
           tr.appendChild(cel(D, impostoTesouro.isento ? 'Isento' : (impostoTesouro.aliquota !== null ? formatarNumero(impostoTesouro.aliquota * 100, 1) + '%' : '—')));
@@ -6140,7 +6183,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
         tr.appendChild(cel(D, item.tipo        || '—'));
         tr.appendChild(cel(D, item.aplicacao   || '—'));
         tr.appendChild(cel(D, item.vencimento  || '—'));
-        tr.appendChild(cel(D, formatarTaxaComConversao(item.taxa)));
+        var tdTaxaRF = cel(D, formatarTaxaComConversao(item.taxa));
+        celulasTaxaParaAtualizar.push({ td: tdTaxaRF, taxa: item.taxa });
+        tr.appendChild(tdTaxaRF);
         var imposto = calcularImpostoRF(tipoNorm, item.aplicacao);
         tr.appendChild(cel(D, imposto.isento ? 'Isento' : (imposto.aliquota !== null ? formatarNumero(imposto.aliquota * 100, 1) + '%' : '—')));
         var tdValAplic = cel(D, valorAplicado  !== null ? 'R$ ' + formatarNumero(valorAplicado, 2) : '—');
