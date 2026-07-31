@@ -1169,7 +1169,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
             return false;
           }
           var d = r.data.dados;
-          executarAnalise(d.ativos, d.rf, d.cetipFundos, d.previdenciaItens, d.coeItens, d.tesouroItens, novaJanela, d.opcoes);
+          executarAnalise(d.ativos, d.rf, d.cetipFundos, d.previdenciaItens, d.coeItens, d.tesouroItens, novaJanela, d.opcoes, d.edicoesManuais);
           return true;
         });
     });
@@ -4004,7 +4004,32 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
   /* ===================== EXECUÇÃO DA ANÁLISE ===================== */
 
-  function executarAnalise(ativos, rfItens, cetipFundos, previdenciaItens, coeItens, tesouroItens, novaJanela, opcoes) {
+  function executarAnalise(ativos, rfItens, cetipFundos, previdenciaItens, coeItens, tesouroItens, novaJanela, opcoes, edicoesSalvas) {
+    // Edições manuais (Valor aplicado/Posição/Valor líquido/Cupons etc.) por
+    // tabela, indexadas pela posição do item no array de origem (ativos/
+    // rfItens/tesouroItens/previdenciaItens — a mesma ordem é sempre
+    // reconstruída a partir do snapshot salvo, então o índice é uma chave
+    // estável). Semeado com o que veio de uma análise salva (edicoesSalvas)
+    // e atualizado ao vivo conforme o usuário edita células nesta sessão —
+    // é o mesmo objeto gravado de volta no botão "Salvar análise", então
+    // reabrir e editar de novo acumula sobre o que já estava salvo.
+    var edicoesManuais = {
+      rv: (edicoesSalvas && edicoesSalvas.rv) || {},
+      rf: (edicoesSalvas && edicoesSalvas.rf) || {},
+      tesouro: (edicoesSalvas && edicoesSalvas.tesouro) || {},
+      previdencia: (edicoesSalvas && edicoesSalvas.previdencia) || {}
+    };
+    // Reaplica uma edição manual salva sobre uma célula que já tem
+    // _recalcularAoEditar registrado (ver aoEditarCelula) — simula a mesma
+    // edição que o usuário faria a mão (mesmo texto formatado que
+    // parseNumeroBR entende), então reaproveita toda a lógica de recálculo
+    // já existente em vez de duplicá-la.
+    function aplicarEdicaoSalva(td, valorSalvo) {
+      if (typeof valorSalvo !== 'number' || isNaN(valorSalvo) || !td || typeof td._recalcularAoEditar !== 'function') return;
+      var texto = 'R$ ' + formatarNumero(valorSalvo, 2);
+      td.textContent = texto;
+      td._recalcularAoEditar(texto);
+    }
     // Dispara a busca da Selic vigente o quanto antes (ver obterSelicAtual);
     // como Renda Fixa e Tesouro Direto são montados de forma síncrona antes
     // da resposta chegar, qualquer célula de "Taxa" já renderizada com o
@@ -4399,23 +4424,26 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var btnRecarregarTudo = D.getElementById('btn-recarregar-tudo');
     if (btnRecarregarTudo) {
       btnRecarregarTudo.addEventListener('click', function() {
-        executarAnalise(ativos, rfItens, cetipFundos, previdenciaItens, coeItens, tesouroItens, novaJanela, opcoes);
+        executarAnalise(ativos, rfItens, cetipFundos, previdenciaItens, coeItens, tesouroItens, novaJanela, opcoes, edicoesManuais);
       });
     }
 
     // Botão "Salvar análise": grava em analises_salvas (Supabase) um snapshot
     // dos mesmos 6 arrays + opções usados para gerar esta análise (ativos,
     // rfItens, cetipFundos, previdenciaItens, coeItens, tesouroItens,
-    // opcoes) — os mesmos que "Recarregar dados" reaproveita acima. Isso
-    // preserva a composição da carteira e as poucas edições que já alteram
-    // esses objetos diretamente (Valor aplicado/Posição em Renda Fixa, Valor
-    // líquido em Fundos Cetipados — ver os aoEditarCelula correspondentes);
-    // as demais edições de célula (clique para editar em outras colunas,
-    // inclusive a marcação manual em vermelho) são só visuais no DOM do
-    // popup e não são gravadas. Cotações e outros dados buscados ao vivo
-    // (brapi etc.) também NÃO ficam presos no snapshot — são buscados de
-    // novo sempre que a análise salva é reaberta. Uma linha por cliente
-    // (salvar de novo sobrescreve a anterior).
+    // opcoes), mais edicoesManuais — as edições de Valor aplicado/Posição/
+    // Valor líquido/Cupons/Rendimento feitas à mão em RV, RF, Tesouro Direto
+    // e Previdência, indexadas pela posição de cada item no array de origem
+    // (ver aplicarEdicaoSalva). Ao reabrir a análise salva, essas edições são
+    // reaplicadas automaticamente sobre as tabelas recém-montadas. Fundos
+    // Cetipados são a exceção: "Valor líquido" já grava direto no próprio
+    // objeto do fundo (fundo.valorLiquido), então já persiste sem precisar
+    // do canal edicoesManuais. Marcação manual em vermelho e demais edições
+    // de célula continuam só visuais (não gravadas). Cotações e outros
+    // dados buscados ao vivo (brapi etc.) também NÃO ficam presos no
+    // snapshot — são buscados de novo sempre que a análise salva é
+    // reaberta. Uma linha por cliente (salvar de novo sobrescreve a
+    // anterior).
     var btnSalvarAnalise = D.getElementById('btn-salvar-analise');
     if (btnSalvarAnalise) {
       btnSalvarAnalise.addEventListener('click', function() {
@@ -4429,7 +4457,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
           var dadosSnapshot = {
             ativos: ativos, rf: rfItens, cetipFundos: cetipFundos,
             previdenciaItens: previdenciaItens, coeItens: coeItens,
-            tesouroItens: tesouroItens, opcoes: opcoes
+            tesouroItens: tesouroItens, opcoes: opcoes,
+            edicoesManuais: edicoesManuais
           };
           return supabaseClient.from('analises_salvas').upsert({
             user_id: sessaoAtual.user.id,
@@ -4488,7 +4517,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var totLucroPrevidencia = 0;
       if (corpoPrevidencia) {
         corpoPrevidencia.innerHTML = '';
-        previdenciaItens.forEach(function(item) {
+        previdenciaItens.forEach(function(item, idxPrev) {
           var posicaoInicial = typeof item.posicao === 'number' ? item.posicao : null;
           var valorAplicadoInicial = typeof item.valorAplicado === 'number' ? item.valorAplicado : null;
           var rendimentoRS = (posicaoInicial !== null && valorAplicadoInicial !== null) ? posicaoInicial - valorAplicadoInicial : null;
@@ -4538,13 +4567,24 @@ h2{font-size:32px;letter-spacing:-.02em;}
           tdPosicaoPrev._recalcularAoEditar = function(novo) {
             var v = parseNumeroBR(novo);
             posicaoAtualPrev = isNaN(v) ? null : v;
+            edicoesManuais.previdencia[idxPrev] = edicoesManuais.previdencia[idxPrev] || {};
+            edicoesManuais.previdencia[idxPrev].posicao = posicaoAtualPrev;
             recomputarRendimentoPrevidencia();
           };
           tdValAplicPrev._recalcularAoEditar = function(novo) {
             var v = parseNumeroBR(novo);
             valorAplicadoAtualPrev = isNaN(v) ? null : v;
+            edicoesManuais.previdencia[idxPrev] = edicoesManuais.previdencia[idxPrev] || {};
+            edicoesManuais.previdencia[idxPrev].valorAplicado = valorAplicadoAtualPrev;
             recomputarRendimentoPrevidencia();
           };
+
+          // Reaplica edições salvas de uma análise anterior (ver edicoesManuais).
+          var edicaoPrevSalva = edicoesManuais.previdencia[idxPrev];
+          if (edicaoPrevSalva) {
+            aplicarEdicaoSalva(tdPosicaoPrev, edicaoPrevSalva.posicao);
+            aplicarEdicaoSalva(tdValAplicPrev, edicaoPrevSalva.valorAplicado);
+          }
 
           btnExcluirPrev.addEventListener('click', function() {
             if (!novaJanela.confirm('Remover "' + (item.nome || 'este item') + '" desta análise?')) return;
@@ -4583,7 +4623,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var corpoTesouro = D.getElementById('tesouro-analise-corpo');
       if (corpoTesouro) {
         corpoTesouro.innerHTML = '';
-        tesouroItens.forEach(function(item) {
+        tesouroItens.forEach(function(item, idxTes) {
           var valor = typeof item.posicao === 'number' ? item.posicao : 0;
           var valorAplicado = typeof item.valorAplicado === 'number' ? item.valorAplicado : null;
           var lucroRS  = (valor && valorAplicado) ? valor - valorAplicado : null;
@@ -4672,18 +4712,36 @@ h2{font-size:32px;letter-spacing:-.02em;}
           }
           inpCup.addEventListener('input', function() {
             cuponsAtual = parseFloat(inpCup.value) || 0;
+            edicoesManuais.tesouro[idxTes] = edicoesManuais.tesouro[idxTes] || {};
+            edicoesManuais.tesouro[idxTes].cupons = cuponsAtual;
             recomputarLucroTesouro();
           });
           tdPosicao._recalcularAoEditar = function(novo) {
             var v = parseNumeroBR(novo);
             posicaoAtual = isNaN(v) ? null : v;
+            edicoesManuais.tesouro[idxTes] = edicoesManuais.tesouro[idxTes] || {};
+            edicoesManuais.tesouro[idxTes].posicao = posicaoAtual;
             recomputarLucroTesouro();
           };
           tdValAplic._recalcularAoEditar = function(novo) {
             var v = parseNumeroBR(novo);
             valorAplicadoAtual = isNaN(v) ? null : v;
+            edicoesManuais.tesouro[idxTes] = edicoesManuais.tesouro[idxTes] || {};
+            edicoesManuais.tesouro[idxTes].valorAplicado = valorAplicadoAtual;
             recomputarLucroTesouro();
           };
+
+          // Reaplica edições salvas de uma análise anterior (ver edicoesManuais).
+          var edicaoTesSalva = edicoesManuais.tesouro[idxTes];
+          if (edicaoTesSalva) {
+            aplicarEdicaoSalva(tdPosicao, edicaoTesSalva.posicao);
+            aplicarEdicaoSalva(tdValAplic, edicaoTesSalva.valorAplicado);
+            if (typeof edicaoTesSalva.cupons === 'number') {
+              inpCup.value = edicaoTesSalva.cupons.toFixed(2);
+              cuponsAtual = edicaoTesSalva.cupons;
+              recomputarLucroTesouro();
+            }
+          }
         });
       }
       if (totLucroTesouroEl) {
@@ -5678,6 +5736,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
                   var entradaG = dadosGraficoRV.filter(function(d) { return d._idx === globalIdx; })[0];
                   var antigoNum = entradaG ? entradaG.valorTotal : vt;
                   var delta = novoNum - antigoNum;
+                  edicoesManuais.rv[globalIdx] = edicoesManuais.rv[globalIdx] || {};
+                  edicoesManuais.rv[globalIdx].valorTotal = novoNum;
                   if (delta === 0) return;
                   totRV += delta;
                   if (isFII) totFIIsOnly += delta; else totAcoesOnly += delta;
@@ -5690,6 +5750,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
                   }
                   if (totRvEl) totRvEl.textContent = 'R$ ' + formatarNumero(totRV, 2);
                 });
+                // Reaplica edição salva de uma análise anterior (ver edicoesManuais).
+                var edicaoRvTotal = edicoesManuais.rv[globalIdx];
+                if (edicaoRvTotal && typeof edicaoRvTotal.valorTotal === 'number') {
+                  aplicarEdicaoSalva(c[4 + o], edicaoRvTotal.valorTotal);
+                }
               }
             } else {
               c[3 + o].textContent = '—';
@@ -5744,7 +5809,20 @@ h2{font-size:32px;letter-spacing:-.02em;}
                     totVarRvEl.className = 'resumo-valor ' + (totVarRV >= 0 ? 'pos' : 'neg');
                   }
                   c[5 + o].className = novoValorVar >= 0 ? 'pos' : 'neg';
+                  edicoesManuais.rv[globalIdx] = edicoesManuais.rv[globalIdx] || {};
+                  edicoesManuais.rv[globalIdx].variacaoRS = novoValorVar;
                 });
+                // Reaplica edição salva de uma análise anterior — a célula
+                // mostra percentual, não R$, então converte de volta usando
+                // o mesmo valor aplicado (preço médio × quantidade) desta
+                // linha, igual à conversão feita ao editar manualmente.
+                var edicaoRvVar = edicoesManuais.rv[globalIdx];
+                if (edicaoRvVar && typeof edicaoRvVar.variacaoRS === 'number' && valorAplicadoLinhaRV) {
+                  var pctSalvo = (edicaoRvVar.variacaoRS / valorAplicadoLinhaRV) * 100;
+                  var textoVarSalvo = (pctSalvo >= 0 ? '▲ ' : '▼ ') + formatarNumero(Math.abs(pctSalvo), 2) + '%';
+                  c[5 + o].textContent = textoVarSalvo;
+                  c[5 + o]._recalcularAoEditar(textoVarSalvo);
+                }
               }
             } else if (typeof dado.regularMarketChangePercent === 'number') {
               var pos = dado.regularMarketChangePercent >= 0;
@@ -6375,6 +6453,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
           var novoCupons = parseFloat(inpCup.value) || 0;
           totTfLinha.cupons += novoCupons - cuponsAtual;
           cuponsAtual = novoCupons;
+          edicoesManuais.rf[i] = edicoesManuais.rf[i] || {};
+          edicoesManuais.rf[i].cupons = novoCupons;
           recomputarLucroRF();
         });
 
@@ -6386,6 +6466,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
           var novoValAplic = isNaN(novoNum) ? null : novoNum;
           totTfLinha.aplicado += (novoValAplic || 0) - (valorAplicadoAtual || 0);
           valorAplicadoAtual = novoValAplic;
+          edicoesManuais.rf[i] = edicoesManuais.rf[i] || {};
+          edicoesManuais.rf[i].valorAplicado = novoValAplic;
           recomputarLucroRF();
         });
 
@@ -6397,6 +6479,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
           var novoValLiq = isNaN(novoNum) ? null : novoNum;
           totTfLinha.liquido += (novoValLiq || 0) - (valorLiquidoAtual || 0);
           valorLiquidoAtual = novoValLiq;
+          edicoesManuais.rf[i] = edicoesManuais.rf[i] || {};
+          edicoesManuais.rf[i].valorLiquido = novoValLiq;
           recomputarLucroRF();
         });
 
@@ -6421,7 +6505,26 @@ h2{font-size:32px;letter-spacing:-.02em;}
           }
           valor = novoVal; // mantém o botão "excluir" (que lê 'valor') sincronizado
           posicaoAtual = novoVal;
+          edicoesManuais.rf[i] = edicoesManuais.rf[i] || {};
+          edicoesManuais.rf[i].posicao = novoVal;
         });
+
+        // Reaplica edições salvas de uma análise anterior (ver
+        // edicoesManuais/aplicarEdicaoSalva) — cada chamada simula a mesma
+        // edição que o usuário faria a mão, então os totais/tfoot já saem
+        // corretos sem duplicar lógica de recálculo.
+        var edicaoRfSalva = edicoesManuais.rf[i];
+        if (edicaoRfSalva) {
+          aplicarEdicaoSalva(tdValAplic, edicaoRfSalva.valorAplicado);
+          aplicarEdicaoSalva(tdLiq, edicaoRfSalva.valorLiquido);
+          aplicarEdicaoSalva(tdPosicao, edicaoRfSalva.posicao);
+          if (typeof edicaoRfSalva.cupons === 'number') {
+            inpCup.value = edicaoRfSalva.cupons.toFixed(2);
+            totTfLinha.cupons += edicaoRfSalva.cupons - cuponsAtual;
+            cuponsAtual = edicaoRfSalva.cupons;
+            recomputarLucroRF();
+          }
+        }
       }
 
       // Avançar para o próximo item de forma assíncrona (evita travar a UI)
