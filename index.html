@@ -4018,7 +4018,13 @@ h2{font-size:32px;letter-spacing:-.02em;}
       rv: (edicoesSalvas && edicoesSalvas.rv) || {},
       rf: (edicoesSalvas && edicoesSalvas.rf) || {},
       tesouro: (edicoesSalvas && edicoesSalvas.tesouro) || {},
-      previdencia: (edicoesSalvas && edicoesSalvas.previdencia) || {}
+      previdencia: (edicoesSalvas && edicoesSalvas.previdencia) || {},
+      // Marcação manual em vermelho (clique direito — ver marcado-manual):
+      // marcacoes[tabela][índice da linha] = lista de índices de coluna
+      // marcados. Preenchido via os atributos data-tabela/data-row-idx/
+      // data-col-idx gravados em cada <td> antes de tornarCelulaEditavel
+      // (ver o addEventListener('contextmenu', ...) logo abaixo).
+      marcacoes: (edicoesSalvas && edicoesSalvas.marcacoes) || {}
     };
     // Reaplica uma edição manual salva sobre uma célula que já tem
     // _recalcularAoEditar registrado (ver aoEditarCelula) — simula a mesma
@@ -4030,6 +4036,23 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var texto = 'R$ ' + formatarNumero(valorSalvo, 2);
       td.textContent = texto;
       td._recalcularAoEditar(texto);
+    }
+    // Grava data-tabela/data-row-idx/data-col-idx em cada célula da linha
+    // (usados pelo contextmenu de tornarCelulaEditavel para persistir a
+    // marcação em vermelho — ver edicoesManuais.marcacoes) e reaplica
+    // qualquer marcação já salva para esta linha.
+    function prepararMarcacoesLinha(tabela, rowIdx, tr) {
+      Array.prototype.forEach.call(tr.children, function(td, colIdx) {
+        td.dataset.tabela = tabela;
+        td.dataset.rowIdx = String(rowIdx);
+        td.dataset.colIdx = String(colIdx);
+      });
+      var salvas = edicoesManuais.marcacoes[tabela] && edicoesManuais.marcacoes[tabela][rowIdx];
+      if (!salvas) return;
+      salvas.forEach(function(colIdx) {
+        var td = tr.children[Number(colIdx)];
+        if (td) td.classList.add('marcado-manual');
+      });
     }
     // Dispara a busca da Selic vigente o quanto antes (ver obterSelicAtual);
     // como Renda Fixa e Tesouro Direto são montados de forma síncrona antes
@@ -4435,15 +4458,16 @@ h2{font-size:32px;letter-spacing:-.02em;}
     // opcoes), mais edicoesManuais — as edições de Valor aplicado/Posição/
     // Valor líquido/Cupons/Rendimento feitas à mão em RV, RF, Tesouro Direto
     // e Previdência, indexadas pela posição de cada item no array de origem
-    // (ver aplicarEdicaoSalva). Ao reabrir a análise salva, essas edições são
-    // reaplicadas automaticamente sobre as tabelas recém-montadas. Fundos
-    // Cetipados são a exceção: "Valor líquido" já grava direto no próprio
-    // objeto do fundo (fundo.valorLiquido), então já persiste sem precisar
-    // do canal edicoesManuais. Marcação manual em vermelho e demais edições
-    // de célula continuam só visuais (não gravadas). Cotações e outros
-    // dados buscados ao vivo (brapi etc.) também NÃO ficam presos no
-    // snapshot — são buscados de novo sempre que a análise salva é
-    // reaberta. Uma linha por cliente (salvar de novo sobrescreve a
+    // (ver aplicarEdicaoSalva), e a marcação manual em vermelho de qualquer
+    // célula dessas mesmas tabelas + Fundos Cetipados (edicoesManuais.
+    // marcacoes — ver prepararMarcacoesLinha). Ao reabrir a análise salva,
+    // tudo isso é reaplicado automaticamente sobre as tabelas recém-
+    // montadas. Fundos Cetipados são a exceção quanto a "Valor líquido": já
+    // grava direto no próprio objeto do fundo (fundo.valorLiquido), então já
+    // persiste sem precisar do canal edicoesManuais. Cotações e outros
+    // dados buscados ao vivo (brapi etc.) NÃO ficam presos no snapshot —
+    // são buscados de novo sempre que a análise salva é reaberta. Uma linha
+    // por cliente (salvar de novo sobrescreve a
     // anterior).
     var btnSalvarAnalise = D.getElementById('btn-salvar-analise');
     if (btnSalvarAnalise) {
@@ -4549,6 +4573,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           Array.prototype.forEach.call(tr.children, function(td) {
             if (td !== tdAcaoPrev) tornarCelulaEditavel(td);
           });
+          prepararMarcacoesLinha('previdencia', idxPrev, tr);
 
           corpoPrevidencia.appendChild(tr);
 
@@ -4704,6 +4729,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           Array.prototype.forEach.call(tr.children, function(td) {
             if (td !== tdCup && td !== tdAcaoTesouro) tornarCelulaEditavel(td);
           });
+          prepararMarcacoesLinha('tesouro', idxTes, tr);
 
           corpoTesouro.appendChild(tr);
 
@@ -5195,6 +5221,23 @@ h2{font-size:32px;letter-spacing:-.02em;}
       td.addEventListener('contextmenu', function(ev) {
         ev.preventDefault();
         td.classList.toggle('marcado-manual');
+        // Registra a marcação para persistir ao salvar a análise (ver
+        // edicoesManuais.marcacoes) — só funciona em células que já vieram
+        // com data-tabela/data-row-idx/data-col-idx preenchidos no momento
+        // em que a linha foi montada.
+        var tabela = td.dataset.tabela, rowIdx = td.dataset.rowIdx, colIdx = td.dataset.colIdx;
+        if (!tabela || rowIdx === undefined || colIdx === undefined) return;
+        edicoesManuais.marcacoes[tabela] = edicoesManuais.marcacoes[tabela] || {};
+        var lista = edicoesManuais.marcacoes[tabela][rowIdx] || [];
+        var pos = lista.indexOf(colIdx);
+        if (td.classList.contains('marcado-manual')) {
+          if (pos === -1) lista.push(colIdx);
+          edicoesManuais.marcacoes[tabela][rowIdx] = lista;
+        } else {
+          if (pos !== -1) lista.splice(pos, 1);
+          if (lista.length) edicoesManuais.marcacoes[tabela][rowIdx] = lista;
+          else delete edicoesManuais.marcacoes[tabela][rowIdx];
+        }
       });
     }
 
@@ -5459,6 +5502,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         // (excluir) ficam de fora: a primeira identifica a linha nas
         // atualizações assíncronas abaixo, a última já é o próprio botão.
         tornarLinhaEditavel(tr, true);
+        prepararMarcacoesLinha('rv', globalIdx, tr);
       });
 
       // Uma requisição individual por ticker, em paralelo — a brapi processa
@@ -6423,6 +6467,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         Array.prototype.forEach.call(tr.children, function(td) {
           if (td !== tdCup) tornarCelulaEditavel(td);
         });
+        prepararMarcacoesLinha('rf', i, tr);
 
         // Coluna final: excluir este ativo da análise de Renda Fixa —
         // reverte sua contribuição nos totais (geral, por tipo e lucro) e
@@ -7618,6 +7663,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
             if (tdIdx === 0 || tdIdx === 1) return;
             tornarCelulaEditavel(td);
           });
+          prepararMarcacoesLinha('cetip', idx, tr);
 
           // A tabela de Fundos Cetipados recalcula seus totais por completo a
           // cada renderização (ao contrário de Ações/FIIs e Renda Fixa, que
