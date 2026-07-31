@@ -556,7 +556,20 @@ h2{font-size:32px;letter-spacing:-.02em;}
   // tabela: elemento <table> (com <thead><tr><th>...</th></tr></thead> e
   // <tbody>). filtroInput: elemento <input> opcional \u2014 se informado, filtra
   // as linhas pela primeira coluna com r\u00f3tulo (ex.: "Ativo"/"Fundo"/"Nome").
-  function tornarTabelaOrdenavel(D, tabela, filtroInput) {
+  // Monta o par <label><input type="checkbox"></label> "Só marcados em
+  // vermelho" usado junto do filtro de texto nas tabelas construídas via
+  // createElement (Indicadores fundamentalistas — ver tornarTabelaOrdenavel).
+  function criarCheckMarcados(D) {
+    var label = D.createElement('label');
+    label.style.cssText = 'display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-soft);white-space:nowrap;cursor:pointer;margin-top:8px;';
+    var input = D.createElement('input');
+    input.type = 'checkbox';
+    label.appendChild(input);
+    label.appendChild(D.createTextNode(' Só marcados em vermelho'));
+    return { label: label, input: input };
+  }
+
+  function tornarTabelaOrdenavel(D, tabela, filtroInput, checkMarcadosInput) {
     if (!tabela) return;
     var tbody = tabela.querySelector('tbody');
     if (!tbody) return;
@@ -595,19 +608,28 @@ h2{font-size:32px;letter-spacing:-.02em;}
     if (filtroInput && idxFiltro !== -1) {
       // Busca em qualquer coluna com rótulo (não só a primeira) — mesmo
       // critério usado no filtro da Análise de Carteira (ver MAPA_COLUNAS_TABELAS).
+      // Combinado com checkMarcadosInput (opcional), que mostra só linhas
+      // com alguma célula marcada em vermelho via clique direito.
       var idxComRotulo = [];
       Array.prototype.forEach.call(ths, function(th, idx) { if (th.textContent.trim()) idxComRotulo.push(idx); });
-      filtroInput.addEventListener('input', function() {
+      function aplicarFiltrosLinha() {
         var termo = normalizar(filtroInput.value);
+        var somenteMarcados = checkMarcadosInput && checkMarcadosInput.checked;
         var grupos = _agruparLinhasTabela(tbody);
         grupos.forEach(function(grupo) {
-          var bate = !termo || idxComRotulo.some(function(idx) {
+          var bateTexto = !termo || idxComRotulo.some(function(idx) {
             var td = grupo[0].children[idx];
             return normalizar(td ? td.textContent : '').indexOf(termo) !== -1;
           });
+          var bateMarcado = !somenteMarcados || Array.prototype.some.call(grupo[0].children, function(td) {
+            return td.classList && td.classList.contains('marcado-manual');
+          });
+          var bate = bateTexto && bateMarcado;
           grupo.forEach(function(tr) { tr.style.display = bate ? '' : 'none'; });
         });
-      });
+      }
+      filtroInput.addEventListener('input', aplicarFiltrosLinha);
+      if (checkMarcadosInput) checkMarcadosInput.addEventListener('change', aplicarFiltrosLinha);
     }
   }
 
@@ -2838,7 +2860,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
         ? '<button type="button" class="btn-expandir-tabela" data-tabela="' + idTabela + '">⛶ Expandir</button>'
         : '';
       return '<div class="tabela-colunas-toolbar">' +
+        '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">' +
         '<input type="text" class="filtro-tabela-input" data-tabela="' + idTabela + '" placeholder="Filtrar por nome...">' +
+        '<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-soft);white-space:nowrap;cursor:pointer;">' +
+        '<input type="checkbox" class="filtro-marcados-input" data-tabela="' + idTabela + '"> Só marcados em vermelho</label>' +
+        '</div>' +
         '<div style="display:flex;gap:8px;">' + btnExpandir +
         '<button type="button" class="btn-colunas" data-tabela="' + idTabela + '">⚙ Colunas</button></div>' +
         '<div class="colunas-painel" data-tabela="' + idTabela + '" hidden></div></div>';
@@ -4192,22 +4218,32 @@ h2{font-size:32px;letter-spacing:-.02em;}
       // Filtro: busca em qualquer coluna com rótulo da linha (não só a
       // primeira) — ex.: digitar "CDB" numa tabela de RF encontra tanto pelo
       // nome do ativo quanto pelo Tipo, e digitar um emissor funciona mesmo
-      // em colunas que não são a primeira.
+      // em colunas que não são a primeira. Combinado com o toggle "Só
+      // marcados em vermelho" (mostra só linhas com alguma célula marcada
+      // manualmente via clique direito — ver marcado-manual).
       var idxColunasFiltro = [];
       colunas.forEach(function(c, idx) { if (c) idxColunasFiltro.push(idx); });
       var input = D.querySelector('.filtro-tabela-input[data-tabela="' + idTabela + '"]');
+      var checkMarcados = D.querySelector('.filtro-marcados-input[data-tabela="' + idTabela + '"]');
       if (!idxColunasFiltro.length || !input) return;
-      input.addEventListener('input', function() {
+      function aplicarFiltrosLinha() {
         var termo = normalizar(input.value);
+        var somenteMarcados = checkMarcados && checkMarcados.checked;
         var grupos = agruparLinhasTabela(tbody);
         grupos.forEach(function(grupo) {
-          var bate = !termo || idxColunasFiltro.some(function(idx) {
+          var bateTexto = !termo || idxColunasFiltro.some(function(idx) {
             var td = grupo[0].children[idx];
             return normalizar(td ? td.textContent : '').indexOf(termo) !== -1;
           });
+          var bateMarcado = !somenteMarcados || Array.prototype.some.call(grupo[0].children, function(td) {
+            return td.classList && td.classList.contains('marcado-manual');
+          });
+          var bate = bateTexto && bateMarcado;
           grupo.forEach(function(tr) { tr.style.display = bate ? '' : 'none'; });
         });
-      });
+      }
+      input.addEventListener('input', aplicarFiltrosLinha);
+      if (checkMarcados) checkMarcados.addEventListener('change', aplicarFiltrosLinha);
     });
 
     // Colunas ajustáveis: arrastar a borda direita de um cabeçalho redimensiona
@@ -6476,6 +6512,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
           filtroBcb.className = 'filtro-tabela-input';
           filtroBcb.placeholder = 'Filtrar por nome...';
           conteudoBcb.appendChild(filtroBcb);
+          var checkMarcadosBcb = criarCheckMarcados(D);
+          conteudoBcb.appendChild(checkMarcadosBcb.label);
 
           var wrap = D.createElement('div');
           wrap.className = 'table-wrap';
@@ -6531,7 +6569,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
           wrap.appendChild(table);
           conteudoBcb.appendChild(wrap);
-          tornarTabelaOrdenavel(D, table, filtroBcb);
+          tornarTabelaOrdenavel(D, table, filtroBcb, checkMarcadosBcb.input);
           tornarColunasAjustaveis(table);
 
           return processarCreditoPrivadoRF();
@@ -6631,6 +6669,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
           filtroCp.className = 'filtro-tabela-input';
           filtroCp.placeholder = 'Filtrar por nome...';
           conteudoCp.appendChild(filtroCp);
+          var checkMarcadosCp = criarCheckMarcados(D);
+          conteudoCp.appendChild(checkMarcadosCp.label);
 
           var wrap = D.createElement('div');
           wrap.className = 'table-wrap';
@@ -6734,7 +6774,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
           wrap.appendChild(table);
           conteudoCp.appendChild(wrap);
-          tornarTabelaOrdenavel(D, table, filtroCp);
+          tornarTabelaOrdenavel(D, table, filtroCp, checkMarcadosCp.input);
           tornarColunasAjustaveis(table);
 
           return processarXP(0);
