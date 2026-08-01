@@ -12749,7 +12749,11 @@ document.getElementById('wl-calcular').addEventListener('click', function(){
   // Projeção ano a ano: capital e aporte anual corrigidos pela inflação
   // enquanto durar o prazo de custeio; resgate é uma reserva ILUSTRATIVA
   // (aporte acumulado rendendo a taxa de retorno informada) — não é a
-  // provisão matemática real da seguradora (ver aviso na tela).
+  // provisão matemática real da seguradora (ver aviso na tela). A reserva
+  // já vem sendo formada desde o início, mas só fica disponível para
+  // resgate depois que o prazo de pagamento do prêmio termina (ex.: só a
+  // partir do 10º ano num plano de 10 anos) — antes disso a célula mostra
+  // "—" em vez de um valor que ainda não pode ser sacado.
   var aporteAcum = 0, reserva = 0, aporteAnual = premioAnualEquivalente, linhas = [];
   for (var ano = 0; ano < anosProjecao; ano++) {
     var capitalAno = capitalInicial * Math.pow(1 + inflacaoAA, ano);
@@ -12757,15 +12761,16 @@ document.getElementById('wl-calcular').addEventListener('click', function(){
     var aporteDoAno = ano < prazoCusteio ? aporteAnual : 0;
     aporteAcum += aporteDoAno;
     reserva = reserva * (1 + retornoAA) + aporteDoAno;
-    linhas.push({ idade: idade + ano, capital: capitalAno, aporteAno: aporteDoAno, aporteAcum: aporteAcum, resgate: reserva });
+    var resgateDisponivel = ano < prazoCusteio ? null : reserva;
+    linhas.push({ idade: idade + ano, capital: capitalAno, aporteAno: aporteDoAno, aporteAcum: aporteAcum, resgate: resgateDisponivel });
   }
 
   document.getElementById('wl-total-aportado').textContent = fBRL(aporteAcum);
   document.getElementById('wl-capital-final').textContent = fBRL(linhas.length ? linhas[linhas.length - 1].capital : capitalInicial);
-  document.getElementById('wl-resgate-final').textContent = fBRL(reserva);
+  document.getElementById('wl-resgate-final').textContent = anosProjecao > prazoCusteio ? fBRL(reserva) : '—';
 
   document.getElementById('wl-corpo').innerHTML = linhas.map(function(l){
-    return '<tr><td>' + l.idade + '</td><td>' + fBRL(l.capital) + '</td><td>' + fBRL(l.aporteAno) + '</td><td>' + fBRL(l.aporteAcum) + '</td><td>' + fBRL(l.resgate) + '</td></tr>';
+    return '<tr><td>' + l.idade + '</td><td>' + fBRL(l.capital) + '</td><td>' + fBRL(l.aporteAno) + '</td><td>' + fBRL(l.aporteAcum) + '</td><td>' + (l.resgate === null ? '—' : fBRL(l.resgate)) + '</td></tr>';
   }).join('');
 
   document.getElementById('wl-resultado').classList.add('ativo');
