@@ -2895,17 +2895,15 @@ h2{font-size:32px;letter-spacing:-.02em;}
       : (opcoes.acoes && !opcoes.fiis) ? 'Total em ações'
       : 'Total em renda variável';
     var sLimitesRiscoFII = opcoes.fiis
-      ? '<div class="fii-risco-toolbar" id="fii-risco-toolbar" style="flex-direction:column;align-items:stretch;">' +
-          '<div id="fii-risco-header" style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">' +
-            '<span class="fii-risco-label">Sinalizar FIIs da carteira com</span>' +
-            '<span id="fii-risco-seta" style="font-size:11px;color:var(--ink-soft);transition:transform .3s;transform:rotate(-90deg);display:inline-block;">▼</span>' +
-          '</div>' +
-          '<div id="fii-risco-conteudo" style="overflow:hidden;max-height:0px;transition:max-height .35s ease;">' +
-            '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;padding-top:12px;">' +
-              '<div class="fii-risco-campo"><label for="fr-vacancia">Vacância acima de</label><input type="number" id="fr-vacancia" value="10" min="0" step="0.5"><span>%</span></div>' +
-              '<div class="fii-risco-campo"><label for="fr-liquidez">Liquidez abaixo de</label><input type="number" id="fr-liquidez" value="1000" min="0" step="50"><span>R$ mil/dia</span></div>' +
-              '<div class="fii-risco-campo"><label for="fr-mercado">Valor de mercado abaixo de</label><input type="number" id="fr-mercado" value="500" min="0" step="10"><span>R$ milhões</span></div>' +
-            '</div>' +
+      ? '<h2 class="quadro-titulo" id="fii-risco-header" style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;">' +
+          '<span>Sinalizar FIIs da carteira com</span>' +
+          '<span id="fii-risco-seta" style="font-size:18px;color:var(--orange);transition:transform .3s;display:inline-block;transform:rotate(-90deg);">▼</span>' +
+        '</h2>' +
+        '<div id="fii-risco-conteudo" style="overflow:hidden;max-height:0px;transition:max-height .35s ease;">' +
+          '<div class="fii-risco-toolbar" id="fii-risco-toolbar" style="border:none;box-shadow:none;padding:0 0 18px;background:none;">' +
+            '<div class="fii-risco-campo"><label for="fr-vacancia">Vacância acima de</label><input type="number" id="fr-vacancia" value="10" min="0" step="0.5"><span>%</span></div>' +
+            '<div class="fii-risco-campo"><label for="fr-liquidez">Liquidez abaixo de</label><input type="number" id="fr-liquidez" value="1000" min="0" step="50"><span>R$ mil/dia</span></div>' +
+            '<div class="fii-risco-campo"><label for="fr-mercado">Valor de mercado abaixo de</label><input type="number" id="fr-mercado" value="500" min="0" step="10"><span>R$ milhões</span></div>' +
           '</div>' +
         '</div>'
       : '';
@@ -2921,7 +2919,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '<div class="fii-comp-grid" id="fii-comp-grid"></div>'
       : '';
     var sDarf = opcoes.rv
-      ? '<h2 class="quadro-titulo darf-toggle" id="darf-toggle-btn" style="border-top:1px solid var(--line);padding-top:20px;margin-top:4px;cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;">' +
+      ? '<h2 class="quadro-titulo darf-toggle" id="darf-toggle-btn" style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;">' +
         '<span>Venda de ativos e cálculo de DARF</span>' +
         '<span class="darf-seta" id="darf-seta" style="font-size:18px;color:var(--orange);transition:transform .3s;display:inline-block;">▼</span>' +
         '</h2>' +
