@@ -2895,11 +2895,18 @@ h2{font-size:32px;letter-spacing:-.02em;}
       : (opcoes.acoes && !opcoes.fiis) ? 'Total em ações'
       : 'Total em renda variável';
     var sLimitesRiscoFII = opcoes.fiis
-      ? '<div class="fii-risco-toolbar" id="fii-risco-toolbar">' +
-          '<span class="fii-risco-label">Sinalizar FIIs da carteira com:</span>' +
-          '<div class="fii-risco-campo"><label for="fr-vacancia">Vacância acima de</label><input type="number" id="fr-vacancia" value="10" min="0" step="0.5"><span>%</span></div>' +
-          '<div class="fii-risco-campo"><label for="fr-liquidez">Liquidez abaixo de</label><input type="number" id="fr-liquidez" value="1000" min="0" step="50"><span>R$ mil/dia</span></div>' +
-          '<div class="fii-risco-campo"><label for="fr-mercado">Valor de mercado abaixo de</label><input type="number" id="fr-mercado" value="500" min="0" step="10"><span>R$ milhões</span></div>' +
+      ? '<div class="fii-risco-toolbar" id="fii-risco-toolbar" style="flex-direction:column;align-items:stretch;">' +
+          '<div id="fii-risco-header" style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">' +
+            '<span class="fii-risco-label">Sinalizar FIIs da carteira com</span>' +
+            '<span id="fii-risco-seta" style="font-size:11px;color:var(--ink-soft);transition:transform .3s;transform:rotate(-90deg);display:inline-block;">▼</span>' +
+          '</div>' +
+          '<div id="fii-risco-conteudo" style="overflow:hidden;max-height:0px;transition:max-height .35s ease;">' +
+            '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;padding-top:12px;">' +
+              '<div class="fii-risco-campo"><label for="fr-vacancia">Vacância acima de</label><input type="number" id="fr-vacancia" value="10" min="0" step="0.5"><span>%</span></div>' +
+              '<div class="fii-risco-campo"><label for="fr-liquidez">Liquidez abaixo de</label><input type="number" id="fr-liquidez" value="1000" min="0" step="50"><span>R$ mil/dia</span></div>' +
+              '<div class="fii-risco-campo"><label for="fr-mercado">Valor de mercado abaixo de</label><input type="number" id="fr-mercado" value="500" min="0" step="10"><span>R$ milhões</span></div>' +
+            '</div>' +
+          '</div>' +
         '</div>'
       : '';
     var sRV = opcoes.rv
@@ -3247,6 +3254,20 @@ h2{font-size:32px;letter-spacing:-.02em;}
     if (!str || typeof str !== 'string') return null;
     var n = parseFloat(str.replace('%', '').replace(',', '.').trim());
     return isNaN(n) ? null : n;
+  }
+
+  // Recolhido por padrão — mesmo padrão de toggle (▼/▶) já usado em
+  // Diversificação/Gráfico/DARF/Indicadores fundamentalistas.
+  function inicializarToggleRiscoFII(D) {
+    var header = D.getElementById('fii-risco-header');
+    var conteudo = D.getElementById('fii-risco-conteudo');
+    var seta = D.getElementById('fii-risco-seta');
+    if (!header || !conteudo || !seta) return;
+    header.addEventListener('click', function() {
+      var aberto = conteudo.style.maxHeight !== '0px';
+      conteudo.style.maxHeight = aberto ? '0px' : '9999px';
+      seta.style.transform = aberto ? 'rotate(-90deg)' : 'rotate(0deg)';
+    });
   }
 
   // Lê os 3 campos de limite (D = document da janela de análise) e devolve
@@ -4430,6 +4451,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     });
 
     if (opcoes.fiis) {
+      inicializarToggleRiscoFII(D);
       ['fr-vacancia', 'fr-liquidez', 'fr-mercado'].forEach(function(id) {
         var el = D.getElementById(id);
         if (el) el.addEventListener('input', function() { aplicarLimitesRiscoFII(D); });
