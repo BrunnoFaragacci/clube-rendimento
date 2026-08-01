@@ -2888,7 +2888,6 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '</div>' +
         '</div>'
       : '';
-    var tituloRV = (opcoes.fiis && !opcoes.acoes) ? 'Carteira de FIIs' : 'Carteira de Ações';
     // Rótulo do card de total: específico quando a análise é só de FIIs ou só
     // de ações; genérico ("renda variável") apenas quando as duas coexistem.
     var labelResumoRV = (opcoes.fiis && !opcoes.acoes) ? 'Total em FIIs'
@@ -2908,7 +2907,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '</div>'
       : '';
     var sRV = opcoes.rv
-      ? '<div id="pdf-carteira-wrap" class="pdf-secao"><h2 class="quadro-titulo">' + tituloRV + '</h2>' + sLimitesRiscoFII +
+      ? '<div id="pdf-carteira-wrap" class="pdf-secao">' + sLimitesRiscoFII +
         '<p id="rv-aviso-pm" style="display:none;background:#fff3f0;border:1px solid var(--orange);color:var(--orange-dark);border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:12px;"></p>' +
         toolbarColunas('tabela-rv') +
         '<div class="table-wrap"><table id="tabela-rv" class="tabela-com-exclusao"><thead><tr>' + cabRV + '</tr></thead><tbody id="rv-corpo"></tbody></table></div></div>'
