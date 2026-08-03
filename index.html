@@ -2833,7 +2833,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
     'Vacância média': '<div class="th-tip-box"><div class="th-tip-titulo">Vacância Média</div><div class="th-tip-desc">Percentual médio de área vaga (sem locação) nos imóveis do fundo.</div><ul class="th-tip-lista"><li><strong>Interpretação:</strong> vacância mais baixa costuma indicar melhor ocupação e receita de aluguel mais estável.</li></ul></div>'
   };
 
-  function gerarHTML(colRV, colRFPos, colRFEmis, colCetip, colPrevidencia, colCOE, colTesouro, opcoes, totaisRF, totaisCetip, totPrevidencia, totCOE, totTesouroPlanilha) {
+  function gerarHTML(colRV, colRFPos, colRFEmis, colCetip, colPrevidencia, colCOE, colTesouro, opcoes, totaisRF, totaisCetip, totPrevidencia, totCOE, totTesouroPlanilha,
+    qtdRF, qtdCetip, qtdPrevidencia, qtdCOE, qtdTesouro) {
     var cabRV = colRV.map(function(c) {
       var tip = TOOLTIPS_INDICADOR_RV[c];
       return tip ? '<th class="th-tip">' + c + tip + '</th>' : '<th>' + c + '</th>';
@@ -3046,6 +3047,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       : '';
     var resumoRV = opcoes.rv
       ? '<div class="resumo-card"><span class="resumo-label">' + labelResumoRV + '</span><span class="resumo-valor" id="tot-rv">—</span></div>' +
+        '<div class="resumo-card"><span class="resumo-label">Quantidade de ativos</span><span class="resumo-valor" id="tot-qtd-rv">—</span></div>' +
         '<div class="resumo-card"><span class="resumo-label">Variação total (R$)</span><span class="resumo-valor" id="tot-var-rv">—</span></div>' +
         '<div class="resumo-card resumo-card-verde"><span class="resumo-label">Total de dividendos a pagar</span><span class="resumo-valor resumo-valor-verde" id="tot-div-rv">—</span></div>' +
         '<div class="resumo-card resumo-card-verde"><span class="resumo-label">Yield da carteira (mês)</span><span class="resumo-valor resumo-valor-verde" id="tot-yield-rv">—</span></div>' +
@@ -3054,22 +3056,27 @@ h2{font-size:32px;letter-spacing:-.02em;}
       : '';
     var resumoRF = opcoes.rf
       ? '<div class="resumo-card"><span class="resumo-label">Total em renda fixa</span><span class="resumo-valor" id="tot-rf">—</span></div>' +
+        '<div class="resumo-card"><span class="resumo-label">Quantidade de ativos</span><span class="resumo-valor">' + qtdRF + '</span></div>' +
         '<div class="resumo-card"><span class="resumo-label">Lucro total (R$)</span><span class="resumo-valor" id="tot-lucro-rf">—</span></div>'
       : '';
     var resumoCetip = opcoes.cetip
       ? '<div class="resumo-card cetip-print-card"><span class="resumo-label">Total em fundos cetipados</span><span class="resumo-valor" id="tot-cetip">—</span></div>' +
+        '<div class="resumo-card cetip-print-card"><span class="resumo-label">Quantidade de ativos</span><span class="resumo-valor">' + qtdCetip + '</span></div>' +
         '<div class="resumo-card resumo-card-verde cetip-print-card"><span class="resumo-label" id="tot-div-label">Rendimentos cetipados</span><span class="resumo-valor resumo-valor-verde" id="tot-div-recente">—</span></div>' +
         '<div class="resumo-card resumo-card-verde cetip-print-card"><span class="resumo-label">DY da carteira inteira (último mês)</span><span class="resumo-valor resumo-valor-verde" id="tot-dy-carteira-mes">—</span></div>'
       : '';
     var resumoPrevidencia = opcoes.previdencia
       ? '<div class="resumo-card"><span class="resumo-label">Total em previdência privada</span><span class="resumo-valor">R$ ' + formatarNumero(totPrevidencia, 2) + '</span></div>' +
+        '<div class="resumo-card"><span class="resumo-label">Quantidade de ativos</span><span class="resumo-valor">' + qtdPrevidencia + '</span></div>' +
         '<div class="resumo-card"><span class="resumo-label">Lucro total (R$)</span><span class="resumo-valor" id="tot-lucro-previdencia">—</span></div>'
       : '';
     var resumoCOE = opcoes.coe
-      ? '<div class="resumo-card"><span class="resumo-label">Total em COE</span><span class="resumo-valor">R$ ' + formatarNumero(totCOE, 2) + '</span></div>'
+      ? '<div class="resumo-card"><span class="resumo-label">Total em COE</span><span class="resumo-valor">R$ ' + formatarNumero(totCOE, 2) + '</span></div>' +
+        '<div class="resumo-card"><span class="resumo-label">Quantidade de ativos</span><span class="resumo-valor">' + qtdCOE + '</span></div>'
       : '';
     var resumoTesouro = opcoes.tesouro
       ? '<div class="resumo-card"><span class="resumo-label">Total no Tesouro Direto</span><span class="resumo-valor">R$ ' + formatarNumero(totTesouroPlanilha, 2) + '</span></div>' +
+        '<div class="resumo-card"><span class="resumo-label">Quantidade de ativos</span><span class="resumo-valor">' + qtdTesouro + '</span></div>' +
         '<div class="resumo-card"><span class="resumo-label">Lucro total (R$)</span><span class="resumo-valor" id="tot-lucro-tesouro">—</span></div>'
       : '';
     var sPrevidencia = opcoes.previdencia
@@ -3190,8 +3197,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
       '</div>'
     ) : '';
 
-        var numCards = (opcoes.rv?5:0) + ((opcoes.acoes && !opcoes.fiis)?1:0) + (opcoes.rf?2:0) + (opcoes.cetip?3:0) +
-          (opcoes.previdencia?2:0) + (opcoes.coe?1:0) + (opcoes.tesouro?2:0);
+        var numCards = (opcoes.rv?6:0) + ((opcoes.acoes && !opcoes.fiis)?1:0) + (opcoes.rf?3:0) + (opcoes.cetip?4:0) +
+          (opcoes.previdencia?3:0) + (opcoes.coe?2:0) + (opcoes.tesouro?3:0);
     var gridCols = 'repeat(' + numCards + ',1fr)';
 
     return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
@@ -4171,7 +4178,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var totPrevidencia = previdenciaItens.reduce(function(acc, i) { return acc + (i.posicao || 0); }, 0);
     var totCOE = coeItens.reduce(function(acc, i) { return acc + (i.posicao || 0); }, 0);
     var totTesouroPlanilha = tesouroItens.reduce(function(acc, i) { return acc + (i.posicao || 0); }, 0);
-    var html = gerarHTML(colRV, colRFPos, colRFEmis, colCetip, colPrevidencia, colCOE, colTesouro, opcoes, totaisRF, totaisCetip, totPrevidencia, totCOE, totTesouroPlanilha);
+    var html = gerarHTML(colRV, colRFPos, colRFEmis, colCetip, colPrevidencia, colCOE, colTesouro, opcoes, totaisRF, totaisCetip, totPrevidencia, totCOE, totTesouroPlanilha,
+      rfItens.length, cetipFundos.length, previdenciaItens.length, coeItens.length, tesouroItens.length);
     escreverConteudoJanela(novaJanela, html);
     novaJanela.focus();
 
@@ -5030,6 +5038,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var corpoRFEmis = D.getElementById('rfemis-corpo');
     var corpoCetip = D.getElementById('cetip-analise-corpo');
     var totRvEl = D.getElementById('tot-rv');
+    var totQtdRvEl = D.getElementById('tot-qtd-rv');
+    var qtdAtivosRV = 0; // conta só os ativos visíveis pelo filtro Ações/FIIs selecionado
     var totVarRvEl = D.getElementById('tot-var-rv');
     var totVarRV = 0; // acumula variação em R$ (cotação atual − preço médio) × quantidade
     var totDivRvEl    = D.getElementById('tot-div-rv');
@@ -5409,6 +5419,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
         var entradaGraf = dadosGraficoRV[idxGraf];
         totRV -= entradaGraf.valorTotal;
         if (entradaGraf.isFII) totFIIsOnly -= entradaGraf.valorTotal; else totAcoesOnly -= entradaGraf.valorTotal;
+        qtdAtivosRV--;
+        if (totQtdRvEl) totQtdRvEl.textContent = String(qtdAtivosRV);
         dadosGraficoRV.splice(idxGraf, 1);
       }
 
@@ -5875,6 +5887,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
               if (linhaVisivel) {
                 totRV += vt;
                 if (isFII) totFIIsOnly += vt; else totAcoesOnly += vt;
+                qtdAtivosRV++;
+                if (totQtdRvEl) totQtdRvEl.textContent = String(qtdAtivosRV);
                 dadosGraficoRV.push({ ticker: at.ticker, valorTotal: vt, segmento: segNome, dy: null, quoteType: quoteType, isFII: isFII, _idx: globalIdx });
                 todosAtivos.push({ nome: at.ticker, classe: 'RV', valor: vt });
                 // Editar a célula "Valor total" ajusta o card de total (RV/
