@@ -2826,7 +2826,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     'ROE': '<div class="th-tip-box"><div class="th-tip-titulo">ROE — Retorno sobre o Patrimônio Líquido</div><div class="th-tip-desc">Mede a eficiência com que a empresa usa o capital dos acionistas para gerar lucro.</div><ul class="th-tip-lista"><li><strong>Fórmula:</strong> Lucro Líquido ÷ Patrimônio Líquido × 100</li><li><strong>Interpretação:</strong> valores acima de 15% costumam ser considerados bons, mas o ideal é comparar com empresas do mesmo setor.</li></ul></div>',
     'Próximos proventos': '<div class="th-tip-box"><div class="th-tip-titulo">Próximos Proventos</div><div class="th-tip-desc">Valor de proventos já anunciados pelo ativo e ainda não pagos.</div><ul class="th-tip-lista"><li><strong>Interpretação:</strong> indica renda a receber em breve, mas não garante a recorrência do valor em meses futuros.</li></ul></div>',
     'Total de proventos': '<div class="th-tip-box"><div class="th-tip-titulo">Total de Proventos</div><div class="th-tip-desc">Soma de todos os proventos (dividendos/JCP) recebidos pela posição do cliente nos últimos 12 meses.</div><ul class="th-tip-lista"><li><strong>Interpretação:</strong> compare com o valor investido para estimar o yield efetivo da posição do cliente.</li></ul></div>',
-    'Preço Alvo (XP)': '<div class="th-tip-box"><div class="th-tip-titulo">Preço Alvo — Visão XP Investimentos</div><div class="th-tip-desc">Preço-alvo estimado pela equipe de research da XP para os próximos 12 meses.</div><ul class="th-tip-lista"><li><strong>Fonte:</strong> relatório de múltiplos da XP</li></ul></div>',
+    'Preço Alvo (XP)': '<div class="th-tip-box"><div class="th-tip-titulo">Preço Alvo — Visão XP Investimentos</div><div class="th-tip-desc">Preço-alvo estimado pela equipe de research da XP para os próximos 12 meses.</div><ul class="th-tip-lista"><li><strong>Fonte:</strong> <a href="https://conteudos.xpi.com.br/acoes/relatorios/tabela-de-multiplos-xp/" target="_blank" rel="noopener noreferrer" style="color:var(--orange-dark);">relatório de múltiplos da XP ↗</a></li></ul></div>',
     'Upside (XP)': '<div class="th-tip-box"><div class="th-tip-titulo">Upside (XP)</div><div class="th-tip-desc">Potencial de valorização entre a cotação atual e o preço-alvo da XP.</div><ul class="th-tip-lista"><li><strong>Fórmula:</strong> (Preço Alvo XP ÷ Cotação atual − 1) × 100</li><li><strong>Interpretação:</strong> upside positivo indica que a XP vê o ativo como descontado; negativo, como caro frente ao preço-alvo.</li></ul></div>',
     'Valor de mercado': '<div class="th-tip-box"><div class="th-tip-titulo">Valor de Mercado</div><div class="th-tip-desc">Valor de mercado total do ativo (cotação × número de cotas/ações emitidas).</div><ul class="th-tip-lista"><li><strong>Interpretação:</strong> útil para avaliar o porte do ativo e sua liquidez potencial.</li></ul></div>',
     'Liquidez diária': '<div class="th-tip-box"><div class="th-tip-titulo">Liquidez Diária</div><div class="th-tip-desc">Volume financeiro médio negociado por dia.</div><ul class="th-tip-lista"><li><strong>Interpretação:</strong> liquidez mais alta facilita comprar ou vender a posição sem afetar muito o preço.</li></ul></div>',
@@ -3861,12 +3861,22 @@ h2{font-size:32px;letter-spacing:-.02em;}
     titulo.style.cssText = 'margin:0 0 16px;font-size:16px;font-weight:600;color:#111;';
     card.appendChild(titulo);
 
+    var linhaSelect = D.createElement('div');
+    linhaSelect.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:10px;';
     var select = D.createElement('select');
-    select.style.cssText = 'width:100%;padding:9px 10px;border:1.5px solid #E2E2E2;border-radius:8px;font-family:inherit;font-size:13.5px;color:#111;margin-bottom:10px;';
+    select.style.cssText = 'flex:1;min-width:0;padding:9px 10px;border:1.5px solid #E2E2E2;border-radius:8px;font-family:inherit;font-size:13.5px;color:#111;';
     var optCarregando = D.createElement('option');
     optCarregando.textContent = 'Carregando clientes…';
     select.appendChild(optCarregando);
-    card.appendChild(select);
+    linhaSelect.appendChild(select);
+    var btnExcluirAnalise = D.createElement('button');
+    btnExcluirAnalise.type = 'button';
+    btnExcluirAnalise.textContent = '🗑️';
+    btnExcluirAnalise.title = 'Apagar esta análise salva';
+    btnExcluirAnalise.disabled = true;
+    btnExcluirAnalise.style.cssText = 'background:none;border:1.5px solid #E2E2E2;border-radius:8px;padding:8px 10px;cursor:pointer;font-size:14px;flex-shrink:0;';
+    linhaSelect.appendChild(btnExcluirAnalise);
+    card.appendChild(linhaSelect);
 
     var statusEl = D.createElement('p');
     statusEl.style.cssText = 'font-size:12.5px;color:#5c5c5c;min-height:16px;margin:0 0 12px;';
@@ -3891,26 +3901,54 @@ h2{font-size:32px;letter-spacing:-.02em;}
     overlay.appendChild(card);
     D.body.appendChild(overlay);
 
-    supabaseClient.from('analises_salvas').select('id,tipo,atualizado_em,clientes(nome)')
-      .eq('user_id', sessaoAtual.user.id).order('atualizado_em', { ascending: false }).then(function(r) {
-        select.innerHTML = '';
-        var linhas = r.data || [];
-        if (!linhas.length) {
-          var optVazio = D.createElement('option');
-          optVazio.textContent = 'Nenhuma análise salva ainda';
-          select.appendChild(optVazio);
-          statusEl.textContent = 'Salve uma análise primeiro, pelo botão "💾 Salvar análise" dentro do resultado da análise.';
+    // Recarrega a lista de análises salvas do usuário — extraído em função
+    // própria para poder ser chamado de novo depois de apagar uma análise
+    // (ver btnExcluirAnalise), sem duplicar a consulta/preenchimento do select.
+    function carregarListaAnalises() {
+      btnConfirmar.disabled = true;
+      btnExcluirAnalise.disabled = true;
+      return supabaseClient.from('analises_salvas').select('id,tipo,atualizado_em,clientes(nome)')
+        .eq('user_id', sessaoAtual.user.id).order('atualizado_em', { ascending: false }).then(function(r) {
+          select.innerHTML = '';
+          var linhas = r.data || [];
+          if (!linhas.length) {
+            var optVazio = D.createElement('option');
+            optVazio.textContent = 'Nenhuma análise salva ainda';
+            select.appendChild(optVazio);
+            statusEl.textContent = 'Salve uma análise primeiro, pelo botão "💾 Salvar análise" dentro do resultado da análise.';
+            return;
+          }
+          linhas.forEach(function(l) {
+            var opt = D.createElement('option');
+            opt.value = l.id;
+            var nomeCliente = (l.clientes && l.clientes.nome) ? l.clientes.nome : '(cliente removido)';
+            opt.textContent = nomeCliente + ' — ' + l.tipo;
+            select.appendChild(opt);
+          });
+          btnConfirmar.disabled = false;
+          btnExcluirAnalise.disabled = false;
+        });
+    }
+    carregarListaAnalises();
+
+    btnExcluirAnalise.addEventListener('click', function() {
+      var analiseId = select.value;
+      if (!analiseId) return;
+      var rotulo = select.options[select.selectedIndex].textContent;
+      if (!jw.confirm('Apagar a análise salva "' + rotulo + '"? Essa ação não pode ser desfeita.')) return;
+      btnExcluirAnalise.disabled = true;
+      btnConfirmar.disabled = true;
+      supabaseClient.from('analises_salvas').delete().eq('id', analiseId).then(function(r) {
+        if (r.error) {
+          statusEl.textContent = 'Erro ao apagar: ' + r.error.message;
+          btnExcluirAnalise.disabled = false;
+          btnConfirmar.disabled = false;
           return;
         }
-        linhas.forEach(function(l) {
-          var opt = D.createElement('option');
-          opt.value = l.id;
-          var nomeCliente = (l.clientes && l.clientes.nome) ? l.clientes.nome : '(cliente removido)';
-          opt.textContent = nomeCliente + ' — ' + l.tipo;
-          select.appendChild(opt);
-        });
-        btnConfirmar.disabled = false;
+        statusEl.textContent = 'Análise apagada.';
+        carregarListaAnalises();
       });
+    });
 
     btnConfirmar.addEventListener('click', function() {
       var analiseId = select.value;
@@ -7636,7 +7674,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
           if (typeof fundo.valorLiquido === 'number' && typeof fundo.valorAplicado === 'number') {
             var ganhoValorizacaoRS = fundo.valorLiquido - fundo.valorAplicado;
             var spanGanhoRS = D.createElement('span');
-            spanGanhoRS.style.cssText = 'display:block;font-size:11.5px;font-weight:400;color:var(--ink-soft);';
+            spanGanhoRS.style.cssText = 'display:block;font-size:11.5px;font-weight:400;';
+            spanGanhoRS.className = ganhoValorizacaoRS >= 0 ? 'pos' : 'neg';
             spanGanhoRS.textContent = (ganhoValorizacaoRS >= 0 ? '+' : '') + 'R$ ' + formatarNumero(ganhoValorizacaoRS, 2);
             tdValorizacao.appendChild(spanGanhoRS);
           }
