@@ -2910,8 +2910,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var sRV = opcoes.rv
       ? '<div id="pdf-carteira-wrap" class="pdf-secao">' + sLimitesRiscoFII +
         '<p id="rv-aviso-pm" style="display:none;background:#fff3f0;border:1px solid var(--orange);color:var(--orange-dark);border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:12px;"></p>' +
-        toolbarColunas('tabela-rv') +
-        '<div class="table-wrap"><table id="tabela-rv" class="tabela-com-exclusao"><thead><tr>' + cabRV + '</tr></thead><tbody id="rv-corpo"></tbody></table></div></div>'
+        toolbarColunas('tabela-rv', true) +
+        '<div class="table-wrap" id="table-wrap-tabela-rv"><table id="tabela-rv" class="tabela-com-exclusao"><thead><tr>' + cabRV + '</tr></thead><tbody id="rv-corpo"></tbody></table></div></div>'
       : '';
     var sFIIComposicao = opcoes.fiis
       ? '<h2 class="quadro-titulo" style="border-top:1px solid var(--line);padding-top:20px;margin-top:4px;">Portfólio dos FIIs</h2>' +
@@ -3036,8 +3036,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '<button type="button" id="btn-print-cetip" style="display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:13px;padding:8px 14px;border-radius:8px;cursor:pointer;">📷 Tirar print</button>' +
         '</div>' +
         sCetipDiv +
-        toolbarColunas('tabela-cetip') +
-        '<div class="table-wrap"><table id="tabela-cetip" class="tabela-com-exclusao"><thead><tr>' + cabCetip + '</tr></thead><tbody id="cetip-analise-corpo"></tbody></table></div>' +
+        toolbarColunas('tabela-cetip', true) +
+        '<div class="table-wrap" id="table-wrap-tabela-cetip"><table id="tabela-cetip" class="tabela-com-exclusao"><thead><tr>' + cabCetip + '</tr></thead><tbody id="cetip-analise-corpo"></tbody></table></div>' +
         '<div class="legenda-ipca-cetip" id="cetip-ipca-legenda" hidden><span class="badge-ipca">IPCA+</span> fundos com este selo rendem a variação do IPCA todo mês, além do pagamento do dividendo.</div>' +
         '</div>'
       : '';
@@ -3081,18 +3081,18 @@ h2{font-size:32px;letter-spacing:-.02em;}
       : '';
     var sPrevidencia = opcoes.previdencia
       ? '<div class="pdf-secao"><h2 class="quadro-titulo" style="border-top:1px solid var(--line);padding-top:20px;margin-top:4px;">Previdência Privada</h2>' +
-        toolbarColunas('tabela-previdencia') +
-        '<div class="table-wrap"><table id="tabela-previdencia" class="tabela-com-exclusao"><thead><tr>' + cabPrevidencia + '</tr></thead><tbody id="previdencia-corpo"></tbody></table></div></div>'
+        toolbarColunas('tabela-previdencia', true) +
+        '<div class="table-wrap" id="table-wrap-tabela-previdencia"><table id="tabela-previdencia" class="tabela-com-exclusao"><thead><tr>' + cabPrevidencia + '</tr></thead><tbody id="previdencia-corpo"></tbody></table></div></div>'
       : '';
     var sCOE = opcoes.coe
       ? '<div class="pdf-secao"><h2 class="quadro-titulo" style="border-top:1px solid var(--line);padding-top:20px;margin-top:4px;">COE</h2>' +
-        toolbarColunas('tabela-coe') +
-        '<div class="table-wrap"><table id="tabela-coe" class="tabela-com-exclusao"><thead><tr>' + cabCOE + '</tr></thead><tbody id="coe-corpo"></tbody></table></div></div>'
+        toolbarColunas('tabela-coe', true) +
+        '<div class="table-wrap" id="table-wrap-tabela-coe"><table id="tabela-coe" class="tabela-com-exclusao"><thead><tr>' + cabCOE + '</tr></thead><tbody id="coe-corpo"></tbody></table></div></div>'
       : '';
     var sTesouro = opcoes.tesouro
       ? '<div class="pdf-secao"><h2 class="quadro-titulo" style="border-top:1px solid var(--line);padding-top:20px;margin-top:4px;">Tesouro Direto</h2>' +
-        toolbarColunas('tabela-tesouro') +
-        '<div class="table-wrap"><table id="tabela-tesouro" class="tabela-com-exclusao"><thead><tr>' + cabTesouro + '</tr></thead><tbody id="tesouro-analise-corpo"></tbody></table></div></div>'
+        toolbarColunas('tabela-tesouro', true) +
+        '<div class="table-wrap" id="table-wrap-tabela-tesouro"><table id="tabela-tesouro" class="tabela-com-exclusao"><thead><tr>' + cabTesouro + '</tr></thead><tbody id="tesouro-analise-corpo"></tbody></table></div></div>'
       : '';
     // Seção de diversificação: só aparece quando há RV ou Cetip (não faz sentido para RF puro)
     var temAtivosParaDiv = opcoes.rv;
