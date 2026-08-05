@@ -269,7 +269,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
 </svg>Clube do Rendimento</a>
     <nav class="nav-links" aria-label="Navegação principal">
       <button type="button" class="btn-nav" id="btn-nav-calculadoras">Calculadoras ↗</button>
-      <button type="button" class="btn-nav" id="btn-nav-cetipados">Fundos Cetipados ↗</button>
+      <button type="button" class="btn-nav" id="btn-nav-cetipados">Fundos Fechados ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-pesquisa">Pesquisar ativo ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-valuation">Valuation ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-carteira-rec">Carteira Recomendada ↗</button>
@@ -337,10 +337,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
       </div>
 
       <div class="upload-box" id="upload-box-arquivo2" style="margin-top:10px;" hidden>
-        <label for="arquivo-planilha2" class="btn btn-ghost btn-small">+ Planilha complementar de Fundos Cetipados</label>
+        <label for="arquivo-planilha2" class="btn btn-ghost btn-small">+ Planilha complementar de Fundos Fechados</label>
         <input type="file" id="arquivo-planilha2" accept=".xlsx,.xls,.csv" hidden>
         <span id="arquivo-nome2" class="upload-filename">Nenhum arquivo selecionado.</span>
-        <p class="table-note" style="margin-top:6px;width:100%;">Identificamos Fundos Cetipados na sua planilha — envie também o outro modelo (Detalhada ou Consolidada) para completar as informações que só existem em um dos dois (quantidade de cotas ou valorização).</p>
+        <p class="table-note" style="margin-top:6px;width:100%;">Identificamos Fundos Fechados na sua planilha — envie também o outro modelo (Detalhada ou Consolidada) para completar as informações que só existem em um dos dois (quantidade de cotas ou valorização).</p>
       </div>
 
       <div class="opcoes-analise" id="opcoes-analise" hidden>
@@ -348,7 +348,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         <label><input type="checkbox" id="check-acoes" checked> Ações</label>
         <label><input type="checkbox" id="check-fiis"> Fundos Imobiliários</label>
         <label><input type="checkbox" id="check-rf"> Renda fixa</label>
-        <label><input type="checkbox" id="check-cetip"> Fundos Cetipados</label>
+        <label><input type="checkbox" id="check-cetip"> Fundos Fechados</label>
         <label><input type="checkbox" id="check-previdencia"> Previdência Privada</label>
         <label><input type="checkbox" id="check-coe"> COE</label>
         <label><input type="checkbox" id="check-tesouro"> Tesouro Direto</label>
@@ -1229,7 +1229,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         return;
       }
 
-      status.textContent = 'Cruzando fundos cetipados com a base de dados...';
+      status.textContent = 'Cruzando fundos fechados com a base de dados...';
       combinarComBaseCetipados(cetipExtraidos).then(function(cetipFundos) {
         status.textContent = '';
         executarAnalise(ativos, rf, cetipFundos, previdenciaItens, coeItens, tesouroItens, novaJanela, opcoes);
@@ -3032,7 +3032,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var sCetip = opcoes.cetip
       ? '<div id="cetip-secao-wrap" class="pdf-secao">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:4px;">' +
-        '<h2 class="quadro-titulo" style="margin:0;">Fundos Cetipados</h2>' +
+        '<h2 class="quadro-titulo" style="margin:0;">Fundos Fechados</h2>' +
         '<button type="button" id="btn-print-cetip" style="display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:13px;padding:8px 14px;border-radius:8px;cursor:pointer;">📷 Tirar print</button>' +
         '</div>' +
         sCetipDiv +
@@ -3060,10 +3060,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '<div class="resumo-card"><span class="resumo-label">Lucro total (R$)</span><span class="resumo-valor" id="tot-lucro-rf">—</span></div>'
       : '';
     var resumoCetip = opcoes.cetip
-      ? '<div class="resumo-card cetip-print-card"><span class="resumo-label">Total em fundos cetipados</span><span class="resumo-valor" id="tot-cetip">—</span></div>' +
+      ? '<div class="resumo-card cetip-print-card"><span class="resumo-label">Total em fundos fechados</span><span class="resumo-valor" id="tot-cetip">—</span></div>' +
         '<div class="resumo-card cetip-print-card"><span class="resumo-label">Quantidade de ativos</span><span class="resumo-valor">' + qtdCetip + '</span></div>' +
-        '<div class="resumo-card resumo-card-verde cetip-print-card"><span class="resumo-label" id="tot-div-label">Rendimentos cetipados</span><span class="resumo-valor resumo-valor-verde" id="tot-div-recente">—</span></div>' +
-        '<div class="resumo-card resumo-card-verde cetip-print-card"><span class="resumo-label">DY da carteira inteira (último mês)</span><span class="resumo-valor resumo-valor-verde" id="tot-dy-carteira-mes">—</span></div>'
+        '<div class="resumo-card resumo-card-verde cetip-print-card"><span class="resumo-label" id="tot-div-label">Dividendos pagos no último mês (R$)</span><span class="resumo-valor resumo-valor-verde" id="tot-div-recente">—</span></div>' +
+        '<div class="resumo-card resumo-card-verde cetip-print-card"><span class="resumo-label">Dividendos pagos no último mês (%)</span><span class="resumo-valor resumo-valor-verde" id="tot-dy-carteira-mes">—</span></div>'
       : '';
     var resumoPrevidencia = opcoes.previdencia
       ? '<div class="resumo-card"><span class="resumo-label">Total em previdência privada</span><span class="resumo-valor">R$ ' + formatarNumero(totPrevidencia, 2) + '</span></div>' +
@@ -3723,7 +3723,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       { chave: 'acoes', rotulo: 'Ações' },
       { chave: 'fiis', rotulo: 'FIIs' },
       { chave: 'rf', rotulo: 'Renda fixa' },
-      { chave: 'cetip', rotulo: 'Fundos Cetipados' },
+      { chave: 'cetip', rotulo: 'Fundos Fechados' },
       { chave: 'previdencia', rotulo: 'Previdência Privada' },
       { chave: 'coe', rotulo: 'COE' },
       { chave: 'tesouro', rotulo: 'Tesouro Direto' }
@@ -7591,7 +7591,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           var trVazio = D.createElement('tr');
           var tdVazio = D.createElement('td');
           tdVazio.colSpan = 12;
-          tdVazio.textContent = 'Nenhum fundo cetipado identificado nesta planilha.';
+          tdVazio.textContent = 'Nenhum fundo fechado identificado nesta planilha.';
           trVazio.appendChild(tdVazio);
           corpoCetip.appendChild(trVazio);
         }
@@ -7912,10 +7912,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
           });
 
           if (temAlgumEventoCetip) {
-            if (totDivLblEl) totDivLblEl.textContent = 'Rendimentos cetipados (últimos pagos)';
+            if (totDivLblEl) totDivLblEl.textContent = 'Dividendos pagos no último mês (R$)';
             totDivEl.textContent = 'R$ ' + formatarNumero(totalUltimosDividendosCetip, 2);
           } else {
-            if (totDivLblEl) totDivLblEl.textContent = 'Rendimentos cetipados';
+            if (totDivLblEl) totDivLblEl.textContent = 'Dividendos pagos no último mês (R$)';
             totDivEl.textContent = 'R$ 0,00';
           }
         }
@@ -7974,7 +7974,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       if (opcoes.acoes && totAcoesOnly > 0) classes.push({ chave: 'acoes', rotulo: 'Ações', valor: totAcoesOnly });
       if (opcoes.fiis && totFIIsOnly > 0)   classes.push({ chave: 'fiis',  rotulo: 'FIIs', valor: totFIIsOnly });
       if (opcoes.rf && totRF > 0)           classes.push({ chave: 'rf',    rotulo: 'Renda Fixa', valor: totRF });
-      if (opcoes.cetip && totCetip > 0)     classes.push({ chave: 'cetip', rotulo: 'Fundos Cetipados', valor: totCetip });
+      if (opcoes.cetip && totCetip > 0)     classes.push({ chave: 'cetip', rotulo: 'Fundos Fechados', valor: totCetip });
       if (classes.length < 2) return;
 
       selectEl.innerHTML = '<option value="todos">Todos os tipos</option>' +
@@ -9327,7 +9327,7 @@ sincronizarSessaoDoOpener().then(function() { carregarCliente(); });
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Fundos Cetipados — Clube do Rendimento</title>
+<title>Fundos Fechados — Clube do Rendimento</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -9429,7 +9429,7 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
 <div class="container">
   <div class="page-header">
     <div>
-      <h1 class="page-title">Fundos Cetipados</h1>
+      <h1 class="page-title">Fundos Fechados</h1>
       <p style="font-size:13px;color:var(--ink-soft);margin-top:4px;">Base de dados privada. Leitura aberta; edição exige autenticação.</p>
     </div>
     <div style="display:flex;gap:10px;align-items:center;"><button type="button" class="btn btn-ghost" id="btn-exportar-excel">⤓ Exportar Excel</button><button type="button" class="btn btn-ghost" id="btn-importar-excel" hidden>⤒ Importar Excel</button><input type="file" id="input-planilha-fundos" accept=".xlsx,.xls" hidden><button type="button" class="btn btn-primary" id="btn-add" hidden>+ Adicionar fundo</button></div>
@@ -9818,10 +9818,10 @@ function exportarExcel(){
     {wch:30},{wch:30},{wch:30},{wch:14},{wch:14},{wch:16},{wch:22},{wch:40}
   ];
   var livro=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(livro,planilha,'Fundos Cetipados');
+  XLSX.utils.book_append_sheet(livro,planilha,'Fundos Fechados');
   var agora=new Date();
   var carimbo=agora.getFullYear()+String(agora.getMonth()+1).padStart(2,'0')+String(agora.getDate()).padStart(2,'0');
-  XLSX.writeFile(livro,'fundos_cetipados_'+carimbo+'.xlsx');
+  XLSX.writeFile(livro,'fundos_fechados_'+carimbo+'.xlsx');
 }
 document.getElementById('btn-exportar-excel').addEventListener('click',exportarExcel);
 
@@ -14217,10 +14217,10 @@ a{color:var(--orange);text-decoration:none;}a:hover{text-decoration:underline;}
 
       <!-- Comparador: FII em bolsa x Fundo cetipado x CDI + Simulador de rentabilidade -->
       <div class="card" id="comp-fii-card" style="margin-top:20px;">
-        <div class="card-titulo">Comparar com fundo cetipado e CDI</div>
-        <p style="font-size:12px;color:var(--ink2);margin-bottom:12px;">Compare este FII negociado em bolsa com um fundo cetipado (mercado de balcão) cadastrado no Clube do Rendimento e com o CDI acumulado em 12 meses.</p>
+        <div class="card-titulo">Comparar com fundo fechado e CDI</div>
+        <p style="font-size:12px;color:var(--ink2);margin-bottom:12px;">Compare este FII negociado em bolsa com um fundo fechado (mercado de balcão) cadastrado no Clube do Rendimento e com o CDI acumulado em 12 meses.</p>
         <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
-          <input class="search-input" id="comp-inp-cetipado" list="comp-lista-cetipados" placeholder="Digite o ticker ou nome do fundo cetipado" autocomplete="off" style="flex:1;min-width:220px;">
+          <input class="search-input" id="comp-inp-cetipado" list="comp-lista-cetipados" placeholder="Digite o ticker ou nome do fundo fechado" autocomplete="off" style="flex:1;min-width:220px;">
           <datalist id="comp-lista-cetipados"></datalist>
           <button type="button" class="btn-search" id="comp-btn-buscar-cetipado">Comparar</button>
         </div>
@@ -14231,7 +14231,7 @@ a{color:var(--orange);text-decoration:none;}a:hover{text-decoration:underline;}
             <tr>
               <th>Indicador</th>
               <th id="comp-th-bolsa" style="color:#2563EB;">FII em bolsa</th>
-              <th id="comp-th-cetipado" style="color:#92400e;">Fundo cetipado</th>
+              <th id="comp-th-cetipado" style="color:#92400e;">Fundo fechado</th>
             </tr>
           </thead>
           <tbody id="comp-tabela-corpo">
@@ -14262,7 +14262,7 @@ a{color:var(--orange);text-decoration:none;}a:hover{text-decoration:underline;}
             <span style="font-size:12px;color:var(--ink2);">*</span>
           </div>
           <div id="sim-grade" style="margin-top:10px;"></div>
-          <div style="font-size:11px;color:var(--ink2);margin-top:12px;">* Simulação com base em dados históricos. O fundo em bolsa considera a variação de preço da cota e os proventos efetivamente distribuídos no período (sem reinvestimento). O fundo cetipado, por não ter histórico de preço público (mercado de balcão), é estimado com base no Dividend Yield (12m) atual, composto ao longo do prazo selecionado. CDI e IPCA consideram a taxa acumulada oficial no período (Banco Central). IBOV e IVVB11 consideram apenas a variação de preço, sem dividendos.</div>
+          <div style="font-size:11px;color:var(--ink2);margin-top:12px;">* Simulação com base em dados históricos. O fundo em bolsa considera a variação de preço da cota e os proventos efetivamente distribuídos no período (sem reinvestimento). O fundo fechado, por não ter histórico de preço público (mercado de balcão), é estimado com base no Dividend Yield (12m) atual, composto ao longo do prazo selecionado. CDI e IPCA consideram a taxa acumulada oficial no período (Banco Central). IBOV e IVVB11 consideram apenas a variação de preço, sem dividendos.</div>
         </div>
       </div>
     </div>
@@ -14638,7 +14638,7 @@ function renderizarComparadorFII(){
   var thBolsa=document.getElementById('comp-th-bolsa');
   if(thBolsa)thBolsa.textContent = b?(b.ticker+' \u2014 FII em bolsa'):'FII em bolsa';
   var thCetipado=document.getElementById('comp-th-cetipado');
-  if(thCetipado)thCetipado.textContent = c?(c.ticker+' \u2014 '+c.nome):'Fundo cetipado';
+  if(thCetipado)thCetipado.textContent = c?(c.ticker+' \u2014 '+c.nome):'Fundo fechado';
   function set(id,val){var el=document.getElementById(id);if(el)el.textContent=val;}
   set('comp-b-tipo', b?(b.segmento||'\u2014'):'\u2014');
   set('comp-c-tipo', c?(c.tipo||'\u2014'):'\u2014');
@@ -14758,7 +14758,7 @@ function renderizarSimuladorFII(){
   }
   if(dadoCetipadoComp && typeof dadoCetipadoComp.dy === 'number'){
     var fatorCetipado = Math.pow(1 + dadoCetipadoComp.dy/100, simPrazoMesesComp/12);
-    linhas.push({ ticker: dadoCetipadoComp.ticker||'Fundo cetipado', cor:'#92400e', valor: valorInvestido*fatorCetipado });
+    linhas.push({ ticker: dadoCetipadoComp.ticker||'Fundo fechado', cor:'#92400e', valor: valorInvestido*fatorCetipado });
   }
   var fatorCdi = simFatorAcumuladoBCB(simCdiSerie, dataAlvo);
   if(fatorCdi) linhas.push({ ticker:'CDI', cor:'#1a1a2e', valor: valorInvestido*fatorCdi });
