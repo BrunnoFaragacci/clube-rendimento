@@ -5793,6 +5793,13 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var est = dado.defaultKeyStatistics || {};
             var fin = dado.financialData || {};
             var perf = dado.summaryProfile || {};
+            // A Brapi (via Yahoo/GICS) usa "Energy"/"Energia" como setor genérico
+            // que agrupa petróleo, gás e biocombustíveis — no Brasil esse rótulo é
+            // associado a energia elétrica, então usa o setor real da B3 (mesmo
+            // critério do comparativo por setor da Pesquisa de Ativos).
+            if (perf.sector && /^energ(y|ia)$/i.test(String(perf.sector).trim())) {
+              perf.sector = 'Petróleo, Gás e Biocombustíveis';
+            }
             var quoteType = (dado.quoteType || '').toUpperCase();
             var longName  = (dado.longName || dado.shortName || '').toUpperCase();
             // quoteType nunca vem preenchido pela Brapi no endpoint /quote (testado
@@ -15290,6 +15297,12 @@ function renderizar(d, d2){
   var est   = d.defaultKeyStatistics||{};
   var fin   = d.financialData||{};
   var perf  = d.summaryProfile||{};
+  // A Brapi (via Yahoo/GICS) usa "Energy"/"Energia" como setor genérico que
+  // agrupa petróleo, gás e biocombustíveis — no Brasil esse rótulo é
+  // associado a energia elétrica, então usa o setor real da B3.
+  if (perf.sector && /^energ(y|ia)$/i.test(String(perf.sector).trim())) {
+    perf.sector = 'Petróleo, Gás e Biocombustíveis';
+  }
   var divs  = (d.dividendsData||{}).cashDividends||[];
   var hist  = d.historicalDataPrice||[];
 
