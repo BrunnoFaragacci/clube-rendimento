@@ -4161,7 +4161,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       .catch(function() { bdrSet = {}; });
 
     var temPM = ativos.some(function(a) { return typeof a.precoMedio === 'number' && !isNaN(a.precoMedio) && a.precoMedio > 0; });
-    var colRV = ['Ativo','Segmento','Quantidade'];
+    var colRV = ['Ativo','Segmento','Tipo de FII','Quantidade'];
     if (temPM) colRV.push('Preço médio');
     colRV.push('Cotação atual','Valor total','Variação','P/L','P/VP','Dividend Yield (12m)','ROE','Próximos proventos','Total de proventos','Preço Alvo (XP)','Upside (XP)','Valor de mercado','Liquidez diária','Vacância média','');
     var colRFPos = ['Ativo','Tipo','Aplicação','Vencimento','Taxa','Imposto','Valor aplicado','Posição','Valor líquido','Cupons pagos até o momento','Lucro (R$)','Lucro (%)',''];
@@ -5533,6 +5533,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         tdAt.appendChild(tag(D, at.ticker, 'ticker-tag'));
         tr.appendChild(tdAt);
         tr.appendChild(cel(D, 'Consultando...'));         // segmento
+        tr.appendChild(cel(D, 'Consultando...'));         // tipo de FII
         tr.appendChild(cel(D, formatarNumero(at.quantidade, 0)));
         if (temPM) {
           tr.appendChild(cel(D, typeof at.precoMedio === 'number'
@@ -5746,14 +5747,14 @@ h2{font-size:32px;letter-spacing:-.02em;}
           function preencherXP(c, o, ticker, vt, incluirNoTotalUpside) {
             var xp = mapaXP[ticker];
             if (!xp || xp.preco_alvo === null || xp.preco_alvo === undefined) {
-              c[12 + o].textContent = '—';
               c[13 + o].textContent = '—';
+              c[14 + o].textContent = '—';
               return;
             }
-            c[12 + o].textContent = 'R$ ' + formatarNumero(xp.preco_alvo, 2);
+            c[13 + o].textContent = 'R$ ' + formatarNumero(xp.preco_alvo, 2);
             if (xp.upside !== null && xp.upside !== undefined) {
-              c[13 + o].textContent = (xp.upside >= 0 ? '▲ ' : '▼ ') + formatarNumero(Math.abs(xp.upside), 2) + '%';
-              c[13 + o].className = xp.upside >= 0 ? 'pos' : 'neg';
+              c[14 + o].textContent = (xp.upside >= 0 ? '▲ ' : '▼ ') + formatarNumero(Math.abs(xp.upside), 2) + '%';
+              c[14 + o].className = xp.upside >= 0 ? 'pos' : 'neg';
               if (incluirNoTotalUpside && typeof vt === 'number') {
                 totUpsideNumerador   += vt * xp.upside;
                 totUpsideDenominador += vt;
@@ -5765,7 +5766,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
                 atualizarUpsideRV();
               }
             } else {
-              c[13 + o].textContent = '—';
+              c[14 + o].textContent = '—';
             }
           }
 
@@ -5779,8 +5780,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var dado = mapa[at.ticker];
             if (!dado) {
               c[1].textContent = 'Erro';
-              c[3 + o].textContent = 'Erro';
-              c[10 + o].textContent = 'Erro';
+              c[2].textContent = 'Erro';
+              c[4 + o].textContent = 'Erro';
+              c[11 + o].textContent = 'Erro';
               preencherXP(c, o, at.ticker);
               return;
             }
@@ -5859,6 +5861,15 @@ h2{font-size:32px;letter-spacing:-.02em;}
             }
             c[1].textContent = segNome;
 
+            // Tipo de FII (Papel/Tijolo/Híbrido/Fundo de Fundos) — só disponível
+            // via Investidor10 (fii-dados-extra), não retornado pela Brapi.
+            if (isFII) {
+              var extraTipoFII = mapaFIIExtra[at.ticker];
+              c[2].textContent = (extraTipoFII && extraTipoFII.tipoFundo) || '—';
+            } else {
+              c[2].textContent = '—';
+            }
+
             if (isFII && opcoes.fiis && fiiTickers.indexOf(at.ticker) === -1) {
               fiiTickers.push(at.ticker);
               // CNPJ do fundo, já presente de graça no summaryProfile (chamada
@@ -5882,7 +5893,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
             // gráficos de diversificação quando linhaVisivel é true.
             var cot = dado.regularMarketPrice;
             if (typeof cot === 'number') {
-              c[3 + o].textContent = 'R$ ' + formatarNumero(cot, 2);
+              c[4 + o].textContent = 'R$ ' + formatarNumero(cot, 2);
               // Guardado no próprio item de "ativos" (mesmo array usado pelo
               // DARF) e repassado a darfApi.ativoAtualizado — é o que faz o
               // ativo aparecer sozinho na tabela de venda/DARF assim que a
@@ -5890,7 +5901,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
               at.cotacaoAtual = cot;
               if (darfApi) darfApi.ativoAtualizado(at);
               var vt = cot * at.quantidade;
-              c[4 + o].textContent = 'R$ ' + formatarNumero(vt, 2);
+              c[5 + o].textContent = 'R$ ' + formatarNumero(vt, 2);
               if (linhaVisivel) {
                 totRV += vt;
                 if (isFII) totFIIsOnly += vt; else totAcoesOnly += vt;
@@ -5902,7 +5913,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
                 // Ações/FIIs) pela diferença frente ao valor anterior, e
                 // mantém dadosGraficoRV/todosAtivos sincronizados — mesmos
                 // dados usados pelos gráficos e pela exclusão de linha.
-                aoEditarCelula(c[4 + o], function(novoTxt) {
+                aoEditarCelula(c[5 + o], function(novoTxt) {
                   var novoNum = parseNumeroBR(novoTxt);
                   if (isNaN(novoNum)) return;
                   var entradaG = dadosGraficoRV.filter(function(d) { return d._idx === globalIdx; })[0];
@@ -5925,11 +5936,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
                 // Reaplica edição salva de uma análise anterior (ver edicoesManuais).
                 var edicaoRvTotal = edicoesManuais.rv[globalIdx];
                 if (edicaoRvTotal && typeof edicaoRvTotal.valorTotal === 'number') {
-                  aplicarEdicaoSalva(c[4 + o], edicaoRvTotal.valorTotal);
+                  aplicarEdicaoSalva(c[5 + o], edicaoRvTotal.valorTotal);
                 }
               }
             } else {
-              c[3 + o].textContent = '—';
+              c[4 + o].textContent = '—';
             }
 
             // Variação — rentabilidade do cliente: cotação atual frente ao preço
@@ -5946,8 +5957,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
             if (typeof at.precoMedio === 'number' && at.precoMedio > 0 && typeof cot === 'number') {
               var variacaoPM = ((cot - at.precoMedio) / at.precoMedio) * 100;
               var posPM = variacaoPM >= 0;
-              c[5 + o].textContent = (posPM ? '▲ ' : '▼ ') + formatarNumero(Math.abs(variacaoPM), 2) + '%';
-              c[5 + o].className = posPM ? 'pos' : 'neg';
+              c[6 + o].textContent = (posPM ? '▲ ' : '▼ ') + formatarNumero(Math.abs(variacaoPM), 2) + '%';
+              c[6 + o].className = posPM ? 'pos' : 'neg';
               // Acumula a variação em R$ (ganho/perda frente ao preço médio) só
               // para ativos dentro do filtro selecionado, mesmo critério do total
               // de valor em RV — evita somar Ações e FIIs juntos indevidamente.
@@ -5966,7 +5977,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
                 // anterior (mesmo atributo já usado para reverter o total
                 // quando a linha é excluída).
                 var valorAplicadoLinhaRV = at.precoMedio * at.quantidade;
-                aoEditarCelula(c[5 + o], function(novoTxt) {
+                aoEditarCelula(c[6 + o], function(novoTxt) {
                   var limpo = String(novoTxt).replace(/[▲▼\s%]/g, '').trim();
                   var num = parseFloat(limpo.replace(',', '.'));
                   if (isNaN(num)) return;
@@ -5980,7 +5991,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
                     totVarRvEl.textContent = 'R$ ' + formatarNumero(totVarRV, 2);
                     totVarRvEl.className = 'resumo-valor ' + (totVarRV >= 0 ? 'pos' : 'neg');
                   }
-                  c[5 + o].className = novoValorVar >= 0 ? 'pos' : 'neg';
+                  c[6 + o].className = novoValorVar >= 0 ? 'pos' : 'neg';
                   edicoesManuais.rv[globalIdx] = edicoesManuais.rv[globalIdx] || {};
                   edicoesManuais.rv[globalIdx].variacaoRS = novoValorVar;
                 });
@@ -5992,14 +6003,14 @@ h2{font-size:32px;letter-spacing:-.02em;}
                 if (edicaoRvVar && typeof edicaoRvVar.variacaoRS === 'number' && valorAplicadoLinhaRV) {
                   var pctSalvo = (edicaoRvVar.variacaoRS / valorAplicadoLinhaRV) * 100;
                   var textoVarSalvo = (pctSalvo >= 0 ? '▲ ' : '▼ ') + formatarNumero(Math.abs(pctSalvo), 2) + '%';
-                  c[5 + o].textContent = textoVarSalvo;
-                  c[5 + o]._recalcularAoEditar(textoVarSalvo);
+                  c[6 + o].textContent = textoVarSalvo;
+                  c[6 + o]._recalcularAoEditar(textoVarSalvo);
                 }
               }
             } else if (typeof dado.regularMarketChangePercent === 'number') {
               var pos = dado.regularMarketChangePercent >= 0;
-              c[5 + o].textContent = (pos ? '▲ ' : '▼ ') + formatarNumero(Math.abs(dado.regularMarketChangePercent), 2) + '%';
-              c[5 + o].className = pos ? 'pos' : 'neg';
+              c[6 + o].textContent = (pos ? '▲ ' : '▼ ') + formatarNumero(Math.abs(dado.regularMarketChangePercent), 2) + '%';
+              c[6 + o].className = pos ? 'pos' : 'neg';
             }
 
             var entrada = dadosGraficoRV.find(function(d) { return d._idx === globalIdx; });
@@ -6011,7 +6022,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
             // acoes-dados-extra para ações) quando esses dados vêm vazios da Brapi.
             var extraFundInd10 = mapaFIIExtra[at.ticker];
             var extraAcaoInd10 = mapaAcoesExtra[at.ticker];
-            c[6 + o].textContent  = typeof dado.priceEarnings === 'number'      ? formatarNumero(dado.priceEarnings, 2)            : '—';
+            c[7 + o].textContent  = typeof dado.priceEarnings === 'number'      ? formatarNumero(dado.priceEarnings, 2)            : '—';
             // dados.pvp e dados.dividendYield12m do fii-dados-extra vêm como
             // strings no padrão brasileiro (ex.: "1,05" e "8,52%"), por isso são
             // convertidos aqui; os equivalentes do acoes-dados-extra já vêm como
@@ -6022,7 +6033,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
               (!isFII && !isETF && extraAcaoInd10 && typeof extraAcaoInd10.pvp === 'number') ? extraAcaoInd10.pvp : NaN;
             var pvpVal = typeof est.priceToBook === 'number' ? est.priceToBook :
               (isFinite(pvpFallback) ? pvpFallback : null);
-            c[7 + o].textContent  = pvpVal !== null                              ? formatarNumero(pvpVal, 2)                        : '—';
+            c[8 + o].textContent  = pvpVal !== null                              ? formatarNumero(pvpVal, 2)                        : '—';
             var dyCalculado = calcularDYPreciso(dado);
             var dyFallbackStr = (isFII && extraFundInd10 && extraFundInd10.dividendYield12m) ?
               String(extraFundInd10.dividendYield12m) : '';
@@ -6030,11 +6041,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
               (!isFII && !isETF && extraAcaoInd10 && typeof extraAcaoInd10.dividendYield12m === 'number' ? extraAcaoInd10.dividendYield12m : NaN);
             var dyVal = dyCalculado !== null ? dyCalculado : (typeof est.dividendYield === 'number' ? est.dividendYield * 100 :
               (isFinite(dyFallback) ? dyFallback : null));
-            c[8 + o].textContent  = dyVal !== null                               ? formatarNumero(dyVal, 2) + '%'                   : '—';
+            c[9 + o].textContent  = dyVal !== null                               ? formatarNumero(dyVal, 2) + '%'                   : '—';
             if (entrada && dyVal !== null) entrada.dy = dyVal;
             var roeFallback = (!isFII && !isETF && extraAcaoInd10 && typeof extraAcaoInd10.roe === 'number') ? extraAcaoInd10.roe : NaN;
             var roeVal = typeof fin.returnOnEquity === 'number' ? fin.returnOnEquity * 100 : (isFinite(roeFallback) ? roeFallback : null);
-            c[9 + o].textContent  = roeVal !== null                              ? formatarNumero(roeVal, 2) + '%'                  : '—';
+            c[10 + o].textContent  = roeVal !== null                              ? formatarNumero(roeVal, 2) + '%'                  : '—';
 
             // Valor de mercado e liquidez diária (dados já vêm no /api/quote/ principal,
             // com fallback para dados calculados/Investidor10 quando a Brapi não retorna
@@ -6073,7 +6084,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
                 if (typeof valorPatrimonialNum === 'number') valorMercadoRV = valorPatrimonialNum;
               }
             }
-            c[14 + o].textContent = fmtGrandeRV(valorMercadoRV);
+            c[15 + o].textContent = fmtGrandeRV(valorMercadoRV);
             // Sem averageDailyVolume3Month, não usamos regularMarketVolume (volume
             // de um único dia) como substituto: gera valores muito distantes da
             // liquidez média real (ver mesma correção na Pesquisa de Ativos). Quando
@@ -6081,11 +6092,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var liqDiariaCotas = dado.averageDailyVolume3Month || null;
             var liqDiariaRS = (liqDiariaCotas && typeof cot === 'number') ? liqDiariaCotas * cot : null;
             if (liqDiariaRS) {
-              c[15 + o].textContent = fmtGrandeRV(liqDiariaRS) + '/dia';
+              c[16 + o].textContent = fmtGrandeRV(liqDiariaRS) + '/dia';
             } else if (extraInvestidor10 && extraInvestidor10.liquidezDiaria) {
-              c[15 + o].textContent = extraInvestidor10.liquidezDiaria + '/dia';
+              c[16 + o].textContent = extraInvestidor10.liquidezDiaria + '/dia';
             } else {
-              c[15 + o].textContent = '—';
+              c[16 + o].textContent = '—';
             }
             if (isFII) {
               // O vacancyRate por imóvel da brapi.dev/api/v2/fii/properties
@@ -6098,14 +6109,14 @@ h2{font-size:32px;letter-spacing:-.02em;}
               // o Investidor10 não responde.
               var vacMedia = mapaFIIVacancia[at.ticker];
               if (extraInvestidor10 && extraInvestidor10.vacancia) {
-                c[16 + o].textContent = extraInvestidor10.vacancia;
+                c[17 + o].textContent = extraInvestidor10.vacancia;
               } else if (typeof vacMedia === 'number') {
-                c[16 + o].textContent = formatarNumero(vacMedia * 100, 2) + '%';
+                c[17 + o].textContent = formatarNumero(vacMedia * 100, 2) + '%';
               } else {
-                c[16 + o].textContent = '—';
+                c[17 + o].textContent = '—';
               }
             } else {
-              c[16 + o].textContent = '—';
+              c[17 + o].textContent = '—';
             }
 
             // Guarda os valores numéricos (não os textos já formatados) desta
@@ -6138,9 +6149,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var prov = proximoProvento(dado);
             if (prov) {
               var valorProv = prov.rate * at.quantidade;
-              c[10 + o].textContent = 'R$ ' + formatarNumero(valorProv, 2);
               c[11 + o].textContent = 'R$ ' + formatarNumero(valorProv, 2);
-              c[11 + o].className   = 'pos';
+              c[12 + o].textContent = 'R$ ' + formatarNumero(valorProv, 2);
+              c[12 + o].className   = 'pos';
               // Acumular no total de dividendos a pagar — só para ativos dentro do
               // filtro selecionado (mesmo critério usado no total de valor em RV).
               if (linhaVisivel) {
@@ -6153,7 +6164,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
               var estimativaFII = estimarProventoFII(dado);
               if (estimativaFII) {
                 var valorEstimadoFII = estimativaFII.rate * at.quantidade;
-                c[10 + o].textContent = 'R$ ' + formatarNumero(valorEstimadoFII, 2);
+                c[11 + o].textContent = 'R$ ' + formatarNumero(valorEstimadoFII, 2);
                 // Também soma no quadrante "Total de dividendos a pagar" —
                 // o card deve refletir a soma de tudo que aparece na coluna
                 // "Próximos proventos", inclusive estimativas de FIIs sem
@@ -6174,7 +6185,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
                 // obtido acima (Brapi ou, na falta dele, Investidor10),
                 // aplicado à cotação atual e à quantidade do cliente.
                 var valorEstimadoPorDY = (dyVal / 100 / 12) * cot * at.quantidade;
-                c[10 + o].textContent = 'R$ ' + formatarNumero(valorEstimadoPorDY, 2);
+                c[11 + o].textContent = 'R$ ' + formatarNumero(valorEstimadoPorDY, 2);
                 if (linhaVisivel) {
                   totDivRvAcum += valorEstimadoPorDY;
                   tr.setAttribute('data-div', String(valorEstimadoPorDY));
@@ -6182,12 +6193,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
                   atualizarYieldRV();
                 }
               } else {
-                c[10 + o].textContent = 'Nenhum anunciado';
+                c[11 + o].textContent = 'Nenhum anunciado';
               }
-              c[11 + o].textContent = '—';
+              c[12 + o].textContent = '—';
             } else {
-              c[10 + o].textContent = 'Nenhum anunciado';
-              c[11 + o].textContent = '—';
+              c[11 + o].textContent = 'Nenhum anunciado';
+              c[12 + o].textContent = '—';
             }
 
             // Editar "Próximos proventos" ajusta o card "Total de dividendos
@@ -6197,7 +6208,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
             // para valores anunciados quanto para as estimativas acima, e
             // também quando a célula não tinha nenhum valor ainda).
             if (linhaVisivel) {
-              aoEditarCelula(c[10 + o], function(novoTxt) {
+              aoEditarCelula(c[11 + o], function(novoTxt) {
                 var novoNum = parseNumeroBR(novoTxt);
                 if (isNaN(novoNum)) novoNum = 0;
                 var anteriorDiv = parseFloat(tr.getAttribute('data-div')) || 0;
@@ -6233,13 +6244,14 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var c = tr.cells;
             var o = temPM ? 1 : 0;
             c[1].textContent = 'Erro';
-            c[3 + o].textContent = 'Erro';
-            c[10 + o].textContent = 'Erro';
-            c[12 + o].textContent = 'Erro';
-            c[13 + o].textContent = '—';
-            c[14 + o].textContent = 'Erro';
+            c[2].textContent = 'Erro';
+            c[4 + o].textContent = 'Erro';
+            c[11 + o].textContent = 'Erro';
+            c[13 + o].textContent = 'Erro';
+            c[14 + o].textContent = '—';
             c[15 + o].textContent = 'Erro';
-            c[16 + o].textContent = '—';
+            c[16 + o].textContent = 'Erro';
+            c[17 + o].textContent = '—';
           });
         })
         .then(function() { return processarRV(startIdx + LOTE); });
