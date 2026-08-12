@@ -10445,6 +10445,10 @@ var estado = {
           '% a.a. (equivalente a '+
           (td*0.85).toFixed(2).replace('.',',')+
           '% após IR de 15%).';
+        // Se um ticker já foi buscado antes desta chamada resolver, o
+        // valuation exibido ainda usaria a taxa padrão (14,75%) mesmo com o
+        // campo já mostrando a Selic — recalcula para manter os dois em sincronia.
+        if(estado.historico && estado.historico.length) recalcular();
       }
     })
     .catch(function(){}); // Silencioso: mantém 14,75% como fallback
@@ -10622,9 +10626,13 @@ function buscar(){
       estado.payoutDefault=false;
 
       // ── Taxa de crescimento esperada ──────────────────────────────────────
+      // "Taxa esperada de crescimento" (p-g) permanece um dado informativo,
+      // calculado via ROE × retenção — mas o crescimento projetado padrão em
+      // cada ano (crescAnos, editável na tabela) começa em 0%, não nesse
+      // valor, para padronizar o ponto de partida do valuation.
       var g=estado.roe*(1-(estado.payout/100));
       estado.taxaCrescEsper=g;
-      estado.crescAnos=[g,g,g,g,g];
+      estado.crescAnos=[0,0,0,0,0];
       estado.crescPerp=3.0;
       estado.taxaDesconto=estado.taxaDesconto||14.75;
       document.getElementById('inp-td').value=estado.taxaDesconto;
@@ -10843,8 +10851,7 @@ function recalcular(){
 }
 
 function resetar(){
-  var g=estado.taxaCrescEsper;
-  estado.crescAnos=[g,g,g,g,g];
+  estado.crescAnos=[0,0,0,0,0];
   estado.crescPerp=3.0;
   // Redefinir para a Selic vigente já carregada
   var selicVigente = estado.taxaDesconto || 14.75;
