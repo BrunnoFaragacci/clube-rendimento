@@ -4163,7 +4163,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var temPM = ativos.some(function(a) { return typeof a.precoMedio === 'number' && !isNaN(a.precoMedio) && a.precoMedio > 0; });
     var colRV = ['Ativo','Segmento','Tipo de FII','Quantidade'];
     if (temPM) colRV.push('Preço médio');
-    colRV.push('Cotação atual','Valor total','Variação','P/L','P/VP','Dividend Yield (12m)','ROE','Próximos proventos','Total de proventos','Preço Alvo (XP)','Upside (XP)','Valor de mercado','Liquidez diária','Vacância média','');
+    colRV.push('Cotação atual','Valor total','Variação','P/L','P/VP','Dividend Yield (12m)','ROE','Próximos proventos','Total de proventos','Preço Alvo (XP)','Upside (XP)','Valuation','Valor de mercado','Liquidez diária','Vacância média','');
     var colRFPos = ['Ativo','Tipo','Aplicação','Vencimento','Taxa','Imposto','Valor aplicado','Posição','Valor líquido','Cupons pagos até o momento','Lucro (R$)','Lucro (%)',''];
     var colRFEmis = ['Ativo','Instituição/emissor identificado','Caixa','Receita líquida','Lucro/Prejuízo','Dívida bruta','Dívida líquida','EBITDA','Dívida bruta/EBITDA','Margem líquida','Índice de Basileia (bancos)'];
     var colCetip = ['', 'Fundo', 'Data da aplicação', 'Qtd. cotas', 'Valor da cota', 'Valor aplicado', 'Valorização', 'Valor líquido', 'Dia pag. rendimento', 'Último dividendo pago', 'Yield (mês)', ''];
@@ -4205,6 +4205,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
       'tabela-rv': colRV, 'tabela-rfpos-banco': colRFPos, 'tabela-rfpos-titpub': colRFPos, 'tabela-rfpos-credito': colRFPos, 'tabela-cetip': colCetip,
       'tabela-previdencia': colPrevidencia, 'tabela-coe': colCOE, 'tabela-tesouro': colTesouro
     };
+    // Colunas que existem na tabela (e no painel de colunas) mas começam
+    // ocultas — o usuário ativa manualmente via "⚙ Colunas" quando quiser.
+    var COLUNAS_OCULTAS_POR_PADRAO = ['Valuation'];
     Array.prototype.forEach.call(D.querySelectorAll('.btn-colunas'), function(btn) {
       var idTabela = btn.dataset.tabela;
       var colunas = MAPA_COLUNAS_TABELAS[idTabela];
@@ -4215,8 +4218,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
         var label = D.createElement('label');
         var chk = D.createElement('input');
         chk.type = 'checkbox';
-        chk.checked = true;
-        chk.addEventListener('change', function() {
+        chk.checked = COLUNAS_OCULTAS_POR_PADRAO.indexOf(nome) === -1;
+        function aplicarVisibilidadeColuna() {
           var estiloId = 'oculta-col-' + idTabela + '-' + idx;
           var estilo = D.getElementById(estiloId);
           if (chk.checked) {
@@ -4228,7 +4231,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
             estilo.textContent = '#' + idTabela + '>thead>tr>th:nth-child(' + n + '),#' + idTabela + '>tbody>tr>td:nth-child(' + n + '){display:none;}';
             D.head.appendChild(estilo);
           }
-        });
+        }
+        chk.addEventListener('change', aplicarVisibilidadeColuna);
+        aplicarVisibilidadeColuna(); // aplica o estado inicial (ex.: coluna oculta por padrão)
         label.appendChild(chk);
         label.appendChild(D.createTextNode(' ' + nome));
         painel.appendChild(label);
@@ -4976,7 +4981,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     // como este indicador de ações). Ocultamos as colunas via CSS, sem alterar
     // os índices fixos usados na montagem das linhas (c[6+o], c[9+o] etc.).
     if (opcoes.fiis && !opcoes.acoes) {
-      var colunasOcultarFII = ['P/L', 'ROE', 'Total de proventos', 'Preço Alvo (XP)', 'Upside (XP)']
+      var colunasOcultarFII = ['P/L', 'ROE', 'Total de proventos', 'Preço Alvo (XP)', 'Upside (XP)', 'Valuation']
         .map(function(nome) { return colRV.indexOf(nome); })
         .filter(function(idx) { return idx !== -1; })
         .map(function(idx) { return idx + 1; }); // nth-child é 1-based
@@ -5558,6 +5563,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         tr.appendChild(cel(D, '—'));                      // total proventos
         tr.appendChild(cel(D, 'Consultando...'));         // preço alvo XP
         tr.appendChild(cel(D, '—'));                      // upside XP
+        tr.appendChild(cel(D, '—'));                      // valuation (manual, editável)
         tr.appendChild(cel(D, 'Consultando...'));         // valor de mercado
         tr.appendChild(cel(D, 'Consultando...'));         // liquidez diária
         tr.appendChild(cel(D, '—'));                      // vacância média
@@ -6092,7 +6098,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
                 if (typeof valorPatrimonialNum === 'number') valorMercadoRV = valorPatrimonialNum;
               }
             }
-            c[15 + o].textContent = fmtGrandeRV(valorMercadoRV);
+            c[16 + o].textContent = fmtGrandeRV(valorMercadoRV);
             // Sem averageDailyVolume3Month, não usamos regularMarketVolume (volume
             // de um único dia) como substituto: gera valores muito distantes da
             // liquidez média real (ver mesma correção na Pesquisa de Ativos). Quando
@@ -6100,11 +6106,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var liqDiariaCotas = dado.averageDailyVolume3Month || null;
             var liqDiariaRS = (liqDiariaCotas && typeof cot === 'number') ? liqDiariaCotas * cot : null;
             if (liqDiariaRS) {
-              c[16 + o].textContent = fmtGrandeRV(liqDiariaRS) + '/dia';
+              c[17 + o].textContent = fmtGrandeRV(liqDiariaRS) + '/dia';
             } else if (extraInvestidor10 && extraInvestidor10.liquidezDiaria) {
-              c[16 + o].textContent = extraInvestidor10.liquidezDiaria + '/dia';
+              c[17 + o].textContent = extraInvestidor10.liquidezDiaria + '/dia';
             } else {
-              c[16 + o].textContent = '—';
+              c[17 + o].textContent = '—';
             }
             if (isFII) {
               // O vacancyRate por imóvel da brapi.dev/api/v2/fii/properties
@@ -6117,14 +6123,14 @@ h2{font-size:32px;letter-spacing:-.02em;}
               // o Investidor10 não responde.
               var vacMedia = mapaFIIVacancia[at.ticker];
               if (extraInvestidor10 && extraInvestidor10.vacancia) {
-                c[17 + o].textContent = extraInvestidor10.vacancia;
+                c[18 + o].textContent = extraInvestidor10.vacancia;
               } else if (typeof vacMedia === 'number') {
-                c[17 + o].textContent = formatarNumero(vacMedia * 100, 2) + '%';
+                c[18 + o].textContent = formatarNumero(vacMedia * 100, 2) + '%';
               } else {
-                c[17 + o].textContent = '—';
+                c[18 + o].textContent = '—';
               }
             } else {
-              c[17 + o].textContent = '—';
+              c[18 + o].textContent = '—';
             }
 
             // Guarda os valores numéricos (não os textos já formatados) desta
@@ -6257,9 +6263,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
             c[11 + o].textContent = 'Erro';
             c[13 + o].textContent = 'Erro';
             c[14 + o].textContent = '—';
-            c[15 + o].textContent = 'Erro';
             c[16 + o].textContent = 'Erro';
-            c[17 + o].textContent = '—';
+            c[17 + o].textContent = 'Erro';
+            c[18 + o].textContent = '—';
           });
         })
         .then(function() { return processarRV(startIdx + LOTE); });
