@@ -1391,15 +1391,18 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
   function extrairAtivos(linhas) {
     var blocos = [];
-    var padrao = /^[A-Z]{4}\d{1,2}$/;
+    // O código-base de 4 caracteres normalmente é só letras, mas há exceções
+    // reais (ex.: B3SA3, da própria B3 S.A.) com um dígito no meio — por
+    // isso [A-Z0-9], não [A-Z], nos 4 primeiros caracteres.
+    var padrao = /^[A-Z0-9]{4}\d{1,2}$/;
     // Direitos de subscrição e recibos (ex.: MXRF12, PETR13) seguem a convenção
     // da B3 de sufixo "1" + dígito de 2 a 8 sobre o ticker-base — nunca
     // representam uma posição real do ativo, por isso são excluídos da análise.
-    var padraoSubscricao = /^[A-Z]{4}1[2-8]$/;
+    var padraoSubscricao = /^[A-Z0-9]{4}1[2-8]$/;
     // Direito de subscrição de ações (não de FII) usa um único dígito final
     // "1" (ON) ou "2" (PN) sobre o ticker-base — ex.: ABCB2 — também nunca é
     // uma posição real, por isso é excluído junto com os recibos acima.
-    var padraoSubscricaoAcao = /^[A-Z]{4}[12]$/;
+    var padraoSubscricaoAcao = /^[A-Z0-9]{4}[12]$/;
 
     for (var i = 0; i < linhas.length; i++) {
       if (!pareceCabecalhoAtivos(linhas[i])) continue;
@@ -1415,7 +1418,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
         var ld = linhas[j];
         if (!Array.isArray(ld) || !ld.length) break;
         var ticker = String(ld[0] === undefined || ld[0] === null ? '' : ld[0]).trim().toUpperCase();
-        if (!padrao.test(ticker)) break;
+        // Uma linha cujo ticker não bate com o padrão é simplesmente pulada
+        // (não encerra o bloco) — o fim de fato é a próxima linha em branco,
+        // checado acima. Um "break" aqui já causou perda total do bloco no
+        // passado: um único ticker atípico logo no início (ex.: B3SA3, antes
+        // do ajuste do padrão acima) descartava todos os ativos seguintes.
+        if (!padrao.test(ticker)) { j++; continue; }
         if (padraoSubscricao.test(ticker) || padraoSubscricaoAcao.test(ticker)) { j++; continue; }
         var qtd = parseNumeroBR(ld[idxQtd]);
         if (!isNaN(qtd) && qtd > 0) {
