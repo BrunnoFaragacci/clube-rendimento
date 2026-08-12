@@ -4207,7 +4207,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     };
     // Colunas que existem na tabela (e no painel de colunas) mas começam
     // ocultas — o usuário ativa manualmente via "⚙ Colunas" quando quiser.
-    var COLUNAS_OCULTAS_POR_PADRAO = ['Valuation'];
+    var COLUNAS_OCULTAS_POR_PADRAO = [];
     Array.prototype.forEach.call(D.querySelectorAll('.btn-colunas'), function(btn) {
       var idTabela = btn.dataset.tabela;
       var colunas = MAPA_COLUNAS_TABELAS[idTabela];
@@ -6064,16 +6064,23 @@ h2{font-size:32px;letter-spacing:-.02em;}
             // Valuation — upside/downside pelo mesmo modelo de fluxo de caixa
             // descontado da tela "Valuation de Fluxo de Caixa" (crescimento
             // projetado padronizado em 0% e taxa de desconto na Selic
-            // vigente), mas usando o lucro líquido TTM já disponível em
-            // financialData (sem chamada extra à API) em vez do histórico
-            // anual completo — a mesma aproximação que aquela tela usa como
-            // fallback quando não há DRE histórica disponível.
+            // vigente). O plano atual da Brapi não libera netIncomeToCommon
+            // nem payoutRatio para a maioria das ações (confirmado via teste
+            // direto, mesmo para PETR4) — por isso os dois têm fallback
+            // calculado a partir de campos que a Brapi sempre libera:
+            // lucro líquido TTM ≈ EPS × ações em circulação (mesmo fallback
+            // já usado pela tela de Valuation quando não há DRE histórica) e
+            // payout ≈ dividendo por ação (12m, via dyVal já calculado
+            // acima) ÷ EPS.
             if (!isFII && !isETF && !isBDR) {
-              var lucroBaseVal   = typeof fin.netIncomeToCommon === 'number' ? fin.netIncomeToCommon : null;
-              var payoutFracVal  = typeof est.payoutRatio === 'number' ? est.payoutRatio : 0;
+              var epsVal         = typeof dado.earningsPerShare === 'number' ? dado.earningsPerShare : null;
               var totalAcoesVal  = typeof est.sharesOutstanding === 'number' ? est.sharesOutstanding : null;
+              var lucroBaseVal   = typeof fin.netIncomeToCommon === 'number' ? fin.netIncomeToCommon :
+                (epsVal && totalAcoesVal ? epsVal * totalAcoesVal : null);
+              var payoutFracVal  = typeof est.payoutRatio === 'number' ? est.payoutRatio :
+                (dyVal !== null && epsVal ? ((dyVal / 100) * cot) / epsVal : 0);
               var tdVal = SELIC_REFERENCIA_AA / 100, gpVal = 0.03, horizonteVal = 3;
-              if (lucroBaseVal && totalAcoesVal && typeof cot === 'number' && tdVal > gpVal) {
+              if (lucroBaseVal && totalAcoesVal && payoutFracVal > 0 && typeof cot === 'number' && tdVal > gpVal) {
                 // Crescimento projetado = 0% em todos os anos, então o fluxo
                 // anual (lucro × payout) permanece constante ao longo do
                 // horizonte de projeção.
