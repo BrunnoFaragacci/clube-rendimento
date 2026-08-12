@@ -6061,6 +6061,36 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var roeVal = typeof fin.returnOnEquity === 'number' ? fin.returnOnEquity * 100 : (isFinite(roeFallback) ? roeFallback : null);
             c[10 + o].textContent  = roeVal !== null                              ? formatarNumero(roeVal, 2) + '%'                  : '—';
 
+            // Valuation — upside/downside pelo mesmo modelo de fluxo de caixa
+            // descontado da tela "Valuation de Fluxo de Caixa" (crescimento
+            // projetado padronizado em 0% e taxa de desconto na Selic
+            // vigente), mas usando o lucro líquido TTM já disponível em
+            // financialData (sem chamada extra à API) em vez do histórico
+            // anual completo — a mesma aproximação que aquela tela usa como
+            // fallback quando não há DRE histórica disponível.
+            if (!isFII && !isETF && !isBDR) {
+              var lucroBaseVal   = typeof fin.netIncomeToCommon === 'number' ? fin.netIncomeToCommon : null;
+              var payoutFracVal  = typeof est.payoutRatio === 'number' ? est.payoutRatio : 0;
+              var totalAcoesVal  = typeof est.sharesOutstanding === 'number' ? est.sharesOutstanding : null;
+              var tdVal = SELIC_REFERENCIA_AA / 100, gpVal = 0.03, horizonteVal = 3;
+              if (lucroBaseVal && totalAcoesVal && typeof cot === 'number' && tdVal > gpVal) {
+                // Crescimento projetado = 0% em todos os anos, então o fluxo
+                // anual (lucro × payout) permanece constante ao longo do
+                // horizonte de projeção.
+                var fluxoAnualVal = lucroBaseVal * payoutFracVal;
+                var vplTotalVal = 0;
+                for (var _hv = 0; _hv < horizonteVal; _hv++) {
+                  vplTotalVal += fluxoAnualVal / Math.pow(1 + tdVal, _hv + 1);
+                }
+                var vtVal = fluxoAnualVal * (1 + gpVal) / (tdVal - gpVal);
+                vplTotalVal += vtVal / Math.pow(1 + tdVal, horizonteVal);
+                var precoJustoVal = vplTotalVal / totalAcoesVal;
+                var upsideVal = ((precoJustoVal / cot) - 1) * 100;
+                c[15 + o].textContent = (upsideVal >= 0 ? '▲ ' : '▼ ') + formatarNumero(Math.abs(upsideVal), 2) + '%';
+                c[15 + o].className = upsideVal >= 0 ? 'pos' : 'neg';
+              }
+            }
+
             // Valor de mercado e liquidez diária (dados já vêm no /api/quote/ principal,
             // com fallback para dados calculados/Investidor10 quando a Brapi não retorna
             // — mesma lógica já aplicada na Pesquisa de Ativos para um único FII).
