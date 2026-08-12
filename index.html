@@ -4989,14 +4989,18 @@ h2{font-size:32px;letter-spacing:-.02em;}
       }
     }
 
-    // "Vacância média" só existe para fundos imobiliários (percentual de área
-    // vaga nos imóveis do portfólio); ocultamos essa coluna quando a análise
-    // não inclui FIIs.
+    // "Vacância média" e "Tipo de FII" só existem para fundos imobiliários;
+    // ocultamos essas colunas quando a análise não inclui FIIs.
     if (!opcoes.fiis) {
-      var idxVacancia = colRV.indexOf('Vacância média');
-      if (idxVacancia !== -1) {
+      var colunasOcultarSemFII = ['Tipo de FII', 'Vacância média']
+        .map(function(nome) { return colRV.indexOf(nome); })
+        .filter(function(idx) { return idx !== -1; })
+        .map(function(idx) { return idx + 1; }); // nth-child é 1-based
+      if (colunasOcultarSemFII.length) {
         var estiloOcultarVac = D.createElement('style');
-        estiloOcultarVac.textContent = '#tabela-rv th:nth-child(' + (idxVacancia + 1) + '),#tabela-rv td:nth-child(' + (idxVacancia + 1) + '){display:none;}';
+        estiloOcultarVac.textContent = colunasOcultarSemFII.map(function(n) {
+          return '#tabela-rv th:nth-child(' + n + '),#tabela-rv td:nth-child(' + n + '){display:none;}';
+        }).join('');
         D.head.appendChild(estiloOcultarVac);
       }
     }
@@ -5018,14 +5022,18 @@ h2{font-size:32px;letter-spacing:-.02em;}
       }
     }
 
-    // "Vacância média" só existe para fundos imobiliários (percentual de área
-    // vaga nos imóveis do portfólio); ocultamos essa coluna quando a análise
-    // não inclui FIIs.
+    // "Vacância média" e "Tipo de FII" só existem para fundos imobiliários;
+    // ocultamos essas colunas quando a análise não inclui FIIs.
     if (!opcoes.fiis) {
-      var idxVacancia = colRV.indexOf('Vacância média');
-      if (idxVacancia !== -1) {
+      var colunasOcultarSemFII = ['Tipo de FII', 'Vacância média']
+        .map(function(nome) { return colRV.indexOf(nome); })
+        .filter(function(idx) { return idx !== -1; })
+        .map(function(idx) { return idx + 1; }); // nth-child é 1-based
+      if (colunasOcultarSemFII.length) {
         var estiloOcultarVac = D.createElement('style');
-        estiloOcultarVac.textContent = '#tabela-rv th:nth-child(' + (idxVacancia + 1) + '),#tabela-rv td:nth-child(' + (idxVacancia + 1) + '){display:none;}';
+        estiloOcultarVac.textContent = colunasOcultarSemFII.map(function(n) {
+          return '#tabela-rv th:nth-child(' + n + '),#tabela-rv td:nth-child(' + n + '){display:none;}';
+        }).join('');
         D.head.appendChild(estiloOcultarVac);
       }
     }
