@@ -9453,6 +9453,9 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
 .field label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);}
 .field input,.field textarea,.field select{padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13.5px;color:var(--ink);}
 .field input:focus,.field textarea:focus{outline:none;border-color:var(--orange);}
+.filtros-fundos{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:16px;}
+.filtro-select{padding:8px 12px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);background:#fff;min-width:160px;}
+.filtro-select:focus{outline:none;border-color:var(--orange);}
 .field textarea{resize:vertical;min-height:72px;}
 .upload-label{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:1.5px dashed var(--orange);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--og);}
 .upload-nome{font-size:12px;color:var(--ink-soft);margin-top:4px;}
@@ -9514,9 +9517,19 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
   </div>
   <p id="status-msg" style="font-size:13px;color:var(--ink-soft);margin-bottom:16px;min-height:18px;"></p>
   <div id="foco-mes-section" hidden></div>
-  <label style="display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft);margin-bottom:16px;cursor:pointer;">
-    <input type="checkbox" id="chk-somente-favoritos"> Somente favoritos
-  </label>
+  <div class="filtros-fundos">
+    <label style="display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft);cursor:pointer;">
+      <input type="checkbox" id="chk-somente-favoritos"> Somente favoritos
+    </label>
+    <select class="filtro-select" id="filtro-gestora"><option value="">Gestora (todas)</option></select>
+    <select class="filtro-select" id="filtro-tipo"><option value="">Tipo (todos)</option></select>
+    <select class="filtro-select" id="filtro-rentabilidade">
+      <option value="">Rentabilidade alvo (todas)</option>
+      <option value="CDI">CDI</option>
+      <option value="PREFIXADO">Pré-fixado</option>
+      <option value="IPCA">IPCA+</option>
+    </select>
+  </div>
   <div id="fundos-grid" class="fundos-grid"></div>
 </div>
 
@@ -9703,6 +9716,10 @@ function chaveSegmentoPadrao(fundoFoco){
 document.addEventListener('DOMContentLoaded',function(){
   var chk=document.getElementById('chk-somente-favoritos');
   if(chk)chk.addEventListener('change',renderizarFundos);
+  ['filtro-gestora','filtro-tipo','filtro-rentabilidade'].forEach(function(id){
+    var sel=document.getElementById(id);
+    if(sel)sel.addEventListener('change',renderizarFundos);
+  });
 });
 
 function status(msg){ document.getElementById('status-msg').textContent = msg; }
@@ -9907,7 +9924,42 @@ function carregarFundos(){
   status('Consultando dados Clube do Rendimento...');
   sb.from(TABELA).select('*').order('favorito',{ascending:false}).order('nome').then(function(r){
     if(r.error){status('Erro ao carregar dados: '+r.error.message);return;}
-    todosFundos=r.data||[];status('');renderizarFundos();
+    todosFundos=r.data||[];status('');popularFiltrosFundos();renderizarFundos();
+  });
+}
+
+// Classifica o texto livre de "Rentabilidade alvo" (ex.: "IPCA+10,20%",
+// "CDI+2%", "Prefixado 15%") num dos 3 grupos do filtro. Sem regex de
+// propósito: um literal de regex escrito aqui é escrito, via template
+// literal (backtick), dentro do script da página principal — as barras
+// invertidas de escape são consumidas nessa transcrição, gerando um regex
+// inválido e um SyntaxError fatal que derruba o script inteiro do popup
+// (mesmo motivo do indexOf('IPCA') já usado no selo do card, acima).
+function classificarRentabilidade(texto){
+  var t=(texto||'').toUpperCase();
+  if(t.indexOf('IPCA')!==-1) return 'IPCA';
+  if(t.indexOf('CDI')!==-1) return 'CDI';
+  if(t.indexOf('PREFIXADO')!==-1||t.indexOf('PRE-FIXADO')!==-1||t.indexOf('PRÉ-FIXADO')!==-1||t.indexOf('PRE FIXADO')!==-1||t.indexOf('PRÉ FIXADO')!==-1||t.indexOf('FIXADO')!==-1) return 'PREFIXADO';
+  return '';
+}
+
+// Preenche as opções de Gestora e Tipo com os valores realmente cadastrados
+// (campos de texto livre) — chamado só quando os dados chegam, para não
+// perder a seleção do usuário a cada nova renderização por filtro.
+function popularFiltrosFundos(){
+  [['filtro-gestora','gestora'],['filtro-tipo','tipo']].forEach(function(par){
+    var sel=document.getElementById(par[0]);
+    if(!sel)return;
+    var valorAtual=sel.value;
+    var valores=[];
+    todosFundos.forEach(function(f){
+      var v=(f[par[1]]||'').trim();
+      if(v&&valores.indexOf(v)===-1)valores.push(v);
+    });
+    valores.sort(function(a,b){return a.localeCompare(b,'pt-BR');});
+    sel.innerHTML='<option value="">'+sel.options[0].textContent+'</option>'+
+      valores.map(function(v){return '<option value="'+v.replace(/"/g,'&quot;')+'">'+v+'</option>';}).join('');
+    if(valores.indexOf(valorAtual)!==-1)sel.value=valorAtual;
   });
 }
 
@@ -9916,7 +9968,16 @@ function renderizarFundos(){
   var logado=!!sessao;
   grid.innerHTML='';
   var somenteFavoritos=document.getElementById('chk-somente-favoritos').checked;
-  var lista=somenteFavoritos?todosFundos.filter(function(f){return !!f.favorito;}):todosFundos;
+  var filtroGestora=document.getElementById('filtro-gestora').value;
+  var filtroTipo=document.getElementById('filtro-tipo').value;
+  var filtroRentabilidade=document.getElementById('filtro-rentabilidade').value;
+  var lista=todosFundos.filter(function(f){
+    if(somenteFavoritos&&!f.favorito)return false;
+    if(filtroGestora&&(f.gestora||'').trim()!==filtroGestora)return false;
+    if(filtroTipo&&(f.tipo||'').trim()!==filtroTipo)return false;
+    if(filtroRentabilidade&&classificarRentabilidade(f.rentabilidade_alvo)!==filtroRentabilidade)return false;
+    return true;
+  });
   renderizarFocoDoMes();
   if(!lista.length){grid.innerHTML='<p style="color:var(--ink-soft);">'+(somenteFavoritos?'Nenhum fundo favoritado ainda.':'Nenhum fundo cadastrado ainda.')+'</p>';return;}
   lista.forEach(function(f){
