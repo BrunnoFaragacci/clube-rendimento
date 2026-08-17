@@ -3354,16 +3354,21 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var wrapResultado = D.getElementById('darf-resultado-wrap');
     var corpoResultado = D.getElementById('darf-resultado-corpo');
 
-    // Só ativos com preço médio identificado na planilha podem ser usados —
-    // sem custo de aquisição não é possível calcular ganho de capital. O
-    // campo "Ativo" é texto livre (ticker digitado), casado contra esta
+    // Todos os ativos da categoria selecionada entram aqui, tenham ou não
+    // preço médio identificado na planilha — o preço médio só é necessário
+    // para calcular o ganho de capital (aba "Calcular DARF"), não para
+    // montar e enviar a ordem de venda por e-mail, que só precisa de
+    // ticker/quantidade. Uma linha sem preço médio aparece na tabela com o
+    // resultado em "—" (ver renderizarLancamentos) e fica de fora do
+    // agrupamento do "Calcular DARF" (ver btnCalcular) até o usuário
+    // preenchê-lo manualmente (clique na célula "Preço médio" para editar).
+    // O campo "Ativo" é texto livre (ticker digitado), casado contra esta
     // lista por nome — ver o clique de btnAdd mais abaixo. Também respeita
     // o filtro "O que você quer analisar?": análise só de Ações não deve
     // trazer FIIs para o DARF, e vice-versa (a.segmentoPlanilha vem direto
     // da seção da planilha em que o ativo foi lido, mesmo campo já usado na
     // coluna "Classe" da tabela de lançamentos).
     var ativosComPM = ativos.filter(function(a) {
-      if (typeof a.precoMedio !== 'number' || a.precoMedio <= 0) return false;
       var isFIIPlanilha = a.segmentoPlanilha === 'fiis';
       if (isFIIPlanilha && !opcoes.fiis) return false;
       if (!isFIIPlanilha && !opcoes.acoes) return false;
@@ -3371,7 +3376,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     });
 
     if (!ativosComPM.length) {
-      elErro.textContent = 'Nenhum ativo com preço médio identificado na planilha enviada — não é possível simular vendas.';
+      elErro.textContent = 'Nenhum ativo identificado na planilha enviada — não é possível simular vendas.';
       elErro.style.display = 'block';
       if (btnAdd) btnAdd.disabled = true;
       return;
@@ -3395,15 +3400,20 @@ h2{font-size:32px;letter-spacing:-.02em;}
         return;
       }
       corpoLanc.innerHTML = lancamentos.map(function(l, idx) {
-        var resultado = (l.precoVenda - l.precoMedio) * l.quantidade - l.custos;
+        // Sem preço médio não é possível calcular o ganho/perda desta linha
+        // (fica de fora do "Calcular DARF" também, ver btnCalcular) — a
+        // ordem de venda por e-mail não depende desse dado, então a linha
+        // continua utilizável para isso mesmo com o resultado em "—".
+        var temPM = typeof l.precoMedio === 'number' && !isNaN(l.precoMedio);
+        var resultado = temPM ? (l.precoVenda - l.precoMedio) * l.quantidade - l.custos : null;
         return '<tr>'
           + '<td><span class="ticker-tag">' + l.ticker + '</span></td>'
           + '<td><span class="ticker-tag">' + (l.classe === 'fiis' ? 'FII' : 'Ação') + '</span></td>'
           + '<td>' + l.dataBR + '</td>'
           + '<td class="darf-editavel" data-idx="' + idx + '" data-campo="quantidade" style="cursor:text;" title="Clique para editar">' + formatarNumero(l.quantidade, 0) + '</td>'
-          + '<td class="darf-editavel" data-idx="' + idx + '" data-campo="precoMedio" style="cursor:text;" title="Clique para editar">' + fmtBRLDarf(l.precoMedio) + '</td>'
+          + '<td class="darf-editavel" data-idx="' + idx + '" data-campo="precoMedio" style="cursor:text;" title="Clique para informar o preço médio">' + (temPM ? fmtBRLDarf(l.precoMedio) : '— (clique p/ informar)') + '</td>'
           + '<td>' + fmtBRLDarf(l.precoVenda) + '</td>'
-          + '<td class="' + (resultado >= 0 ? 'pos' : 'neg') + '">' + (resultado >= 0 ? '' : '-') + fmtBRLDarf(Math.abs(resultado)) + '</td>'
+          + '<td class="' + (resultado === null ? '' : (resultado >= 0 ? 'pos' : 'neg')) + '">' + (resultado === null ? '—' : (resultado >= 0 ? '' : '-') + fmtBRLDarf(Math.abs(resultado))) + '</td>'
           + '<td><button type="button" class="darf-remover" data-idx="' + idx + '" title="Remover">×</button></td>'
           + '</tr>';
       }).join('');
@@ -3423,7 +3433,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         var dataStr = elData.value;
 
         if (!tickerDigitado) { elErro.textContent = 'Informe o ticker do ativo.'; elErro.style.display = 'block'; return; }
-        if (!ativo) { elErro.textContent = 'Ticker não encontrado na carteira com preço médio identificado.'; elErro.style.display = 'block'; return; }
+        if (!ativo) { elErro.textContent = 'Ticker não encontrado na carteira.'; elErro.style.display = 'block'; return; }
         if (isNaN(qtd) || qtd <= 0) { elErro.textContent = 'Informe uma quantidade vendida válida.'; elErro.style.display = 'block'; return; }
         if (isNaN(preco) || preco <= 0) { elErro.textContent = 'Informe um preço de venda válido.'; elErro.style.display = 'block'; return; }
         if (!dataStr) { elErro.textContent = 'Informe a data da venda.'; elErro.style.display = 'block'; return; }
@@ -3493,7 +3503,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
         var valorAtual = lancamentos[idxEd][campo];
         var input = D.createElement('input');
         input.type = 'text';
-        input.value = campo === 'quantidade' ? formatarNumero(valorAtual, 0) : formatarNumero(valorAtual, 2);
+        input.value = (typeof valorAtual === 'number' && !isNaN(valorAtual))
+          ? (campo === 'quantidade' ? formatarNumero(valorAtual, 0) : formatarNumero(valorAtual, 2))
+          : '';
         input.style.cssText = 'width:100%;min-width:60px;border:1px solid var(--orange);border-radius:4px;padding:2px 6px;font:inherit;color:inherit;';
         tdEd.textContent = '';
         tdEd.appendChild(input);
@@ -3656,9 +3668,14 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
     if (btnCalcular) {
       btnCalcular.addEventListener('click', function() {
-        // Agrupa por competência (ano-mês) e classe (ações/FIIs).
+        // Agrupa por competência (ano-mês) e classe (ações/FIIs). Linhas sem
+        // preço médio não entram nesse cálculo (não é possível apurar
+        // ganho/perda sem custo de aquisição) — ficam de fora até o usuário
+        // preencher o preço médio manualmente na tabela (clique na célula).
+        var semPM = lancamentos.filter(function(l) { return typeof l.precoMedio !== 'number' || isNaN(l.precoMedio); });
         var grupos = {};
         lancamentos.forEach(function(l) {
+          if (typeof l.precoMedio !== 'number' || isNaN(l.precoMedio)) return;
           var chave = l.ano + '-' + l.mes + '-' + l.classe;
           if (!grupos[chave]) grupos[chave] = { ano: l.ano, mes: l.mes, classe: l.classe, totalVendido: 0, resultado: 0 };
           var resultadoOp = (l.precoVenda - l.precoMedio) * l.quantidade - l.custos;
@@ -3714,6 +3731,13 @@ h2{font-size:32px;letter-spacing:-.02em;}
           });
         });
 
+        if (semPM.length) {
+          elErro.textContent = '⚠ ' + semPM.length + ' ativo(s) sem preço médio ficaram de fora do cálculo (' +
+            semPM.map(function(l) { return l.ticker; }).join(', ') + ') — informe o preço médio na tabela para incluí-los.';
+          elErro.style.display = 'block';
+        } else {
+          elErro.style.display = 'none';
+        }
         renderizarResultado();
       });
     }
