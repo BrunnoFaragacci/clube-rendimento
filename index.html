@@ -5552,9 +5552,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
         var avisoPmEl = D.getElementById('rv-aviso-pm');
         if (avisoPmEl) {
           if (tickersSemPM.length) {
-            avisoPmEl.textContent = '⚠ Preço médio não informado para ' +
+            avisoPmEl.textContent = '⚠️ Preço médio não informado para ' +
               tickersSemPM.join(', ') + ' — a coluna "Variação" mostra a variação diária ' +
-              'de mercado para esses ativos, não a rentabilidade real do cliente.';
+              'de mercado para esses ativos, não a rentabilidade real.';
             avisoPmEl.style.display = 'block';
           } else {
             avisoPmEl.style.display = 'none';
@@ -5869,12 +5869,25 @@ h2{font-size:32px;letter-spacing:-.02em;}
             // nunca usada por ações domésticas nem por FIIs/ETFs/units) é
             // reforço para o caso raro de bdrSet ainda não ter carregado.
             var isBDR = !isETF && ((bdrSet && bdrSet[at.ticker] === true) || /3[1-9]$/.test(at.ticker));
+            // Reforço extra via perf.sector (summaryProfile.sector, sempre
+            // liberado pela Brapi mesmo quando defaultKeyStatistics/
+            // financialData estão bloqueados): cobre casos reais em que
+            // longName não bate com nenhum padrão acima e a planilha não
+            // marcou segmentoPlanilha='fiis' corretamente (ex.: HGRE11
+            // aparecendo numa análise só de Ações). Exige "FUNDO" + "IMOBILI"
+            // juntos — não apenas "IMOBILI" — para não capturar ações de
+            // incorporadoras/construtoras (ex.: MRVE3, CYRE3), cujo setor
+            // pode vir como "Imobiliário" sem ser um fundo.
+            var setorIndicaFII = typeof perf.sector === 'string' &&
+              perf.sector.toUpperCase().indexOf('FUNDO') !== -1 &&
+              perf.sector.toUpperCase().indexOf('IMOBILI') !== -1;
             var isFII = !isETF && !isBDR && (
               quoteType === 'FUND' ||
               longName.indexOf('FUNDO DE INVESTIMENTO IMOBILI') !== -1 ||
               longName.indexOf('FDO INV IMOB') !== -1 ||
               (longName.indexOf('FUNDO') !== -1 && longName.indexOf('IMOBILI') !== -1) ||
-              at.segmentoPlanilha === 'fiis'
+              at.segmentoPlanilha === 'fiis' ||
+              setorIndicaFII
             );
             var fiiSeg = mapaFIISeg[at.ticker];
             // O campo segmentoAtuacao da brapi frequentemente retorna o rótulo
