@@ -10063,12 +10063,10 @@ function renderizarFundos(){
     campo('Rentabilidade alvo',f.rentabilidade_alvo);
     campo('Início',f.data_inicio?new Date(f.data_inicio+'T00:00:00').toLocaleDateString('pt-BR'):null);
     campo('Taxa de administração',(f.taxa_administracao!==null&&f.taxa_administracao!==undefined)?Number(f.taxa_administracao).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'% a.a.':null);
-    campo('Dividend Yield (12m)',(f.dividend_yield_12m!==null&&f.dividend_yield_12m!==undefined)?Number(f.dividend_yield_12m).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%':null);
     campo('E-mail da gestora',f.email_gestora);
     campo('Estratégia',f.estrategia);
     campo('Ativos',f.ativos);
     campo('Tamanho',f.tamanho_mm?'R$ '+Number(f.tamanho_mm).toLocaleString('pt-BR',{minimumFractionDigits:1})+' MM':null);
-    campo('Valor da cota',f.cota?'R$ '+Number(f.cota).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):null);
     campo('Dia de pagamento',f.dia_pagamento?f.dia_pagamento+'º dia útil':null);
     campo('Lâmina',f.lamina_url,true);
     // Últimos rendimentos pagos
