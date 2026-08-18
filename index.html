@@ -3070,6 +3070,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var resumoCetip = opcoes.cetip
       ? '<div class="resumo-card cetip-print-card"><span class="resumo-label">Total em fundos fechados</span><span class="resumo-valor" id="tot-cetip">—</span></div>' +
         '<div class="resumo-card cetip-print-card"><span class="resumo-label">Quantidade de ativos</span><span class="resumo-valor">' + qtdCetip + '</span></div>' +
+        '<div class="resumo-card cetip-print-card"><span class="resumo-label">Valorização total (R$)</span><span class="resumo-valor" id="tot-valorizacao-cetip">—</span></div>' +
         '<div class="resumo-card resumo-card-verde cetip-print-card"><span class="resumo-label" id="tot-div-label">Dividendos pagos no último mês (R$)</span><span class="resumo-valor resumo-valor-verde" id="tot-div-recente">—</span></div>' +
         '<div class="resumo-card resumo-card-verde cetip-print-card"><span class="resumo-label">Dividendos pagos no último mês (%)</span><span class="resumo-valor resumo-valor-verde" id="tot-dy-carteira-mes">—</span></div>'
       : '';
@@ -3205,7 +3206,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       '</div>'
     ) : '';
 
-        var numCards = (opcoes.rv?6:0) + ((opcoes.acoes && !opcoes.fiis)?1:0) + (opcoes.rf?3:0) + (opcoes.cetip?4:0) +
+        var numCards = (opcoes.rv?6:0) + ((opcoes.acoes && !opcoes.fiis)?1:0) + (opcoes.rf?3:0) + (opcoes.cetip?5:0) +
           (opcoes.previdencia?3:0) + (opcoes.coe?2:0) + (opcoes.tesouro?3:0);
     var gridCols = 'repeat(' + numCards + ',1fr)';
 
@@ -5129,6 +5130,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var totRfTipoEls = {};
     TIPOS_RF.forEach(function(t) { totRfTipoEls[t] = D.getElementById('tot-rf-tipo-' + t); });
     var totCetipEl    = D.getElementById('tot-cetip');
+    var totValorizacaoCetipEl = D.getElementById('tot-valorizacao-cetip');
     var totGeralEl    = D.getElementById('tot-geral');
     var totDivEl      = D.getElementById('tot-div-recente');
     var totDivLblEl   = D.getElementById('tot-div-label');
@@ -5198,7 +5200,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       });
     }
 
-    var totRV = 0, totRF = 0, totCetip = 0;
+    var totRV = 0, totRF = 0, totCetip = 0, totValorizacaoCetip = 0;
     var totAcoesOnly = 0, totFIIsOnly = 0;
     var totRFPorTipo = {};
     // Somas para a linha de total (tfoot) de cada tabela de posição de RF —
@@ -7687,6 +7689,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
         corpoCetip.innerHTML = '';
         totCetip = 0;
+        totValorizacaoCetip = 0;
         todosAtivos = todosAtivos.filter(function(a) { return a.classe !== 'Cetip'; });
 
         if (!cetipFundos.length) {
@@ -7789,6 +7792,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           }
           if (typeof fundo.valorLiquido === 'number' && typeof fundo.valorAplicado === 'number') {
             var ganhoValorizacaoRS = fundo.valorLiquido - fundo.valorAplicado;
+            totValorizacaoCetip += ganhoValorizacaoRS;
             var spanGanhoRS = D.createElement('span');
             spanGanhoRS.style.cssText = 'display:block;font-size:11.5px;font-weight:400;';
             spanGanhoRS.className = ganhoValorizacaoRS >= 0 ? 'pos' : 'neg';
@@ -7993,6 +7997,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
         });
 
         if (totCetipEl) totCetipEl.textContent = 'R$ ' + formatarNumero(totCetip, 2);
+        if (totValorizacaoCetipEl) {
+          totValorizacaoCetipEl.textContent = (totValorizacaoCetip >= 0 ? '+' : '') + 'R$ ' + formatarNumero(totValorizacaoCetip, 2);
+          totValorizacaoCetipEl.className = 'resumo-valor ' + (totValorizacaoCetip >= 0 ? 'pos' : 'neg');
+        }
 
         // ── Total dos últimos dividendos pagos ───────────────────────────────────
         // Para cada fundo, soma-se o valor do seu evento mais recente × qtdCotas
