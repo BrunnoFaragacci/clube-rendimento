@@ -9613,12 +9613,10 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
         <div class="field full"><label>Rentabilidade alvo</label><input type="text" id="f-rentabilidade" placeholder="Ex.: IPCA+10,20%  /  CDI+2%  /  Prefixado 15%"></div>
         <div class="field"><label>Data de início</label><input type="date" id="f-data-inicio"></div>
         <div class="field"><label>Taxa de administração (% a.a.)</label><input type="text" id="f-taxa-adm" placeholder="Ex.: 1,20"></div>
-        <div class="field"><label>Dividend Yield 12 meses (%)</label><input type="text" id="f-dy12m" placeholder="Ex.: 14,00"></div>
         <div class="field full"><label>E-mail da gestora</label><input type="email" id="f-email-gestora" placeholder="Ex.: ri@gestora.com.br"></div>
         <div class="field full"><label>Estratégia de alocação</label><textarea id="f-estrategia" placeholder="Descreva a estratégia do fundo..."></textarea></div>
         <div class="field full"><label>Ativos do fundo</label><textarea id="f-ativos" placeholder="Liste os principais ativos dentro do fundo..."></textarea></div>
         <div class="field"><label>Tamanho (R$ MM)</label><input type="text" id="f-tamanho" placeholder="Ex.: 250,5"></div>
-        <div class="field"><label>Valor da cota (R$)</label><input type="text" id="f-cota" placeholder="Ex.: 11,97"></div>
         <div class="field"><label>Dia útil de pagamento</label><input type="number" id="f-dia" placeholder="Ex.: 10" min="1" max="31"></div>
         <div class="field full">
           <label>Lâmina do fundo (PDF)</label>
@@ -10247,11 +10245,9 @@ function abrirFormulario(f){
   v('f-rentabilidade',f?f.rentabilidade_alvo:'');
   v('f-data-inicio',f?f.data_inicio:'');
   v('f-taxa-adm',(f&&f.taxa_administracao!==null&&f.taxa_administracao!==undefined)?String(f.taxa_administracao).replace('.',','):'');
-  v('f-dy12m',(f&&f.dividend_yield_12m!==null&&f.dividend_yield_12m!==undefined)?String(f.dividend_yield_12m).replace('.',','):'');
   v('f-email-gestora',f?f.email_gestora:'');
   v('f-estrategia',f?f.estrategia:'');v('f-ativos',f?f.ativos:'');
   v('f-tamanho',f?f.tamanho_mm:'');
-  v('f-cota',f&&f.cota!==null?String(f.cota).replace('.',','):'');
   v('f-dia',f?f.dia_pagamento:'');
   document.getElementById('lamina-nome').textContent=(f&&f.lamina_url)?'Atual: '+f.lamina_url.split('/').pop():'';
   // Carregar eventos (ultimos_eventos é JSON string)
@@ -10278,8 +10274,6 @@ async function salvarFundo(){
   var nome=document.getElementById('f-nome').value.trim();
   var ticker=document.getElementById('f-ticker').value.trim();
   if(!nome||!ticker){erro.textContent='Nome e Ticker são obrigatórios.';return;}
-  var cotaRaw=document.getElementById('f-cota').value.trim().replace(',','.');
-  var cota=cotaRaw?parseFloat(cotaRaw):null;
   var dia=document.getElementById('f-dia').value?parseInt(document.getElementById('f-dia').value,10):null;
   var tamanho=document.getElementById('f-tamanho').value?parseFloat(document.getElementById('f-tamanho').value.replace(',','.')):null;
   botao.disabled=true;botao.innerHTML='<span class="spinner"></span>Salvando...';
@@ -10293,7 +10287,6 @@ async function salvarFundo(){
       laminaUrl=sb.storage.from(BUCKET).getPublicUrl(nomeArq).data.publicUrl;
     }
     var taxaAdmRaw=document.getElementById('f-taxa-adm').value.trim().replace(',','.');
-    var dy12mRaw=document.getElementById('f-dy12m').value.trim().replace(',','.');
     var dados={
       nome:nome,ticker:ticker,
       gestora:document.getElementById('f-gestora').value.trim()||null,
@@ -10301,11 +10294,10 @@ async function salvarFundo(){
       rentabilidade_alvo:document.getElementById('f-rentabilidade').value.trim()||null,
       data_inicio:document.getElementById('f-data-inicio').value||null,
       taxa_administracao:taxaAdmRaw?parseFloat(taxaAdmRaw):null,
-      dividend_yield_12m:dy12mRaw?parseFloat(dy12mRaw):null,
       email_gestora:document.getElementById('f-email-gestora').value.trim()||null,
       estrategia:document.getElementById('f-estrategia').value.trim()||null,
       ativos:document.getElementById('f-ativos').value.trim()||null,
-      tamanho_mm:tamanho,cota:cota,dia_pagamento:dia,
+      tamanho_mm:tamanho,dia_pagamento:dia,
       ultimos_eventos:eventosAtuais.length?JSON.stringify(eventosAtuais):null
     };
     if(laminaUrl)dados.lamina_url=laminaUrl;
