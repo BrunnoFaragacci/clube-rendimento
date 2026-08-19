@@ -3001,6 +3001,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     }
     var sRF = opcoes.rf
       ? '<div id="pdf-secao-rf" class="pdf-secao">' +
+        '<div id="pdf-secao-diversificacao-rf">' +
         '<p class="subquadro-titulo">Diversificação da renda fixa</p>' +
         '<div class="rf-div-grid">' +
           '<div class="rf-div-col">' +
@@ -3034,19 +3035,24 @@ h2{font-size:32px;letter-spacing:-.02em;}
               : '') +
           '</div>' +
         '</div>' +
+        '</div>' +
         '<p class="subquadro-titulo">Posição e rentabilidade</p>' +
-        '<h3 class="subquadro-titulo">Ativos bancários — CDB, LCI, LCA, LCD</h3>' +
-        toolbarColunas('tabela-rfpos-banco', true) +
-        '<div class="table-wrap" id="table-wrap-tabela-rfpos-banco"><table id="tabela-rfpos-banco" class="tabela-rf-pos tabela-com-exclusao"><thead><tr>' + cabRFPos + '</tr></thead><tbody id="rfpos-banco-corpo"></tbody></table></div>' +
+        '<div id="banco-rf-secao" hidden>' +
+          '<h3 class="subquadro-titulo">Ativos bancários — CDB, LCI, LCA, LCD</h3>' +
+          toolbarColunas('tabela-rfpos-banco', true) +
+          '<div class="table-wrap" id="table-wrap-tabela-rfpos-banco"><table id="tabela-rfpos-banco" class="tabela-rf-pos tabela-com-exclusao"><thead><tr>' + cabRFPos + '</tr></thead><tbody id="rfpos-banco-corpo"></tbody></table></div>' +
+        '</div>' +
         '<div id="bcb-rf-secao"></div>' +
         '<div id="titpub-rf-secao" hidden>' +
           '<h3 class="subquadro-titulo">Título público — Tesouro Direto</h3>' +
           toolbarColunas('tabela-rfpos-titpub', true) +
           '<div class="table-wrap" id="table-wrap-tabela-rfpos-titpub"><table id="tabela-rfpos-titpub" class="tabela-rf-pos tabela-com-exclusao"><thead><tr>' + cabRFPos + '</tr></thead><tbody id="rfpos-titpub-corpo"></tbody></table></div>' +
         '</div>' +
-        '<h3 class="subquadro-titulo">Crédito privado — CRI, CRA, debêntures</h3>' +
-        toolbarColunas('tabela-rfpos-credito', true) +
-        '<div class="table-wrap" id="table-wrap-tabela-rfpos-credito"><table id="tabela-rfpos-credito" class="tabela-rf-pos tabela-com-exclusao"><thead><tr>' + cabRFPos + '</tr></thead><tbody id="rfpos-credito-corpo"></tbody></table></div>' +
+        '<div id="credito-rf-secao" hidden>' +
+          '<h3 class="subquadro-titulo">Crédito privado — CRI, CRA, debêntures</h3>' +
+          toolbarColunas('tabela-rfpos-credito', true) +
+          '<div class="table-wrap" id="table-wrap-tabela-rfpos-credito"><table id="tabela-rfpos-credito" class="tabela-rf-pos tabela-com-exclusao"><thead><tr>' + cabRFPos + '</tr></thead><tbody id="rfpos-credito-corpo"></tbody></table></div>' +
+        '</div>' +
         '<div id="cp-rf-secao"></div>' +
         '<div id="xp-secao"></div>' +
         construirCardInsight('rf') +
@@ -4974,36 +4980,41 @@ h2{font-size:32px;letter-spacing:-.02em;}
     // sua própria condição interna de renderização, além das opções de
     // classe de ativo marcadas na tela inicial.
     var ITENS_PDF_EXPORT = [
-      { id: 'carteira-insight-card', rotulo: 'Insights (carteira geral)' },
       { id: 'resumo-grid', rotulo: 'Resumo (quadrantes)' },
       { id: 'pdf-secao-alocacao', rotulo: 'Alocação da carteira' },
-      { id: 'pdf-secao-diversificacao', rotulo: 'Metas de diversificação' },
+      { id: 'pdf-secao-diversificacao', rotulo: 'Diversificação' },
+      { id: 'pdf-secao-diversificacao-rf', rotulo: 'Diversificação' },
       { id: 'pdf-secao-graficos-rv', rotulo: 'Gráfico de Diversificação' },
       { id: 'pdf-carteira-wrap', rotulo: 'Ações/FIIs' },
       { id: 'rv-insight-card', rotulo: 'Insights (Ações/FIIs)' },
       { id: 'pdf-secao-fii-composicao', rotulo: 'Portfólio dos FIIs' },
       { id: 'pdf-secao-rf', rotulo: 'Renda Fixa' },
+      { id: ['bcb-rf-secao', 'cp-rf-secao'], rotulo: 'Indicadores fundamentalistas' },
       { id: 'rf-insight-card', rotulo: 'Insights (Renda Fixa)' },
       { id: 'cetip-secao-wrap', rotulo: 'Fundos Cetipados' },
       { id: 'pdf-secao-previdencia', rotulo: 'Previdência Privada' },
       { id: 'pdf-secao-coe', rotulo: 'COE' },
       { id: 'pdf-secao-tesouro', rotulo: 'Tesouro Direto' }
     ];
+    // Alguns itens agrupam mais de um id sob um único rótulo/checkbox (ex.:
+    // "Indicadores fundamentalistas" cobre bcb-rf-secao e cp-rf-secao, que
+    // nunca aparecem juntos, mas têm ids distintos). idsDoItemPdf normaliza
+    // para array; chaveItemPdf usa o primeiro id como valor do checkbox.
+    function idsDoItemPdf(item) { return Array.isArray(item.id) ? item.id : [item.id]; }
+    function chaveItemPdf(item) { return idsDoItemPdf(item)[0]; }
     function itensPdfDisponiveis() {
-      // No modo "somente Insights", só o card de Insights fica visível na
-      // tela (o resto é ocultado via CSS) — então é o único item que faz
-      // sentido oferecer para exportação.
-      if (opcoes.somenteInsights) {
-        return ITENS_PDF_EXPORT.filter(function(item) { return item.id === 'carteira-insight-card'; });
-      }
-      return ITENS_PDF_EXPORT.filter(function(item) { return !!D.getElementById(item.id); });
+      return ITENS_PDF_EXPORT.filter(function(item) {
+        return idsDoItemPdf(item).some(function(id) { return !!D.getElementById(id); });
+      });
     }
     function executarExportacaoPdf(idsSelecionados) {
       var ocultados = [];
       itensPdfDisponiveis().forEach(function(item) {
-        if (idsSelecionados.indexOf(item.id) === -1) {
-          var el = D.getElementById(item.id);
-          if (el) { el.classList.add('pdf-secao-oculta-export'); ocultados.push(el); }
+        if (idsSelecionados.indexOf(chaveItemPdf(item)) === -1) {
+          idsDoItemPdf(item).forEach(function(id) {
+            var el = D.getElementById(id);
+            if (el) { el.classList.add('pdf-secao-oculta-export'); ocultados.push(el); }
+          });
         }
       });
       D.body.classList.add('modo-exportar-pdf');
@@ -5023,7 +5034,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       overlay.style.cssText = 'position:fixed;inset:0;background:rgba(17,17,17,.55);z-index:400;display:flex;align-items:center;justify-content:center;';
       var caixas = itensDisponiveis.map(function(item) {
         return '<label style="display:flex;align-items:center;gap:10px;padding:8px 0;font-size:14px;color:var(--ink);cursor:pointer;">' +
-          '<input type="checkbox" class="pdf-selecao-item" value="' + item.id + '" checked> ' + item.rotulo + '</label>';
+          '<input type="checkbox" class="pdf-selecao-item" value="' + chaveItemPdf(item) + '" checked> ' + item.rotulo + '</label>';
       }).join('');
       overlay.innerHTML =
         '<div style="background:#fff;border-radius:16px;padding:28px 32px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 25px 70px rgba(0,0,0,.4);">' +
@@ -6783,9 +6794,13 @@ h2{font-size:32px;letter-spacing:-.02em;}
         // criada aqui (não durante o loop) para já nascer com a soma final.
         if (corpoRFPosBanco && corpoRFPosBanco.children.length) {
           tfBancoRefs = criarTfootRF(D.getElementById('tabela-rfpos-banco'), totTfBanco);
+          var secaoBanco = D.getElementById('banco-rf-secao');
+          if (secaoBanco) secaoBanco.hidden = false;
         }
         if (corpoRFPosCredito && corpoRFPosCredito.children.length) {
           tfCreditoRefs = criarTfootRF(D.getElementById('tabela-rfpos-credito'), totTfCredito);
+          var secaoCredito = D.getElementById('credito-rf-secao');
+          if (secaoCredito) secaoCredito.hidden = false;
         }
         if (corpoRFPosTitPub && corpoRFPosTitPub.children.length) {
           tfTitPubRefs = criarTfootRF(D.getElementById('tabela-rfpos-titpub'), totTfTitPub);
