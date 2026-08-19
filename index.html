@@ -3295,6 +3295,33 @@ h2{font-size:32px;letter-spacing:-.02em;}
           '<input type="number" class="rb-tol-inp" id="rb-tol" value="0.5" min="0" max="10" step="0.1">' +
         '</div>' +
       '</div>' +
+      /* Alocação por classe de ativo: mesma ideia da tabela por ativo logo
+         abaixo, mas agregada por classe (Ações/FIIs, Renda Fixa, Fundos
+         Cetipados etc.) — % atual calculado automaticamente, % Meta editável
+         pelo assessor (não existe uma "Carteira Recomendada" por classe para
+         sugerir sozinho, ao contrário do que a tabela por ativo já faz). */
+      '<p class="subquadro-titulo">Alocação por classe de ativo</p>' +
+      '<div class="table-wrap">' +
+        '<table class="rb-table">' +
+          '<thead><tr>' +
+            '<th>Classe</th>' +
+            '<th>Valor atual</th>' +
+            '<th style="text-align:center;">% Atual</th>' +
+            '<th style="text-align:center;">% Meta</th>' +
+            '<th style="text-align:center;">Status</th>' +
+            '<th>Diferença para a meta</th>' +
+          '</tr></thead>' +
+          '<tbody id="rb-classes-corpo"></tbody>' +
+          '<tfoot><tr>' +
+            '<td><strong>Total</strong></td>' +
+            '<td id="rb-classes-total-valor"><strong>—</strong></td>' +
+            '<td></td>' +
+            '<td id="rb-classes-total-meta" style="text-align:center;font-weight:700;">—</td>' +
+            '<td></td>' +
+            '<td></td>' +
+          '</tr></tfoot>' +
+        '</table>' +
+      '</div>' +
       '<div class="rb-alerta" id="rb-alerta">⚠ A soma das metas não totaliza 100,00%. Ajuste os percentuais.</div>' +
       '<div class="rb-alerta" id="rb-aviso-rec" style="display:none;background:#fff3cd;border-color:#ffc107;color:#856404;">ⓘ Nenhum ativo da sua carteira foi encontrado na Carteira Recomendada. Os pesos foram definidos com base na alocação atual.</div>' +
       /* Tabela */
@@ -4680,34 +4707,53 @@ h2{font-size:32px;letter-spacing:-.02em;}
     // Botão "⛶ Expandir": faz a tabela cobrir a tela como se fosse tela
     // cheia (overlay position:fixed cobrindo a janela, com fundo escurecido
     // atrás), mas sem chamar a Fullscreen API real do navegador — só CSS. A
-    // barra de ferramentas (filtro/Expandir/Colunas) é uma irmã do
-    // .table-wrap na marcação (toolbarColunas roda antes dele), então
-    // precisa ser movida para dentro do overlay ao expandir (senão o botão
+    // barra de ferramentas (filtro/Expandir/Colunas), e quaisquer checkboxes
+    // extras de filtro por badge entre ela e a tabela (ver
+    // checkboxFiltroBadge), são irmãs do .table-wrap na marcação — precisam
+    // ser movidas em bloco para dentro do overlay ao expandir (senão o botão
     // "Recolher" fica escondido atrás da tabela cobrindo a tela) — e
-    // devolvida ao lugar original ao recolher, usando um comentário como
-    // marcador de posição.
+    // devolvidas ao lugar original ao recolher, usando um comentário como
+    // marcador de posição. "Esc" também recolhe, igual clicar no botão.
+    var expansoesAtivas = [];
     Array.prototype.forEach.call(D.querySelectorAll('.btn-expandir-tabela'), function(btn) {
       var idTabela = btn.dataset.tabela;
       var wrap = D.getElementById('table-wrap-' + idTabela);
       if (!wrap) return;
-      var toolbar = wrap.previousElementSibling;
-      var temToolbar = toolbar && toolbar.classList.contains('tabela-colunas-toolbar');
+      // Sobe pelos irmãos anteriores até achar a barra de ferramentas de
+      // verdade, juntando no caminho qualquer elemento extra (checkboxes).
+      var grupo = [];
+      var el = wrap.previousElementSibling;
+      while (el) {
+        grupo.unshift(el);
+        if (el.classList.contains('tabela-colunas-toolbar')) break;
+        el = el.previousElementSibling;
+      }
+      var temToolbar = grupo.length > 0 && grupo[0].classList.contains('tabela-colunas-toolbar');
       var marcador = temToolbar ? D.createComment('toolbar-' + idTabela) : null;
-      btn.addEventListener('click', function() {
-        var expandido = wrap.classList.toggle('table-wrap-expandido');
+      var anchorParent = temToolbar ? grupo[0].parentNode : null;
+      function alternar(forcarRecolher) {
+        var expandido = forcarRecolher ? false : !wrap.classList.contains('table-wrap-expandido');
+        wrap.classList.toggle('table-wrap-expandido', expandido);
         btn.classList.toggle('ativo', expandido);
         btn.textContent = expandido ? '⛶ Recolher' : '⛶ Expandir';
         D.body.classList.toggle('modo-tabela-expandida', expandido);
         if (temToolbar) {
           if (expandido) {
-            toolbar.parentNode.insertBefore(marcador, toolbar);
-            wrap.insertBefore(toolbar, wrap.firstChild);
+            anchorParent.insertBefore(marcador, grupo[0]);
+            grupo.slice().reverse().forEach(function(g) { wrap.insertBefore(g, wrap.firstChild); });
           } else if (marcador.parentNode) {
-            marcador.parentNode.insertBefore(toolbar, marcador);
+            grupo.forEach(function(g) { anchorParent.insertBefore(g, marcador); });
             marcador.remove();
           }
         }
-      });
+        if (expandido) { if (expansoesAtivas.indexOf(alternar) === -1) expansoesAtivas.push(alternar); }
+        else { var i = expansoesAtivas.indexOf(alternar); if (i !== -1) expansoesAtivas.splice(i, 1); }
+      }
+      btn.addEventListener('click', function() { alternar(false); });
+    });
+    D.addEventListener('keydown', function(e) {
+      if (e.key !== 'Escape' || !expansoesAtivas.length) return;
+      expansoesAtivas.slice().forEach(function(alternar) { alternar(true); });
     });
 
     if (opcoes.fiis) {
@@ -8532,6 +8578,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       if (!novaJanela.closed) {
         statusR.textContent = '';
         preencherDiversificacao(todosAtivos, D, totRV + totRF + totCetip);
+        preencherDiversificacaoPorClasse(D);
         preencherAlocacaoCarteira();
         prepararInsightGeral();
       }
@@ -8685,6 +8732,97 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
       desenhar('todos');
       selectEl.addEventListener('change', function() { desenhar(this.value); });
+    }
+
+    /* ── Alocação por classe de ativo (acima da tabela por ativo) ────────────*/
+
+    // Agrega os totais já calculados por classe (mesmos usados nos
+    // quadrantes de resumo) — não depende de todosAtivos/Carteira
+    // Recomendada, então roda independente de preencherDiversificacao. Meta
+    // por classe é sempre editável pelo assessor (sem fonte automática) e
+    // compartilha a Tolerância ±% da tabela por ativo (mesmo campo rb-tol).
+    function preencherDiversificacaoPorClasse(D) {
+      var corpo = D.getElementById('rb-classes-corpo');
+      if (!corpo) return;
+      var classes = [];
+      if (opcoes.rv && totRV > 0) classes.push({ nome: 'Ações/FIIs', valor: totRV });
+      if (opcoes.rf && totRF > 0) classes.push({ nome: 'Renda Fixa', valor: totRF });
+      if (opcoes.cetip && totCetip > 0) classes.push({ nome: 'Fundos Cetipados', valor: totCetip });
+      if (opcoes.previdencia && totPrevidencia > 0) classes.push({ nome: 'Previdência Privada', valor: totPrevidencia });
+      if (opcoes.coe && totCOE > 0) classes.push({ nome: 'COE', valor: totCOE });
+      if (opcoes.tesouro && totTesouroPlanilha > 0) classes.push({ nome: 'Tesouro Direto', valor: totTesouroPlanilha });
+
+      var totalGeral = classes.reduce(function(acc, c) { return acc + c.valor; }, 0);
+      if (!classes.length || !totalGeral) {
+        corpo.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:#6b7280;font-style:italic;">Nenhuma classe com valor disponível.</td></tr>';
+        return;
+      }
+
+      var totEl = D.getElementById('rb-classes-total-valor');
+      if (totEl) totEl.innerHTML = '<strong>R$ ' + formatarNumero(totalGeral, 2) + '</strong>';
+
+      corpo.innerHTML = '';
+      classes.forEach(function(c, idx) {
+        var pctAtual = (c.valor / totalGeral) * 100;
+        var tr = D.createElement('tr');
+        tr.appendChild(cel(D, c.nome));
+        tr.appendChild(cel(D, 'R$ ' + formatarNumero(c.valor, 2)));
+        tr.appendChild(cel(D, formatarNumero(pctAtual, 2) + '%', ''));
+        var tdMeta = D.createElement('td'); tdMeta.style.textAlign = 'center';
+        var inp = D.createElement('input');
+        inp.type = 'number'; inp.className = 'rb-meta-inp';
+        inp.min = 0; inp.max = 100; inp.step = 0.01;
+        inp.value = formatarNumero(pctAtual, 2);
+        inp.id = 'rb-classe-inp-' + idx;
+        inp.addEventListener('input', function() { recalcularClasses(); });
+        tdMeta.appendChild(inp);
+        tr.appendChild(tdMeta);
+        var tdSt = D.createElement('td'); tdSt.id = 'rb-classe-status-' + idx; tdSt.style.textAlign = 'center';
+        tr.appendChild(tdSt);
+        var tdDiff = D.createElement('td'); tdDiff.id = 'rb-classe-diff-' + idx;
+        tr.appendChild(tdDiff);
+        corpo.appendChild(tr);
+      });
+
+      function recalcularClasses() {
+        var TOLER = parseFloat(((D.getElementById('rb-tol') || {}).value) || '0.5');
+        var somaMeta = 0;
+        var metas = classes.map(function(_, idx) {
+          var inp = D.getElementById('rb-classe-inp-' + idx);
+          var v = parseFloat((inp && inp.value) || '0') || 0;
+          somaMeta += v;
+          return v;
+        });
+        var metaTotalEl = D.getElementById('rb-classes-total-meta');
+        var somaOk = Math.abs(somaMeta - 100) < 0.05;
+        if (metaTotalEl) {
+          metaTotalEl.innerHTML = '<strong style="color:' + (somaOk ? 'var(--green)' : 'var(--red)') + '">' + formatarNumero(somaMeta, 2) + '%</strong>';
+        }
+        classes.forEach(function(c, idx) {
+          var pctAtual = (c.valor / totalGeral) * 100;
+          var meta = metas[idx];
+          var diff = meta - pctAtual;
+          var absDiff = Math.abs(diff);
+          var diffValor = (meta / 100) * totalGeral - c.valor;
+
+          var tdSt = D.getElementById('rb-classe-status-' + idx);
+          if (tdSt) {
+            if (absDiff <= TOLER) tdSt.innerHTML = '<span class="rb-status-ok">✓ Na meta</span>';
+            else if (diff > 0) tdSt.innerHTML = '<span class="rb-status-abaixo">▼ Abaixo ' + formatarNumero(absDiff, 2) + '%</span>';
+            else tdSt.innerHTML = '<span class="rb-status-acima">▲ Acima ' + formatarNumero(absDiff, 2) + '%</span>';
+          }
+
+          var tdDiff = D.getElementById('rb-classe-diff-' + idx);
+          if (tdDiff) {
+            if (absDiff <= TOLER) tdDiff.innerHTML = '<span class="rb-acao-manter">— Manter</span>';
+            else if (diffValor > 0) tdDiff.innerHTML = '<span class="rb-acao-comprar">▲ Aportar R$ ' + formatarNumero(diffValor, 2) + '</span>';
+            else tdDiff.innerHTML = '<span class="rb-acao-vender">▼ Reduzir R$ ' + formatarNumero(Math.abs(diffValor), 2) + '</span>';
+          }
+        });
+      }
+      recalcularClasses();
+      var tolI = D.getElementById('rb-tol');
+      if (tolI) tolI.addEventListener('input', recalcularClasses);
     }
 
     /* ── Diversificação estilo AUVP / Blaster ─────────────────────────────────*/
