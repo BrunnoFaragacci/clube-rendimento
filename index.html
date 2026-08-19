@@ -2913,18 +2913,41 @@ h2{font-size:32px;letter-spacing:-.02em;}
           '</div>' +
         '</div>'
       : '';
+    // Card de Insights compartilhado pelas 3 seções (Ações/FIIs, Renda Fixa e
+    // carteira geral) — três modos de geração (Chamar atenção / Relacionamento
+    // / Prompt personalizado) e uma caixa de ajuste (follow-up) que aparece
+    // depois da primeira mensagem, para o usuário pedir refinamentos sem
+    // precisar gerar tudo de novo do zero. A lógica de cada botão fica em
+    // habilitarInsightSecao(), mais adiante no script.
+    function construirCardInsight(prefix, classeExtra) {
+      return '<div class="ia-insight-card' + (classeExtra ? ' ' + classeExtra : '') + '" id="' + prefix + '-insight-card" style="display:none;background:linear-gradient(135deg,#f8f9fc,#eef1f8);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin-top:16px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:10px;">💡 Insights</div>' +
+        '<div id="' + prefix + '-insight-opcoes" style="display:flex;flex-wrap:wrap;gap:8px;">' +
+          '<button type="button" class="btn-insight-modo" data-modo="chamar_atencao" id="' + prefix + '-insight-btn-atencao" style="background:#fff;border:1.5px solid #C8442D;color:#C8442D;font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:8px;cursor:pointer;">⚠️ Chamar atenção</button>' +
+          '<button type="button" class="btn-insight-modo" data-modo="relacionamento" id="' + prefix + '-insight-btn-relacionamento" style="background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:8px;cursor:pointer;">🤝 Análise de carteira - Cliente relacionamento</button>' +
+          '<button type="button" class="btn-insight-modo" data-modo="custom" id="' + prefix + '-insight-btn-custom" style="background:#fff;border:1.5px solid var(--line);color:var(--ink-soft);font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:8px;cursor:pointer;">✏️ Prompt personalizado</button>' +
+        '</div>' +
+        '<div id="' + prefix + '-insight-custom-wrap" style="display:none;margin-top:10px;">' +
+          '<textarea id="' + prefix + '-insight-custom-texto" placeholder="Descreva como você quer que a mensagem seja..." style="width:100%;min-height:60px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);resize:vertical;"></textarea>' +
+          '<button type="button" id="' + prefix + '-insight-custom-gerar" style="margin-top:6px;background:var(--orange);border:1.5px solid var(--orange);color:#fff;font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 16px;border-radius:8px;cursor:pointer;">Gerar com esse prompt</button>' +
+        '</div>' +
+        '<p id="' + prefix + '-insight-status" style="display:none;font-size:12.5px;color:var(--ink-soft);margin:10px 0 0;"></p>' +
+        '<p id="' + prefix + '-insight-texto" style="display:none;font-size:13.5px;color:var(--ink);line-height:1.6;margin:10px 0 0;white-space:pre-wrap;"></p>' +
+        '<div id="' + prefix + '-insight-acoes" style="display:none;margin-top:10px;gap:16px;flex-wrap:wrap;align-items:center;">' +
+          '<button type="button" id="' + prefix + '-insight-copiar" style="background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 16px;border-radius:8px;cursor:pointer;">📋 Copiar mensagem</button>' +
+          '<div style="display:flex;gap:8px;flex:1;min-width:220px;">' +
+            '<input type="text" id="' + prefix + '-insight-followup-input" placeholder="Pedir um ajuste (ex.: mais curto, mais informal...)" style="flex:1;padding:7px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:12.5px;color:var(--ink);">' +
+            '<button type="button" id="' + prefix + '-insight-followup-enviar" style="background:#fff;border:1.5px solid var(--line);color:var(--ink);font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:8px;cursor:pointer;white-space:nowrap;">Ajustar</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
     var sRV = opcoes.rv
       ? '<div id="pdf-carteira-wrap" class="pdf-secao">' + sLimitesRiscoFII +
         '<p id="rv-aviso-pm" style="display:none;background:#fff3f0;border:1px solid var(--orange);color:var(--orange-dark);border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:12px;"></p>' +
         toolbarColunas('tabela-rv', true) +
         '<div class="table-wrap" id="table-wrap-tabela-rv"><table id="tabela-rv" class="tabela-com-exclusao"><thead><tr>' + cabRV + '</tr></thead><tbody id="rv-corpo"></tbody></table></div>' +
-        '<div class="ia-insight-card" id="rv-insight-card" style="display:none;background:linear-gradient(135deg,#f8f9fc,#eef1f8);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin-top:16px;">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">' +
-            '<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);">💡 Insights</div>' +
-            '<button type="button" id="rv-insight-btn" style="background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 16px;border-radius:8px;cursor:pointer;">Gerar análise</button>' +
-          '</div>' +
-          '<p id="rv-insight-texto" style="display:none;font-size:13.5px;color:var(--ink);line-height:1.6;margin:10px 0 0;"></p>' +
-        '</div>' +
+        construirCardInsight('rv') +
         '</div>'
       : '';
     var sFIIComposicao = opcoes.fiis
@@ -3023,13 +3046,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '<div class="table-wrap" id="table-wrap-tabela-rfpos-credito"><table id="tabela-rfpos-credito" class="tabela-rf-pos tabela-com-exclusao"><thead><tr>' + cabRFPos + '</tr></thead><tbody id="rfpos-credito-corpo"></tbody></table></div>' +
         '<div id="cp-rf-secao"></div>' +
         '<div id="xp-secao"></div>' +
-        '<div class="ia-insight-card" id="rf-insight-card" style="display:none;background:linear-gradient(135deg,#f8f9fc,#eef1f8);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin-top:16px;">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">' +
-            '<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);">💡 Insights</div>' +
-            '<button type="button" id="rf-insight-btn" style="background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 16px;border-radius:8px;cursor:pointer;">Gerar análise</button>' +
-          '</div>' +
-          '<p id="rf-insight-texto" style="display:none;font-size:13.5px;color:var(--ink);line-height:1.6;margin:10px 0 0;"></p>' +
-        '</div>' +
+        construirCardInsight('rf') +
         '</div>'
       : '';
     var sCetipDiv = '<div id="cetip-classe-secao"' + ((opcoes.cetip && totaisCetip && totaisCetip.total > 0) ? '' : ' hidden') + '>' +
@@ -3247,13 +3264,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       '<div class="resumo" id="resumo-grid" style="--resumo-cols:' + gridCols + ';">' + resumoRV + resumoRF + resumoCetip + resumoPrevidencia + resumoCOE + resumoTesouro +
       '</div>' +
       '<div class="quadrantes-ocultos-barra" id="quadrantes-ocultos-barra"></div>' +
-      '<div class="ia-insight-card pdf-secao" id="carteira-insight-card" style="display:none;background:linear-gradient(135deg,#f8f9fc,#eef1f8);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin-bottom:24px;">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">' +
-          '<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);">💡 Insights</div>' +
-          '<button type="button" id="carteira-insight-btn" style="background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 16px;border-radius:8px;cursor:pointer;">Gerar análise</button>' +
-        '</div>' +
-        '<p id="carteira-insight-texto" style="display:none;font-size:13.5px;color:var(--ink);line-height:1.6;margin:10px 0 0;white-space:pre-wrap;"></p>' +
-      '</div>' +
+      construirCardInsight('carteira', 'pdf-secao') +
       sAlocacaoCarteira + sDarf + sDiversificacao + sGraficosRV + sRV + sFIIComposicao + sRF + sCetip + sPrevidencia + sCOE + sTesouro +
       '</div>' +
       '<script src=\"https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js\"><\/script>' +
@@ -5150,40 +5161,112 @@ h2{font-size:32px;letter-spacing:-.02em;}
         D.body.removeChild(ta);
       }
     }
-    function habilitarInsightSecao(secao, resumo, idCard, idTexto, idBtn) {
-      var elCard = D.getElementById(idCard);
-      var elBtn = D.getElementById(idBtn);
-      if (!elCard || !elBtn) return;
+    // habilitarInsightSecao: ativa um card de Insights (Ações/FIIs, Renda
+    // Fixa ou carteira geral, identificados pelo "prefix" do id de cada
+    // elemento). Oferece 3 modos de geração — Chamar atenção (mensagem fria,
+    // com gatilhos de urgência/curiosidade, para o cliente responder),
+    // Relacionamento (tom tranquilo, para cliente que já responde) e Prompt
+    // personalizado (o usuário descreve o que quer) — e, depois da primeira
+    // mensagem, uma caixa de ajuste (follow-up) para pedir refinamentos sem
+    // perder o contexto: o front-end guarda o histórico de mensagens
+    // (estado.mensagens) e reenvia para a Edge Function a cada ajuste, que
+    // devolve a conversa atualizada.
+    function habilitarInsightSecao(secao, resumo, prefix) {
+      var elCard = D.getElementById(prefix + '-insight-card');
+      if (!elCard) return;
       elCard.style.display = 'block';
-      elBtn.onclick = function() {
-        var elTexto = D.getElementById(idTexto);
-        if (!elTexto) return;
-        elBtn.disabled = true;
-        elBtn.textContent = 'Gerando...';
-        elTexto.style.display = 'block';
-        elTexto.textContent = 'Gerando mensagem...';
-        fetch(_SB_URL + '/functions/v1/portfolio-insights', {
+
+      var elOpcoes = D.getElementById(prefix + '-insight-opcoes');
+      var elCustomWrap = D.getElementById(prefix + '-insight-custom-wrap');
+      var elCustomTexto = D.getElementById(prefix + '-insight-custom-texto');
+      var elStatus = D.getElementById(prefix + '-insight-status');
+      var elTexto = D.getElementById(prefix + '-insight-texto');
+      var elAcoes = D.getElementById(prefix + '-insight-acoes');
+      var elCopiar = D.getElementById(prefix + '-insight-copiar');
+      var elFollowupInput = D.getElementById(prefix + '-insight-followup-input');
+      var elFollowupBtn = D.getElementById(prefix + '-insight-followup-enviar');
+      var elBtnAtencao = D.getElementById(prefix + '-insight-btn-atencao');
+      var elBtnRelacionamento = D.getElementById(prefix + '-insight-btn-relacionamento');
+      var elBtnCustom = D.getElementById(prefix + '-insight-btn-custom');
+      var elBtnCustomGerar = D.getElementById(prefix + '-insight-custom-gerar');
+      if (!elOpcoes || !elTexto) return;
+
+      var estado = { modo: null, promptCustom: null, mensagens: null };
+
+      function chamarApi(payload) {
+        return fetch(_SB_URL + '/functions/v1/portfolio-insights', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _SB_KEY, 'apikey': _SB_KEY },
-          body: JSON.stringify({ secao: secao, resumo: resumo })
-        })
-          .then(function(r) { return r.json(); })
+          body: JSON.stringify(payload)
+        }).then(function(r) { return r.json(); });
+      }
+
+      function gerar(modo, promptCustom) {
+        estado.modo = modo;
+        estado.promptCustom = promptCustom || null;
+        estado.mensagens = null;
+        elOpcoes.style.display = 'none';
+        if (elCustomWrap) elCustomWrap.style.display = 'none';
+        elAcoes.style.display = 'none';
+        elTexto.style.display = 'none';
+        elStatus.style.display = 'block';
+        elStatus.style.color = 'var(--ink-soft)';
+        elStatus.textContent = '🪄 Gerando mensagem...';
+        chamarApi({ secao: secao, resumo: resumo, modo: modo, promptCustom: promptCustom || null })
           .then(function(d) {
             if (d && d.insight) {
+              estado.mensagens = d.mensagens || null;
+              elStatus.style.display = 'none';
+              elTexto.style.display = 'block';
               elTexto.textContent = d.insight;
-              elBtn.disabled = false;
-              elBtn.textContent = '📋 Copiar mensagem';
-              elBtn.onclick = function() { copiarTextoParaAreaTransferencia(d.insight, elBtn); };
+              elAcoes.style.display = 'flex';
+              if (elFollowupInput) elFollowupInput.value = '';
             } else {
-              elTexto.textContent = 'Não foi possível gerar a mensagem agora.';
-              elBtn.disabled = false;
-              elBtn.textContent = 'Tentar novamente';
+              elStatus.style.color = '#C8442D';
+              elStatus.textContent = 'Não foi possível gerar a mensagem agora.' + (d && d.error ? ' ' + d.error : '');
+              elOpcoes.style.display = 'flex';
             }
           })
           .catch(function() {
-            elTexto.textContent = 'Não foi possível gerar a mensagem agora.';
-            elBtn.disabled = false;
-            elBtn.textContent = 'Tentar novamente';
+            elStatus.style.color = '#C8442D';
+            elStatus.textContent = 'Não foi possível gerar a mensagem agora.';
+            elOpcoes.style.display = 'flex';
+          });
+      }
+
+      if (elBtnAtencao) elBtnAtencao.onclick = function() { gerar('chamar_atencao', null); };
+      if (elBtnRelacionamento) elBtnRelacionamento.onclick = function() { gerar('relacionamento', null); };
+      if (elBtnCustom) elBtnCustom.onclick = function() {
+        if (elCustomWrap) elCustomWrap.style.display = (elCustomWrap.style.display === 'none') ? 'block' : 'none';
+      };
+      if (elBtnCustomGerar) elBtnCustomGerar.onclick = function() {
+        var texto = elCustomTexto ? elCustomTexto.value.trim() : '';
+        if (!texto) { if (elCustomTexto) elCustomTexto.focus(); return; }
+        gerar('custom', texto);
+      };
+      if (elCopiar) elCopiar.onclick = function() { copiarTextoParaAreaTransferencia(elTexto.textContent, elCopiar); };
+      if (elFollowupBtn) elFollowupBtn.onclick = function() {
+        var instrucao = elFollowupInput ? elFollowupInput.value.trim() : '';
+        if (!instrucao || !estado.mensagens) return;
+        var textoOriginalBtn = elFollowupBtn.textContent;
+        elFollowupBtn.disabled = true;
+        elFollowupBtn.textContent = 'Ajustando...';
+        chamarApi({ secao: secao, modo: estado.modo, promptCustom: estado.promptCustom, mensagens: estado.mensagens, novaInstrucao: instrucao })
+          .then(function(d) {
+            elFollowupBtn.disabled = false;
+            elFollowupBtn.textContent = textoOriginalBtn;
+            if (d && d.insight) {
+              estado.mensagens = d.mensagens || estado.mensagens;
+              elTexto.textContent = d.insight;
+              elFollowupInput.value = '';
+            } else {
+              novaJanela.alert('Não foi possível ajustar a mensagem agora.' + (d && d.error ? ' ' + d.error : ''));
+            }
+          })
+          .catch(function() {
+            elFollowupBtn.disabled = false;
+            elFollowupBtn.textContent = textoOriginalBtn;
+            novaJanela.alert('Não foi possível ajustar a mensagem agora.');
           });
       };
     }
@@ -5679,7 +5762,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
             upsideMedioPct: totUpsideDenominador > 0 ? (totUpsideNumerador / totUpsideDenominador) : undefined,
             maioresPosicoes: maioresPosicoesRV,
             porSegmento: porSegmentoRV
-          }, 'rv-insight-card', 'rv-insight-texto', 'rv-insight-btn');
+          }, 'rv');
         }
         return processarComposicaoFII();
       }
@@ -6686,7 +6769,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
             qtdAtivos: rfItens.length,
             porIndexador: totaisRF.porIndexador,
             maioresEmissores: maioresEmissoresRF
-          }, 'rf-insight-card', 'rf-insight-texto', 'rf-insight-btn');
+          }, 'rf');
         }
         return processarIndicadoresBancariosRF();
       }
@@ -8255,7 +8338,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         };
       }
 
-      habilitarInsightSecao('geral', resumoGeral, 'carteira-insight-card', 'carteira-insight-texto', 'carteira-insight-btn');
+      habilitarInsightSecao('geral', resumoGeral, 'carteira');
     }
 
     // ── Alocação da carteira: rosca com seletor "Todos os tipos" / classe ──
@@ -9787,7 +9870,7 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
       <div class="form-grid">
         <div class="field full" style="background:#f8f9fc;border:1px dashed var(--line);border-radius:10px;padding:14px 16px;margin-bottom:2px;">
           <label>🪄 Preencher automaticamente pela lâmina (PDF)</label>
-          <p style="font-size:12px;color:var(--ink-soft);margin:2px 0 8px;">Selecione o PDF da lâmina/prospecto do fundo para preencher os campos abaixo automaticamente. Revise os dados antes de salvar — o arquivo também fica anexado ao fundo.</p>
+          <p style="font-size:12px;color:var(--ink-soft);margin:2px 0 8px;">Selecione o PDF da lâmina/prospecto do fundo para preencher os campos abaixo automaticamente. Revise os dados antes de salvar — o arquivo também fica anexado ao fundo. Apenas as 50 primeiras páginas do PDF são analisadas.</p>
           <label class="upload-label">📄 Selecionar PDF<input type="file" id="lamina-input" accept=".pdf" hidden></label>
           <p class="upload-nome" id="lamina-nome"></p>
           <p class="upload-nome" id="lamina-extracao-status" style="display:none;font-weight:600;"></p>
