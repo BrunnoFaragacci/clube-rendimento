@@ -2967,6 +2967,17 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '<div class="colunas-painel" data-tabela="' + idTabela + '" hidden></div></div>';
     }
 
+    // Checkbox de filtro por sinalização visual (ver badge-alerta-rf/
+    // badge-alerta-rf-aviso em processarRFPos) — mesmo padrão de "Só
+    // marcados em vermelho", mas filtrando por uma classe de badge
+    // específica em vez da marcação manual. Várias chamadas para a mesma
+    // idTabela funcionam em OU: qualquer uma marcada já mostra a linha
+    // (ver aplicarFiltrosLinha).
+    function checkboxFiltroBadge(idTabela, classeBadge, rotulo) {
+      return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-soft);white-space:nowrap;cursor:pointer;">' +
+        '<input type="checkbox" class="filtro-badge-input" data-tabela="' + idTabela + '" data-badge-classe="' + classeBadge + '"> ' + rotulo + '</label>';
+    }
+
     var sGraficosRV = opcoes.rv
       ? '<div id="pdf-secao-graficos-rv" class="pdf-secao">' +
         '<h2 class="quadro-titulo graf-toggle" id="graf-toggle-btn" style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;">' +
@@ -3129,9 +3140,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '</div>' +
         '<p class="subquadro-titulo">Posição e rentabilidade</p>' +
         '<div id="banco-rf-secao" hidden>' +
-          '<h3 class="subquadro-titulo">Ativos bancários — CDB, LCI, LCA, LCD</h3>' +
-          '<p class="nota">A cobertura do FGC (R$ 250 mil por CPF por instituição) é somada por banco — um alerta pode aparecer mesmo com títulos individuais abaixo do limite. "Vai ultrapassar o FGC no vencimento" é uma estimativa com base na taxa contratada.</p>' +
+          '<h3 class="subquadro-titulo">Ativos bancários</h3>' +
           toolbarColunas('tabela-rfpos-banco', true) +
+          '<div style="display:flex;gap:14px;flex-wrap:wrap;margin:-6px 0 10px;">' +
+            checkboxFiltroBadge('tabela-rfpos-banco', 'badge-alerta-rf', 'Só acima do FGC') +
+            checkboxFiltroBadge('tabela-rfpos-banco', 'badge-alerta-rf-aviso', 'Só vai ultrapassar o FGC no vencimento') +
+          '</div>' +
           '<div class="table-wrap" id="table-wrap-tabela-rfpos-banco"><table id="tabela-rfpos-banco" class="tabela-rf-pos tabela-com-exclusao"><thead><tr>' + cabRFPos + '</tr></thead><tbody id="rfpos-banco-corpo"></tbody></table></div>' +
         '</div>' +
         '<div id="bcb-rf-secao"></div>' +
@@ -3141,10 +3155,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
           '<div class="table-wrap" id="table-wrap-tabela-rfpos-titpub"><table id="tabela-rfpos-titpub" class="tabela-rf-pos tabela-com-exclusao"><thead><tr>' + cabRFPos + '</tr></thead><tbody id="rfpos-titpub-corpo"></tbody></table></div>' +
         '</div>' +
         '<div id="credito-rf-secao" hidden>' +
-          '<h3 class="subquadro-titulo">Crédito privado — CRI, CRA, debêntures</h3>' +
-          '<p class="nota">Alerta de concentração quando a soma investida em um mesmo emissor (todas as séries/emissões) ultrapassa 3% do total em Renda Fixa.</p>' +
+          '<h3 class="subquadro-titulo">Crédito privado</h3>' +
           toolbarColunas('tabela-rfpos-credito', true) +
-          '<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-soft);white-space:nowrap;cursor:pointer;margin:-6px 0 10px;"><input type="checkbox" class="filtro-cp-3pct-input" data-tabela="tabela-rfpos-credito"> Só exposição acima de 3%</label>' +
+          '<div style="margin:-6px 0 10px;">' + checkboxFiltroBadge('tabela-rfpos-credito', 'badge-alerta-rf', 'Só exposição acima de 3%') + '</div>' +
           '<div class="table-wrap" id="table-wrap-tabela-rfpos-credito"><table id="tabela-rfpos-credito" class="tabela-rf-pos tabela-com-exclusao"><thead><tr>' + cabRFPos + '</tr></thead><tbody id="rfpos-credito-corpo"></tbody></table></div>' +
         '</div>' +
         '<div id="cp-rf-secao"></div>' +
@@ -4512,15 +4525,17 @@ h2{font-size:32px;letter-spacing:-.02em;}
       colunas.forEach(function(c, idx) { if (c) idxColunasFiltro.push(idx); });
       var input = D.querySelector('.filtro-tabela-input[data-tabela="' + idTabela + '"]');
       var checkMarcados = D.querySelector('.filtro-marcados-input[data-tabela="' + idTabela + '"]');
-      // Checkbox extra, hoje só presente na tabela de Crédito privado (ver
-      // badge-alerta-rf em processarRFPos) — filtra pela mesma sinalização
-      // visual "Exposição acima de 3%", sem precisar duplicar este mecanismo.
-      var checkAlerta = D.querySelector('.filtro-cp-3pct-input[data-tabela="' + idTabela + '"]');
+      // Checkboxes extras, hoje presentes nas tabelas de Ativos bancários e
+      // Crédito privado (ver checkboxFiltroBadge/badge-alerta-rf em
+      // processarRFPos) — cada um filtra por uma classe de badge diferente;
+      // quando mais de um está marcado na mesma tabela, funciona em OU (uma
+      // linha só tem um tipo de badge por vez, então "E" nunca mostraria nada).
+      var checksBadge = Array.prototype.slice.call(D.querySelectorAll('.filtro-badge-input[data-tabela="' + idTabela + '"]'));
       if (!idxColunasFiltro.length || !input) return;
       function aplicarFiltrosLinha() {
         var termo = normalizar(input.value);
         var somenteMarcados = checkMarcados && checkMarcados.checked;
-        var somenteAlerta = checkAlerta && checkAlerta.checked;
+        var classesBadgeMarcadas = checksBadge.filter(function(c) { return c.checked; }).map(function(c) { return c.dataset.badgeClasse; });
         var grupos = agruparLinhasTabela(tbody);
         grupos.forEach(function(grupo) {
           var bateTexto = !termo || idxColunasFiltro.some(function(idx) {
@@ -4530,8 +4545,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
           var bateMarcado = !somenteMarcados || Array.prototype.some.call(grupo[0].children, function(td) {
             return td.classList && td.classList.contains('marcado-manual');
           });
-          var bateAlerta = !somenteAlerta || Array.prototype.some.call(grupo[0].children, function(td) {
-            return td.querySelector && td.querySelector('.badge-alerta-rf');
+          var bateAlerta = !classesBadgeMarcadas.length || classesBadgeMarcadas.some(function(classe) {
+            return Array.prototype.some.call(grupo[0].children, function(td) {
+              return td.querySelector && td.querySelector('.' + classe);
+            });
           });
           var bate = bateTexto && bateMarcado && bateAlerta;
           grupo.forEach(function(tr) { tr.style.display = bate ? '' : 'none'; });
@@ -4539,7 +4556,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       }
       input.addEventListener('input', aplicarFiltrosLinha);
       if (checkMarcados) checkMarcados.addEventListener('change', aplicarFiltrosLinha);
-      if (checkAlerta) checkAlerta.addEventListener('change', aplicarFiltrosLinha);
+      checksBadge.forEach(function(c) { c.addEventListener('change', aplicarFiltrosLinha); });
     });
 
     // Colunas ajustáveis: arrastar a borda direita de um cabeçalho redimensiona
@@ -5643,6 +5660,14 @@ h2{font-size:32px;letter-spacing:-.02em;}
       td.classList.add('cel-editavel');
       td.addEventListener('click', function() {
         if (td.querySelector('input')) return; // já em edição
+        // Badges de alerta (ver badge-alerta-rf/badge-alerta-rf-aviso em
+        // processarRFPos) são decoração informativa, não parte do valor
+        // editável — removidos antes de ler o texto e recolocados depois de
+        // confirmar, para não entrarem no campo de edição nem serem perdidos.
+        var badge = td.querySelector('.badge-alerta-rf, .badge-alerta-rf-aviso');
+        var quebraLinha = td.querySelector('br');
+        if (badge) badge.remove();
+        if (quebraLinha) quebraLinha.remove();
         var valorAtual = td.textContent === '—' ? '' : td.textContent;
         var input = D.createElement('input');
         input.type = 'text';
@@ -5659,6 +5684,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           var novo = input.value.trim();
           var anterior = valorAtual;
           td.textContent = novo === '' ? '—' : novo;
+          if (badge) { td.appendChild(D.createElement('br')); td.appendChild(badge); }
           if (typeof td._recalcularAoEditar === 'function') {
             try { td._recalcularAoEditar(novo, anterior); } catch (e) {}
           }
