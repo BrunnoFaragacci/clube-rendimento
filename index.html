@@ -2932,7 +2932,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           '<button type="button" id="' + prefix + '-insight-custom-gerar" style="margin-top:6px;background:var(--orange);border:1.5px solid var(--orange);color:#fff;font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 16px;border-radius:8px;cursor:pointer;">Gerar com esse prompt</button>' +
         '</div>' +
         '<p id="' + prefix + '-insight-status" style="display:none;font-size:12.5px;color:var(--ink-soft);margin:10px 0 0;"></p>' +
-        '<p id="' + prefix + '-insight-texto" style="display:none;font-size:13.5px;color:var(--ink);line-height:1.6;margin:10px 0 0;white-space:pre-wrap;"></p>' +
+        '<div id="' + prefix + '-insight-conversa" style="display:none;flex-direction:column;gap:10px;margin-top:10px;max-height:420px;overflow-y:auto;"></div>' +
         '<div id="' + prefix + '-insight-acoes" style="display:none;margin-top:10px;gap:16px;flex-wrap:wrap;align-items:center;">' +
           '<button type="button" id="' + prefix + '-insight-copiar" style="background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 16px;border-radius:8px;cursor:pointer;">📋 Copiar mensagem</button>' +
           '<div style="display:flex;gap:8px;flex:1;min-width:220px;">' +
@@ -5180,7 +5180,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var elCustomWrap = D.getElementById(prefix + '-insight-custom-wrap');
       var elCustomTexto = D.getElementById(prefix + '-insight-custom-texto');
       var elStatus = D.getElementById(prefix + '-insight-status');
-      var elTexto = D.getElementById(prefix + '-insight-texto');
+      var elConversa = D.getElementById(prefix + '-insight-conversa');
       var elAcoes = D.getElementById(prefix + '-insight-acoes');
       var elCopiar = D.getElementById(prefix + '-insight-copiar');
       var elFollowupInput = D.getElementById(prefix + '-insight-followup-input');
@@ -5189,9 +5189,28 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var elBtnRelacionamento = D.getElementById(prefix + '-insight-btn-relacionamento');
       var elBtnCustom = D.getElementById(prefix + '-insight-btn-custom');
       var elBtnCustomGerar = D.getElementById(prefix + '-insight-custom-gerar');
-      if (!elOpcoes || !elTexto) return;
+      if (!elOpcoes || !elConversa) return;
 
-      var estado = { modo: null, promptCustom: null, mensagens: null };
+      var estado = { modo: null, promptCustom: null, mensagens: null, ultimoTexto: '' };
+
+      // Cada geração e cada ajuste viram uma entrada nova no histórico (em
+      // vez de sobrescrever a anterior), para o usuário poder comparar as
+      // versões — a caixa tem scroll próprio (ver max-height no card).
+      function adicionarBolhaResposta(texto) {
+        var bolha = D.createElement('div');
+        bolha.style.cssText = 'background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13.5px;color:var(--ink);line-height:1.6;white-space:pre-wrap;';
+        bolha.textContent = texto;
+        elConversa.appendChild(bolha);
+        estado.ultimoTexto = texto;
+        elConversa.scrollTop = elConversa.scrollHeight;
+      }
+      function adicionarLinhaAjuste(texto) {
+        var linha = D.createElement('div');
+        linha.style.cssText = 'align-self:flex-end;max-width:85%;background:var(--orange-light);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--ink-soft);font-style:italic;';
+        linha.textContent = '✏️ Ajuste pedido: ' + texto;
+        elConversa.appendChild(linha);
+        elConversa.scrollTop = elConversa.scrollHeight;
+      }
 
       function chamarApi(payload) {
         return fetch(_SB_URL + '/functions/v1/portfolio-insights', {
@@ -5208,7 +5227,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
         elOpcoes.style.display = 'none';
         if (elCustomWrap) elCustomWrap.style.display = 'none';
         elAcoes.style.display = 'none';
-        elTexto.style.display = 'none';
+        elConversa.style.display = 'none';
+        elConversa.innerHTML = '';
         elStatus.style.display = 'block';
         elStatus.style.color = 'var(--ink-soft)';
         elStatus.textContent = '🪄 Gerando mensagem...';
@@ -5217,8 +5237,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
             if (d && d.insight) {
               estado.mensagens = d.mensagens || null;
               elStatus.style.display = 'none';
-              elTexto.style.display = 'block';
-              elTexto.textContent = d.insight;
+              elConversa.style.display = 'flex';
+              adicionarBolhaResposta(d.insight);
               elAcoes.style.display = 'flex';
               if (elFollowupInput) elFollowupInput.value = '';
             } else {
@@ -5244,20 +5264,21 @@ h2{font-size:32px;letter-spacing:-.02em;}
         if (!texto) { if (elCustomTexto) elCustomTexto.focus(); return; }
         gerar('custom', texto);
       };
-      if (elCopiar) elCopiar.onclick = function() { copiarTextoParaAreaTransferencia(elTexto.textContent, elCopiar); };
+      if (elCopiar) elCopiar.onclick = function() { copiarTextoParaAreaTransferencia(estado.ultimoTexto, elCopiar); };
       if (elFollowupBtn) elFollowupBtn.onclick = function() {
         var instrucao = elFollowupInput ? elFollowupInput.value.trim() : '';
         if (!instrucao || !estado.mensagens) return;
         var textoOriginalBtn = elFollowupBtn.textContent;
         elFollowupBtn.disabled = true;
         elFollowupBtn.textContent = 'Ajustando...';
+        adicionarLinhaAjuste(instrucao);
         chamarApi({ secao: secao, modo: estado.modo, promptCustom: estado.promptCustom, mensagens: estado.mensagens, novaInstrucao: instrucao })
           .then(function(d) {
             elFollowupBtn.disabled = false;
             elFollowupBtn.textContent = textoOriginalBtn;
             if (d && d.insight) {
               estado.mensagens = d.mensagens || estado.mensagens;
-              elTexto.textContent = d.insight;
+              adicionarBolhaResposta(d.insight);
               elFollowupInput.value = '';
             } else {
               novaJanela.alert('Não foi possível ajustar a mensagem agora.' + (d && d.error ? ' ' + d.error : ''));
