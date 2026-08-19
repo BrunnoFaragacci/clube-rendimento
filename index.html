@@ -922,7 +922,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     if (m) { var p3 = parseFloat(m[1].replace(',', '.')); return isNaN(p3) ? null : SELIC_REFERENCIA_AA * (p3 / 100); }
     m = /selic\s*\+\s*(\d+(?:[.,]\d+)?)\s*%?/.exec(norm);
     if (m) { var p4 = parseFloat(m[1].replace(',', '.')); return isNaN(p4) ? null : SELIC_REFERENCIA_AA + p4; }
-    m = /ipca\s*\+\s*(\d+(?:[.,]\d+)?)\s*%?/.exec(norm);
+    m = /ipc[\s-]?a\s*\+\s*(\d+(?:[.,]\d+)?)\s*%?/.exec(norm);
     if (m) { var p5 = parseFloat(m[1].replace(',', '.')); return isNaN(p5) ? null : IPCA_MEDIO_AA + p5; }
     return null;
   }
@@ -3144,6 +3144,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           '<h3 class="subquadro-titulo">Crédito privado — CRI, CRA, debêntures</h3>' +
           '<p class="nota">Alerta de concentração quando a soma investida em um mesmo emissor (todas as séries/emissões) ultrapassa 3% do total em Renda Fixa.</p>' +
           toolbarColunas('tabela-rfpos-credito', true) +
+          '<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-soft);white-space:nowrap;cursor:pointer;margin:-6px 0 10px;"><input type="checkbox" class="filtro-cp-3pct-input" data-tabela="tabela-rfpos-credito"> Só exposição acima de 3%</label>' +
           '<div class="table-wrap" id="table-wrap-tabela-rfpos-credito"><table id="tabela-rfpos-credito" class="tabela-rf-pos tabela-com-exclusao"><thead><tr>' + cabRFPos + '</tr></thead><tbody id="rfpos-credito-corpo"></tbody></table></div>' +
         '</div>' +
         '<div id="cp-rf-secao"></div>' +
@@ -4511,10 +4512,15 @@ h2{font-size:32px;letter-spacing:-.02em;}
       colunas.forEach(function(c, idx) { if (c) idxColunasFiltro.push(idx); });
       var input = D.querySelector('.filtro-tabela-input[data-tabela="' + idTabela + '"]');
       var checkMarcados = D.querySelector('.filtro-marcados-input[data-tabela="' + idTabela + '"]');
+      // Checkbox extra, hoje só presente na tabela de Crédito privado (ver
+      // badge-alerta-rf em processarRFPos) — filtra pela mesma sinalização
+      // visual "Exposição acima de 3%", sem precisar duplicar este mecanismo.
+      var checkAlerta = D.querySelector('.filtro-cp-3pct-input[data-tabela="' + idTabela + '"]');
       if (!idxColunasFiltro.length || !input) return;
       function aplicarFiltrosLinha() {
         var termo = normalizar(input.value);
         var somenteMarcados = checkMarcados && checkMarcados.checked;
+        var somenteAlerta = checkAlerta && checkAlerta.checked;
         var grupos = agruparLinhasTabela(tbody);
         grupos.forEach(function(grupo) {
           var bateTexto = !termo || idxColunasFiltro.some(function(idx) {
@@ -4524,12 +4530,16 @@ h2{font-size:32px;letter-spacing:-.02em;}
           var bateMarcado = !somenteMarcados || Array.prototype.some.call(grupo[0].children, function(td) {
             return td.classList && td.classList.contains('marcado-manual');
           });
-          var bate = bateTexto && bateMarcado;
+          var bateAlerta = !somenteAlerta || Array.prototype.some.call(grupo[0].children, function(td) {
+            return td.querySelector && td.querySelector('.badge-alerta-rf');
+          });
+          var bate = bateTexto && bateMarcado && bateAlerta;
           grupo.forEach(function(tr) { tr.style.display = bate ? '' : 'none'; });
         });
       }
       input.addEventListener('input', aplicarFiltrosLinha);
       if (checkMarcados) checkMarcados.addEventListener('change', aplicarFiltrosLinha);
+      if (checkAlerta) checkAlerta.addEventListener('change', aplicarFiltrosLinha);
     });
 
     // Colunas ajustáveis: arrastar a borda direita de um cabeçalho redimensiona
@@ -6996,7 +7006,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           badgeCp.className = 'badge-alerta-rf';
           var pctCp = totaisRF.total > 0 ? (alertasRF.emissoresCPAcimaLimite[emissorNorm] / totaisRF.total * 100) : 0;
           badgeCp.title = 'Exposição a ' + emissorNorm + ' (somando todas as séries/emissões na carteira): ' + formatarNumero(pctCp, 1) + '% da Renda Fixa — acima do limite de 3% por emissor de crédito privado.';
-          badgeCp.textContent = '⚠ >3% neste emissor';
+          badgeCp.textContent = '⚠ Exposição acima de 3%';
           tdAtivo.appendChild(badgeCp);
         }
         tr.appendChild(tdAtivo);
