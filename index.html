@@ -876,12 +876,14 @@ h2{font-size:32px;letter-spacing:-.02em;}
   }
 
   // Referências usadas para converter a "Taxa" contratada (ex.: "100% CDI",
-  // "IPCA+7%") numa rentabilidade anual aproximada, mesma ordem de grandeza
-  // já usada nas calculadoras do site (CDI/Selic ~14,65%/14,75% a.a.) — a
-  // inflação usa uma média de referência de 5% a.a., por não haver como obter
-  // a inflação projetada real a partir da planilha do cliente.
-  var CDI_REFERENCIA_AA = 14.65;
-  var SELIC_REFERENCIA_AA = 14.75;
+  // "IPCA+7%") numa rentabilidade anual aproximada. Servem só de fallback
+  // para o intervalo entre o carregamento da página e a resposta de
+  // obterSelicAtual (ou caso essa busca falhe) — na prática são substituídas
+  // pela Selic vigente assim que a BrasilAPI responde. A inflação usa uma
+  // média de referência de 5% a.a., por não haver como obter a inflação
+  // projetada real a partir da planilha do cliente.
+  var CDI_REFERENCIA_AA = 14.0;
+  var SELIC_REFERENCIA_AA = 14.0;
   var IPCA_MEDIO_AA = 5.0;
 
   // Busca a Selic vigente uma única vez por sessão (BrasilAPI, mesma fonte já
@@ -894,7 +896,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       promiseSelicAtual = fetch('https://brasilapi.com.br/api/taxas/v1')
         .then(function(r) { return r.json(); })
         .then(function(taxas) {
-          var selic = taxas.find(function(t) { return t.nome === 'SELIC'; });
+          var selic = taxas.find(function(t) { return String(t.nome).toUpperCase() === 'SELIC'; });
           if (selic && selic.valor > 0) {
             var td = parseFloat(selic.valor.toFixed(2));
             SELIC_REFERENCIA_AA = td;
@@ -4986,11 +4988,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
       { id: 'pdf-secao-diversificacao-rf', rotulo: 'Diversificação' },
       { id: 'pdf-secao-graficos-rv', rotulo: 'Gráfico de Diversificação' },
       { id: 'pdf-carteira-wrap', rotulo: 'Ações/FIIs' },
-      { id: 'rv-insight-card', rotulo: 'Insights (Ações/FIIs)' },
+      { id: 'rv-insight-card', rotulo: 'Insights (Ações/FIIs)', desmarcadoPadrao: true },
       { id: 'pdf-secao-fii-composicao', rotulo: 'Portfólio dos FIIs' },
       { id: 'pdf-secao-rf', rotulo: 'Renda Fixa' },
       { id: ['bcb-rf-secao', 'cp-rf-secao'], rotulo: 'Indicadores fundamentalistas' },
-      { id: 'rf-insight-card', rotulo: 'Insights (Renda Fixa)' },
+      { id: 'rf-insight-card', rotulo: 'Insights (Renda Fixa)', desmarcadoPadrao: true },
       { id: 'cetip-secao-wrap', rotulo: 'Fundos Cetipados' },
       { id: 'pdf-secao-previdencia', rotulo: 'Previdência Privada' },
       { id: 'pdf-secao-coe', rotulo: 'COE' },
@@ -5033,8 +5035,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
       overlay.id = 'pdf-selecao-overlay';
       overlay.style.cssText = 'position:fixed;inset:0;background:rgba(17,17,17,.55);z-index:400;display:flex;align-items:center;justify-content:center;';
       var caixas = itensDisponiveis.map(function(item) {
+        // Insights vêm desmarcados por padrão: sem texto gerado, o card
+        // exportado é só um botão "Gerar Insights" inútil no PDF estático.
+        var marcado = item.desmarcadoPadrao ? '' : ' checked';
         return '<label style="display:flex;align-items:center;gap:10px;padding:8px 0;font-size:14px;color:var(--ink);cursor:pointer;">' +
-          '<input type="checkbox" class="pdf-selecao-item" value="' + chaveItemPdf(item) + '" checked> ' + item.rotulo + '</label>';
+          '<input type="checkbox" class="pdf-selecao-item" value="' + chaveItemPdf(item) + '"' + marcado + '> ' + item.rotulo + '</label>';
       }).join('');
       overlay.innerHTML =
         '<div style="background:#fff;border-radius:16px;padding:28px 32px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 25px 70px rgba(0,0,0,.4);">' +
@@ -10950,7 +10955,7 @@ var estado = {
   fetch('https://brasilapi.com.br/api/taxas/v1')
     .then(function(r){ return r.json(); })
     .then(function(taxas){
-      var selic = taxas.find(function(t){ return t.nome === 'SELIC'; });
+      var selic = taxas.find(function(t){ return String(t.nome).toUpperCase() === 'SELIC'; });
       if(selic && selic.valor > 0){
         var td = parseFloat(selic.valor.toFixed(2));
         estado.taxaDesconto = td;
@@ -12712,9 +12717,18 @@ tornarTabelaOrdenavel(document.querySelector('.basileia-table'), document.getEle
 tornarColunasAjustaveis(document.querySelector('.basileia-table'));
 tornarLinhasMarcaveisExcluiveis(corpo);
 
+// Resolve quando uma busca manual (buscarBanco) termina; null quando nenhuma
+// está em andamento. processarLoteBancos espera por ela antes de iniciar o
+// próximo lote, para a instituição buscada não competir por espaço na Edge
+// Function/API do BCB com o carregamento em segundo plano (ver nota acima).
+var pausaBuscaBanco = null;
 function processarLoteBancos(inicio) {
   if (inicio >= BANCOS.length) {
     if (progresso) progresso.textContent = '';
+    return;
+  }
+  if (pausaBuscaBanco) {
+    pausaBuscaBanco.then(function() { processarLoteBancos(inicio); });
     return;
   }
   var lote = BANCOS.slice(inicio, inicio + LOTE_BANCOS);
@@ -12742,6 +12756,8 @@ function buscarBanco() {
   if (!nome) return;
   buscaBtn.disabled = true;
   buscaStatus.textContent = 'Consultando "' + nome + '" no Banco Central...';
+  var resolverPausa;
+  pausaBuscaBanco = new Promise(function(r) { resolverPausa = r; });
   chamarBcbSync({ modo: 'buscar_por_nome', nome: nome }).then(function(resp) {
     buscaBtn.disabled = false;
     if (!resp || !resp.ok) {
@@ -12765,6 +12781,9 @@ function buscarBanco() {
       preencherLinha(tr, resp.nome_instituicao, null, null);
     }
     buscaInput.value = '';
+  }).finally(function() {
+    pausaBuscaBanco = null;
+    resolverPausa();
   });
 }
 buscaBtn.addEventListener('click', buscarBanco);
