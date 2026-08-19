@@ -567,7 +567,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var input = D.createElement('input');
     input.type = 'checkbox';
     label.appendChild(input);
-    label.appendChild(D.createTextNode(' Só marcados em vermelho'));
+    label.appendChild(D.createTextNode(' Marcados em vermelho'));
     return { label: label, input: input };
   }
 
@@ -2975,7 +2975,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">' +
         '<input type="text" class="filtro-tabela-input" data-tabela="' + idTabela + '" placeholder="Filtrar por nome...">' +
         '<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-soft);white-space:nowrap;cursor:pointer;">' +
-        '<input type="checkbox" class="filtro-marcados-input" data-tabela="' + idTabela + '"> Só marcados em vermelho</label>' +
+        '<input type="checkbox" class="filtro-marcados-input" data-tabela="' + idTabela + '"> Marcados em vermelho</label>' +
         '</div>' +
         '<div style="display:flex;gap:8px;">' + btnExpandir +
         '<button type="button" class="btn-colunas" data-tabela="' + idTabela + '">⚙ Colunas</button></div>' +
@@ -3158,8 +3158,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
           '<h3 class="subquadro-titulo">Ativos bancários</h3>' +
           toolbarColunas('tabela-rfpos-banco', true) +
           '<div style="display:flex;gap:14px;flex-wrap:wrap;margin:-6px 0 10px;">' +
-            checkboxFiltroBadge('tabela-rfpos-banco', 'badge-alerta-rf', 'Só acima do FGC') +
-            checkboxFiltroBadge('tabela-rfpos-banco', 'badge-alerta-rf-aviso', 'Só vai ultrapassar o FGC no vencimento') +
+            checkboxFiltroBadge('tabela-rfpos-banco', 'badge-alerta-rf', 'Acima do FGC') +
+            checkboxFiltroBadge('tabela-rfpos-banco', 'badge-alerta-rf-aviso', 'Vai ultrapassar o FGC no vencimento') +
           '</div>' +
           '<div class="table-wrap" id="table-wrap-tabela-rfpos-banco"><table id="tabela-rfpos-banco" class="tabela-rf-pos tabela-com-exclusao"><thead><tr>' + cabRFPos + '</tr></thead><tbody id="rfpos-banco-corpo"></tbody></table></div>' +
         '</div>' +
@@ -3172,7 +3172,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '<div id="credito-rf-secao" hidden>' +
           '<h3 class="subquadro-titulo">Crédito privado</h3>' +
           toolbarColunas('tabela-rfpos-credito', true) +
-          '<div style="margin:-6px 0 10px;">' + checkboxFiltroBadge('tabela-rfpos-credito', 'badge-alerta-rf', 'Só exposição acima de 3%') + '</div>' +
+          '<div style="margin:-6px 0 10px;">' + checkboxFiltroBadge('tabela-rfpos-credito', 'badge-alerta-rf', 'Exposição acima de 3%') + '</div>' +
           '<div class="table-wrap" id="table-wrap-tabela-rfpos-credito"><table id="tabela-rfpos-credito" class="tabela-rf-pos tabela-com-exclusao"><thead><tr>' + cabRFPos + '</tr></thead><tbody id="rfpos-credito-corpo"></tbody></table></div>' +
         '</div>' +
         '<div id="cp-rf-secao"></div>' +
@@ -12621,19 +12621,11 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 <div class="container">
   <span class="eyebrow">Renda Fixa</span>
   <h1>Índice de Basileia dos Bancos</h1>
-  <p class="basileia-sub">Indicador de solidez financeira de cada instituição: quanto maior, mais capital próprio o banco tem frente aos riscos que carrega. Lista com todos os bancos ativos no Brasil (157 instituições) — clique em "Consultar" na linha do banco desejado para buscar o índice ao vivo no Banco Central (BCB). Consultar todos de uma vez sobrecarregaria a API do BCB e deixaria a busca individual mais lenta.</p>
-
   <div class="basileia-legenda">
     <div class="basileia-legenda-item"><span class="basileia-dot basileia-dot-atencao"></span>Abaixo de 11% — atenção, perto do mínimo regulatório</div>
     <div class="basileia-legenda-item"><span class="basileia-dot basileia-dot-adequado"></span>11% a 14% — adequado</div>
     <div class="basileia-legenda-item"><span class="basileia-dot basileia-dot-solido"></span>Acima de 14% — sólido</div>
   </div>
-
-  <div class="basileia-busca">
-    <input type="text" id="basileia-busca-input" placeholder="Buscar outro banco/instituição (ex.: Banco XP)...">
-    <button type="button" id="basileia-busca-btn">Buscar</button>
-  </div>
-  <p class="basileia-busca-status" id="basileia-busca-status"></p>
 
   <input type="text" class="filtro-tabela-input" id="basileia-filtro" placeholder="Filtrar por nome...">
 
@@ -12643,7 +12635,6 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
       <tbody id="basileia-corpo"></tbody>
     </table>
   </div>
-  <p class="basileia-nota">Fonte: Banco Central do Brasil — IF.Data (Informações de Capital, nível de conglomerado prudencial). O mínimo regulatório é de 10,5% (8% de exigência básica + 2,5% de adicional de conservação de capital); bancos sistemicamente importantes têm exigência adicional própria. A faixa de referência acima (atenção/adequado/sólido) é uma leitura de mercado sobre a margem de segurança acima desse mínimo, não um critério oficial do BCB.</p>
 </div>
 
 <script>
@@ -12702,9 +12693,16 @@ function criarLinha(nome, cnpj8) {
     chamarBcbSync({ modo: 'upsert', cnpj8: cnpj8, nome_instituicao: nome }).then(function(resp) {
       if (resp && resp.ok && resp.dados) {
         preencherLinha(tr, nome, resp.dados.basileia, resp.dados.periodo);
-      } else {
-        preencherLinha(tr, nome, null, null);
+        return;
       }
+      // "ok:false" cobre tanto "instituição sem dado publicado" quanto uma
+      // falha momentânea na API do BCB (ambas chegam iguais aqui) — por
+      // isso mantém o botão para o usuário tentar de novo, em vez de travar
+      // num "—" definitivo que parece bug quando na verdade é só o BCB fora
+      // do ar por instantes.
+      btnConsultar.disabled = false;
+      btnConsultar.textContent = 'Tentar novamente';
+      btnConsultar.title = 'Não foi possível obter o índice agora (instituição sem dado publicado, ou BCB indisponível no momento).';
     });
   });
   tdValor.appendChild(btnConsultar);
@@ -12740,7 +12738,7 @@ BANCOS.forEach(function(b) {
 // função é duplicada localmente em vez de compartilhada.
 function _tabOrdChave(t) {
   t = String(t || '').trim();
-  if (!t || t === '—' || t === 'Consultando...' || t === 'Consultar') return null;
+  if (!t || t === '—' || t === 'Consultando...' || t === 'Consultar' || t === 'Tentar novamente') return null;
   var l = t.replace(/R\\$\\s?/gi, '').replace(/\\s?[%x]$/i, '').trim();
   var s = l.replace(/\\./g, '').replace(',', '.');
   if (/^-?\\d+(\\.\\d+)?$/.test(s)) return { t: 'n', v: parseFloat(s) };
@@ -12929,44 +12927,6 @@ tornarTabelaOrdenavel(document.querySelector('.basileia-table'), document.getEle
 tornarColunasAjustaveis(document.querySelector('.basileia-table'));
 tornarLinhasMarcaveisExcluiveis(corpo);
 
-var buscaInput = document.getElementById('basileia-busca-input');
-var buscaBtn = document.getElementById('basileia-busca-btn');
-var buscaStatus = document.getElementById('basileia-busca-status');
-
-// Usado para instituições que não estão na lista pré-cadastrada (BANCOS) —
-// para as demais, o botão "Consultar" de cada linha já resolve (ver criarLinha).
-function buscarBanco() {
-  var nome = (buscaInput.value || '').trim();
-  if (!nome) return;
-  buscaBtn.disabled = true;
-  buscaStatus.textContent = 'Consultando "' + nome + '" no Banco Central...';
-  chamarBcbSync({ modo: 'buscar_por_nome', nome: nome }).then(function(resp) {
-    buscaBtn.disabled = false;
-    if (!resp || !resp.ok) {
-      buscaStatus.textContent = 'Não foi possível consultar agora. Tente novamente em instantes.';
-      return;
-    }
-    if (!resp.encontrado) {
-      buscaStatus.textContent = 'Nenhuma instituição encontrada para "' + nome + '".';
-      return;
-    }
-    buscaStatus.textContent = '';
-    var tr = linhasPorCnpj[resp.cnpj8];
-    if (!tr) {
-      tr = criarLinha(resp.nome_instituicao, resp.cnpj8);
-      corpo.appendChild(tr);
-      linhasPorCnpj[resp.cnpj8] = tr;
-    }
-    if (resp.dados) {
-      preencherLinha(tr, resp.nome_instituicao, resp.dados.basileia, resp.dados.periodo);
-    } else {
-      preencherLinha(tr, resp.nome_instituicao, null, null);
-    }
-    buscaInput.value = '';
-  });
-}
-buscaBtn.addEventListener('click', buscarBanco);
-buscaInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') buscarBanco(); });
 <\/script>
 </body>
 </html>`);
