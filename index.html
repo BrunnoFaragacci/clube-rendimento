@@ -10473,10 +10473,11 @@ function preencherFormularioComExtracao(d){
   setSe('f-rentabilidade',d.rentabilidadeAlvo);
   setSe('f-data-inicio',d.dataInicio);
   setSe('f-taxa-adm',d.taxaAdministracao);
-  setSe('f-email-gestora',d.emailGestora);
   setSe('f-estrategia',d.estrategia);setSe('f-ativos',d.ativos);
   setSe('f-tamanho',d.tamanhoMM);
-  if(d.diaPagamento!==null&&d.diaPagamento!==undefined)document.getElementById('f-dia').value=d.diaPagamento;
+  // E-mail da gestora, Dia útil de pagamento e Últimos rendimentos pagos não
+  // fazem parte da extração — a pedido do usuário, esses campos nunca
+  // aparecem na lâmina e continuam só de preenchimento manual.
 }
 async function extrairDadosLamina(arquivo){
   var statusEl=document.getElementById('lamina-extracao-status');
