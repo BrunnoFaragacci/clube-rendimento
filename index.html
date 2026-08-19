@@ -2918,6 +2918,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var sRV = opcoes.rv
       ? '<div id="pdf-carteira-wrap" class="pdf-secao">' + sLimitesRiscoFII +
         '<p id="rv-aviso-pm" style="display:none;background:#fff3f0;border:1px solid var(--orange);color:var(--orange-dark);border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:12px;"></p>' +
+        '<div class="ia-insight-card" id="rv-insight-card" style="display:none;background:linear-gradient(135deg,#f8f9fc,#eef1f8);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin-bottom:16px;">' +
+          '<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:8px;">💡 Insights (IA)</div>' +
+          '<p id="rv-insight-texto" style="font-size:13.5px;color:var(--ink);line-height:1.6;margin:0;">Gerando análise...</p>' +
+        '</div>' +
         toolbarColunas('tabela-rv', true) +
         '<div class="table-wrap" id="table-wrap-tabela-rv"><table id="tabela-rv" class="tabela-com-exclusao"><thead><tr>' + cabRV + '</tr></thead><tbody id="rv-corpo"></tbody></table></div></div>'
       : '';
@@ -2967,6 +2971,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
     }
     var sRF = opcoes.rf
       ? '<div class="pdf-secao">' +
+        '<div class="ia-insight-card" id="rf-insight-card" style="display:none;background:linear-gradient(135deg,#f8f9fc,#eef1f8);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin-bottom:16px;">' +
+          '<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:8px;">💡 Insights (IA)</div>' +
+          '<p id="rf-insight-texto" style="font-size:13.5px;color:var(--ink);line-height:1.6;margin:0;">Gerando análise...</p>' +
+        '</div>' +
         '<p class="subquadro-titulo">Diversificação da renda fixa</p>' +
         '<div class="rf-div-grid">' +
           '<div class="rf-div-col">' +
@@ -5088,6 +5096,31 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var qtdAtivosRV = 0; // conta só os ativos visíveis pelo filtro Ações/FIIs selecionado
     var totVarRvEl = D.getElementById('tot-var-rv');
     var totVarRV = 0; // acumula variação em R$ (cotação atual − preço médio) × quantidade
+    // Insights (IA) — pede à Edge Function portfolio-insights um comentário
+    // curto sobre a seção (Renda Fixa ou Ações/FIIs), a partir de um resumo
+    // agregado (nunca os dados brutos por linha nem o nome do cliente). Os
+    // pontos de chamada ficam em cada seção, só depois que os totais dela
+    // estiverem prontos (ver processarRFPos e o fim de processarRV).
+    function gerarInsightSecao(secao, resumo, idCard, idTexto) {
+      var elCard = D.getElementById(idCard);
+      var elTexto = D.getElementById(idTexto);
+      if (!elCard || !elTexto) return;
+      elCard.style.display = 'block';
+      elTexto.textContent = 'Gerando análise...';
+      fetch(_SB_URL + '/functions/v1/portfolio-insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _SB_KEY, 'apikey': _SB_KEY },
+        body: JSON.stringify({ secao: secao, resumo: resumo })
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          elTexto.textContent = (d && d.insight) ? d.insight : 'Não foi possível gerar o insight agora.';
+        })
+        .catch(function() {
+          elTexto.textContent = 'Não foi possível gerar o insight agora.';
+        });
+    }
+
     var totDivRvEl    = D.getElementById('tot-div-rv');
     var totDivRvAcum  = 0; // acumula dividendos a pagar (rate × quantidade)
     var totUltimoProvRV = 0; // acumula o último provento efetivamente pago (rate × quantidade) de ações e FIIs, para o DY da carteira inteira
@@ -5559,6 +5592,27 @@ h2{font-size:32px;letter-spacing:-.02em;}
           } else {
             avisoPmEl.style.display = 'none';
           }
+        }
+        if (totRV > 0) {
+          var dySomaPonderadaRV = 0, dyPesoTotalRV = 0;
+          var porSegmentoRV = {};
+          dadosGraficoRV.forEach(function(d) {
+            if (typeof d.dy === 'number') { dySomaPonderadaRV += d.dy * d.valorTotal; dyPesoTotalRV += d.valorTotal; }
+            var seg = d.segmento || 'Sem segmento';
+            porSegmentoRV[seg] = (porSegmentoRV[seg] || 0) + d.valorTotal;
+          });
+          var maioresPosicoesRV = dadosGraficoRV.slice()
+            .sort(function(a, b) { return b.valorTotal - a.valorTotal; })
+            .slice(0, 5)
+            .map(function(d) { return { ticker: d.ticker, valor: d.valorTotal, pesoPct: totRV ? (d.valorTotal / totRV * 100) : 0 }; });
+          gerarInsightSecao('rv', {
+            totalInvestido: totRV,
+            qtdAtivos: qtdAtivosRV,
+            dyMedioPct: dyPesoTotalRV > 0 ? (dySomaPonderadaRV / dyPesoTotalRV) : undefined,
+            upsideMedioPct: totUpsideDenominador > 0 ? (totUpsideNumerador / totUpsideDenominador) : undefined,
+            maioresPosicoes: maioresPosicoesRV,
+            porSegmento: porSegmentoRV
+          }, 'rv-insight-card', 'rv-insight-texto');
         }
         return processarComposicaoFII();
       }
@@ -6554,6 +6608,18 @@ h2{font-size:32px;letter-spacing:-.02em;}
           tfTitPubRefs = criarTfootRF(D.getElementById('tabela-rfpos-titpub'), totTfTitPub);
           var secaoTitPub = D.getElementById('titpub-rf-secao');
           if (secaoTitPub) secaoTitPub.hidden = false;
+        }
+        if (totaisRF.total > 0) {
+          var maioresEmissoresRF = Object.keys(totaisRF.porEmissor)
+            .map(function(k) { return { emissor: k, valor: totaisRF.porEmissor[k] }; })
+            .sort(function(a, b) { return b.valor - a.valor; })
+            .slice(0, 5);
+          gerarInsightSecao('rf', {
+            totalInvestido: totaisRF.total,
+            qtdAtivos: rfItens.length,
+            porIndexador: totaisRF.porIndexador,
+            maioresEmissores: maioresEmissoresRF
+          }, 'rf-insight-card', 'rf-insight-texto');
         }
         return processarIndicadoresBancariosRF();
       }
