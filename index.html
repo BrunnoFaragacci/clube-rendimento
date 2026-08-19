@@ -2925,6 +2925,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '<div id="' + prefix + '-insight-opcoes" style="display:flex;flex-wrap:wrap;gap:8px;">' +
           '<button type="button" class="btn-insight-modo" data-modo="chamar_atencao" id="' + prefix + '-insight-btn-atencao" style="background:#fff;border:1.5px solid #C8442D;color:#C8442D;font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:8px;cursor:pointer;">⚠️ Chamar atenção</button>' +
           '<button type="button" class="btn-insight-modo" data-modo="relacionamento" id="' + prefix + '-insight-btn-relacionamento" style="background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:8px;cursor:pointer;">🤝 Análise de carteira - Cliente relacionamento</button>' +
+          '<button type="button" class="btn-insight-modo" data-modo="positiva" id="' + prefix + '-insight-btn-positiva" style="background:#fff;border:1.5px solid #1F8A4C;color:#1F8A4C;font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:8px;cursor:pointer;">✅ Análise Positiva</button>' +
+          '<button type="button" class="btn-insight-modo" data-modo="negativa" id="' + prefix + '-insight-btn-negativa" style="background:#fff;border:1.5px solid #C8442D;color:#C8442D;font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:8px;cursor:pointer;">🔻 Análise Negativa</button>' +
           '<button type="button" class="btn-insight-modo" data-modo="custom" id="' + prefix + '-insight-btn-custom" style="background:#fff;border:1.5px solid var(--line);color:var(--ink-soft);font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:8px;cursor:pointer;">✏️ Prompt personalizado</button>' +
         '</div>' +
         '<div id="' + prefix + '-insight-custom-wrap" style="display:none;margin-top:10px;">' +
@@ -5187,6 +5189,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var elFollowupBtn = D.getElementById(prefix + '-insight-followup-enviar');
       var elBtnAtencao = D.getElementById(prefix + '-insight-btn-atencao');
       var elBtnRelacionamento = D.getElementById(prefix + '-insight-btn-relacionamento');
+      var elBtnPositiva = D.getElementById(prefix + '-insight-btn-positiva');
+      var elBtnNegativa = D.getElementById(prefix + '-insight-btn-negativa');
       var elBtnCustom = D.getElementById(prefix + '-insight-btn-custom');
       var elBtnCustomGerar = D.getElementById(prefix + '-insight-custom-gerar');
       if (!elOpcoes || !elConversa) return;
@@ -5256,6 +5260,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
       if (elBtnAtencao) elBtnAtencao.onclick = function() { gerar('chamar_atencao', null); };
       if (elBtnRelacionamento) elBtnRelacionamento.onclick = function() { gerar('relacionamento', null); };
+      if (elBtnPositiva) elBtnPositiva.onclick = function() { gerar('positiva', null); };
+      if (elBtnNegativa) elBtnNegativa.onclick = function() { gerar('negativa', null); };
       if (elBtnCustom) elBtnCustom.onclick = function() {
         if (elCustomWrap) elCustomWrap.style.display = (elCustomWrap.style.display === 'none') ? 'block' : 'none';
       };
