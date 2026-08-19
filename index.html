@@ -352,7 +352,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         <label><input type="checkbox" id="check-previdencia"> Previdência Privada</label>
         <label><input type="checkbox" id="check-coe"> COE</label>
         <label><input type="checkbox" id="check-tesouro"> Tesouro Direto</label>
-        <label style="font-weight:600;border-left:1px solid var(--line);padding-left:14px;margin-left:2px;"><input type="checkbox" id="check-tudo"> Análise total da carteira</label>
+        <label style="font-weight:600;border-left:1px solid var(--line);padding-left:14px;margin-left:2px;"><input type="checkbox" id="check-tudo"> 💡 Insights</label>
         <button type="button" class="btn btn-primary" id="btn-analisar" disabled>Analisar carteira</button>
       </div>
 
@@ -1079,10 +1079,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
   }
 
   // Tornar os checkboxes mutuamente exclusivos (apenas um por vez) — exceto
-  // quando "Análise total da carteira" está marcada, caso em que todos
-  // ficam ativos ao mesmo tempo, mostrando o resumo completo e todos os
-  // gráficos (inclusive "Alocação da carteira", que só aparece com 2+
-  // classes selecionadas).
+  // quando "💡 Insights" (check-tudo) está marcada, caso em que todos ficam
+  // ativos ao mesmo tempo, mostrando o resumo completo, todos os gráficos
+  // (inclusive "Alocação da carteira", que só aparece com 2+ classes
+  // selecionadas) e o card de Insights da carteira geral.
   var _todosChecks = ['check-acoes','check-fiis','check-rf','check-cetip','check-previdencia','check-coe','check-tesouro'];
   var modoTudoAtivo = false;
   function selecionarUnico(idMarcado) {
