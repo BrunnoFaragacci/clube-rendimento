@@ -5127,6 +5127,29 @@ h2{font-size:32px;letter-spacing:-.02em;}
     // chamada (que consome crédito pago) só acontece quando o usuário clica.
     // Os pontos de chamada ficam em cada seção, só depois que os totais dela
     // estiverem prontos (ver processarRFPos e o fim de processarRV).
+    function copiarTextoParaAreaTransferencia(texto, elBtn) {
+      var textoOriginalBtn = elBtn.textContent;
+      function avisarCopiado() {
+        elBtn.textContent = '✓ Copiado!';
+        setTimeout(function() { elBtn.textContent = textoOriginalBtn; }, 2000);
+      }
+      if (novaJanela.navigator.clipboard && novaJanela.navigator.clipboard.writeText) {
+        novaJanela.navigator.clipboard.writeText(texto).then(avisarCopiado).catch(function() {
+          novaJanela.alert('Não foi possível copiar automaticamente. Selecione o texto manualmente.');
+        });
+      } else {
+        var ta = D.createElement('textarea');
+        ta.value = texto;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        D.body.appendChild(ta);
+        ta.select();
+        try { D.execCommand('copy'); avisarCopiado(); } catch (e) {
+          novaJanela.alert('Não foi possível copiar automaticamente. Selecione o texto manualmente.');
+        }
+        D.body.removeChild(ta);
+      }
+    }
     function habilitarInsightSecao(secao, resumo, idCard, idTexto, idBtn) {
       var elCard = D.getElementById(idCard);
       var elBtn = D.getElementById(idBtn);
@@ -5138,7 +5161,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         elBtn.disabled = true;
         elBtn.textContent = 'Gerando...';
         elTexto.style.display = 'block';
-        elTexto.textContent = 'Gerando análise...';
+        elTexto.textContent = 'Gerando mensagem...';
         fetch(_SB_URL + '/functions/v1/portfolio-insights', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _SB_KEY, 'apikey': _SB_KEY },
@@ -5146,11 +5169,19 @@ h2{font-size:32px;letter-spacing:-.02em;}
         })
           .then(function(r) { return r.json(); })
           .then(function(d) {
-            elTexto.textContent = (d && d.insight) ? d.insight : 'Não foi possível gerar o insight agora.';
-            elBtn.style.display = 'none';
+            if (d && d.insight) {
+              elTexto.textContent = d.insight;
+              elBtn.disabled = false;
+              elBtn.textContent = '📋 Copiar mensagem';
+              elBtn.onclick = function() { copiarTextoParaAreaTransferencia(d.insight, elBtn); };
+            } else {
+              elTexto.textContent = 'Não foi possível gerar a mensagem agora.';
+              elBtn.disabled = false;
+              elBtn.textContent = 'Tentar novamente';
+            }
           })
           .catch(function() {
-            elTexto.textContent = 'Não foi possível gerar o insight agora.';
+            elTexto.textContent = 'Não foi possível gerar a mensagem agora.';
             elBtn.disabled = false;
             elBtn.textContent = 'Tentar novamente';
           });
