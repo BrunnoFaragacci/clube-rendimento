@@ -9786,6 +9786,13 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
     <div class="form-card">
       <h2 class="form-titulo" id="form-titulo">Adicionar fundo</h2>
       <div class="form-grid">
+        <div class="field full" style="background:#f8f9fc;border:1px dashed var(--line);border-radius:10px;padding:14px 16px;margin-bottom:2px;">
+          <label>🪄 Preencher automaticamente pela lâmina (PDF)</label>
+          <p style="font-size:12px;color:var(--ink-soft);margin:2px 0 8px;">Selecione o PDF da lâmina/prospecto do fundo para preencher os campos abaixo automaticamente. Revise os dados antes de salvar — o arquivo também fica anexado ao fundo.</p>
+          <label class="upload-label">📄 Selecionar PDF<input type="file" id="lamina-input" accept=".pdf" hidden></label>
+          <p class="upload-nome" id="lamina-nome"></p>
+          <p class="upload-nome" id="lamina-extracao-status" style="display:none;font-weight:600;"></p>
+        </div>
         <div class="field full"><label>Nome do fundo</label><input type="text" id="f-nome" placeholder="Ex.: XP Logístico Prime Yield FII"></div>
         <div class="field"><label>Ticker</label><input type="text" id="f-ticker" placeholder="Ex.: XPLP11"></div>
         <div class="field"><label>Gestora</label><input type="text" id="f-gestora" placeholder="Ex.: XP Asset Management"></div>
@@ -9804,11 +9811,6 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
         <div class="field full"><label>Ativos do fundo</label><textarea id="f-ativos" placeholder="Liste os principais ativos dentro do fundo..."></textarea></div>
         <div class="field"><label>Tamanho (R$ MM)</label><input type="text" id="f-tamanho" placeholder="Ex.: 250,5"></div>
         <div class="field"><label>Dia útil de pagamento</label><input type="number" id="f-dia" placeholder="Ex.: 10" min="1" max="31"></div>
-        <div class="field full">
-          <label>Lâmina do fundo (PDF)</label>
-          <label class="upload-label">📄 Selecionar PDF<input type="file" id="lamina-input" accept=".pdf" hidden></label>
-          <p class="upload-nome" id="lamina-nome"></p>
-        </div>
         <!-- Últimos rendimentos pagos -->
         <div class="field full" style="margin-top:6px;">
           <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);display:block;margin-bottom:8px;">Últimos rendimentos pagos</label>
@@ -10436,6 +10438,8 @@ function abrirFormulario(f){
   v('f-tamanho',f?f.tamanho_mm:'');
   v('f-dia',f?f.dia_pagamento:'');
   document.getElementById('lamina-nome').textContent=(f&&f.lamina_url)?'Atual: '+f.lamina_url.split('/').pop():'';
+  var statusExtracaoEl=document.getElementById('lamina-extracao-status');
+  statusExtracaoEl.style.display='none';statusExtracaoEl.textContent='';
   // Carregar eventos (ultimos_eventos é JSON string)
   if(f&&f.ultimos_eventos){try{var p=JSON.parse(f.ultimos_eventos);if(Array.isArray(p))eventosAtuais=p.slice();}catch(e){}}
   renderizarEventos();
@@ -10449,7 +10453,59 @@ function fecharFormulario(){
 document.getElementById('lamina-input').addEventListener('change',function(ev){
   novoArquivo=ev.target.files[0]||null;
   document.getElementById('lamina-nome').textContent=novoArquivo?novoArquivo.name:'';
+  var statusEl=document.getElementById('lamina-extracao-status');
+  if(!novoArquivo){statusEl.style.display='none';statusEl.textContent='';return;}
+  extrairDadosLamina(novoArquivo);
 });
+
+// ── Preenchimento automático a partir da lâmina (PDF) ──────────────────────
+// Envia o PDF (base64) para a Edge Function extrair-lamina-fundo, que usa a
+// API da Anthropic (leitura nativa de PDF + saída estruturada) para extrair
+// os campos do formulário. Nunca sobrescreve com valor vazio — só preenche
+// o que a IA efetivamente encontrou no documento; o usuário revisa e ajusta
+// antes de salvar.
+var URL_EXTRAIR_LAMINA=SUPABASE_URL+'/functions/v1/extrair-lamina-fundo';
+function arquivoParaBase64(arquivo){
+  return new Promise(function(resolve,reject){
+    var leitor=new FileReader();
+    leitor.onload=function(){resolve(String(leitor.result).split(',')[1]||'');};
+    leitor.onerror=reject;
+    leitor.readAsDataURL(arquivo);
+  });
+}
+function preencherFormularioComExtracao(d){
+  function setSe(id,val){if(val!==null&&val!==undefined&&val!==''){document.getElementById(id).value=val;}}
+  setSe('f-nome',d.nome);setSe('f-ticker',d.ticker);setSe('f-gestora',d.gestora);setSe('f-tipo',d.tipo);
+  setSe('f-rentabilidade',d.rentabilidadeAlvo);
+  setSe('f-data-inicio',d.dataInicio);
+  setSe('f-taxa-adm',d.taxaAdministracao);
+  setSe('f-email-gestora',d.emailGestora);
+  setSe('f-estrategia',d.estrategia);setSe('f-ativos',d.ativos);
+  setSe('f-tamanho',d.tamanhoMM);
+  if(d.diaPagamento!==null&&d.diaPagamento!==undefined)document.getElementById('f-dia').value=d.diaPagamento;
+}
+async function extrairDadosLamina(arquivo){
+  var statusEl=document.getElementById('lamina-extracao-status');
+  statusEl.style.display='block';statusEl.style.color='var(--ink-soft)';
+  statusEl.textContent='🪄 Lendo o PDF e preenchendo os campos automaticamente...';
+  try{
+    var base64=await arquivoParaBase64(arquivo);
+    var resp=await fetch(URL_EXTRAIR_LAMINA,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY,'apikey':SUPABASE_KEY},
+      body:JSON.stringify({pdfBase64:base64})
+    });
+    var json=await resp.json();
+    if(!resp.ok||!json.dados)throw new Error(json.error||'Falha ao extrair dados do PDF.');
+    preencherFormularioComExtracao(json.dados);
+    statusEl.style.color='#1F8A4C';
+    statusEl.textContent='✓ Campos preenchidos automaticamente a partir da lâmina. Revise antes de salvar.';
+  }catch(e){
+    statusEl.style.color='#C8442D';
+    statusEl.textContent='Não foi possível preencher automaticamente: '+(e.message||'tente novamente.');
+    console.error(e);
+  }
+}
 document.getElementById('btn-add').addEventListener('click',function(){abrirFormulario(null);});
 document.getElementById('btn-form-cancelar').addEventListener('click',fecharFormulario);
 
