@@ -2914,7 +2914,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '</div>'
       : '';
     // Card de Insights compartilhado pelas 3 seções (Ações/FIIs, Renda Fixa e
-    // carteira geral) — três modos de geração (Chamar atenção / Relacionamento
+    // carteira geral) — modos de geração (Chamar atenção / Imparcial
     // / Prompt personalizado) e uma caixa de ajuste (follow-up) que aparece
     // depois da primeira mensagem, para o usuário pedir refinamentos sem
     // precisar gerar tudo de novo do zero. A lógica de cada botão fica em
@@ -2922,9 +2922,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
     function construirCardInsight(prefix, classeExtra) {
       return '<div class="ia-insight-card' + (classeExtra ? ' ' + classeExtra : '') + '" id="' + prefix + '-insight-card" style="display:none;background:linear-gradient(135deg,#f8f9fc,#eef1f8);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin-top:16px;">' +
         '<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:10px;">💡 Insights</div>' +
-        '<div id="' + prefix + '-insight-opcoes" style="display:flex;flex-wrap:wrap;gap:8px;">' +
+        '<button type="button" id="' + prefix + '-insight-btn-abrir" style="background:var(--orange);border:1.5px solid var(--orange);color:#fff;font-family:inherit;font-weight:600;font-size:12.5px;padding:8px 18px;border-radius:8px;cursor:pointer;">💡 Gerar Insights</button>' +
+        '<div id="' + prefix + '-insight-opcoes" style="display:none;flex-wrap:wrap;gap:8px;">' +
           '<button type="button" class="btn-insight-modo" data-modo="chamar_atencao" id="' + prefix + '-insight-btn-atencao" style="background:#fff;border:1.5px solid #C8442D;color:#C8442D;font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:8px;cursor:pointer;">⚠️ Chamar atenção</button>' +
-          '<button type="button" class="btn-insight-modo" data-modo="relacionamento" id="' + prefix + '-insight-btn-relacionamento" style="background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:8px;cursor:pointer;">🤝 Análise de carteira - Cliente relacionamento</button>' +
+          '<button type="button" class="btn-insight-modo" data-modo="imparcial" id="' + prefix + '-insight-btn-imparcial" style="background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:8px;cursor:pointer;">⚖️ Análise Imparcial</button>' +
           '<button type="button" class="btn-insight-modo" data-modo="positiva" id="' + prefix + '-insight-btn-positiva" style="background:#fff;border:1.5px solid #1F8A4C;color:#1F8A4C;font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:8px;cursor:pointer;">✅ Análise Positiva</button>' +
           '<button type="button" class="btn-insight-modo" data-modo="negativa" id="' + prefix + '-insight-btn-negativa" style="background:#fff;border:1.5px solid #C8442D;color:#C8442D;font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:8px;cursor:pointer;">🔻 Análise Negativa</button>' +
           '<button type="button" class="btn-insight-modo" data-modo="custom" id="' + prefix + '-insight-btn-custom" style="background:#fff;border:1.5px solid var(--line);color:var(--ink-soft);font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:8px;cursor:pointer;">✏️ Prompt personalizado</button>' +
@@ -5167,7 +5168,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     // Fixa ou carteira geral, identificados pelo "prefix" do id de cada
     // elemento). Oferece 3 modos de geração — Chamar atenção (mensagem fria,
     // com gatilhos de urgência/curiosidade, para o cliente responder),
-    // Relacionamento (tom tranquilo, para cliente que já responde) e Prompt
+    // Imparcial (observações equilibradas, sem viés) e Prompt
     // personalizado (o usuário descreve o que quer) — e, depois da primeira
     // mensagem, uma caixa de ajuste (follow-up) para pedir refinamentos sem
     // perder o contexto: o front-end guarda o histórico de mensagens
@@ -5178,6 +5179,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       if (!elCard) return;
       elCard.style.display = 'block';
 
+      var elBtnAbrir = D.getElementById(prefix + '-insight-btn-abrir');
       var elOpcoes = D.getElementById(prefix + '-insight-opcoes');
       var elCustomWrap = D.getElementById(prefix + '-insight-custom-wrap');
       var elCustomTexto = D.getElementById(prefix + '-insight-custom-texto');
@@ -5188,7 +5190,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var elFollowupInput = D.getElementById(prefix + '-insight-followup-input');
       var elFollowupBtn = D.getElementById(prefix + '-insight-followup-enviar');
       var elBtnAtencao = D.getElementById(prefix + '-insight-btn-atencao');
-      var elBtnRelacionamento = D.getElementById(prefix + '-insight-btn-relacionamento');
+      var elBtnImparcial = D.getElementById(prefix + '-insight-btn-imparcial');
       var elBtnPositiva = D.getElementById(prefix + '-insight-btn-positiva');
       var elBtnNegativa = D.getElementById(prefix + '-insight-btn-negativa');
       var elBtnCustom = D.getElementById(prefix + '-insight-btn-custom');
@@ -5258,8 +5260,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
           });
       }
 
+      if (elBtnAbrir) elBtnAbrir.onclick = function() {
+        elBtnAbrir.style.display = 'none';
+        elOpcoes.style.display = 'flex';
+      };
       if (elBtnAtencao) elBtnAtencao.onclick = function() { gerar('chamar_atencao', null); };
-      if (elBtnRelacionamento) elBtnRelacionamento.onclick = function() { gerar('relacionamento', null); };
+      if (elBtnImparcial) elBtnImparcial.onclick = function() { gerar('imparcial', null); };
       if (elBtnPositiva) elBtnPositiva.onclick = function() { gerar('positiva', null); };
       if (elBtnNegativa) elBtnNegativa.onclick = function() { gerar('negativa', null); };
       if (elBtnCustom) elBtnCustom.onclick = function() {
@@ -8316,10 +8322,14 @@ h2{font-size:32px;letter-spacing:-.02em;}
       botao.disabled = false;
     }
 
-    // Insights (carteira geral) — roda só aqui, no fim de tudo, porque
+    // Insights (carteira geral) — só existe no modo dedicado "💡 Insights"
+    // (opcoes.somenteInsights). Numa análise normal de uma classe específica
+    // (Ações, Renda Fixa etc.), esse card fica de fora — o card de Insights
+    // daquela seção já cobre o caso. Roda só aqui, no fim de tudo, porque
     // precisa dos totais já finalizados de todas as classes de ativo (RV,
     // RF, Cetip, Previdência, COE, Tesouro), não só de uma seção isolada.
     function prepararInsightGeral() {
+      if (!opcoes.somenteInsights) return;
       var totalGeralCarteira = totRV + totRF + totCetip + totPrevidencia + totCOE + totTesouroPlanilha;
       if (totalGeralCarteira <= 0) return;
       var porClasseGeral = {};
