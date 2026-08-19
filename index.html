@@ -927,6 +927,22 @@ h2{font-size:32px;letter-spacing:-.02em;}
     return null;
   }
 
+  // Extrai a taxa anual de um formato prefixado puro (ex.: "+14,51%",
+  // "14,51% a.a.") — sem referência a CDI/Selic/IPCA, o número já É a taxa
+  // anual. Separado de converterTaxaAnual porque ali esse caso é deixado
+  // sem conversão de propósito (ver formatarTaxaComConversao: taxa
+  // prefixada não ganha o sufixo "= X%", pois seria redundante mostrar o
+  // mesmo número duas vezes) — mas calcularValorVencimento precisa do
+  // número mesmo quando não há conversão a fazer.
+  function extrairTaxaPrefixada(taxaStr) {
+    var norm = normalizar(taxaStr).replace(/\s+/g, ' ').trim();
+    if (!norm) return null;
+    var m = /^[+]?\s*(\d+(?:[.,]\d+)?)\s*%/.exec(norm);
+    if (!m) return null;
+    var p = parseFloat(m[1].replace(',', '.'));
+    return isNaN(p) ? null : p;
+  }
+
   // Mostra a taxa original junto com a rentabilidade anual convertida (ex.:
   // "100% CDI = 14,65%"), quando reconhecível; formatos que já são uma taxa
   // direta (prefixado) ou não reconhecidos ficam como estão, sem "=".
@@ -1609,6 +1625,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
   function calcularValorVencimento(valorAtual, taxaStr, vencimentoStr) {
     if (typeof valorAtual !== 'number' || !(valorAtual > 0)) return null;
     var taxaAnual = converterTaxaAnual(taxaStr);
+    if (taxaAnual === null) taxaAnual = extrairTaxaPrefixada(taxaStr);
     if (taxaAnual === null) return null;
     var dataVenc = parseDataBRParaDate(vencimentoStr);
     if (!dataVenc) return null;
