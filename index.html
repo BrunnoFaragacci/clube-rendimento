@@ -9660,7 +9660,6 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
 .fundo-card:hover{transform:translateY(-3px);}
 .fundo-card-header{background:var(--orange);color:#fff;padding:14px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
 .fundo-card-nome{font-size:14px;font-weight:600;line-height:1.4;}
-.fundo-card-ticker{font-size:11px;font-weight:700;background:rgba(255,255,255,.25);padding:3px 8px;border-radius:999px;}
 .fundo-card-badge-ipca{font-size:10px;font-weight:700;background:#fff;color:var(--og);padding:3px 9px;border-radius:999px;letter-spacing:.02em;white-space:nowrap;}
 .legenda-ipca{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;margin-left:18px;}
 .btn-favorito{background:none;border:none;cursor:pointer;font-size:19px;line-height:1;color:#fff;padding:0 2px;flex-shrink:0;}
@@ -9794,7 +9793,6 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
           <p class="upload-nome" id="lamina-extracao-status" style="display:none;font-weight:600;"></p>
         </div>
         <div class="field full"><label>Nome do fundo</label><input type="text" id="f-nome" placeholder="Ex.: XP Logístico Prime Yield FII"></div>
-        <div class="field"><label>Ticker</label><input type="text" id="f-ticker" placeholder="Ex.: XPLP11"></div>
         <div class="field"><label>Gestora</label><input type="text" id="f-gestora" placeholder="Ex.: XP Asset Management"></div>
         <div class="field"><label>Tipo</label><input type="text" id="f-tipo" placeholder="Ex.: Imobiliário, Agronegócio, Infraestrutura, Hedge Fund"></div>
         <!-- Campo "Segmento (comparação Foco do Mês)" removido do formulário a
@@ -10037,13 +10035,12 @@ function importarExcel(arquivo){
       var aba=pasta.Sheets[abaNome];
       var linhas=XLSX.utils.sheet_to_json(aba,{defval:''});
       if(!linhas.length){alert('A planilha está vazia ou não foi possível lê-la.');status('');return;}
-      var registros=[],semTicker=0;
+      var registros=[],semNome=0;
       linhas.forEach(function(l){
-        var ticker=String(l['Ticker']||'').trim();
-        if(!ticker){semTicker++;return;}
+        var nomeFundo=String(l['Nome do Fundo']||'').trim();
+        if(!nomeFundo){semNome++;return;}
         var dados={
-          ticker:ticker,
-          nome:String(l['Nome do Fundo']||'').trim()||ticker,
+          nome:nomeFundo,
           gestora:String(l['Gestora']||'').trim()||null,
           tipo:String(l['Tipo']||'').trim()||null,
           rentabilidade_alvo:String(l['Rentabilidade Alvo']||'').trim()||null,
@@ -10060,13 +10057,13 @@ function importarExcel(arquivo){
         };
         registros.push(dados);
       });
-      if(!registros.length){alert('Nenhuma linha com Ticker preenchido foi encontrada. O Ticker é obrigatório para identificar o fundo.');status('');return;}
+      if(!registros.length){alert('Nenhuma linha com Nome do Fundo preenchido foi encontrada. O Nome do Fundo é obrigatório para identificar o fundo.');status('');return;}
       status('Enviando '+registros.length+' fundo(s)...');
       var LOTE=40,i=0,enviados=0,erros=[];
       function proximoLote(){
         if(i>=registros.length){
           var msg=enviados+' fundo(s) importado(s)/atualizado(s) com sucesso.';
-          if(semTicker)msg+=' '+semTicker+' linha(s) ignorada(s) por falta de Ticker.';
+          if(semNome)msg+=' '+semNome+' linha(s) ignorada(s) por falta de Nome do Fundo.';
           if(erros.length)msg+=' '+erros.length+' erro(s): '+erros.slice(0,3).join(' | ');
           status(msg);
           carregarFundos();
@@ -10074,7 +10071,7 @@ function importarExcel(arquivo){
         }
         var lote=registros.slice(i,i+LOTE);
         i+=LOTE;
-        sb.from(TABELA).upsert(lote,{onConflict:'ticker'}).then(function(r){
+        sb.from(TABELA).upsert(lote,{onConflict:'nome'}).then(function(r){
           if(r.error)erros.push(r.error.message);
           else enviados+=lote.length;
           status('Enviando '+Math.min(i,registros.length)+'/'+registros.length+'...');
@@ -10096,7 +10093,7 @@ document.getElementById('input-planilha-fundos').addEventListener('change',funct
   var arquivo=ev.target.files&&ev.target.files[0];
   ev.target.value='';
   if(!arquivo)return;
-  if(!confirm('Importar "'+arquivo.name+'"? Os fundos com Ticker já cadastrado serão atualizados (os campos da planilha substituem os valores atuais); tickers novos serão criados. O histórico de rendimentos (aba "Últimos rendimentos pagos" do formulário) não é alterado por esta importação.')){
+  if(!confirm('Importar "'+arquivo.name+'"? Os fundos com Nome do Fundo já cadastrado serão atualizados (os campos da planilha substituem os valores atuais); nomes novos serão criados. O histórico de rendimentos (aba "Últimos rendimentos pagos" do formulário) não é alterado por esta importação.')){
     return;
   }
   importarExcel(arquivo);
@@ -10121,7 +10118,6 @@ function exportarExcel(){
     return {
       'Favorito':f.favorito?'Sim':'Não',
       'Nome do Fundo':f.nome||'',
-      'Ticker':f.ticker||'',
       'Gestora':f.gestora||'',
       'Tipo':f.tipo||'',
       'Rentabilidade Alvo':f.rentabilidade_alvo||'',
@@ -10219,8 +10215,6 @@ function renderizarFundos(){
     else{btnFav.disabled=true;}
     var nome=document.createElement('span');nome.className='fundo-card-nome';nome.textContent=f.nome||'—';
     var tagsWrap=document.createElement('span');tagsWrap.style.cssText='display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;';
-    var ticker=document.createElement('span');ticker.className='fundo-card-ticker';ticker.textContent=f.ticker||'—';
-    tagsWrap.appendChild(ticker);
     // Fundos com rentabilidade-alvo indexada ao IPCA recebem um selo — ver
     // legenda "IPCA+" acima da listagem de fundos. Usa indexOf em vez de
     // regex: este trecho é escrito no popup via template literal (backtick)
@@ -10428,7 +10422,7 @@ function abrirFormulario(f){
   document.getElementById('form-overlay').hidden=false;
   document.getElementById('form-erro').textContent='';
   function v(id,val){document.getElementById(id).value=(val!==null&&val!==undefined)?val:'';}
-  v('f-nome',f?f.nome:'');v('f-ticker',f?f.ticker:'');v('f-gestora',f?f.gestora:'');
+  v('f-nome',f?f.nome:'');v('f-gestora',f?f.gestora:'');
   v('f-tipo',f?f.tipo:'');
   v('f-rentabilidade',f?f.rentabilidade_alvo:'');
   v('f-data-inicio',f?f.data_inicio:'');
@@ -10475,7 +10469,7 @@ function arquivoParaBase64(arquivo){
 }
 function preencherFormularioComExtracao(d){
   function setSe(id,val){if(val!==null&&val!==undefined&&val!==''){document.getElementById(id).value=val;}}
-  setSe('f-nome',d.nome);setSe('f-ticker',d.ticker);setSe('f-gestora',d.gestora);setSe('f-tipo',d.tipo);
+  setSe('f-nome',d.nome);setSe('f-gestora',d.gestora);setSe('f-tipo',d.tipo);
   setSe('f-rentabilidade',d.rentabilidadeAlvo);
   setSe('f-data-inicio',d.dataInicio);
   setSe('f-taxa-adm',d.taxaAdministracao);
@@ -10514,8 +10508,7 @@ async function salvarFundo(){
   var erro=document.getElementById('form-erro');
   erro.textContent='';
   var nome=document.getElementById('f-nome').value.trim();
-  var ticker=document.getElementById('f-ticker').value.trim();
-  if(!nome||!ticker){erro.textContent='Nome e Ticker são obrigatórios.';return;}
+  if(!nome){erro.textContent='Nome do fundo é obrigatório.';return;}
   var dia=document.getElementById('f-dia').value?parseInt(document.getElementById('f-dia').value,10):null;
   var tamanho=document.getElementById('f-tamanho').value?parseFloat(document.getElementById('f-tamanho').value.replace(',','.')):null;
   botao.disabled=true;botao.innerHTML='<span class="spinner"></span>Salvando...';
@@ -10530,7 +10523,7 @@ async function salvarFundo(){
     }
     var taxaAdmRaw=document.getElementById('f-taxa-adm').value.trim().replace(',','.');
     var dados={
-      nome:nome,ticker:ticker,
+      nome:nome,
       gestora:document.getElementById('f-gestora').value.trim()||null,
       tipo:document.getElementById('f-tipo').value.trim()||null,
       rentabilidade_alvo:document.getElementById('f-rentabilidade').value.trim()||null,
