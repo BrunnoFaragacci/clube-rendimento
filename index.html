@@ -8822,7 +8822,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
         var inp = D.createElement('input');
         inp.type = 'number'; inp.className = 'rb-meta-inp';
         inp.min = 0; inp.max = 100; inp.step = 0.01;
-        inp.value = formatarNumero(pctAtual, 2);
+        // input[type=number] só aceita ponto como separador decimal —
+        // formatarNumero devolve vírgula (padrão BR) e o navegador rejeita
+        // silenciosamente, deixando o campo vazio (era isso que fazia a
+        // Soma das metas começar em 0,00% e todo ativo aparecer "Acima").
+        inp.value = pctAtual.toFixed(2);
         inp.id = 'rb-classe-inp-' + idx;
         inp.addEventListener('input', function() { recalcularClasses(); });
         tdMeta.appendChild(inp);
@@ -9058,7 +9062,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
         var inp = D.createElement('input');
         inp.type = 'number'; inp.className = 'rb-meta-inp';
         inp.min = 0; inp.max = 100; inp.step = 0.01;
-        inp.value = formatarNumero(metaValor, 2);
+        // input[type=number] só aceita ponto como separador decimal — ver
+        // mesmo ajuste em preencherDiversificacaoPorClasse.
+        inp.value = metaValor.toFixed(2);
         inp.id = 'rb-inp-' + idx;
         if (temRec) {
           inp.style.borderColor = '#111111';
