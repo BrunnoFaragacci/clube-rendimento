@@ -1446,6 +1446,13 @@ h2{font-size:32px;letter-spacing:-.02em;}
       while (j < linhas.length) {
         var ld = linhas[j];
         if (!Array.isArray(ld) || !ld.length) break;
+        // Encerra o bloco também ao encontrar o cabeçalho de OUTRO bloco
+        // "Ativo" — sem isso, quando duas seções (ex.: Ações e Fundos
+        // Imobiliários) não têm uma linha em branco de verdade entre si na
+        // planilha, o scanner atravessava direto para a segunda seção e
+        // atribuía todos os FIIs à origemSecao da primeira ("acoes"),
+        // fazendo o site nunca reconhecer nenhum FII nesse layout.
+        if (pareceCabecalhoAtivos(ld)) break;
         var ticker = String(ld[0] === undefined || ld[0] === null ? '' : ld[0]).trim().toUpperCase();
         // Uma linha cujo ticker não bate com o padrão é simplesmente pulada
         // (não encerra o bloco) — o fim de fato é a próxima linha em branco,
