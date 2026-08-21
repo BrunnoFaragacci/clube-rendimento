@@ -271,7 +271,6 @@ h2{font-size:32px;letter-spacing:-.02em;}
       <button type="button" class="btn-nav" id="btn-nav-calculadoras">Calculadoras ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-cetipados">Fundos Fechados ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-pesquisa">Pesquisar ativo ↗</button>
-      <button type="button" class="btn-nav" id="btn-nav-valuation">Valuation ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-carteira-rec">Carteira Recomendada ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-seguros">Seguros e Previdência ↗</button>
       <div class="nav-dropdown-wrap">
@@ -4395,7 +4394,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var temPM = ativos.some(function(a) { return typeof a.precoMedio === 'number' && !isNaN(a.precoMedio) && a.precoMedio > 0; });
     var colRV = ['Ativo','Segmento','Tipo de FII','Quantidade'];
     if (temPM) colRV.push('Preço médio');
-    colRV.push('Cotação atual','Valor total','Variação','P/L','P/VP','Dividend Yield (12m)','ROE','Próximos proventos','Total de proventos','Preço Alvo (XP)','Upside (XP)','Valuation','Valor de mercado','Liquidez diária','Vacância média','');
+    colRV.push('Cotação atual','Valor total','Variação','P/L','P/VP','Dividend Yield (12m)','ROE','Próximos proventos','Total de proventos','Preço Alvo (XP)','Upside (XP)','Valor de mercado','Liquidez diária','Vacância média','');
     var colRFPos = ['Ativo','Tipo','Aplicação','Vencimento','Taxa','Imposto','Valor aplicado','Posição','Valor líquido','Valor no vencimento','Cupons pagos até o momento','Lucro (R$)','Lucro (%)',''];
     var colRFEmis = ['Ativo','Instituição/emissor identificado','Caixa','Receita líquida','Lucro/Prejuízo','Dívida bruta','Dívida líquida','EBITDA','Dívida bruta/EBITDA','Margem líquida','Índice de Basileia (bancos)'];
     var colCetip = ['', 'Fundo', 'Data da aplicação', 'Qtd. cotas', 'Valor da cota', 'Valor aplicado', 'Valorização', 'Valor líquido', 'Dia pag. rendimento', 'Último dividendo pago', 'Yield (mês)', ''];
@@ -5265,7 +5264,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     // como este indicador de ações). Ocultamos as colunas via CSS, sem alterar
     // os índices fixos usados na montagem das linhas (c[6+o], c[9+o] etc.).
     if (opcoes.fiis && !opcoes.acoes) {
-      var colunasOcultarFII = ['P/L', 'ROE', 'Total de proventos', 'Preço Alvo (XP)', 'Upside (XP)', 'Valuation']
+      var colunasOcultarFII = ['P/L', 'ROE', 'Total de proventos', 'Preço Alvo (XP)', 'Upside (XP)']
         .map(function(nome) { return colRV.indexOf(nome); })
         .filter(function(idx) { return idx !== -1; })
         .map(function(idx) { return idx + 1; }); // nth-child é 1-based
@@ -6053,7 +6052,6 @@ h2{font-size:32px;letter-spacing:-.02em;}
         tr.appendChild(cel(D, '—'));                      // total proventos
         tr.appendChild(cel(D, 'Consultando...'));         // preço alvo XP
         tr.appendChild(cel(D, '—'));                      // upside XP
-        tr.appendChild(cel(D, '—'));                      // valuation (manual, editável)
         tr.appendChild(cel(D, 'Consultando...'));         // valor de mercado
         tr.appendChild(cel(D, 'Consultando...'));         // liquidez diária
         tr.appendChild(cel(D, '—'));                      // vacância média
@@ -6564,43 +6562,6 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var roeVal = typeof fin.returnOnEquity === 'number' ? fin.returnOnEquity * 100 : (isFinite(roeFallback) ? roeFallback : null);
             c[10 + o].textContent  = roeVal !== null                              ? formatarNumero(roeVal, 2) + '%'                  : '—';
 
-            // Valuation — upside/downside pelo mesmo modelo de fluxo de caixa
-            // descontado da tela "Valuation de Fluxo de Caixa" (crescimento
-            // projetado padronizado em 0% e taxa de desconto na Selic
-            // vigente). O plano atual da Brapi não libera netIncomeToCommon
-            // nem payoutRatio para a maioria das ações (confirmado via teste
-            // direto, mesmo para PETR4) — por isso os dois têm fallback
-            // calculado a partir de campos que a Brapi sempre libera:
-            // lucro líquido TTM ≈ EPS × ações em circulação (mesmo fallback
-            // já usado pela tela de Valuation quando não há DRE histórica) e
-            // payout ≈ dividendo por ação (12m, via dyVal já calculado
-            // acima) ÷ EPS.
-            if (!isFII && !isETF && !isBDR) {
-              var epsVal         = typeof dado.earningsPerShare === 'number' ? dado.earningsPerShare : null;
-              var totalAcoesVal  = typeof est.sharesOutstanding === 'number' ? est.sharesOutstanding : null;
-              var lucroBaseVal   = typeof fin.netIncomeToCommon === 'number' ? fin.netIncomeToCommon :
-                (epsVal && totalAcoesVal ? epsVal * totalAcoesVal : null);
-              var payoutFracVal  = typeof est.payoutRatio === 'number' ? est.payoutRatio :
-                (dyVal !== null && epsVal ? ((dyVal / 100) * cot) / epsVal : 0);
-              var tdVal = SELIC_REFERENCIA_AA / 100, gpVal = 0.03, horizonteVal = 3;
-              if (lucroBaseVal && totalAcoesVal && payoutFracVal > 0 && typeof cot === 'number' && tdVal > gpVal) {
-                // Crescimento projetado = 0% em todos os anos, então o fluxo
-                // anual (lucro × payout) permanece constante ao longo do
-                // horizonte de projeção.
-                var fluxoAnualVal = lucroBaseVal * payoutFracVal;
-                var vplTotalVal = 0;
-                for (var _hv = 0; _hv < horizonteVal; _hv++) {
-                  vplTotalVal += fluxoAnualVal / Math.pow(1 + tdVal, _hv + 1);
-                }
-                var vtVal = fluxoAnualVal * (1 + gpVal) / (tdVal - gpVal);
-                vplTotalVal += vtVal / Math.pow(1 + tdVal, horizonteVal);
-                var precoJustoVal = vplTotalVal / totalAcoesVal;
-                var upsideVal = ((precoJustoVal / cot) - 1) * 100;
-                c[15 + o].textContent = (upsideVal >= 0 ? '▲ ' : '▼ ') + formatarNumero(Math.abs(upsideVal), 2) + '%';
-                c[15 + o].className = upsideVal >= 0 ? 'pos' : 'neg';
-              }
-            }
-
             // Valor de mercado e liquidez diária (dados já vêm no /api/quote/ principal,
             // com fallback para dados calculados/Investidor10 quando a Brapi não retorna
             // — mesma lógica já aplicada na Pesquisa de Ativos para um único FII).
@@ -6638,7 +6599,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
                 if (typeof valorPatrimonialNum === 'number') valorMercadoRV = valorPatrimonialNum;
               }
             }
-            c[16 + o].textContent = fmtGrandeRV(valorMercadoRV);
+            c[15 + o].textContent = fmtGrandeRV(valorMercadoRV);
             // Sem averageDailyVolume3Month, não usamos regularMarketVolume (volume
             // de um único dia) como substituto: gera valores muito distantes da
             // liquidez média real (ver mesma correção na Pesquisa de Ativos). Quando
@@ -6646,11 +6607,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
             var liqDiariaCotas = dado.averageDailyVolume3Month || null;
             var liqDiariaRS = (liqDiariaCotas && typeof cot === 'number') ? liqDiariaCotas * cot : null;
             if (liqDiariaRS) {
-              c[17 + o].textContent = fmtGrandeRV(liqDiariaRS) + '/dia';
+              c[16 + o].textContent = fmtGrandeRV(liqDiariaRS) + '/dia';
             } else if (extraInvestidor10 && extraInvestidor10.liquidezDiaria) {
-              c[17 + o].textContent = extraInvestidor10.liquidezDiaria + '/dia';
+              c[16 + o].textContent = extraInvestidor10.liquidezDiaria + '/dia';
             } else {
-              c[17 + o].textContent = '—';
+              c[16 + o].textContent = '—';
             }
             if (isFII) {
               // O vacancyRate por imóvel da brapi.dev/api/v2/fii/properties
@@ -6663,14 +6624,14 @@ h2{font-size:32px;letter-spacing:-.02em;}
               // o Investidor10 não responde.
               var vacMedia = mapaFIIVacancia[at.ticker];
               if (extraInvestidor10 && extraInvestidor10.vacancia) {
-                c[18 + o].textContent = extraInvestidor10.vacancia;
+                c[17 + o].textContent = extraInvestidor10.vacancia;
               } else if (typeof vacMedia === 'number') {
-                c[18 + o].textContent = formatarNumero(vacMedia * 100, 2) + '%';
+                c[17 + o].textContent = formatarNumero(vacMedia * 100, 2) + '%';
               } else {
-                c[18 + o].textContent = '—';
+                c[17 + o].textContent = '—';
               }
             } else {
-              c[18 + o].textContent = '—';
+              c[17 + o].textContent = '—';
             }
 
             // Guarda os valores numéricos (não os textos já formatados) desta
@@ -6689,9 +6650,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
               var liquidezNumRV = liqDiariaRS || (extraInvestidor10 ? parseValorAbrevBR(extraInvestidor10.liquidezDiaria) : null);
 
               tr.setAttribute('data-isfii', '1');
-              tr.setAttribute('data-idx-mercado', String(14 + o));
-              tr.setAttribute('data-idx-liquidez', String(15 + o));
-              tr.setAttribute('data-idx-vacancia', String(16 + o));
+              tr.setAttribute('data-idx-mercado', String(15 + o));
+              tr.setAttribute('data-idx-liquidez', String(16 + o));
+              tr.setAttribute('data-idx-vacancia', String(17 + o));
               tr.setAttribute('data-valor-mercado', typeof valorMercadoRV === 'number' ? String(valorMercadoRV) : '');
               tr.setAttribute('data-liquidez', typeof liquidezNumRV === 'number' ? String(liquidezNumRV) : '');
               tr.setAttribute('data-vacancia', typeof vacanciaNumRV === 'number' ? String(vacanciaNumRV) : '');
@@ -6807,9 +6768,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
             c[11 + o].textContent = 'Erro';
             c[13 + o].textContent = 'Erro';
             c[14 + o].textContent = '—';
+            c[15 + o].textContent = 'Erro';
             c[16 + o].textContent = 'Erro';
-            c[17 + o].textContent = 'Erro';
-            c[18 + o].textContent = '—';
+            c[17 + o].textContent = '—';
           });
         })
         .then(function() { return processarRV(startIdx + LOTE); });
@@ -11094,827 +11055,6 @@ carregarFundos();
 </html>`);
   }
 
-  /* ===================== VALUATION — FLUXO DE CAIXA DESCONTADO ===================== */
-
-  function abrirValuationDCF() {
-    var win = window.open('', '_blank');
-    if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
-
-    var TOKEN_DCF = '';
-    var BASE_DCF  = 'https://segeufywrjmstfmfscdi.supabase.co/functions/v1/brapi-proxy';
-
-    escreverConteudoJanela(win, `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Valuation DCF — Clube do Rendimento</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-:root{--bg:#fff;--soft:#F4F4F4;--ink:#111111;--ink2:#5C5C5C;--line:#E2E2E2;--orange:#111111;--og:#000000;--green:#16A34A;--red:#DC2626;--blue:#2563EB;--radius:16px;--shadow:0 10px 28px rgba(0,0,0,.08);}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Inter',system-ui,sans-serif;background:var(--soft);color:var(--ink);font-size:14px;line-height:1.5;}
-.hd{background:#fff;border-bottom:1px solid var(--line);padding:12px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:10;}
-.hd-brand{font-weight:700;font-size:13px;color:var(--ink2);text-decoration:none;}
-.hd-sep{color:var(--line);}
-.ticker-badge{background:#eff6ff;color:var(--blue);font-weight:700;font-size:13px;padding:5px 12px;border-radius:8px;border:1px solid #bfdbfe;display:none;}
-.search-wrap{display:flex;align-items:center;gap:8px;flex:1;max-width:480px;position:relative;}
-.search-dcf-container{flex:1;position:relative;}
-.inp-ticker{width:100%;padding:7px 12px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);}
-.inp-ticker:focus{outline:none;border-color:var(--orange);}
-/* Dropdown DCF — mesmo padrão da página de Pesquisa */
-.dcf-sug-list{position:absolute;top:calc(100% + 6px);left:0;min-width:460px;max-width:600px;background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.16);z-index:300;display:none;overflow:hidden;border:1px solid #e5e7eb;}
-.dcf-sug-filters{display:flex;gap:8px;padding:12px 14px;border-bottom:1px solid #f1f5f9;}
-.dcf-pill{padding:5px 16px;border-radius:20px;font-size:12.5px;font-weight:600;cursor:pointer;border:1.5px solid #e5e7eb;color:#6B7280;background:#fff;font-family:inherit;transition:background .15s,color .15s,border-color .15s;}
-.dcf-pill.ativo{background:var(--orange);color:#fff;border-color:var(--orange);}
-.dcf-sug-itens{max-height:340px;overflow-y:auto;}
-.dcf-sug-item{display:flex;align-items:center;gap:12px;padding:11px 14px;cursor:pointer;border-bottom:1px solid #f8fafc;}
-.dcf-sug-item:last-child{border-bottom:none;}
-.dcf-sug-item:hover{background:#f8fafc;}
-.dcf-logo-wrap{position:relative;width:36px;height:36px;flex-shrink:0;}
-.dcf-logo-ini{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;background:#f1f5f9;color:#6B7280;}
-.dcf-logo-img{position:absolute;inset:0;width:36px;height:36px;border-radius:50%;object-fit:contain;background:#fff;border:1px solid #f1f5f9;display:none;}
-.dcf-sug-ticker{font-weight:700;font-size:14px;min-width:62px;color:var(--ink);}
-.dcf-sug-nome{font-size:13px;color:#6B7280;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.dcf-badge{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:5px;white-space:nowrap;}
-.dcf-badge-acao{background:#16A34A;color:#fff;}
-.dcf-badge-fii{background:#F97316;color:#fff;}
-.dcf-badge-etf{background:#2563EB;color:#fff;}
-.dcf-badge-bdr{background:#8B5CF6;color:#fff;}
-.dcf-badge-outro{background:#6B7280;color:#fff;}
-.dcf-sug-vazio{padding:18px;text-align:center;font-size:13px;color:#9CA3AF;}
-.btn-buscar{padding:7px 16px;background:linear-gradient(135deg,var(--orange),var(--og));color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;white-space:nowrap;box-shadow:0 8px 18px rgba(0,0,0,.22);transition:transform .15s;}
-.btn-buscar:hover{transform:translateY(-2px);}
-.btn-buscar:disabled{opacity:.5;cursor:not-allowed;}
-.spinner{width:13px;height:13px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite;display:inline-block;}
-@keyframes spin{to{transform:rotate(360deg)}}
-.beta{background:#fffbeb;border-bottom:1px solid #fde68a;padding:8px 24px;font-size:12px;color:#92400e;}
-.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;padding:20px 24px 0;}
-.kpi{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);transition:transform .18s;}
-.kpi:hover{transform:translateY(-3px);}
-.kpi-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--blue);margin-bottom:5px;}
-.kpi-val{font-size:17px;font-weight:700;}
-.main{display:grid;grid-template-columns:360px 1fr;gap:18px;padding:18px 24px 48px;}
-.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;}
-.card+.card{margin-top:14px;}
-.card-title{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px;}
-.t{width:100%;border-collapse:collapse;}
-.t tr{border-bottom:1px solid #f3f4f6;}
-.t tr:last-child{border-bottom:none;}
-.t td{padding:9px 0;font-size:13px;color:var(--ink2);}
-.t td:last-child{text-align:right;font-weight:600;color:var(--ink);}
-.t-note{font-size:11px;color:var(--ink2);margin-top:10px;padding-top:10px;border-top:1px solid var(--line);}
-.inp-num{width:70px;text-align:right;padding:4px 8px;border:1.5px solid var(--line);border-radius:6px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);}
-.inp-num:focus{outline:none;border-color:var(--orange);}
-.upside-box{border-radius:var(--radius);padding:16px;text-align:center;margin-top:12px;}
-.upside-box.pos{background:#f0fdf4;border:1px solid #bbf7d0;}
-.upside-box.neg{background:#fff5f5;border:1px solid #fecaca;}
-.upside-num{font-size:30px;font-weight:800;line-height:1;}
-.upside-num.pos{color:var(--green);}
-.upside-num.neg{color:var(--red);}
-.upside-desc{font-size:11px;color:var(--ink2);margin-top:5px;}
-.btn-acao{padding:7px 14px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;}
-.btn-acao:hover{background:var(--soft);}
-.atualizado{font-size:11px;color:var(--ink2);margin-top:10px;}
-.toggle{display:flex;gap:4px;}
-.toggle button{padding:5px 14px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;}
-.toggle button.on{background:var(--ink);color:#fff;}
-.toggle button.off{background:var(--soft);color:var(--ink2);}
-.dcf-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-.dcf-t{width:100%;border-collapse:collapse;}
-.dcf-t th{background:#1a1a2e;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:8px;border-bottom:1.5px solid var(--line);text-align:left;white-space:nowrap;position:sticky;top:var(--sticky-top,0px);z-index:5;}
-.dcf-t th:nth-child(2),.dcf-t td:nth-child(2){text-align:right;}
-.dcf-t th:nth-child(3),.dcf-t td:nth-child(3){text-align:center;}
-.dcf-t th:nth-child(4),.dcf-t td:nth-child(4){text-align:right;}
-.dcf-t td{padding:9px 8px;border-bottom:1px solid #f3f4f6;font-size:12.5px;}
-.row-hist td{color:var(--ink2);}
-.row-proj td{color:var(--blue);}
-.row-proj td:nth-child(1){font-weight:600;}
-.row-perp td{color:var(--blue);font-weight:600;border-top:2px dashed #bfdbfe;}
-.div-row td{padding:2px 0;border:none;height:6px;}
-.inp-g{width:56px;text-align:center;padding:3px 5px;border:1.5px solid #bfdbfe;border-radius:5px;font-size:12px;font-weight:600;color:var(--blue);background:#eff6ff;font-family:inherit;}
-.inp-g:focus{outline:none;border-color:var(--blue);}
-.step{display:inline-flex;align-items:center;gap:5px;}
-.step button{width:20px;height:20px;border:1px solid var(--line);border-radius:4px;background:var(--soft);color:var(--ink2);font-size:13px;cursor:pointer;line-height:1;font-family:inherit;}
-.step button:hover{background:var(--line);}
-.step-val{font-size:12px;font-weight:700;color:var(--blue);min-width:34px;text-align:center;}
-.erro{display:none;color:var(--red);font-size:12.5px;padding:8px 12px;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;margin:8px 24px 0;}
-.vazio{display:flex;flex-direction:column;align-items:center;justify-content:center;height:55vh;color:var(--ink2);gap:10px;text-align:center;}
-.acoes-bar{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
-.btn-primario{padding:7px 14px;border:none;border-radius:8px;background:#1e40af;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;flex:1;justify-content:center;}
-.btn-primario:hover{background:#1e3a8a;}
-.btn-primario:disabled{opacity:.5;cursor:not-allowed;}
-@media(max-width:860px){.main{grid-template-columns:1fr;}.kpis{grid-template-columns:repeat(2,1fr);}}
-<\/style>
-</head>
-<body>
-
-<header class="hd">
-  <a href="javascript:window.close()" class="hd-brand">← Clube do Rendimento</a>
-  <span class="hd-sep">|</span>
-  <h1 style="font-size:14px;font-weight:700;color:var(--ink);">Valuation de Fluxo de Caixa</h1>
-  <div class="ticker-badge" id="ticker-badge"></div>
-  <div class="search-wrap">
-    <div class="search-dcf-container">
-      <input class="inp-ticker" id="inp-ticker" type="text" placeholder="Buscar ativo... ex: ABCB4, PETR4, VALE3" autocomplete="off">
-      <div class="dcf-sug-list" id="dcf-sug-list">
-        <div class="dcf-sug-filters">
-          <button class="dcf-pill ativo" data-tipo="todos">Todos</button>
-          <button class="dcf-pill" data-tipo="stock">Ação</button>
-          <button class="dcf-pill" data-tipo="fund">FII</button>
-          <button class="dcf-pill" data-tipo="etf">ETF</button>
-          <button class="dcf-pill" data-tipo="bdr">BDR</button>
-        </div>
-        <div class="dcf-sug-itens" id="dcf-sug-itens"></div>
-      </div>
-    </div>
-    <button class="btn-buscar" id="btn-buscar">Buscar</button>
-  </div>
-</header>
-
-<div class="beta">⚠ <strong>Versão beta.</strong> Os dados são obtidos via brapi.dev e podem apresentar defasagem. Não constitui recomendação de investimento.</div>
-<div class="erro" id="erro-msg"></div>
-
-<div class="vazio" id="vazio">
-  <svg width="64" height="64" fill="none" stroke="#d1d5db" stroke-width="1.5" viewBox="0 0 24 24">
-    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-  </svg>
-  <p style="font-size:14px;">Pesquise um ativo para iniciar o valuation.</p>
-  <p style="font-size:12px;color:#9ca3af;">Exemplos: PETR4, ABCB4, ITUB4, VALE3</p>
-</div>
-
-<div id="conteudo" style="display:none;">
-  <div class="kpis">
-    <div class="kpi"><div class="kpi-label">Preço Atual</div><div class="kpi-val" id="k-preco">—</div></div>
-    <div class="kpi"><div class="kpi-label">N Total de Ações</div><div class="kpi-val" id="k-acoes">—</div></div>
-    <div class="kpi"><div class="kpi-label">Market Cap</div><div class="kpi-val" id="k-mcap">—</div></div>
-    <div class="kpi"><div class="kpi-label">Payout médio</div><div class="kpi-val" id="k-payout">—</div></div>
-    <div class="kpi"><div class="kpi-label">ROE</div><div class="kpi-val" id="k-roe">—</div></div>
-  </div>
-
-  <div class="main">
-    <div>
-      <div class="card">
-        <div class="card-title">Premissas</div>
-        <table class="t">
-          <tr><td>Payout médio</td><td id="p-payout">—</td></tr>
-          <tr><td>ROE</td><td id="p-roe">—</td></tr>
-          <tr><td>Taxa esperada de crescimento</td><td id="p-g">—</td></tr>
-          <tr>
-            <td style="display:flex;align-items:center;gap:4px;">
-              Taxa de desconto
-              <span title="Taxa mínima de atratividade. Referência: Selic média histórica de 11,53% após IR de 15%." style="cursor:help;color:var(--ink2);font-size:11px;">ⓘ</span>
-            </td>
-            <td>
-              <input class="inp-num" type="number" id="inp-td" value="14.75" step="0.25" min="1" max="50">
-              <span style="font-size:11px;color:var(--ink2);margin-left:2px;">%</span>
-            </td>
-          </tr>
-        </table>
-        <p class="t-note" id="nota-selic">Média histórica da Selic: 11,53% (equivalente a 9,80% após IR de 15%).</p>
-      </div>
-
-      <div class="card">
-        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
-          Realidade Projetada
-        </div>
-        <table class="t">
-          <tr><td>Market cap projetado</td><td id="r-mcap">—</td></tr>
-          <tr><td>Nº total de ações</td><td id="r-acoes">—</td></tr>
-          <tr><td>Nº ações ex-tesouraria</td><td id="r-treasury">—</td></tr>
-          <tr><td style="color:var(--blue);font-weight:600;">Preço por ação</td><td id="r-preco" style="color:var(--blue);font-size:15px;">—</td></tr>
-          <tr><td style="font-weight:600;">Upside / Downside</td><td id="r-upside" style="font-size:15px;">—</td></tr>
-        </table>
-        <div class="upside-box pos" id="upside-box">
-          <div class="upside-num pos" id="upside-num">—</div>
-          <div class="upside-desc" id="upside-desc">Calculando...</div>
-        </div>
-        <p class="atualizado" id="atualizado"></p>
-        <div class="acoes-bar">
-          <button class="btn-acao" id="btn-reset">↺ Reset</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="dcf-hd">
-        <div class="card-title" style="margin-bottom:0;">Fluxo de Caixa Descontado</div>
-        <div class="toggle">
-          <button class="on" id="btn-3anos">3 anos</button>
-          <button class="off" id="btn-5anos">5 anos</button>
-        </div>
-      </div>
-      <table class="dcf-t">
-        <thead>
-          <tr>
-            <th>Ano</th>
-            <th>Lucro Líquido</th>
-            <th>Crescimento</th>
-            <th>VPL</th>
-          </tr>
-        </thead>
-        <tbody id="dcf-body"></tbody>
-      </table>
-      <p style="font-size:11.5px;color:var(--ink2);margin-top:14px;padding-top:12px;border-top:1px solid var(--line);">
-        Edite os campos de crescimento (%) nos anos projetados — destacados em azul — para que o Upside/Downside seja recalculado em tempo real. O crescimento da perpetuidade deve ser inferior à taxa de desconto.
-      </p>
-    </div>
-  </div>
-</div>
-
-<script>
-(function(){
-  function ajustarStickyTop(){
-    var hd=document.querySelector('.hd')||document.querySelector('.nav');
-    if(hd)document.documentElement.style.setProperty('--sticky-top',hd.offsetHeight+'px');
-  }
-  ajustarStickyTop();
-  window.addEventListener('resize',ajustarStickyTop);
-})();
-var TOKEN_V = '${TOKEN_DCF}';
-var BASE_V  = '${BASE_DCF}';
-
-var estado = {
-  ticker:'', precoAtual:0, totalAcoes:0, treasury:0, marketCap:0,
-  payout:0, roe:0, historico:[], crescAnos:[0,0,0,0,0],
-  taxaCrescEsper:0, horizonte:3, crescPerp:3.0, taxaDesconto:14.75,
-  dadosSinteticos:false, payoutDefault:false, listenerRegistrado:false
-};
-
-// Buscar a Selic vigente na BrasilAPI e usá-la como taxa de desconto padrão
-(function buscarSelic(){
-  fetch('https://brasilapi.com.br/api/taxas/v1')
-    .then(function(r){ return r.json(); })
-    .then(function(taxas){
-      var selic = taxas.find(function(t){ return String(t.nome).toUpperCase() === 'SELIC'; });
-      if(selic && selic.valor > 0){
-        var td = parseFloat(selic.valor.toFixed(2));
-        estado.taxaDesconto = td;
-        var inp = document.getElementById('inp-td');
-        if(inp) inp.value = td;
-        // Atualizar a nota de rodapé com o valor real da Selic
-        var nota = document.getElementById('nota-selic');
-        if(nota) nota.textContent =
-          'Selic vigente: '+td.toFixed(2).replace('.',',')+
-          '% a.a. (equivalente a '+
-          (td*0.85).toFixed(2).replace('.',',')+
-          '% após IR de 15%).';
-        // Se um ticker já foi buscado antes desta chamada resolver, o
-        // valuation exibido ainda usaria a taxa padrão (14,75%) mesmo com o
-        // campo já mostrando a Selic — recalcula para manter os dois em sincronia.
-        if(estado.historico && estado.historico.length) recalcular();
-      }
-    })
-    .catch(function(){}); // Silencioso: mantém 14,75% como fallback
-})();
-
-function fBRL(v){ return (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2}); }
-function fPct(v,d){ return (+(v||0)).toFixed(d||2).replace('.',',')+'%'; }
-function fInt(v){ return Math.round(v||0).toLocaleString('pt-BR'); }
-
-function buscar(){
-  var simbolo = document.getElementById('inp-ticker').value.trim().toUpperCase();
-  if(!simbolo) return;
-  var btn = document.getElementById('btn-buscar');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Buscando...';
-  document.getElementById('erro-msg').style.display = 'none';
-  estado.fonteDados = '—';
-
-  var q = encodeURIComponent(simbolo);
-  var t = TOKEN_V;
-  var b = BASE_V+'/quote/'+q;
-
-  // Cinco chamadas paralelas:
-  // c1 — dados fundamentais + dividendos históricos
-  // c2, c3 — histórico de DRE anual (com e sem fundamental=true)
-  // c4 — todos os módulos financeiros combinados
-  // c5 — histórico trimestral isolado
-  var c1 = fetch(b+'?token='+t+'&fundamental=true&dividends=true&modules=defaultKeyStatistics,financialData').then(function(r){return r.json();}).catch(function(){return null;});
-  var c2 = fetch(b+'?token='+t+'&fundamental=true&modules=incomeStatementHistory,incomeStatementHistoryQuarterly').then(function(r){return r.json();}).catch(function(){return null;});
-  var c3 = fetch(b+'?token='+t+'&modules=incomeStatementHistory,incomeStatementHistoryQuarterly').then(function(r){return r.json();}).catch(function(){return null;});
-  var c4 = fetch(b+'?token='+t+'&fundamental=true&modules=defaultKeyStatistics,financialData,incomeStatementHistory,incomeStatementHistoryQuarterly,balanceSheetHistory,cashflowStatementHistory').then(function(r){return r.json();}).catch(function(){return null;});
-  var c5 = fetch(b+'?token='+t+'&modules=incomeStatementHistoryQuarterly').then(function(r){return r.json();}).catch(function(){return null;});
-
-  Promise.all([c1,c2,c3,c4,c5])
-    .then(function(res){
-      var d1=res[0]&&res[0].results&&res[0].results[0];
-      var d2=res[1]&&res[1].results&&res[1].results[0];
-      var d3=res[2]&&res[2].results&&res[2].results[0];
-      var d4=res[3]&&res[3].results&&res[3].results[0];
-      var d5=res[4]&&res[4].results&&res[4].results[0];
-      if(!d1) throw new Error('Ativo "'+simbolo+'" não encontrado. Verifique o ticker e tente novamente.');
-
-      var est = d1.defaultKeyStatistics||{};
-      var fin = d1.financialData||{};
-      // Dividendos históricos por ação (cashDividends)
-      var divData = (d1.dividendsData&&d1.dividendsData.cashDividends)||[];
-
-      estado.ticker     = simbolo;
-      estado.precoAtual = d1.regularMarketPrice||0;
-      estado.totalAcoes = est.sharesOutstanding||0;
-      estado.treasury   = (est.sharesOutstanding||0)-(est.floatShares||0);
-      estado.marketCap  = d1.marketCap||(estado.precoAtual*estado.totalAcoes);
-      estado.roe        = (fin.returnOnEquity||0)*100;
-      estado.dadosSinteticos  = false;
-      estado.dadosTrimestrais = false;
-
-      // ── Funções auxiliares de extração da DRE ────────────────────────────
-      function extrairAnual(d){
-        if(!d) return [];
-        var caminhos=[
-          d.incomeStatementHistory&&d.incomeStatementHistory.incomeStatementHistory,
-          Array.isArray(d.incomeStatementHistory)?d.incomeStatementHistory:null
-        ];
-        for(var i=0;i<caminhos.length;i++){
-          var arr=caminhos[i];
-          if(Array.isArray(arr)&&arr.length&&arr[0]){
-            var ok=arr.filter(function(r){return r.netIncome||r.netIncomeToCommon;});
-            if(ok.length) return ok;
-          }
-        }
-        return [];
-      }
-      function extrairTrimestral(d){
-        if(!d) return [];
-        var caminhos=[
-          d.incomeStatementHistoryQuarterly&&d.incomeStatementHistoryQuarterly.incomeStatementHistory,
-          Array.isArray(d.incomeStatementHistoryQuarterly)?d.incomeStatementHistoryQuarterly:null
-        ];
-        for(var i=0;i<caminhos.length;i++){
-          var arr=caminhos[i];
-          if(Array.isArray(arr)&&arr.length&&arr[0]) return arr;
-        }
-        return [];
-      }
-
-      // ── Prioridade 1: histórico anual direto ─────────────────────────────
-      var dreAnual=[], fonteAnual='';
-      [{d:d2,l:'anual c/ fundamental=true'},{d:d3,l:'anual s/ fundamental=true'},{d:d4,l:'anual combinado'},{d:d1,l:'anual de defaultKeyStatistics'}]
-        .forEach(function(s){
-          if(dreAnual.length) return;
-          var arr=extrairAnual(s.d);
-          if(arr.length){dreAnual=arr;fonteAnual=s.l;}
-        });
-      if(dreAnual.length){
-        estado.historico=dreAnual
-          .filter(function(r){return r.netIncome||r.netIncomeToCommon;})
-          .sort(function(a,b){return new Date(a.endDate)-new Date(b.endDate);})
-          .slice(-5)
-          .map(function(r){return {ano:new Date(r.endDate).getFullYear(),lucro:r.netIncome||r.netIncomeToCommon};});
-        estado.fonteDados='Anual ('+fonteAnual+')';
-      }
-
-      // ── Prioridade 2: agregação trimestral ───────────────────────────────
-      if(!estado.historico.length){
-        var trim=[],fonteTrim='';
-        [{d:d2,l:'trim c/ fundamental=true'},{d:d3,l:'trim s/ fundamental=true'},{d:d4,l:'trim combinado'},{d:d5,l:'trim isolado'}]
-          .forEach(function(s){
-            if(trim.length) return;
-            var arr=extrairTrimestral(s.d);
-            if(arr.length){trim=arr;fonteTrim=s.l;}
-          });
-        if(trim.length){
-          var soma={},cnt={};
-          trim.forEach(function(q){
-            var ni=q.netIncome||q.netIncomeToCommon;
-            if(!ni||!q.endDate) return;
-            var a=new Date(q.endDate).getFullYear();
-            soma[a]=(soma[a]||0)+ni;
-            cnt[a]=(cnt[a]||0)+1;
-          });
-          var anos=Object.keys(soma).filter(function(a){return cnt[a]>=3;}).sort().slice(-5);
-          if(anos.length){
-            estado.historico=anos.map(function(a){return {ano:parseInt(a),lucro:soma[a]};});
-            estado.dadosTrimestrais=true;
-            estado.fonteDados='Trimestral agregado ('+fonteTrim+')';
-          }
-        }
-      }
-
-      // ── Prioridade 3: TTM como único ponto de referência ─────────────────
-      if(!estado.historico.length){
-        var niTTM=fin.netIncomeToCommon||0;
-        if(!niTTM&&d1.earningsPerShare&&estado.totalAcoes) niTTM=d1.earningsPerShare*estado.totalAcoes;
-        if(niTTM){
-          estado.historico=[{ano:new Date().getFullYear()-1,lucro:niTTM}];
-          estado.dadosSinteticos=true;
-          estado.fonteDados='TTM (fallback — histórico não disponível via API)';
-        }
-      }
-
-      // ── Payout médio dos últimos 5 anos ───────────────────────────────────
-      // Agrupa os dividendos por ano fiscal (usa 'relatedTo' se disponível)
-      var divPorAno={};
-      divData.forEach(function(div){
-        var ano=null;
-        if(div.relatedTo){
-          var m=String(div.relatedTo).match(/\\d{4}/);
-          if(m) ano=parseInt(m[0]);
-        }
-        if(!ano&&div.paymentDate) ano=new Date(div.paymentDate).getFullYear();
-        if(!ano||!div.rate) return;
-        divPorAno[ano]=(divPorAno[ano]||0)+div.rate;
-      });
-
-      // Calcula o payout de cada ano histórico: (dividendo/ação × ações) / lucro líquido
-      var payoutsAnuais=[];
-      estado.historico.forEach(function(h){
-        var ratePorAcao=divPorAno[h.ano]||0;
-        if(!ratePorAcao||!h.lucro) return;
-        var totalDiv=ratePorAcao*estado.totalAcoes;
-        var p=(totalDiv/h.lucro)*100;
-        if(p>0&&p<2000) payoutsAnuais.push(p); // Limitar a 2000% para filtrar anomalias
-      });
-
-      if(payoutsAnuais.length){
-        // Média dos anos com dividendos disponíveis (até 5 exercícios)
-        var soma=payoutsAnuais.reduce(function(a,b){return a+b;},0);
-        estado.payout=soma/payoutsAnuais.length;
-        estado.payoutFonte='Médio '+payoutsAnuais.length+'a (calculado)';
-      } else {
-        // Fallback: valor TTM da API
-        estado.payout=(est.payoutRatio||0)*100;
-        estado.payoutFonte='TTM (API)';
-      }
-      estado.payoutDefault=false;
-
-      // ── Taxa de crescimento esperada ──────────────────────────────────────
-      // "Taxa esperada de crescimento" (p-g) permanece um dado informativo,
-      // calculado via ROE × retenção — mas o crescimento projetado padrão em
-      // cada ano (crescAnos, editável na tabela) começa em 0%, não nesse
-      // valor, para padronizar o ponto de partida do valuation.
-      var g=estado.roe*(1-(estado.payout/100));
-      estado.taxaCrescEsper=g;
-      estado.crescAnos=[0,0,0,0,0];
-      estado.crescPerp=3.0;
-      estado.taxaDesconto=estado.taxaDesconto||14.75;
-      document.getElementById('inp-td').value=estado.taxaDesconto;
-
-      var badge=document.getElementById('ticker-badge');
-      badge.textContent='📊 '+simbolo;
-      badge.style.display='inline-block';
-      document.title='Clube do Rendimento — DCF: '+simbolo;
-      document.getElementById('vazio').style.display='none';
-      document.getElementById('conteudo').style.display='block';
-
-      if(!estado.listenerRegistrado){
-        document.getElementById('dcf-body').addEventListener('input',function(e){
-          if(e.target&&e.target.classList.contains('inp-g')){
-            var idx=parseInt(e.target.getAttribute('data-idx'));
-            estado.crescAnos[idx]=parseFloat(e.target.value)||0;
-            recalcular();
-          }
-        });
-        estado.listenerRegistrado=true;
-      }
-      renderizarTudo();
-    })
-    .catch(function(e){
-      var el=document.getElementById('erro-msg');
-      el.textContent=e.message;
-      el.style.display='block';
-    })
-    .finally(function(){ btn.disabled=false; btn.textContent='Buscar'; });
-}
-
-function calcularDCF(){
-  if(!estado.historico.length||!estado.precoAtual) return null;
-  var lucroBase = estado.historico[estado.historico.length-1].lucro;
-  var td = estado.taxaDesconto/100;
-  var gp = estado.crescPerp/100;
-  // Garantir payout mínimo para que o modelo funcione
-  var pp = estado.payout/100; // Payout real da API, sem truncamento mínimo
-  var ano = new Date().getFullYear();
-  if(td<=gp) return null;
-
-  var vplTotal=0, lucroAnt=lucroBase, projs=[];
-  for(var i=0;i<estado.horizonte;i++){
-    var g      = (estado.crescAnos[i]||0)/100;
-    var lucroP = lucroAnt*(1+g);
-    var fluxo  = lucroP*pp;
-    var vpl    = fluxo/Math.pow(1+td,i+1);
-    projs.push({ano:ano+i+1,lucro:lucroP,cresc:estado.crescAnos[i]||0,vpl:vpl});
-    vplTotal  += vpl;
-    lucroAnt   = lucroP;
-  }
-  var fluxoFinal  = lucroAnt*pp;
-  var vt          = fluxoFinal*(1+gp)/(td-gp);
-  var vplTerminal = vt/Math.pow(1+td,estado.horizonte);
-  vplTotal       += vplTerminal;
-  var precoJusto  = estado.totalAcoes>0?vplTotal/estado.totalAcoes:0;
-  var upside      = estado.precoAtual>0?((precoJusto/estado.precoAtual)-1)*100:0;
-  return {projs:projs,vplTerminal:vplTerminal,vplTotal:vplTotal,precoJusto:precoJusto,upside:upside};
-}
-
-function renderizarTudo(){
-  estado.taxaDesconto = parseFloat(document.getElementById('inp-td').value)||14.75;
-  document.getElementById('k-preco').textContent  = fBRL(estado.precoAtual);
-  document.getElementById('k-acoes').textContent  = fInt(estado.totalAcoes);
-  document.getElementById('k-mcap').textContent   = fBRL(estado.marketCap);
-  document.getElementById('k-payout').textContent = fPct(estado.payout);
-  document.getElementById('k-roe').textContent    = fPct(estado.roe);
-  document.getElementById('p-payout').textContent = fPct(estado.payout)+(estado.payoutFonte?' — '+estado.payoutFonte:'');
-  document.getElementById('p-roe').textContent    = fPct(estado.roe);
-  document.getElementById('p-g').textContent      = fPct(estado.taxaCrescEsper);
-
-  var res = calcularDCF();
-  if(res){
-    document.getElementById('r-mcap').textContent     = fBRL(res.vplTotal);
-    document.getElementById('r-acoes').textContent    = fInt(estado.totalAcoes);
-    document.getElementById('r-treasury').textContent = fInt(estado.treasury);
-    document.getElementById('r-preco').textContent    = fBRL(res.precoJusto);
-    var u=res.upside, sinal=u>=0?'+':'';
-    document.getElementById('r-upside').textContent = sinal+fPct(u);
-    document.getElementById('r-upside').style.color = u>=0?'var(--green)':'var(--red)';
-    var box=document.getElementById('upside-box');
-    var num=document.getElementById('upside-num');
-    box.className = u>=0?'upside-box pos':'upside-box neg';
-    num.className = u>=0?'upside-num pos':'upside-num neg';
-    num.textContent = (u>=0?'▲ ':'▼ ')+Math.abs(u).toFixed(2).replace('.',',')+' %';
-    document.getElementById('upside-desc').textContent =
-      'Preço atual: '+fBRL(estado.precoAtual)+'  |  Preço justo: '+fBRL(res.precoJusto);
-  }
-  document.getElementById('atualizado').textContent = 'Atualizado em: '+new Date().toLocaleString('pt-BR');
-  renderizarTabelaDCF(res);
-}
-
-function renderizarTabelaDCF(res){
-  var corpo=document.getElementById('dcf-body');
-  corpo.innerHTML='';
-
-  // Aviso quando o histórico foi construído a partir de dados trimestrais agregados
-  if(estado.dadosTrimestrais){
-    var trTrim=document.createElement('tr');
-    trTrim.innerHTML='<td colspan="4" style="padding:8px;background:#f0fdf4;color:#166534;font-size:11.5px;border-radius:6px;">'
-      +'ⓘ O histórico anual foi calculado pela soma dos resultados trimestrais de cada exercício fiscal.</td>';
-    corpo.appendChild(trTrim);
-  }
-
-  // Aviso quando apenas o TTM está disponível
-  if(estado.dadosSinteticos){
-    var trAviso=document.createElement('tr');
-    trAviso.innerHTML='<td colspan="4" style="padding:8px;background:#fffbeb;color:#92400e;font-size:11.5px;border-radius:6px;">'
-      +'⚠ Histórico de demonstrações financeiras não disponível via API para este ativo. '
-      +'Exibe-se apenas o lucro líquido TTM (últimos 12 meses) como referência.</td>';
-    corpo.appendChild(trAviso);
-  }
-
-  // Aviso quando payout = 0 (empresa sem histórico de distribuição)
-  if(estado.payout === 0){
-    var trPayout=document.createElement('tr');
-    trPayout.innerHTML='<td colspan="4" style="padding:8px;background:#eff6ff;color:#1e40af;font-size:11.5px;border-radius:6px;">'
-      +'ⓘ O payout informado pela API é 0%. O modelo DCF por dividendos não se aplica diretamente a empresas que não distribuem proventos. '
-      +'Ajuste manualmente o crescimento e a taxa de desconto conforme o contexto do ativo.</td>';
-    corpo.appendChild(trPayout);
-  }
-
-  // Diagnóstico de fonte — visível ao usuário para identificar problemas de dados
-  if(estado.fonteDados){
-    var trFonte=document.createElement('tr');
-    trFonte.innerHTML='<td colspan="4" style="padding:6px 8px;font-size:10.5px;color:#9ca3af;border-top:1px solid var(--line);">'
-      +'Fonte dos dados históricos: '+estado.fonteDados+'</td>';
-    corpo.appendChild(trFonte);
-  }
-
-  // Linhas históricas — com variação percentual em relação ao ano anterior
-  estado.historico.forEach(function(h, idx){
-    var tr=document.createElement('tr');
-    tr.className='row-hist';
-
-    // Calcular variação em relação ao exercício anterior
-    var crescHtml='<span style="color:#d1d5db;">—</span>';
-    if(idx > 0){
-      var lucroPrev = estado.historico[idx-1].lucro;
-      if(lucroPrev !== 0){
-        var varPct = ((h.lucro - lucroPrev) / Math.abs(lucroPrev)) * 100;
-        var cor = varPct >= 0 ? 'var(--green)' : 'var(--red)';
-        crescHtml = '<span style="color:'+cor+';font-weight:600;">'
-          +(varPct>=0?'+':'')+varPct.toFixed(2).replace('.',',')+'%</span>';
-      }
-    }
-
-    tr.innerHTML='<td>'+h.ano+(estado.dadosSinteticos?' *':'')+'</td>'
-      +'<td>'+fBRL(h.lucro)+'</td>'
-      +'<td style="text-align:center;">'+crescHtml+'</td>'
-      +'<td style="color:#d1d5db;">—</td>';
-    corpo.appendChild(tr);
-  });
-
-  // Linha divisória entre histórico e projeção
-  var div=document.createElement('tr');
-  div.className='div-row';
-  div.innerHTML='<td colspan="4"></td>';
-  corpo.appendChild(div);
-
-  if(res){
-    res.projs.forEach(function(p,i){
-      var tr=document.createElement('tr');
-      tr.className='row-proj';
-      tr.innerHTML='<td>'+p.ano+'</td>'
-        +'<td>'+fBRL(p.lucro)+'</td>'
-        +'<td><input class="inp-g" type="number" value="'+p.cresc.toFixed(2)+'" step="0.1" data-idx="'+i+'"> <span style="font-size:10px;color:var(--blue);">%</span></td>'
-        +'<td style="font-weight:600;color:var(--blue);">'+fBRL(p.vpl)+'</td>';
-      corpo.appendChild(tr);
-    });
-
-    // Linha da perpetuidade
-    var tdTaxa=estado.taxaDesconto, gp=estado.crescPerp;
-    var lf=res.projs[res.projs.length-1].lucro;
-    var ff=lf*(estado.payout/100); // Payout real
-    var vt=ff*(1+gp/100)/(tdTaxa/100-gp/100);
-    var vplT=vt/Math.pow(1+tdTaxa/100,estado.horizonte);
-    var trp=document.createElement('tr');
-    trp.className='row-perp';
-    trp.innerHTML='<td>Perpétuo</td>'
-      +'<td style="font-size:11px;color:var(--ink2);">Gordon Growth Model</td>'
-      +'<td><div class="step">'
-        +'<button id="btn-gp-menos">−</button>'
-        +'<span class="step-val" id="perp-val">'+gp.toFixed(1).replace('.',',')+' %</span>'
-        +'<button id="btn-gp-mais">+</button>'
-      +'</div></td>'
-      +'<td style="font-weight:700;color:var(--blue);">'+fBRL(vplT)+'</td>';
-    corpo.appendChild(trp);
-
-    document.getElementById('btn-gp-menos').addEventListener('click',function(){ stepPerp(-0.5); });
-    document.getElementById('btn-gp-mais').addEventListener('click',function(){ stepPerp(0.5); });
-  }
-  // NOTA: o listener de input em inp-g é registrado UMA única vez em buscar()
-  // e não é re-registrado aqui para evitar acumulação de handlers.
-}
-
-function stepPerp(delta){
-  var novo=+(estado.crescPerp+delta).toFixed(1);
-  var td=estado.taxaDesconto;
-  if(novo<0.1) novo=0.1;
-  if(novo>=td-0.5) novo=td-0.5;
-  estado.crescPerp=novo;
-  recalcular();
-}
-
-function setHorizonte(h){
-  estado.horizonte=h;
-  document.getElementById('btn-3anos').className=h===3?'on':'off';
-  document.getElementById('btn-5anos').className=h===5?'on':'off';
-  recalcular();
-}
-
-function recalcular(){
-  estado.taxaDesconto=parseFloat(document.getElementById('inp-td').value)||14.75;
-  renderizarTudo();
-}
-
-function resetar(){
-  estado.crescAnos=[0,0,0,0,0];
-  estado.crescPerp=3.0;
-  // Redefinir para a Selic vigente já carregada
-  var selicVigente = estado.taxaDesconto || 14.75;
-  document.getElementById('inp-td').value = selicVigente;
-  renderizarTudo();
-}
-
-document.getElementById('btn-buscar').addEventListener('click',buscar);
-document.getElementById('inp-ticker').addEventListener('keydown',function(e){
-  if(e.key==='Enter'){ dcfFecharSug(); buscar(); }
-  if(e.key==='Escape') dcfFecharSug();
-  if(e.key==='ArrowDown'){ var its=document.querySelectorAll('.dcf-sug-item'); if(its.length) its[0].focus(); }
-});
-document.getElementById('inp-ticker').addEventListener('input',function(){
-  clearTimeout(dcfDebounce);
-  var v=(this.value||'').trim();
-  if(v.length<2){ dcfFecharSug(); return; }
-  dcfDebounce=setTimeout(function(){ dcfBuscarSug(v); },280);
-});
-document.addEventListener('click',function(e){
-  var l=document.getElementById('dcf-sug-list'),i=document.getElementById('inp-ticker');
-  if(l&&i&&!l.contains(e.target)&&e.target!==i) dcfFecharSug();
-});
-document.querySelectorAll('.dcf-pill').forEach(function(pill){
-  pill.addEventListener('click',function(){
-    document.querySelectorAll('.dcf-pill').forEach(function(p){p.classList.remove('ativo');});
-    pill.classList.add('ativo');
-    dcfFiltroAtivo=pill.dataset.tipo;
-    dcfRenderSug(dcfSugCache);
-  });
-});
-
-var dcfDebounce=null, dcfSugCache=[], dcfFiltroAtivo='todos';
-
-function dcfFecharSug(){
-  var el=document.getElementById('dcf-sug-list');
-  if(el) el.style.display='none';
-}
-
-function dcfTipoBadge(tipo){
-  var t=(tipo||'stock').toLowerCase();
-  if(t==='stock'||t==='equity') return {label:'AÇÃO',cls:'dcf-badge-acao'};
-  if(t==='fund'||t==='fii')     return {label:'FII', cls:'dcf-badge-fii'};
-  if(t==='etf')                 return {label:'ETF', cls:'dcf-badge-etf'};
-  if(t==='bdr')                 return {label:'BDR', cls:'dcf-badge-bdr'};
-  return {label:(tipo||'AÇÃO').toUpperCase(),cls:'dcf-badge-outro'};
-}
-
-function dcfBuscarSug(q){
-  fetch(BASE_V+'/quote/list?search='+encodeURIComponent(q)+'&limit=15&token='+TOKEN_V)
-    .then(function(r){return r.json();})
-    .then(function(data){
-      var stocks=(data.stocks||[]).filter(function(s){
-        var t=s.stock;
-        if(t.length>=5&&t.charAt(t.length-1)==='F'&&t.charAt(t.length-2)>='0'&&t.charAt(t.length-2)<='9') return false;
-        return true;
-      }).slice(0,10);
-      if(!stocks.length){dcfFecharSug();return;}
-      // Chamada batch para obter o logourl real de cada ticker
-      var tickers=stocks.map(function(s){return s.stock;}).join(',');
-      fetch(BASE_V+'/quote/'+encodeURIComponent(tickers)+'?token='+TOKEN_V)
-        .then(function(r){return r.json();})
-        .then(function(quoteData){
-          var logoMap={};
-          (quoteData.results||[]).forEach(function(q){if(q.symbol&&q.logourl)logoMap[q.symbol]=q.logourl;});
-          stocks.forEach(function(s){s.logourl=logoMap[s.stock]||null;});
-          dcfSugCache=stocks;dcfRenderSug(dcfSugCache);
-        })
-        .catch(function(){dcfSugCache=stocks;dcfRenderSug(dcfSugCache);});
-    }).catch(function(){dcfFecharSug();});
-}
-
-function dcfRenderSug(stocks){
-  var filtrados=dcfFiltroAtivo==='todos'
-    ? stocks
-    : stocks.filter(function(s){
-        var t=(s.type||'stock').toLowerCase();
-        return t===dcfFiltroAtivo||(dcfFiltroAtivo==='stock'&&t==='equity');
-      });
-  var container=document.getElementById('dcf-sug-itens');
-  var lista=document.getElementById('dcf-sug-list');
-  container.innerHTML='';
-  if(!filtrados.length){
-    container.innerHTML='<div class="dcf-sug-vazio">Nenhum resultado para este filtro.</div>';
-    lista.style.display='block';
-    return;
-  }
-  filtrados.forEach(function(s,idx){
-    var item=document.createElement('div');
-    item.className='dcf-sug-item';
-    item.tabIndex=0;
-
-    var wrap=document.createElement('div');
-    wrap.className='dcf-logo-wrap';
-    var ini=document.createElement('div');
-    ini.className='dcf-logo-ini';
-    ini.textContent=s.stock.slice(0,2);
-    wrap.appendChild(ini);
-    var img=document.createElement('img');
-    img.className='dcf-logo-img';
-    img.alt='';
-    img.onload=function(){img.style.display='block';};
-    img.onerror=function(){img.style.display='none';};
-    img.src=s.logourl||('https://icons.brapi.dev/logos/'+s.stock+'.png');
-    wrap.appendChild(img);
-    item.appendChild(wrap);
-
-    var tck=document.createElement('span');
-    tck.className='dcf-sug-ticker';
-    tck.textContent=s.stock;
-    item.appendChild(tck);
-
-    var nm=document.createElement('span');
-    nm.className='dcf-sug-nome';
-    nm.textContent=s.name||s.stock;
-    item.appendChild(nm);
-
-    var bd=dcfTipoBadge(s.type);
-    var bdEl=document.createElement('span');
-    bdEl.className='dcf-badge '+bd.cls;
-    bdEl.textContent=bd.label;
-    item.appendChild(bdEl);
-
-    item.addEventListener('click',function(){
-      document.getElementById('inp-ticker').value=s.stock;
-      dcfFecharSug();
-      buscar();
-    });
-    item.addEventListener('keydown',function(e){
-      var todos=document.querySelectorAll('.dcf-sug-item');
-      if(e.key==='Enter'){document.getElementById('inp-ticker').value=s.stock;dcfFecharSug();buscar();}
-      if(e.key==='ArrowDown'&&todos[idx+1]) todos[idx+1].focus();
-      if(e.key==='ArrowUp'){if(idx===0)document.getElementById('inp-ticker').focus();else if(todos[idx-1])todos[idx-1].focus();}
-      if(e.key==='Escape'){dcfFecharSug();document.getElementById('inp-ticker').focus();}
-    });
-    container.appendChild(item);
-  });
-  lista.style.display='block';
-}
-document.getElementById('btn-reset').addEventListener('click',resetar);
-document.getElementById('btn-3anos').addEventListener('click',function(){ setHorizonte(3); });
-document.getElementById('btn-5anos').addEventListener('click',function(){ setHorizonte(5); });
-document.getElementById('inp-td').addEventListener('input',recalcular);
-<\/script>
-</body>
-</html>`);
-  }
-
-
   /* ========================= CARTEIRA RECOMENDADA ========================= */
 
   function abrirCarteiraRecomendada() {
@@ -11924,7 +11064,7 @@ document.getElementById('inp-td').addEventListener('input',recalcular);
     var SB_URL = 'https://segeufywrjmstfmfscdi.supabase.co';
     var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZ2V1Znl3cmptc3RmbWZzY2RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzY0OTgsImV4cCI6MjA5ODQxMjQ5OH0.TUrp35SEI2NXdU1ZY7IEcdRm8VLLfLwAVWUtqjafElI';
 
-    escreverConteudoJanela(win, '<!DOCTYPE html>\n<html lang="pt-BR">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<title>Carteira Recomendada \u2014 Clube do Rendimento</title>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>\n<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">\n<style>\n:root{--bg:#fff;--soft:#F4F4F4;--ink:#111111;--ink2:#5C5C5C;--line:#E2E2E2;--orange:#111111;--og:#000000;--green:#16A34A;--red:#DC2626;--blue:#2563EB;--purple:#7C3AED;--radius:16px;--shadow:0 10px 28px rgba(0,0,0,.08);}\n*{box-sizing:border-box;margin:0;padding:0;}\nbody{font-family:\'Inter\',system-ui,sans-serif;background:var(--soft);color:var(--ink);font-size:14px;line-height:1.5;}\n.hd{background:#fff;border-bottom:1px solid var(--line);padding:12px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:10;}\n.hd-brand{font-weight:700;font-size:13px;color:var(--ink2);text-decoration:none;}\n.hd-title{font-size:14px;font-weight:700;}\n.master-area{margin-left:auto;display:flex;align-items:center;gap:10px;}\n.master-badge{background:#7C3AED22;color:#7C3AED;font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;border:1px solid #7C3AED44;}\n.btn{padding:8px 18px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s;}\n.btn:hover{opacity:.85;}\n.btn-primary{background:var(--orange);color:#fff;}\n.btn-master{background:#7C3AED;color:#fff;}\n.btn-outline{background:#fff;border:1.5px solid var(--line);color:var(--ink2);}\n.btn-danger{background:var(--red);color:#fff;}\n.btn-sm{padding:5px 12px;font-size:12px;}\n.abas-wrap{background:#fff;border-bottom:1px solid var(--line);padding:0 24px;display:flex;overflow-x:auto;}\n.aba-btn{padding:14px 22px;border:none;background:none;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;white-space:nowrap;}\n.aba-btn.ativa{color:var(--orange);border-bottom-color:var(--orange);}\n.aba-btn:hover:not(.ativa){color:var(--ink);background:#f9fafb;}\n.resumo{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:20px 24px;}\n.res-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);transition:transform .18s;}\n.res-card:hover{transform:translateY(-3px);}\n.res-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2);margin-bottom:5px;}\n.res-val{font-size:20px;font-weight:700;}\n.tbl-area{padding:0 24px 40px;}\n.tbl-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}\n.tbl-title{font-size:16px;font-weight:700;}\n.tbl-wrap{background:#fff;border:1px solid var(--line);border-radius:var(--radius);overflow:visible;}\ntable{width:100%;border-collapse:collapse;}\nthead th{background:#1a1a2e;color:#fff;padding:12px 14px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;text-align:left;white-space:nowrap;position:sticky;top:var(--sticky-top,0px);z-index:5;}\n.th-filter{display:block;margin-top:5px;font-size:10px;font-weight:600;text-transform:none;letter-spacing:0;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:4px;padding:3px 4px;width:100%;max-width:160px;}\n.th-filter option{color:#111827;}\ntbody td{padding:13px 14px;border-bottom:1px solid #f3f4f6;font-size:13px;vertical-align:middle;}\ntbody tr:last-child td{border-bottom:none;}\ntbody tr:hover{background:#f9fafb;}\ntfoot td{padding:12px 14px;background:#f8fafc;font-size:13px;font-weight:700;border-top:2px solid var(--line);}\n.logo-wrap{position:relative;width:36px;height:36px;flex-shrink:0;}\n.logo-ini{width:36px;height:36px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--ink2);}\n.logo-img{position:absolute;inset:0;width:36px;height:36px;border-radius:50%;object-fit:contain;background:#fff;border:1px solid var(--line);display:none;}\n.ativo-cell{display:flex;align-items:center;gap:10px;}\n.ticker-bold{font-weight:700;font-size:14px;}\n.ativo-nome{font-size:12px;color:var(--ink2);}\n.status-comprar{background:#dcfce7;color:#15803d;display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;}\n.status-aguardar{background:#fef9c3;color:#854d0e;display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;}\n.status-acima{background:#fee2e2;color:#b91c1c;display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;}\n.peso-bar{display:flex;align-items:center;gap:8px;}\n.peso-fill-wrap{flex:1;height:8px;background:#f1f5f9;border-radius:4px;min-width:60px;}\n.peso-fill{height:100%;border-radius:4px;background:var(--orange);}\n.pos{color:var(--green);font-weight:600;}\n.neg{color:var(--red);font-weight:600;}\n.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center;}\n.overlay.open{display:flex;}\n.modal{background:#fff;border-radius:14px;padding:28px;width:520px;max-height:90vh;overflow-y:auto;position:relative;}\n.modal h3{font-size:16px;font-weight:700;margin-bottom:20px;}\n.modal-close{position:absolute;top:16px;right:18px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink2);}\n.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}\n.form-group{display:flex;flex-direction:column;gap:5px;}\n.form-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink2);}\n.form-inp{padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);}\n.form-inp:focus{outline:none;border-color:var(--orange);}\n.form-inp-full{grid-column:1/-1;}\ntextarea.form-inp{resize:vertical;min-height:80px;}\n.form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--line);}\n.vazio{padding:60px 24px;text-align:center;color:var(--ink2);}\n.login-box{max-width:360px;margin:60px auto;background:#fff;border:1px solid var(--line);border-radius:14px;padding:32px;text-align:center;}\n.login-box h2{font-size:18px;margin-bottom:6px;}\n.login-box p{font-size:13px;color:var(--ink2);margin-bottom:24px;}\n.login-inp{width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;margin-bottom:12px;}\n.login-inp:focus{outline:none;border-color:var(--purple);}\n.login-err{color:var(--red);font-size:12px;margin-top:8px;display:none;}\n@media(max-width:860px){.resumo{grid-template-columns:1fr 1fr;}}\n<\/style>\n</head>\n<body>\n\n<header class="hd">\n  <a href="javascript:window.close()" class="hd-brand">\u2190 Clube do Rendimento</a>\n  <span style="color:var(--line);">|</span>\n  <h1 class="hd-title">Carteira Recomendada</h1>\n  <div class="master-area">\n    <span id="master-badge" class="master-badge" style="display:none;">\u26a1 Master</span>\n    <button class="btn btn-outline btn-sm" id="btn-entrar-master">Entrar como Master</button>\n    <button class="btn btn-outline btn-sm" id="btn-sair-master" style="display:none;">Sair</button>\n  </div>\n</header>\n\n<div class="abas-wrap">\n  <button class="aba-btn ativa" data-classe="A\u00e7\u00f5es">\ud83d\udcc8 A\u00e7\u00f5es</button>\n  <button class="aba-btn" data-classe="Preço Alvo XP">📊 Preço Alvo XP</button>\n  <button class="aba-btn" data-classe="FIIs">\ud83c\udfe2 FIIs</button>\n  <button class="aba-btn" data-classe="Contratos FII">\ud83d\udcc4 Contratos FII</button>\n  <button class="aba-btn" data-classe="Renda Fixa">\ud83d\udcb0 Renda Fixa</button>\n  <button class="aba-btn" data-classe="A\u00e7\u00f5es Internacionais">\ud83c\udf0e A\u00e7\u00f5es Internacionais</button>\n</div>\n\n<div id="secao-normal">\n<div class="resumo">\n  <div class="res-card"><div class="res-label">Total de ativos</div><div class="res-val" id="res-total">\u2014</div></div>\n  <div class="res-card"><div class="res-label">Soma dos pesos</div><div class="res-val" id="res-pesos">\u2014</div></div>\n  <div class="res-card"><div class="res-label">Oportunidades</div><div class="res-val" id="res-oport" style="color:var(--green);">\u2014</div></div>\n  <div class="res-card"><div class="res-label">Acima do pre\u00e7o</div><div class="res-val" id="res-acima" style="color:var(--red);">\u2014</div></div>\n</div>\n\n<div class="tbl-area">\n  <div class="tbl-hd">\n    <span class="tbl-title" id="tbl-titulo">Ativos recomendados</span>\n    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">\n      <button class="btn btn-master" id="btn-add" style="display:none;">+ Adicionar ativo</button>\n    </div>\n  </div>\n  <div class="tbl-wrap">\n    <table>\n      <thead>\n        <tr>\n          <th>Ativo</th>\n          <th>Setor / Tipo</th>\n          <th id="th-preco">Pre\u00e7o atual</th>\n          <th>Pre\u00e7o teto</th>\n          <th id="th-upside">Upside</th>\n          <th>Peso alvo</th>\n          <th style="text-align:center;">Status</th>\n          <th id="th-acoes" style="display:none;">A\u00e7\u00f5es</th>\n        </tr>\n      </thead>\n      <tbody id="cr-corpo"></tbody>\n      <tfoot id="cr-tfoot" style="display:none;">\n        <tr><td colspan="5">Total dos pesos</td><td id="tfoot-soma">\u2014</td><td></td><td id="tfoot-acao"></td></tr>\n      </tfoot>\n    </table>\n    <div class="vazio" id="cr-vazio">Consultando dados Clube do Rendimento...</div>\n  </div>\n</div>\n</div>\n\n<div id="secao-xp" style="display:none;">\n<div class="resumo">\n  <div class="res-card"><div class="res-label">Ações cobertas (XP)</div><div class="res-val" id="xp-res-total">—</div></div>\n  <div class="res-card"><div class="res-label">Última atualização</div><div class="res-val" id="xp-res-data" style="font-size:14px;">—</div></div>\n</div>\n\n<div class="tbl-area">\n  <div class="tbl-hd">\n    <span class="tbl-title">Preço Alvo XP · Cobertura completa</span>\n    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">\n      <span id="importar-alvo-status" style="display:none;font-size:12px;color:var(--ink2);"></span>\n      <input type="file" id="input-planilha-alvo" accept=".xlsx" style="display:none;">\n      <button class="btn btn-outline btn-sm" id="btn-importar-alvo" style="display:none;">\u2191 Importar pre\u00e7os-alvo (XP)</button>\n    </div>\n  </div>\n  <p style="font-size:11px;color:var(--ink2);margin:4px 0 10px;">Fonte: <a href="https://conteudos.xpi.com.br/acoes/relatorios/tabela-de-multiplos-xp/" target="_blank" rel="noopener noreferrer" style="color:var(--og);">relat\u00f3rio de m\u00faltiplos da XP \u2197</a></p>\n  <div class="tbl-wrap">\n    <table>\n      <thead>\n        <tr>\n          <th>Empresa</th>\n          <th>Ticker</th>\n          <th>Setor<select id="xp-filtro-setor" class="th-filter"><option value="">Todos</option></select></th>\n          <th>Recomendação<select id="xp-filtro-rec" class="th-filter"><option value="">Todas</option></select></th>\n          <th>Preço atual</th>\n          <th>Preço alvo</th>\n          <th>Upside</th>\n        </tr>\n      </thead>\n      <tbody id="xp-corpo"></tbody>\n    </table>\n    <div class="vazio" id="xp-vazio" style="display:none;">Nenhum dado importado ainda. Utilize o botão "Importar preços-alvo (XP)" acima para carregar a planilha da XP.</div>\n  </div>\n</div>\n</div>\n\n<div id="secao-contratos" style="display:none;">\n<div class="tbl-area">\n  <div class="tbl-hd">\n    <span class="tbl-title">Contratos típicos e atípicos dos FIIs</span>\n  </div>\n  <div class="tbl-wrap">\n    <table>\n      <thead>\n        <tr>\n          <th>Ticker</th>\n          <th>Valor típico</th>\n          <th>% típico</th>\n          <th>Valor atípico</th>\n          <th>% atípico</th>\n          <th>Meta de rentabilidade</th>\n          <th>Atualizado em</th>\n          <th id="th-contratos-acoes" style="display:none;">Ações</th>\n        </tr>\n      </thead>\n      <tbody id="contratos-corpo"></tbody>\n    </table>\n    <div class="vazio" id="contratos-vazio" style="display:none;">Nenhum FII cadastrado ainda.</div>\n  </div>\n</div>\n<div class="tbl-area" id="contratos-form-area" style="display:none;padding-top:0;">\n  <div class="tbl-hd"><span class="tbl-title">Adicionar / atualizar FII</span></div>\n  <div style="background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:end;">\n    <div class="form-group"><label class="form-label">Ticker</label><input class="form-inp" id="ct-ticker" placeholder="Ex.: HGLG11" autocomplete="off"></div>\n    <div class="form-group"><label class="form-label">Valor típico (R$)</label><input class="form-inp" type="number" step="0.01" id="ct-valor-tipico" placeholder="0,00"></div>\n    <div class="form-group"><label class="form-label">% típico</label><input class="form-inp" type="number" step="0.01" id="ct-pct-tipico" placeholder="Ex.: 62,50"></div>\n    <div class="form-group"><label class="form-label">Valor atípico (R$)</label><input class="form-inp" type="number" step="0.01" id="ct-valor-atipico" placeholder="0,00"></div>\n    <div class="form-group"><label class="form-label">% atípico</label><input class="form-inp" type="number" step="0.01" id="ct-pct-atipico" placeholder="Ex.: 37,50"></div>\n    <div class="form-group"><label class="form-label">Meta de rentabilidade</label><input class="form-inp" id="ct-meta-rentabilidade" placeholder="Ex.: IPCA+10%" autocomplete="off"></div>\n  </div>\n  <div style="margin-top:12px;display:flex;align-items:center;gap:10px;">\n    <button class="btn btn-master btn-sm" id="btn-salvar-contrato">Salvar</button>\n    <span id="contratos-status" style="font-size:12px;color:var(--ink2);"></span>\n  </div>\n</div>\n</div>\n\n<div class="overlay" id="overlay">\n  <div class="modal">\n    <button class="modal-close" id="modal-close">\u2715</button>\n    <h3 id="modal-titulo">Adicionar ativo</h3>\n    <div class="form-row">\n      <div class="form-group"><label class="form-label">Classe</label>\n        <select class="form-inp" id="f-classe">\n          <option value="A\u00e7\u00f5es">A\u00e7\u00f5es</option>\n          <option value="FIIs">FIIs</option>\n          <option value="Renda Fixa">Renda Fixa</option>\n          <option value="A\u00e7\u00f5es Internacionais">A\u00e7\u00f5es Internacionais</option>\n        </select></div>\n      <div class="form-group"><label class="form-label">Ticker / C\u00f3digo</label><input class="form-inp" id="f-ticker" placeholder="ex: PETR4" autocomplete="off"></div>\n      <div class="form-group"><label class="form-label">Nome</label><input class="form-inp" id="f-nome" placeholder="ex: Petrobras"></div>\n      <div class="form-group"><label class="form-label">Setor / Tipo</label><input class="form-inp" id="f-setor" placeholder="ex: Energia | CDB CDI+"></div>\n      <div class="form-group"><label class="form-label">Peso alvo (%)</label><input class="form-inp" type="number" id="f-peso" min="0" max="100" step="0.01" placeholder="5,00"></div>\n      <div class="form-group"><label class="form-label">Pre\u00e7o teto (R$)</label><input class="form-inp" type="number" id="f-teto" min="0" step="0.01" placeholder="40,00"></div>\n      <div class="form-group"><label class="form-label">Ordem</label><input class="form-inp" type="number" id="f-ordem" min="0" step="1" placeholder="1"></div>\n      <div class="form-group"><label class="form-label">Ativo</label><select class="form-inp" id="f-ativo"><option value="true">Sim</option><option value="false">N\u00e3o</option></select></div>\n      <div class="form-group form-inp-full"><label class="form-label">Tese de investimento</label><textarea class="form-inp" id="f-just" placeholder="Justificativa..."></textarea></div>\n    </div>\n    <div class="form-actions">\n      <button class="btn btn-outline" id="btn-cancelar-modal">Cancelar</button>\n      <button class="btn btn-primary" id="btn-salvar-modal">Salvar ativo</button>\n    </div>\n  </div>\n</div>\n\n<div class="overlay" id="overlay-login">\n  <div class="login-box">\n    <div style="font-size:32px;margin-bottom:12px;">\u26a1</div>\n    <h2>Acesso Master</h2>\n    <p>Apenas administradores podem editar a carteira recomendada.</p>\n    <input class="login-inp" type="email" id="login-email" placeholder="E-mail master">\n    <input class="login-inp" type="password" id="login-senha" placeholder="Senha" style="margin-bottom:16px;">\n    <button class="btn btn-master" id="btn-confirmar-login" style="width:100%;">Entrar</button>\n    <div class="login-err" id="login-err">E-mail ou senha incorretos.</div>\n    <button class="btn btn-outline" id="btn-cancelar-login" style="width:100%;margin-top:10px;">Cancelar</button>\n  </div>\n</div>\n\n<script>\nvar sb=supabase.createClient(\'https://segeufywrjmstfmfscdi.supabase.co\',\'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZ2V1Znl3cmptc3RmbWZzY2RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzY0OTgsImV4cCI6MjA5ODQxMjQ5OH0.TUrp35SEI2NXdU1ZY7IEcdRm8VLLfLwAVWUtqjafElI\');\nvar SESSAO_INICIAL=' + JSON.stringify(sessaoAtual) + ';\nvar BRAPI_PROXY=\'https://segeufywrjmstfmfscdi.supabase.co/functions/v1/brapi-proxy\';\n(function(){\n  function ajustarStickyTop(){\n    var hd=document.querySelector(\'.hd\');\n    if(hd)document.documentElement.style.setProperty(\'--sticky-top\',hd.offsetHeight+\'px\');\n  }\n  ajustarStickyTop();\n  window.addEventListener(\'resize\',ajustarStickyTop);\n})();\nvar isMaster=false,carteira=[],precosMap={},editandoId=null,classeAtiva=\'A\u00e7\u00f5es\';\nvar CLASSES_COM_COTACAO=[\'A\u00e7\u00f5es\',\'FIIs\',\'A\u00e7\u00f5es Internacionais\'];\nvar TITULOS={\'A\u00e7\u00f5es\':\'A\u00e7\u00f5es recomendadas\',\'FIIs\':\'FIIs recomendados\',\'Renda Fixa\':\'Renda Fixa recomendada\',\'A\u00e7\u00f5es Internacionais\':\'A\u00e7\u00f5es Internacionais recomendadas\'};\nfunction fBRL(v){return (v||0).toLocaleString(\'pt-BR\',{style:\'currency\',currency:\'BRL\',minimumFractionDigits:2});}\nfunction fPct(v){return (+(v||0)).toFixed(2).replace(\'.\',\',\')+ \'%\';}\nfunction sincronizarSessaoDoOpener(){\n  try{\n    if(SESSAO_INICIAL&&SESSAO_INICIAL.access_token){\n      return sb.auth.setSession({access_token:SESSAO_INICIAL.access_token,refresh_token:SESSAO_INICIAL.refresh_token});\n    }\n    if(window.opener&&window.opener.sessaoAtual&&window.opener.sessaoAtual.access_token){\n      return sb.auth.setSession({access_token:window.opener.sessaoAtual.access_token,refresh_token:window.opener.sessaoAtual.refresh_token});\n    }\n  }catch(e){}\n  return Promise.resolve(null);\n}\nfunction atualizarPapel(sessaoObj){\n  if(!sessaoObj){isMaster=false;atualizarUI();return Promise.resolve();}\n  return sb.from(\'profiles\').select(\'role\').eq(\'id\',sessaoObj.user.id).single().then(function(r){\n    isMaster=!!(r.data&&r.data.role===\'master\');\n    atualizarUI();\n  });\n}\nsb.auth.onAuthStateChange(function(_e,s){atualizarPapel(s);});\nsincronizarSessaoDoOpener().then(function(){return sb.auth.getSession();}).then(function(r){var ses=(r.data&&r.data.session)||null;atualizarPapel(ses).then(function(){carregarCarteira();});});\nfunction atualizarBotaoImportar(){\n  var btn=document.getElementById(\'btn-importar-alvo\');\n  if(btn)btn.style.display=(isMaster&&classeAtiva===\'Preço Alvo XP\')?\'inline-block\':\'none\';\n}\nfunction atualizarUI(){\n  document.getElementById(\'master-badge\').style.display=isMaster?\'inline-block\':\'none\';\n  document.getElementById(\'btn-entrar-master\').style.display=isMaster?\'none\':\'inline-block\';\n  document.getElementById(\'btn-sair-master\').style.display=isMaster?\'inline-block\':\'none\';\n  document.getElementById(\'btn-add\').style.display=isMaster?\'inline-block\':\'none\';\n  atualizarBotaoImportar();\n  atualizarFormContratos();\n  document.getElementById(\'th-acoes\').style.display=isMaster?\'\':\'none\';\n  renderizar();\n}\ndocument.getElementById(\'btn-entrar-master\').onclick=function(){document.getElementById(\'overlay-login\').classList.add(\'open\');};\ndocument.getElementById(\'btn-cancelar-login\').onclick=function(){document.getElementById(\'overlay-login\').classList.remove(\'open\');document.getElementById(\'login-err\').style.display=\'none\';};\ndocument.getElementById(\'btn-confirmar-login\').onclick=function(){\n  var email=document.getElementById(\'login-email\').value.trim();\n  var senha=document.getElementById(\'login-senha\').value;\n  var errEl=document.getElementById(\'login-err\');errEl.style.display=\'none\';\n  this.textContent=\'Entrando...\';this.disabled=true;var self=this;\n  sb.auth.signInWithPassword({email:email,password:senha}).then(function(r){\n    if(r.error){errEl.textContent=r.error.message||\'Credenciais incorretas.\';errEl.style.display=\'block\';}\n    else{document.getElementById(\'overlay-login\').classList.remove(\'open\');}\n  }).finally(function(){self.textContent=\'Entrar\';self.disabled=false;});\n};\ndocument.getElementById(\'btn-sair-master\').onclick=function(){sb.auth.signOut();};\ndocument.querySelectorAll(\'.aba-btn\').forEach(function(btn){\n  btn.onclick=function(){\n    classeAtiva=btn.dataset.classe;\n    document.querySelectorAll(\'.aba-btn\').forEach(function(b){b.classList.remove(\'ativa\');});\n    btn.classList.add(\'ativa\');\n    if(classeAtiva===\'Preço Alvo XP\'){\n      document.getElementById(\'secao-normal\').style.display=\'none\';\n      document.getElementById(\'secao-xp\').style.display=\'\';\n      document.getElementById(\'secao-contratos\').style.display=\'none\';\n      if(!xpCarregado)carregarXP();\n      atualizarBotaoImportar();\n      return;\n    }\n    if(classeAtiva===\'Contratos FII\'){\n      document.getElementById(\'secao-normal\').style.display=\'none\';\n      document.getElementById(\'secao-xp\').style.display=\'none\';\n      document.getElementById(\'secao-contratos\').style.display=\'\';\n      if(!contratosCarregados)carregarContratos();\n      atualizarBotaoImportar();\n      atualizarFormContratos();\n      return;\n    }\n    document.getElementById(\'secao-normal\').style.display=\'\';\n    document.getElementById(\'secao-xp\').style.display=\'none\';\n    document.getElementById(\'secao-contratos\').style.display=\'none\';\n    atualizarBotaoImportar();\n    var fc=document.getElementById(\'f-classe\');if(fc)fc.value=classeAtiva;\n    atualizarColunas();renderizar();\n  };\n});\nfunction atualizarColunas(){\n  var temCot=CLASSES_COM_COTACAO.indexOf(classeAtiva)!==-1;\n  var thP=document.getElementById(\'th-preco\');if(thP)thP.style.display=temCot?\'\':\'none\';\n  var thU=document.getElementById(\'th-upside\');if(thU)thU.style.display=temCot?\'\':\'none\';\n  var tt=document.getElementById(\'tbl-titulo\');if(tt)tt.textContent=TITULOS[classeAtiva]||\'Ativos recomendados\';\n}\nvar xpCarregado=false,xpDados=[];\nfunction fmtDataXP(iso){\n  if(!iso)return \'—\';\n  var d=new Date(iso);\n  if(isNaN(d.getTime()))return \'—\';\n  return d.toLocaleDateString(\'pt-BR\')+\' \'+d.toLocaleTimeString(\'pt-BR\',{hour:\'2-digit\',minute:\'2-digit\'});\n}\nvar xpFiltroSetor=\'\',xpFiltroRec=\'\';\nfunction popularFiltrosXP(){\n  var selSetor=document.getElementById(\'xp-filtro-setor\'),selRec=document.getElementById(\'xp-filtro-rec\');\n  if(!selSetor||!selRec)return;\n  var setores=[],recs=[];\n  xpDados.forEach(function(a){\n    if(a.setor&&setores.indexOf(a.setor)===-1)setores.push(a.setor);\n    if(a.recomendacao&&recs.indexOf(a.recomendacao)===-1)recs.push(a.recomendacao);\n  });\n  setores.sort();recs.sort();\n  var valSetorAtual=selSetor.value,valRecAtual=selRec.value;\n  selSetor.innerHTML=\'<option value="">Todos</option>\';\n  setores.forEach(function(s){var o=document.createElement(\'option\');o.value=s;o.textContent=s;selSetor.appendChild(o);});\n  if(setores.indexOf(valSetorAtual)!==-1)selSetor.value=valSetorAtual;else xpFiltroSetor=\'\';\n  selRec.innerHTML=\'<option value="">Todas</option>\';\n  recs.forEach(function(r){var o=document.createElement(\'option\');o.value=r;o.textContent=r;selRec.appendChild(o);});\n  if(recs.indexOf(valRecAtual)!==-1)selRec.value=valRecAtual;else xpFiltroRec=\'\';\n}\nfunction carregarXP(){\n  sb.from(\'xp_precos_alvo\').select(\'*\').order(\'empresa\',{ascending:true}).then(function(r){\n    xpCarregado=true;\n    if(r.error){console.error(r.error);return;}\n    xpDados=(r.data||[]).filter(function(a){return a.preco_alvo!==null&&a.preco_alvo!==undefined;});\n    popularFiltrosXP();\n    renderizarXP();\n  });\n}\nfunction renderizarXP(){\n  var corpo=document.getElementById(\'xp-corpo\');if(!corpo)return;\n  corpo.innerHTML=\'\';\n  var vazio=document.getElementById(\'xp-vazio\');\n  var listaFiltrada=xpDados.filter(function(a){\n    return (!xpFiltroSetor||a.setor===xpFiltroSetor)&&(!xpFiltroRec||a.recomendacao===xpFiltroRec);\n  });\n  if(!listaFiltrada.length){\n    vazio.style.display=\'block\';\n    vazio.textContent=xpDados.length?\'Nenhuma ação encontrada para os filtros selecionados.\':\'Nenhum dado importado ainda. Utilize o botão "Importar preços-alvo (XP)" acima para carregar a planilha da XP.\';\n    document.getElementById(\'xp-res-total\').textContent=\'0\';\n    document.getElementById(\'xp-res-data\').textContent=fmtDataXP(maisRecenteXP());\n    return;\n  }\n  vazio.style.display=\'none\';\n  listaFiltrada.forEach(function(a){\n    var tr=document.createElement(\'tr\');\n    var tdE=document.createElement(\'td\');tdE.textContent=a.empresa||\'—\';tr.appendChild(tdE);\n    var tdT=document.createElement(\'td\');tdT.className=\'ticker-bold\';tdT.textContent=a.ticker||\'—\';tr.appendChild(tdT);\n    var tdS=document.createElement(\'td\');tdS.textContent=a.setor||\'—\';tr.appendChild(tdS);\n    var tdR=document.createElement(\'td\');\n    var rec=(a.recomendacao||\'\').toLowerCase();\n    var badge=\'<span class="status-aguardar">\'+(a.recomendacao||\'—\')+\'</span>\';\n    if(rec.indexOf(\'compra\')!==-1)badge=\'<span class="status-comprar">\'+a.recomendacao+\'</span>\';\n    else if(rec.indexOf(\'venda\')!==-1)badge=\'<span class="status-acima">\'+a.recomendacao+\'</span>\';\n    tdR.innerHTML=badge;tr.appendChild(tdR);\n    var tdA=document.createElement(\'td\');tdA.textContent=(a.preco_atual!==null&&a.preco_atual!==undefined)?fBRL(a.preco_atual):\'—\';tr.appendChild(tdA);\n    var tdAl=document.createElement(\'td\');tdAl.textContent=fBRL(a.preco_alvo);tr.appendChild(tdAl);\n    var tdU=document.createElement(\'td\');\n    if(a.upside!==null&&a.upside!==undefined){tdU.className=a.upside>=0?\'pos\':\'neg\';tdU.textContent=(a.upside>=0?\'+\':\'\')+fPct(a.upside);}\n    else tdU.textContent=\'—\';\n    tr.appendChild(tdU);\n    corpo.appendChild(tr);\n  });\n  document.getElementById(\'xp-res-total\').textContent=listaFiltrada.length;\n  document.getElementById(\'xp-res-data\').textContent=fmtDataXP(maisRecenteXP());\n}\nfunction maisRecenteXP(){\n  var maisRecente=null;\n  xpDados.forEach(function(a){if(!maisRecente||(a.atualizado_em&&a.atualizado_em>maisRecente))maisRecente=a.atualizado_em;});\n  return maisRecente;\n}\ndocument.getElementById(\'xp-filtro-setor\').onchange=function(){xpFiltroSetor=this.value;renderizarXP();};\ndocument.getElementById(\'xp-filtro-rec\').onchange=function(){xpFiltroRec=this.value;renderizarXP();};\nfunction carregarCarteira(){\n  sb.from(\'carteira_recomendada\').select(\'*\').eq(\'ativo\',true).order(\'ordem\',{ascending:true}).then(function(r){\n    if(r.error){console.error(r.error);return;}\n    carteira=r.data||[];\n    buscarPrecos();\n  });\n}\nfunction buscarPrecos(){\n  var tks=carteira.filter(function(a){return CLASSES_COM_COTACAO.indexOf(a.classe)!==-1&&a.ticker;}).map(function(a){return a.ticker;});\n  if(!tks.length){renderizar();return;}\n  var lotes=[];for(var i=0;i<tks.length;i+=10)lotes.push(tks.slice(i,i+10));\n  Promise.all(lotes.map(function(l){\n    return fetch(BRAPI_PROXY+\'/quote/\'+encodeURIComponent(l.join(\',\')))\n      .then(function(r){return r.json();})\n      .then(function(d){(d.results||[]).forEach(function(q){if(q.symbol&&q.regularMarketPrice)precosMap[q.symbol]=q.regularMarketPrice;});})\n      .catch(function(){});\n  })).then(function(){renderizar();});\n}\nfunction renderizar(){\n  var corpo=document.getElementById(\'cr-corpo\');if(!corpo)return;\n  corpo.innerHTML=\'\';\n  var ativos=carteira.filter(function(a){return a.classe===classeAtiva;});\n  var temCot=CLASSES_COM_COTACAO.indexOf(classeAtiva)!==-1;\n  if(!ativos.length){\n    document.getElementById(\'cr-vazio\').textContent=\'Nenhum ativo cadastrado nesta categoria.\';\n    document.getElementById(\'cr-vazio\').style.display=\'block\';\n    document.getElementById(\'cr-tfoot\').style.display=\'none\';\n    atualizarCards(0,0,0,0);return;\n  }\n  document.getElementById(\'cr-vazio\').style.display=\'none\';\n  document.getElementById(\'cr-tfoot\').style.display=\'\';\n  var soma=0,oport=0,acima=0;\n  var maxP=Math.max.apply(null,ativos.map(function(a){return +(a.peso_alvo||0);}))||1;\n  ativos.forEach(function(a){\n    var peso=+(a.peso_alvo||0),teto=a.preco_teto?+a.preco_teto:null;\n    var preco=temCot?(precosMap[a.ticker]||null):null;\n    var upside=(preco&&teto)?((teto/preco)-1)*100:null;\n    soma+=peso;\n    var stHtml;\n    if(!temCot||!teto)stHtml=\'<span class="status-aguardar">\u2014 Analisar</span>\';\n    else if(!preco)stHtml=\'<span class="status-aguardar">Sem cota\u00e7\u00e3o</span>\';\n    else if(upside>0){stHtml=\'<span class="status-comprar">\u25b2 Comprar</span>\';oport++;}\n    else if(upside>=-5)stHtml=\'<span class="status-aguardar">\u2299 Aguardar</span>\';\n    else{stHtml=\'<span class="status-acima">\u25bc Acima do teto</span>\';acima++;}\n    var tr=document.createElement(\'tr\');\n    if(a.justificativa){tr.title=a.justificativa;tr.style.cursor=\'help\';}\n    // Ativo\n    var tdA=document.createElement(\'td\');\n    var ac=document.createElement(\'div\');ac.className=\'ativo-cell\';\n    var lw=document.createElement(\'div\');lw.className=\'logo-wrap\';\n    var li=document.createElement(\'div\');li.className=\'logo-ini\';li.textContent=(a.ticker||\'\'). slice(0,2);lw.appendChild(li);\n    if(temCot&&a.ticker){\n      var img=document.createElement(\'img\');img.className=\'logo-img\';img.alt=\'\';\n      img.onload=function(){img.style.display=\'block\';};img.onerror=function(){img.style.display=\'none\';};\n      fetch(BRAPI_PROXY+\'/quote/\'+encodeURIComponent(a.ticker))\n        .then(function(r){return r.json();}).then(function(d){var q=d.results&&d.results[0];if(q&&q.logourl)img.src=q.logourl;}).catch(function(){});\n      lw.appendChild(img);\n    }\n    var ld=document.createElement(\'div\');\n    var tk=document.createElement(\'div\');tk.className=\'ticker-bold\';tk.textContent=a.ticker||\'\u2014\';\n    var nm=document.createElement(\'div\');nm.className=\'ativo-nome\';nm.textContent=a.nome||\'\';\n    ld.appendChild(tk);ld.appendChild(nm);ac.appendChild(lw);ac.appendChild(ld);tdA.appendChild(ac);tr.appendChild(tdA);\n    // Setor\n    var tdSt=document.createElement(\'td\');tdSt.textContent=a.setor||\'\u2014\';tr.appendChild(tdSt);\n    // Pre\u00e7o atual\n    var tdP=document.createElement(\'td\');tdP.textContent=temCot?(preco?fBRL(preco):\'\u2014\'):\'\u2014\';\n    if(!temCot)tdP.style.display=\'none\';tr.appendChild(tdP);\n    // Pre\u00e7o teto\n    var tdT=document.createElement(\'td\');tdT.textContent=teto?fBRL(teto):\'\u2014\';tr.appendChild(tdT);\n    // Upside\n    var tdU=document.createElement(\'td\');\n    if(upside!==null){tdU.className=upside>=0?\'pos\':\'neg\';tdU.textContent=(upside>=0?\'+\':\'\')+fPct(upside);}else tdU.textContent=\'\u2014\';\n    if(!temCot)tdU.style.display=\'none\';tr.appendChild(tdU);\n    // Peso\n    var tdPe=document.createElement(\'td\');\n    var pd=document.createElement(\'div\');pd.className=\'peso-bar\';\n    var fw=document.createElement(\'div\');fw.className=\'peso-fill-wrap\';\n    var fl=document.createElement(\'div\');fl.className=\'peso-fill\';fl.style.width=((peso/maxP)*100)+\'%\';\n    fw.appendChild(fl);pd.appendChild(fw);\n    var pn=document.createElement(\'span\');pn.style.cssText=\'font-size:12px;font-weight:700;min-width:40px;\';pn.textContent=fPct(peso);\n    pd.appendChild(pn);tdPe.appendChild(pd);tr.appendChild(tdPe);\n    // Status\n    var tdStat=document.createElement(\'td\');tdStat.innerHTML=stHtml;tr.appendChild(tdStat);\n    // A\u00e7\u00f5es master\n    if(isMaster){\n      var tdAc=document.createElement(\'td\');\n      var be=document.createElement(\'button\');be.className=\'btn btn-outline btn-sm\';be.textContent=\'\u270e Editar\';\n      be.onclick=(function(x){return function(){abrirModal(x);};})(a);\n      var bd=document.createElement(\'button\');bd.className=\'btn btn-danger btn-sm\';bd.textContent=\'\u2715\';bd.style.marginLeft=\'6px\';\n      bd.onclick=(function(id){return function(){excluir(id);};})(a.id);\n      tdAc.appendChild(be);tdAc.appendChild(bd);tr.appendChild(tdAc);\n    }\n    corpo.appendChild(tr);\n  });\n  var somaEl=document.getElementById(\'tfoot-soma\');\n  if(somaEl){somaEl.textContent=fPct(soma);somaEl.style.color=Math.abs(soma-100)<0.1?\'var(--green)\':\' var(--red)\';}\n  if(isMaster){var tf=document.getElementById(\'tfoot-acao\');if(tf)tf.innerHTML=\'<span style="font-size:11px;color:var(--ink2);">Soma deve ser 100%</span>\';}\n  atualizarCards(ativos.length,soma,oport,acima);\n}\nfunction atualizarCards(tot,soma,op,ac){\n  document.getElementById(\'res-total\').textContent=tot;\n  document.getElementById(\'res-oport\').textContent=op;\n  document.getElementById(\'res-acima\').textContent=ac;\n  var el=document.getElementById(\'res-pesos\');el.textContent=fPct(soma);\n  el.style.color=Math.abs(soma-100)<0.1?\'var(--green)\':\'var(--red)\';\n}\nfunction abrirModal(a){\n  editandoId=a?a.id:null;\n  document.getElementById(\'modal-titulo\').textContent=a?\'Editar ativo\':\'Adicionar ativo\';\n  document.getElementById(\'f-classe\').value=a?(a.classe||classeAtiva):classeAtiva;\n  document.getElementById(\'f-ticker\').value=a?(a.ticker||\'\'): \'\';\n  document.getElementById(\'f-nome\').value=a?(a.nome||\'\'): \'\';\n  document.getElementById(\'f-setor\').value=a?(a.setor||\'\'): \'\';\n  document.getElementById(\'f-peso\').value=a?(a.peso_alvo||\'\'): \'\';\n  document.getElementById(\'f-teto\').value=a?(a.preco_teto||\'\'): \'\';\n  document.getElementById(\'f-just\').value=a?(a.justificativa||\'\'): \'\';\n  document.getElementById(\'f-ordem\').value=a?(a.ordem||\'\'): \'\';\n  document.getElementById(\'f-ativo\').value=a?String(a.ativo!==false):\'true\';\n  document.getElementById(\'overlay\').classList.add(\'open\');\n}\ndocument.getElementById(\'btn-add\').onclick=function(){abrirModal(null);};\ndocument.getElementById(\'btn-importar-alvo\').onclick=function(){document.getElementById(\'input-planilha-alvo\').click();};\ndocument.getElementById(\'input-planilha-alvo\').onchange=function(ev){\n  var arquivo=ev.target.files&&ev.target.files[0];\n  if(!arquivo)return;\n  var statusEl=document.getElementById(\'importar-alvo-status\');\n  var leitor=new FileReader();\n  leitor.onload=function(evt){\n    try{\n      var pasta=XLSX.read(evt.target.result,{type:\'array\'});\n      var planilha=pasta.Sheets[\'Multiplos\'];\n      if(!planilha){alert(\'A aba "Multiplos" não foi encontrada nesta planilha.\');return;}\n      var linhas=XLSX.utils.sheet_to_json(planilha,{header:1,raw:true});\n      var atualizacoes=[];\n      var todasAcoesXP=[];\n      var agora=new Date().toISOString();\n      for(var i=7;i<linhas.length;i++){\n        var linha=linhas[i]||[];\n        var ticker=(linha[2]||\'\').toString().trim().toUpperCase();\n        if(!ticker)continue;\n        var alvoBruto=linha[6];\n        var alvoNum=(typeof alvoBruto===\'number\'&&!isNaN(alvoBruto))?alvoBruto:null;\n        if(alvoNum!==null)atualizacoes.push({ticker:ticker,alvo:alvoNum});\n        var atualBruto=linha[7];\n        var atualNum=(typeof atualBruto===\'number\'&&!isNaN(atualBruto))?atualBruto:null;\n        var upsideBruto=linha[8];\n        var upsideNum=(typeof upsideBruto===\'number\'&&!isNaN(upsideBruto))?upsideBruto*100:null;\n        todasAcoesXP.push({\n          ticker:ticker,\n          empresa:(linha[1]||\'\').toString().trim(),\n          setor:(linha[3]||\'\').toString().trim(),\n          analista:(linha[4]||\'\').toString().trim(),\n          recomendacao:(linha[5]||\'\').toString().trim(),\n          preco_alvo:alvoNum,\n          preco_atual:atualNum,\n          upside:upsideNum,\n          atualizado_em:agora\n        });\n      }\n      processarImportacaoAlvo(atualizacoes,todasAcoesXP,statusEl);\n    }catch(erro){\n      alert(\'Erro ao ler a planilha: \'+erro.message);\n    }\n  };\n  leitor.readAsArrayBuffer(arquivo);\n  ev.target.value=\'\';\n};\nfunction importarXPCompleto(todasAcoesXP){\n  if(!todasAcoesXP||!todasAcoesXP.length)return Promise.resolve();\n  var LOTE=50,i=0;\n  function proximo(){\n    if(i>=todasAcoesXP.length)return Promise.resolve();\n    var lote=todasAcoesXP.slice(i,i+LOTE);\n    i+=LOTE;\n    return sb.from(\'xp_precos_alvo\').upsert(lote,{onConflict:\'ticker\'}).then(function(r){\n      if(r.error)console.error(r.error);\n      return proximo();\n    });\n  }\n  return proximo();\n}\nfunction processarImportacaoAlvo(atualizacoes,todasAcoesXP,statusEl){\n  if(!atualizacoes.length&&!(todasAcoesXP&&todasAcoesXP.length)){alert(\'Nenhuma ação com ticker válido foi encontrada na planilha.\');return;}\n  if(statusEl){statusEl.style.display=\'inline\';statusEl.textContent=\'Importando 0/\'+atualizacoes.length+\'...\';}\n  var atualizados=0,naoEncontrados=[],processados=0,LOTE=15;\n  function proximoLote(i){\n    if(i>=atualizacoes.length){\n      importarXPCompleto(todasAcoesXP).then(function(){\n        if(statusEl)statusEl.textContent=atualizados+\' preço(s)-alvo atualizado(s) de \'+atualizacoes.length+\'. \'+naoEncontrados.length+\' ticker(s) da planilha não estão cadastrados na carteira recomendada. \'+(todasAcoesXP?todasAcoesXP.length:0)+\' ação(ões) sincronizada(s) na aba Preço Alvo XP.\';\n        carregarCarteira();\n        xpCarregado=false;\n        if(classeAtiva===\'Preço Alvo XP\')carregarXP();\n      });\n      return;\n    }\n    var lote=atualizacoes.slice(i,i+LOTE);\n    Promise.all(lote.map(function(item){\n      return sb.from(\'carteira_recomendada\').update({preco_teto:item.alvo}).eq(\'ticker\',item.ticker).select(\'id\').then(function(r){\n        processados++;\n        if(!r.error&&r.data&&r.data.length)atualizados++;\n        else if(!r.error)naoEncontrados.push(item.ticker);\n        if(statusEl)statusEl.textContent=\'Importando \'+processados+\'/\'+atualizacoes.length+\'...\';\n      });\n    })).then(function(){proximoLote(i+LOTE);});\n  }\n  proximoLote(0);\n}\ndocument.getElementById(\'modal-close\').onclick=fecharModal;\ndocument.getElementById(\'btn-cancelar-modal\').onclick=fecharModal;\nfunction fecharModal(){document.getElementById(\'overlay\').classList.remove(\'open\');}\ndocument.getElementById(\'btn-salvar-modal\').onclick=function(){\n  var payload={\n    classe:document.getElementById(\'f-classe\').value,\n    ticker:(document.getElementById(\'f-ticker\').value||\'\').trim().toUpperCase(),\n    nome:(document.getElementById(\'f-nome\').value||\'\').trim(),\n    setor:(document.getElementById(\'f-setor\').value||\'\').trim(),\n    peso_alvo:parseFloat(document.getElementById(\'f-peso\').value)||0,\n    preco_teto:parseFloat(document.getElementById(\'f-teto\').value)||null,\n    justificativa:(document.getElementById(\'f-just\').value||\'\').trim(),\n    ordem:parseInt(document.getElementById(\'f-ordem\').value)||0,\n    ativo:document.getElementById(\'f-ativo\').value===\'true\'\n  };\n  if(!payload.ticker){alert(\'Informe o ticker ou c\u00f3digo.\');return;}\n  var self=document.getElementById(\'btn-salvar-modal\');self.textContent=\'Salvando...\';self.disabled=true;\n  var prom=editandoId\n    ?sb.from(\'carteira_recomendada\').update(payload).eq(\'id\',editandoId)\n    :sb.from(\'carteira_recomendada\').insert(payload);\n  prom.then(function(r){if(r.error){alert(\'Erro: \'+r.error.message);return;}fecharModal();carregarCarteira();})\n    .finally(function(){self.textContent=\'Salvar ativo\';self.disabled=false;});\n};\nfunction excluir(id){\n  if(!confirm(\'Remover este ativo?\'))return;\n  sb.from(\'carteira_recomendada\').delete().eq(\'id\',id).then(function(r){\n    if(r.error){alert(\'Erro: \'+r.error.message);return;}carregarCarteira();\n  });\n}\nvar contratosCarregados=false,contratosDados=[];\nfunction atualizarFormContratos(){\n  var area=document.getElementById(\'contratos-form-area\');\n  if(area)area.style.display=(isMaster&&classeAtiva===\'Contratos FII\')?\'block\':\'none\';\n  var th=document.getElementById(\'th-contratos-acoes\');\n  if(th)th.style.display=isMaster?\'\':\'none\';\n}\nfunction carregarContratos(){\n  sb.from(\'fii_contratos_tipicos\').select(\'*\').order(\'ticker\',{ascending:true}).then(function(r){\n    contratosCarregados=true;\n    if(r.error){console.error(r.error);return;}\n    contratosDados=r.data||[];\n    renderizarContratos();\n  });\n}\nfunction renderizarContratos(){\n  var corpo=document.getElementById(\'contratos-corpo\');if(!corpo)return;\n  corpo.innerHTML=\'\';\n  var vazio=document.getElementById(\'contratos-vazio\');\n  if(!contratosDados.length){vazio.style.display=\'block\';return;}\n  vazio.style.display=\'none\';\n  contratosDados.forEach(function(c){\n    var tr=document.createElement(\'tr\');\n    var tdTk=document.createElement(\'td\');tdTk.className=\'ticker-bold\';tdTk.textContent=c.ticker||\'—\';tr.appendChild(tdTk);\n    var tdVT=document.createElement(\'td\');tdVT.textContent=(c.valor_tipico!==null&&c.valor_tipico!==undefined)?fBRL(c.valor_tipico):\'—\';tr.appendChild(tdVT);\n    var tdPT=document.createElement(\'td\');tdPT.textContent=(c.pct_tipico!==null&&c.pct_tipico!==undefined)?fPct(c.pct_tipico):\'—\';tr.appendChild(tdPT);\n    var tdVA=document.createElement(\'td\');tdVA.textContent=(c.valor_atipico!==null&&c.valor_atipico!==undefined)?fBRL(c.valor_atipico):\'—\';tr.appendChild(tdVA);\n    var tdPA=document.createElement(\'td\');tdPA.textContent=(c.pct_atipico!==null&&c.pct_atipico!==undefined)?fPct(c.pct_atipico):\'—\';tr.appendChild(tdPA);\n    var tdMeta=document.createElement(\'td\');tdMeta.textContent=c.meta_rentabilidade||\'—\';tr.appendChild(tdMeta);\n    var tdAt=document.createElement(\'td\');tdAt.textContent=fmtDataXP(c.atualizado_em);tr.appendChild(tdAt);\n    if(isMaster){\n      var tdAc=document.createElement(\'td\');\n      var bd=document.createElement(\'button\');bd.className=\'btn btn-danger btn-sm\';bd.textContent=\'✕\';\n      bd.onclick=(function(tk){return function(){excluirContrato(tk);};})(c.ticker);\n      tdAc.appendChild(bd);tr.appendChild(tdAc);\n    }\n    corpo.appendChild(tr);\n  });\n}\nfunction excluirContrato(ticker){\n  if(!confirm(\'Remover o cadastro de \'+ticker+\'?\'))return;\n  sb.from(\'fii_contratos_tipicos\').delete().eq(\'ticker\',ticker).then(function(r){\n    if(r.error){alert(\'Erro: \'+r.error.message);return;}\n    carregarContratos();\n  });\n}\nvar btnSalvarContrato=document.getElementById(\'btn-salvar-contrato\');\nif(btnSalvarContrato)btnSalvarContrato.onclick=function(){\n  var ticker=(document.getElementById(\'ct-ticker\').value||\'\').trim().toUpperCase();\n  if(!ticker){alert(\'Informe o ticker.\');return;}\n  var payload={\n    ticker:ticker,\n    valor_tipico:parseFloat(document.getElementById(\'ct-valor-tipico\').value)||null,\n    pct_tipico:parseFloat(document.getElementById(\'ct-pct-tipico\').value)||null,\n    valor_atipico:parseFloat(document.getElementById(\'ct-valor-atipico\').value)||null,\n    pct_atipico:parseFloat(document.getElementById(\'ct-pct-atipico\').value)||null,\n    meta_rentabilidade:(document.getElementById(\'ct-meta-rentabilidade\').value||\'\').trim()||null,\n    atualizado_em:new Date().toISOString()\n  };\n  var statusEl=document.getElementById(\'contratos-status\');\n  var self=btnSalvarContrato;self.textContent=\'Salvando...\';self.disabled=true;\n  sb.from(\'fii_contratos_tipicos\').upsert(payload,{onConflict:\'ticker\'}).then(function(r){\n    if(r.error){if(statusEl)statusEl.textContent=\'Erro: \'+r.error.message;return;}\n    if(statusEl)statusEl.textContent=ticker+\' salvo com sucesso.\';\n    document.getElementById(\'ct-ticker\').value=\'\';\n    document.getElementById(\'ct-valor-tipico\').value=\'\';\n    document.getElementById(\'ct-pct-tipico\').value=\'\';\n    document.getElementById(\'ct-valor-atipico\').value=\'\';\n    document.getElementById(\'ct-pct-atipico\').value=\'\';\n    document.getElementById(\'ct-meta-rentabilidade\').value=\'\';\n    contratosCarregados=false;\n    carregarContratos();\n  }).finally(function(){self.textContent=\'Salvar\';self.disabled=false;});\n};\natualizarColunas();\n<\/script>\n</body>\n</html>');
+    escreverConteudoJanela(win, '<!DOCTYPE html>\n<html lang="pt-BR">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<title>Carteira Recomendada \u2014 Clube do Rendimento</title>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>\n<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">\n<style>\n:root{--bg:#fff;--soft:#F4F4F4;--ink:#111111;--ink2:#5C5C5C;--line:#E2E2E2;--orange:#111111;--og:#000000;--green:#16A34A;--red:#DC2626;--blue:#2563EB;--purple:#7C3AED;--radius:16px;--shadow:0 10px 28px rgba(0,0,0,.08);}\n*{box-sizing:border-box;margin:0;padding:0;}\nbody{font-family:\'Inter\',system-ui,sans-serif;background:var(--soft);color:var(--ink);font-size:14px;line-height:1.5;}\n.hd{background:#fff;border-bottom:1px solid var(--line);padding:12px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:10;}\n.hd-brand{font-weight:700;font-size:13px;color:var(--ink2);text-decoration:none;}\n.hd-title{font-size:14px;font-weight:700;}\n.master-area{margin-left:auto;display:flex;align-items:center;gap:10px;}\n.master-badge{background:#7C3AED22;color:#7C3AED;font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;border:1px solid #7C3AED44;}\n.btn{padding:8px 18px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s;}\n.btn:hover{opacity:.85;}\n.btn-primary{background:var(--orange);color:#fff;}\n.btn-master{background:#7C3AED;color:#fff;}\n.btn-outline{background:#fff;border:1.5px solid var(--line);color:var(--ink2);}\n.btn-danger{background:var(--red);color:#fff;}\n.btn-sm{padding:5px 12px;font-size:12px;}\n.abas-wrap{background:#fff;border-bottom:1px solid var(--line);padding:0 24px;display:flex;overflow-x:auto;}\n.aba-btn{padding:14px 22px;border:none;background:none;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;white-space:nowrap;}\n.aba-btn.ativa{color:var(--orange);border-bottom-color:var(--orange);}\n.aba-btn:hover:not(.ativa){color:var(--ink);background:#f9fafb;}\n.resumo{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:20px 24px;}\n.res-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);transition:transform .18s;}\n.res-card:hover{transform:translateY(-3px);}\n.res-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2);margin-bottom:5px;}\n.res-val{font-size:20px;font-weight:700;}\n.tbl-area{padding:0 24px 40px;}\n.tbl-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}\n.tbl-title{font-size:16px;font-weight:700;}\n.tbl-wrap{background:#fff;border:1px solid var(--line);border-radius:var(--radius);overflow:visible;}\ntable{width:100%;border-collapse:collapse;}\nthead th{background:#1a1a2e;color:#fff;padding:12px 14px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;text-align:left;white-space:nowrap;position:sticky;top:var(--sticky-top,0px);z-index:5;}\n.th-filter{display:block;margin-top:5px;font-size:10px;font-weight:600;text-transform:none;letter-spacing:0;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:4px;padding:3px 4px;width:100%;max-width:160px;}\n.th-filter option{color:#111827;}\ntbody td{padding:13px 14px;border-bottom:1px solid #f3f4f6;font-size:13px;vertical-align:middle;}\ntbody tr:last-child td{border-bottom:none;}\ntbody tr:hover{background:#f9fafb;}\ntfoot td{padding:12px 14px;background:#f8fafc;font-size:13px;font-weight:700;border-top:2px solid var(--line);}\n.logo-wrap{position:relative;width:36px;height:36px;flex-shrink:0;}\n.logo-ini{width:36px;height:36px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--ink2);}\n.logo-img{position:absolute;inset:0;width:36px;height:36px;border-radius:50%;object-fit:contain;background:#fff;border:1px solid var(--line);display:none;}\n.ativo-cell{display:flex;align-items:center;gap:10px;}\n.ticker-bold{font-weight:700;font-size:14px;}\n.ativo-nome{font-size:12px;color:var(--ink2);}\n.status-comprar{background:#dcfce7;color:#15803d;display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;}\n.status-aguardar{background:#fef9c3;color:#854d0e;display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;}\n.status-acima{background:#fee2e2;color:#b91c1c;display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;}\n.peso-bar{display:flex;align-items:center;gap:8px;}\n.peso-fill-wrap{flex:1;height:8px;background:#f1f5f9;border-radius:4px;min-width:60px;}\n.peso-fill{height:100%;border-radius:4px;background:var(--orange);}\n.pos{color:var(--green);font-weight:600;}\n.neg{color:var(--red);font-weight:600;}\n.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center;}\n.overlay.open{display:flex;}\n.modal{background:#fff;border-radius:14px;padding:28px;width:520px;max-height:90vh;overflow-y:auto;position:relative;}\n.modal h3{font-size:16px;font-weight:700;margin-bottom:20px;}\n.modal-close{position:absolute;top:16px;right:18px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink2);}\n.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}\n.form-group{display:flex;flex-direction:column;gap:5px;}\n.form-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink2);}\n.form-inp{padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);}\n.form-inp:focus{outline:none;border-color:var(--orange);}\n.form-inp-full{grid-column:1/-1;}\ntextarea.form-inp{resize:vertical;min-height:80px;}\n.form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--line);}\n.vazio{padding:60px 24px;text-align:center;color:var(--ink2);}\n.login-box{max-width:360px;margin:60px auto;background:#fff;border:1px solid var(--line);border-radius:14px;padding:32px;text-align:center;}\n.login-box h2{font-size:18px;margin-bottom:6px;}\n.login-box p{font-size:13px;color:var(--ink2);margin-bottom:24px;}\n.login-inp{width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;margin-bottom:12px;}\n.login-inp:focus{outline:none;border-color:var(--purple);}\n.login-err{color:var(--red);font-size:12px;margin-top:8px;display:none;}\n@media(max-width:860px){.resumo{grid-template-columns:1fr 1fr;}}\n<\/style>\n</head>\n<body>\n\n<header class="hd">\n  <a href="javascript:window.close()" class="hd-brand">\u2190 Clube do Rendimento</a>\n  <span style="color:var(--line);">|</span>\n  <h1 class="hd-title">Carteira Recomendada</h1>\n  <div class="master-area">\n    <span id="master-badge" class="master-badge" style="display:none;">\u26a1 Master</span>\n    <button class="btn btn-outline btn-sm" id="btn-entrar-master">Entrar como Master</button>\n    <button class="btn btn-outline btn-sm" id="btn-sair-master" style="display:none;">Sair</button>\n  </div>\n</header>\n\n<div class="abas-wrap">\n  <button class="aba-btn ativa" data-classe="A\u00e7\u00f5es">\ud83d\udcc8 A\u00e7\u00f5es</button>\n  <button class="aba-btn" data-classe="Preço Alvo XP">📊 Preço Alvo XP</button>\n  <button class="aba-btn" data-classe="FIIs">\ud83c\udfe2 FIIs</button>\n  <button class="aba-btn" data-classe="Contratos FII">\ud83d\udcc4 Contratos FII</button>\n  <button class="aba-btn" data-classe="Renda Fixa">\ud83d\udcb0 Renda Fixa</button>\n  <button class="aba-btn" data-classe="A\u00e7\u00f5es Internacionais">\ud83c\udf0e A\u00e7\u00f5es Internacionais</button>\n</div>\n\n<div id="secao-normal">\n<div class="resumo">\n  <div class="res-card"><div class="res-label">Total de ativos</div><div class="res-val" id="res-total">\u2014</div></div>\n  <div class="res-card"><div class="res-label">Soma dos pesos</div><div class="res-val" id="res-pesos">\u2014</div></div>\n  <div class="res-card"><div class="res-label">Oportunidades</div><div class="res-val" id="res-oport" style="color:var(--green);">\u2014</div></div>\n  <div class="res-card"><div class="res-label">Acima do pre\u00e7o</div><div class="res-val" id="res-acima" style="color:var(--red);">\u2014</div></div>\n</div>\n\n<div class="tbl-area">\n  <div class="tbl-hd">\n    <span class="tbl-title" id="tbl-titulo">Ativos recomendados</span>\n    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">\n      <button class="btn btn-master" id="btn-add" style="display:none;">+ Adicionar ativo</button>\n    </div>\n  </div>\n  <div class="tbl-wrap">\n    <table>\n      <thead>\n        <tr>\n          <th>Ativo</th>\n          <th>Setor / Tipo</th>\n          <th id="th-preco">Pre\u00e7o atual</th>\n          <th>Pre\u00e7o teto</th>\n          <th id="th-upside">Upside</th>\n          <th>Peso alvo</th>\n          <th style="text-align:center;">Status</th>\n          <th id="th-acoes" style="display:none;">A\u00e7\u00f5es</th>\n        </tr>\n      </thead>\n      <tbody id="cr-corpo"></tbody>\n      <tfoot id="cr-tfoot" style="display:none;">\n        <tr><td colspan="5">Total dos pesos</td><td id="tfoot-soma">\u2014</td><td></td><td id="tfoot-acao"></td></tr>\n      </tfoot>\n    </table>\n    <div class="vazio" id="cr-vazio">Consultando dados Clube do Rendimento...</div>\n  </div>\n</div>\n</div>\n\n<div id="secao-xp" style="display:none;">\n<div class="resumo">\n  <div class="res-card"><div class="res-label">Ações cobertas (XP)</div><div class="res-val" id="xp-res-total">—</div></div>\n  <div class="res-card"><div class="res-label">Última atualização</div><div class="res-val" id="xp-res-data" style="font-size:14px;">—</div></div>\n</div>\n\n<div class="tbl-area">\n  <div class="tbl-hd">\n    <span class="tbl-title">Preço Alvo XP · Cobertura completa</span>\n    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">\n      <span id="importar-alvo-status" style="display:none;font-size:12px;color:var(--ink2);"></span>\n      <input type="file" id="input-planilha-alvo" accept=".xlsx" style="display:none;">\n      <button class="btn btn-outline btn-sm" id="btn-importar-alvo" style="display:none;">\u2191 Importar pre\u00e7os-alvo (XP)</button>\n    </div>\n  </div>\n  <p style="font-size:11px;color:var(--ink2);margin:4px 0 10px;">Fonte: <a href="https://conteudos.xpi.com.br/acoes/relatorios/tabela-de-multiplos-xp/" target="_blank" rel="noopener noreferrer" style="color:var(--og);">relat\u00f3rio de m\u00faltiplos da XP \u2197</a></p>\n  <div class="tbl-wrap">\n    <table>\n      <thead>\n        <tr>\n          <th>Empresa</th>\n          <th>Ticker</th>\n          <th>Setor<select id="xp-filtro-setor" class="th-filter"><option value="">Todos</option></select></th>\n          <th>Recomendação<select id="xp-filtro-rec" class="th-filter"><option value="">Todas</option></select></th>\n          <th>Preço atual</th>\n          <th>Preço alvo</th>\n          <th>Upside</th>\n        </tr>\n      </thead>\n      <tbody id="xp-corpo"></tbody>\n    </table>\n    <div class="vazio" id="xp-vazio" style="display:none;">Nenhum dado importado ainda. Utilize o botão "Importar preços-alvo (XP)" acima para carregar a planilha da XP.</div>\n  </div>\n</div>\n</div>\n\n<div id="secao-contratos" style="display:none;">\n<div class="tbl-area">\n  <div class="tbl-hd">\n    <span class="tbl-title">Contratos típicos e atípicos dos FIIs</span>\n  </div>\n  <div class="tbl-wrap">\n    <table>\n      <thead>\n        <tr>\n          <th>Ticker</th>\n          <th>Valor típico</th>\n          <th>% típico</th>\n          <th>Valor atípico</th>\n          <th>% atípico</th>\n          <th>Meta de rentabilidade</th>\n          <th>Atualizado em</th>\n          <th id="th-contratos-acoes" style="display:none;">Ações</th>\n        </tr>\n      </thead>\n      <tbody id="contratos-corpo"></tbody>\n    </table>\n    <div class="vazio" id="contratos-vazio" style="display:none;">Nenhum FII cadastrado ainda.</div>\n  </div>\n</div>\n<div class="tbl-area" id="contratos-form-area" style="display:none;padding-top:0;">\n  <div class="tbl-hd"><span class="tbl-title">Adicionar / atualizar FII</span></div>\n  <div style="background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:end;">\n    <div class="form-group"><label class="form-label">Ticker</label><input class="form-inp" id="ct-ticker" placeholder="Ex.: HGLG11" autocomplete="off"></div>\n    <div class="form-group"><label class="form-label">Valor típico (R$)</label><input class="form-inp" type="number" step="0.01" id="ct-valor-tipico" placeholder="0,00"></div>\n    <div class="form-group"><label class="form-label">% típico</label><input class="form-inp" type="number" step="0.01" id="ct-pct-tipico" placeholder="Ex.: 62,50"></div>\n    <div class="form-group"><label class="form-label">Valor atípico (R$)</label><input class="form-inp" type="number" step="0.01" id="ct-valor-atipico" placeholder="0,00"></div>\n    <div class="form-group"><label class="form-label">% atípico</label><input class="form-inp" type="number" step="0.01" id="ct-pct-atipico" placeholder="Ex.: 37,50"></div>\n    <div class="form-group"><label class="form-label">Meta de rentabilidade</label><input class="form-inp" id="ct-meta-rentabilidade" placeholder="Ex.: IPCA+10%" autocomplete="off"></div>\n  </div>\n  <div style="margin-top:12px;display:flex;align-items:center;gap:10px;">\n    <button class="btn btn-master btn-sm" id="btn-salvar-contrato">Salvar</button>\n    <span id="contratos-status" style="font-size:12px;color:var(--ink2);"></span>\n  </div>\n</div>\n</div>\n\n<div class="overlay" id="overlay">\n  <div class="modal">\n    <button class="modal-close" id="modal-close">\u2715</button>\n    <h3 id="modal-titulo">Adicionar ativo</h3>\n    <div class="form-row">\n      <div class="form-group"><label class="form-label">Classe</label>\n        <select class="form-inp" id="f-classe">\n          <option value="A\u00e7\u00f5es">A\u00e7\u00f5es</option>\n          <option value="FIIs">FIIs</option>\n          <option value="Renda Fixa">Renda Fixa</option>\n          <option value="A\u00e7\u00f5es Internacionais">A\u00e7\u00f5es Internacionais</option>\n        </select></div>\n      <div class="form-group" id="fg-ticker"><label class="form-label">Ticker / C\u00f3digo</label><input class="form-inp" id="f-ticker" placeholder="ex: PETR4" autocomplete="off"></div>\n      <div class="form-group"><label class="form-label">Nome</label><input class="form-inp" id="f-nome" placeholder="ex: Petrobras"></div>\n      <div class="form-group"><label class="form-label">Setor / Tipo</label><input class="form-inp" id="f-setor" placeholder="ex: Energia | CDB CDI+"></div>\n      <div class="form-group"><label class="form-label">Peso alvo (%)</label><input class="form-inp" type="number" id="f-peso" min="0" max="100" step="0.01" placeholder="5,00"></div>\n      <div class="form-group" id="fg-teto"><label class="form-label">Pre\u00e7o teto (R$)</label><input class="form-inp" type="number" id="f-teto" min="0" step="0.01" placeholder="40,00"></div>\n      <div class="form-group" id="fg-taxa" style="display:none;"><label class="form-label">Taxa contratada</label><input class="form-inp" id="f-taxa" placeholder="ex: CDI+2%, IPCA+6%, 12,5% a.a." autocomplete="off"></div>\n      <div class="form-group"><label class="form-label">Ordem</label><input class="form-inp" type="number" id="f-ordem" min="0" step="1" placeholder="1"></div>\n      <div class="form-group"><label class="form-label">Ativo</label><select class="form-inp" id="f-ativo"><option value="true">Sim</option><option value="false">N\u00e3o</option></select></div>\n      <div class="form-group form-inp-full"><label class="form-label">Tese de investimento</label><textarea class="form-inp" id="f-just" placeholder="Justificativa..."></textarea></div>\n    </div>\n    <div class="form-actions">\n      <button class="btn btn-outline" id="btn-cancelar-modal">Cancelar</button>\n      <button class="btn btn-primary" id="btn-salvar-modal">Salvar ativo</button>\n    </div>\n  </div>\n</div>\n\n<div class="overlay" id="overlay-login">\n  <div class="login-box">\n    <div style="font-size:32px;margin-bottom:12px;">\u26a1</div>\n    <h2>Acesso Master</h2>\n    <p>Apenas administradores podem editar a carteira recomendada.</p>\n    <input class="login-inp" type="email" id="login-email" placeholder="E-mail master">\n    <input class="login-inp" type="password" id="login-senha" placeholder="Senha" style="margin-bottom:16px;">\n    <button class="btn btn-master" id="btn-confirmar-login" style="width:100%;">Entrar</button>\n    <div class="login-err" id="login-err">E-mail ou senha incorretos.</div>\n    <button class="btn btn-outline" id="btn-cancelar-login" style="width:100%;margin-top:10px;">Cancelar</button>\n  </div>\n</div>\n\n<script>\nvar sb=supabase.createClient(\'https://segeufywrjmstfmfscdi.supabase.co\',\'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZ2V1Znl3cmptc3RmbWZzY2RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzY0OTgsImV4cCI6MjA5ODQxMjQ5OH0.TUrp35SEI2NXdU1ZY7IEcdRm8VLLfLwAVWUtqjafElI\');\nvar SESSAO_INICIAL=' + JSON.stringify(sessaoAtual) + ';\nvar BRAPI_PROXY=\'https://segeufywrjmstfmfscdi.supabase.co/functions/v1/brapi-proxy\';\n(function(){\n  function ajustarStickyTop(){\n    var hd=document.querySelector(\'.hd\');\n    if(hd)document.documentElement.style.setProperty(\'--sticky-top\',hd.offsetHeight+\'px\');\n  }\n  ajustarStickyTop();\n  window.addEventListener(\'resize\',ajustarStickyTop);\n})();\nvar isMaster=false,carteira=[],precosMap={},editandoId=null,classeAtiva=\'A\u00e7\u00f5es\';\nvar CLASSES_COM_COTACAO=[\'A\u00e7\u00f5es\',\'FIIs\',\'A\u00e7\u00f5es Internacionais\'];\nvar TITULOS={\'A\u00e7\u00f5es\':\'A\u00e7\u00f5es recomendadas\',\'FIIs\':\'FIIs recomendados\',\'Renda Fixa\':\'Renda Fixa recomendada\',\'A\u00e7\u00f5es Internacionais\':\'A\u00e7\u00f5es Internacionais recomendadas\'};\nfunction fBRL(v){return (v||0).toLocaleString(\'pt-BR\',{style:\'currency\',currency:\'BRL\',minimumFractionDigits:2});}\nfunction fPct(v){return (+(v||0)).toFixed(2).replace(\'.\',\',\')+ \'%\';}\nfunction sincronizarSessaoDoOpener(){\n  try{\n    if(SESSAO_INICIAL&&SESSAO_INICIAL.access_token){\n      return sb.auth.setSession({access_token:SESSAO_INICIAL.access_token,refresh_token:SESSAO_INICIAL.refresh_token});\n    }\n    if(window.opener&&window.opener.sessaoAtual&&window.opener.sessaoAtual.access_token){\n      return sb.auth.setSession({access_token:window.opener.sessaoAtual.access_token,refresh_token:window.opener.sessaoAtual.refresh_token});\n    }\n  }catch(e){}\n  return Promise.resolve(null);\n}\nfunction atualizarPapel(sessaoObj){\n  if(!sessaoObj){isMaster=false;atualizarUI();return Promise.resolve();}\n  return sb.from(\'profiles\').select(\'role\').eq(\'id\',sessaoObj.user.id).single().then(function(r){\n    isMaster=!!(r.data&&r.data.role===\'master\');\n    atualizarUI();\n  });\n}\nsb.auth.onAuthStateChange(function(_e,s){atualizarPapel(s);});\nsincronizarSessaoDoOpener().then(function(){return sb.auth.getSession();}).then(function(r){var ses=(r.data&&r.data.session)||null;atualizarPapel(ses).then(function(){carregarCarteira();});});\nfunction atualizarBotaoImportar(){\n  var btn=document.getElementById(\'btn-importar-alvo\');\n  if(btn)btn.style.display=(isMaster&&classeAtiva===\'Preço Alvo XP\')?\'inline-block\':\'none\';\n}\nfunction atualizarUI(){\n  document.getElementById(\'master-badge\').style.display=isMaster?\'inline-block\':\'none\';\n  document.getElementById(\'btn-entrar-master\').style.display=isMaster?\'none\':\'inline-block\';\n  document.getElementById(\'btn-sair-master\').style.display=isMaster?\'inline-block\':\'none\';\n  document.getElementById(\'btn-add\').style.display=isMaster?\'inline-block\':\'none\';\n  atualizarBotaoImportar();\n  atualizarFormContratos();\n  document.getElementById(\'th-acoes\').style.display=isMaster?\'\':\'none\';\n  renderizar();\n}\ndocument.getElementById(\'btn-entrar-master\').onclick=function(){document.getElementById(\'overlay-login\').classList.add(\'open\');};\ndocument.getElementById(\'btn-cancelar-login\').onclick=function(){document.getElementById(\'overlay-login\').classList.remove(\'open\');document.getElementById(\'login-err\').style.display=\'none\';};\ndocument.getElementById(\'btn-confirmar-login\').onclick=function(){\n  var email=document.getElementById(\'login-email\').value.trim();\n  var senha=document.getElementById(\'login-senha\').value;\n  var errEl=document.getElementById(\'login-err\');errEl.style.display=\'none\';\n  this.textContent=\'Entrando...\';this.disabled=true;var self=this;\n  sb.auth.signInWithPassword({email:email,password:senha}).then(function(r){\n    if(r.error){errEl.textContent=r.error.message||\'Credenciais incorretas.\';errEl.style.display=\'block\';}\n    else{document.getElementById(\'overlay-login\').classList.remove(\'open\');}\n  }).finally(function(){self.textContent=\'Entrar\';self.disabled=false;});\n};\ndocument.getElementById(\'btn-sair-master\').onclick=function(){sb.auth.signOut();};\ndocument.querySelectorAll(\'.aba-btn\').forEach(function(btn){\n  btn.onclick=function(){\n    classeAtiva=btn.dataset.classe;\n    document.querySelectorAll(\'.aba-btn\').forEach(function(b){b.classList.remove(\'ativa\');});\n    btn.classList.add(\'ativa\');\n    if(classeAtiva===\'Preço Alvo XP\'){\n      document.getElementById(\'secao-normal\').style.display=\'none\';\n      document.getElementById(\'secao-xp\').style.display=\'\';\n      document.getElementById(\'secao-contratos\').style.display=\'none\';\n      if(!xpCarregado)carregarXP();\n      atualizarBotaoImportar();\n      return;\n    }\n    if(classeAtiva===\'Contratos FII\'){\n      document.getElementById(\'secao-normal\').style.display=\'none\';\n      document.getElementById(\'secao-xp\').style.display=\'none\';\n      document.getElementById(\'secao-contratos\').style.display=\'\';\n      if(!contratosCarregados)carregarContratos();\n      atualizarBotaoImportar();\n      atualizarFormContratos();\n      return;\n    }\n    document.getElementById(\'secao-normal\').style.display=\'\';\n    document.getElementById(\'secao-xp\').style.display=\'none\';\n    document.getElementById(\'secao-contratos\').style.display=\'none\';\n    atualizarBotaoImportar();\n    var fc=document.getElementById(\'f-classe\');if(fc){fc.value=classeAtiva;atualizarCamposModal();}\n    atualizarColunas();renderizar();\n  };\n});\nfunction atualizarColunas(){\n  var temCot=CLASSES_COM_COTACAO.indexOf(classeAtiva)!==-1;\n  var thP=document.getElementById(\'th-preco\');if(thP)thP.style.display=temCot?\'\':\'none\';\n  var thU=document.getElementById(\'th-upside\');if(thU)thU.style.display=temCot?\'\':\'none\';\n  var tt=document.getElementById(\'tbl-titulo\');if(tt)tt.textContent=TITULOS[classeAtiva]||\'Ativos recomendados\';\n}\nvar xpCarregado=false,xpDados=[];\nfunction fmtDataXP(iso){\n  if(!iso)return \'—\';\n  var d=new Date(iso);\n  if(isNaN(d.getTime()))return \'—\';\n  return d.toLocaleDateString(\'pt-BR\')+\' \'+d.toLocaleTimeString(\'pt-BR\',{hour:\'2-digit\',minute:\'2-digit\'});\n}\nvar xpFiltroSetor=\'\',xpFiltroRec=\'\';\nfunction popularFiltrosXP(){\n  var selSetor=document.getElementById(\'xp-filtro-setor\'),selRec=document.getElementById(\'xp-filtro-rec\');\n  if(!selSetor||!selRec)return;\n  var setores=[],recs=[];\n  xpDados.forEach(function(a){\n    if(a.setor&&setores.indexOf(a.setor)===-1)setores.push(a.setor);\n    if(a.recomendacao&&recs.indexOf(a.recomendacao)===-1)recs.push(a.recomendacao);\n  });\n  setores.sort();recs.sort();\n  var valSetorAtual=selSetor.value,valRecAtual=selRec.value;\n  selSetor.innerHTML=\'<option value="">Todos</option>\';\n  setores.forEach(function(s){var o=document.createElement(\'option\');o.value=s;o.textContent=s;selSetor.appendChild(o);});\n  if(setores.indexOf(valSetorAtual)!==-1)selSetor.value=valSetorAtual;else xpFiltroSetor=\'\';\n  selRec.innerHTML=\'<option value="">Todas</option>\';\n  recs.forEach(function(r){var o=document.createElement(\'option\');o.value=r;o.textContent=r;selRec.appendChild(o);});\n  if(recs.indexOf(valRecAtual)!==-1)selRec.value=valRecAtual;else xpFiltroRec=\'\';\n}\nfunction carregarXP(){\n  sb.from(\'xp_precos_alvo\').select(\'*\').order(\'empresa\',{ascending:true}).then(function(r){\n    xpCarregado=true;\n    if(r.error){console.error(r.error);return;}\n    xpDados=(r.data||[]).filter(function(a){return a.preco_alvo!==null&&a.preco_alvo!==undefined;});\n    popularFiltrosXP();\n    renderizarXP();\n  });\n}\nfunction renderizarXP(){\n  var corpo=document.getElementById(\'xp-corpo\');if(!corpo)return;\n  corpo.innerHTML=\'\';\n  var vazio=document.getElementById(\'xp-vazio\');\n  var listaFiltrada=xpDados.filter(function(a){\n    return (!xpFiltroSetor||a.setor===xpFiltroSetor)&&(!xpFiltroRec||a.recomendacao===xpFiltroRec);\n  });\n  if(!listaFiltrada.length){\n    vazio.style.display=\'block\';\n    vazio.textContent=xpDados.length?\'Nenhuma ação encontrada para os filtros selecionados.\':\'Nenhum dado importado ainda. Utilize o botão "Importar preços-alvo (XP)" acima para carregar a planilha da XP.\';\n    document.getElementById(\'xp-res-total\').textContent=\'0\';\n    document.getElementById(\'xp-res-data\').textContent=fmtDataXP(maisRecenteXP());\n    return;\n  }\n  vazio.style.display=\'none\';\n  listaFiltrada.forEach(function(a){\n    var tr=document.createElement(\'tr\');\n    var tdE=document.createElement(\'td\');tdE.textContent=a.empresa||\'—\';tr.appendChild(tdE);\n    var tdT=document.createElement(\'td\');tdT.className=\'ticker-bold\';tdT.textContent=a.ticker||\'—\';tr.appendChild(tdT);\n    var tdS=document.createElement(\'td\');tdS.textContent=a.setor||\'—\';tr.appendChild(tdS);\n    var tdR=document.createElement(\'td\');\n    var rec=(a.recomendacao||\'\').toLowerCase();\n    var badge=\'<span class="status-aguardar">\'+(a.recomendacao||\'—\')+\'</span>\';\n    if(rec.indexOf(\'compra\')!==-1)badge=\'<span class="status-comprar">\'+a.recomendacao+\'</span>\';\n    else if(rec.indexOf(\'venda\')!==-1)badge=\'<span class="status-acima">\'+a.recomendacao+\'</span>\';\n    tdR.innerHTML=badge;tr.appendChild(tdR);\n    var tdA=document.createElement(\'td\');tdA.textContent=(a.preco_atual!==null&&a.preco_atual!==undefined)?fBRL(a.preco_atual):\'—\';tr.appendChild(tdA);\n    var tdAl=document.createElement(\'td\');tdAl.textContent=fBRL(a.preco_alvo);tr.appendChild(tdAl);\n    var tdU=document.createElement(\'td\');\n    if(a.upside!==null&&a.upside!==undefined){tdU.className=a.upside>=0?\'pos\':\'neg\';tdU.textContent=(a.upside>=0?\'+\':\'\')+fPct(a.upside);}\n    else tdU.textContent=\'—\';\n    tr.appendChild(tdU);\n    corpo.appendChild(tr);\n  });\n  document.getElementById(\'xp-res-total\').textContent=listaFiltrada.length;\n  document.getElementById(\'xp-res-data\').textContent=fmtDataXP(maisRecenteXP());\n}\nfunction maisRecenteXP(){\n  var maisRecente=null;\n  xpDados.forEach(function(a){if(!maisRecente||(a.atualizado_em&&a.atualizado_em>maisRecente))maisRecente=a.atualizado_em;});\n  return maisRecente;\n}\ndocument.getElementById(\'xp-filtro-setor\').onchange=function(){xpFiltroSetor=this.value;renderizarXP();};\ndocument.getElementById(\'xp-filtro-rec\').onchange=function(){xpFiltroRec=this.value;renderizarXP();};\nfunction carregarCarteira(){\n  sb.from(\'carteira_recomendada\').select(\'*\').eq(\'ativo\',true).order(\'ordem\',{ascending:true}).then(function(r){\n    if(r.error){console.error(r.error);return;}\n    carteira=r.data||[];\n    buscarPrecos();\n  });\n}\nfunction buscarPrecos(){\n  var tks=carteira.filter(function(a){return CLASSES_COM_COTACAO.indexOf(a.classe)!==-1&&a.ticker;}).map(function(a){return a.ticker;});\n  if(!tks.length){renderizar();return;}\n  var lotes=[];for(var i=0;i<tks.length;i+=10)lotes.push(tks.slice(i,i+10));\n  Promise.all(lotes.map(function(l){\n    return fetch(BRAPI_PROXY+\'/quote/\'+encodeURIComponent(l.join(\',\')))\n      .then(function(r){return r.json();})\n      .then(function(d){(d.results||[]).forEach(function(q){if(q.symbol&&q.regularMarketPrice)precosMap[q.symbol]=q.regularMarketPrice;});})\n      .catch(function(){});\n  })).then(function(){renderizar();});\n}\nfunction renderizar(){\n  var corpo=document.getElementById(\'cr-corpo\');if(!corpo)return;\n  corpo.innerHTML=\'\';\n  var ativos=carteira.filter(function(a){return a.classe===classeAtiva;});\n  var temCot=CLASSES_COM_COTACAO.indexOf(classeAtiva)!==-1;\n  if(!ativos.length){\n    document.getElementById(\'cr-vazio\').textContent=\'Nenhum ativo cadastrado nesta categoria.\';\n    document.getElementById(\'cr-vazio\').style.display=\'block\';\n    document.getElementById(\'cr-tfoot\').style.display=\'none\';\n    atualizarCards(0,0,0,0);return;\n  }\n  document.getElementById(\'cr-vazio\').style.display=\'none\';\n  document.getElementById(\'cr-tfoot\').style.display=\'\';\n  var soma=0,oport=0,acima=0;\n  var maxP=Math.max.apply(null,ativos.map(function(a){return +(a.peso_alvo||0);}))||1;\n  ativos.forEach(function(a){\n    var peso=+(a.peso_alvo||0),teto=a.preco_teto?+a.preco_teto:null;\n    var preco=temCot?(precosMap[a.ticker]||null):null;\n    var upside=(preco&&teto)?((teto/preco)-1)*100:null;\n    soma+=peso;\n    var stHtml;\n    if(!temCot||!teto)stHtml=\'<span class="status-aguardar">\u2014 Analisar</span>\';\n    else if(!preco)stHtml=\'<span class="status-aguardar">Sem cota\u00e7\u00e3o</span>\';\n    else if(upside>0){stHtml=\'<span class="status-comprar">\u25b2 Comprar</span>\';oport++;}\n    else if(upside>=-5)stHtml=\'<span class="status-aguardar">\u2299 Aguardar</span>\';\n    else{stHtml=\'<span class="status-acima">\u25bc Acima do teto</span>\';acima++;}\n    var tr=document.createElement(\'tr\');\n    if(a.justificativa){tr.title=a.justificativa;tr.style.cursor=\'help\';}\n    // Ativo\n    var tdA=document.createElement(\'td\');\n    var ac=document.createElement(\'div\');ac.className=\'ativo-cell\';\n    var lw=document.createElement(\'div\');lw.className=\'logo-wrap\';\n    var li=document.createElement(\'div\');li.className=\'logo-ini\';li.textContent=(a.ticker||\'\'). slice(0,2);lw.appendChild(li);\n    if(temCot&&a.ticker){\n      var img=document.createElement(\'img\');img.className=\'logo-img\';img.alt=\'\';\n      img.onload=function(){img.style.display=\'block\';};img.onerror=function(){img.style.display=\'none\';};\n      fetch(BRAPI_PROXY+\'/quote/\'+encodeURIComponent(a.ticker))\n        .then(function(r){return r.json();}).then(function(d){var q=d.results&&d.results[0];if(q&&q.logourl)img.src=q.logourl;}).catch(function(){});\n      lw.appendChild(img);\n    }\n    var ld=document.createElement(\'div\');\n    var tk=document.createElement(\'div\');tk.className=\'ticker-bold\';tk.textContent=a.ticker||\'\u2014\';\n    var nm=document.createElement(\'div\');nm.className=\'ativo-nome\';nm.textContent=a.nome||\'\';\n    ld.appendChild(tk);ld.appendChild(nm);ac.appendChild(lw);ac.appendChild(ld);tdA.appendChild(ac);tr.appendChild(tdA);\n    // Setor\n    var tdSt=document.createElement(\'td\');tdSt.textContent=a.setor||\'\u2014\';tr.appendChild(tdSt);\n    // Pre\u00e7o atual\n    var tdP=document.createElement(\'td\');tdP.textContent=temCot?(preco?fBRL(preco):\'\u2014\'):\'\u2014\';\n    if(!temCot)tdP.style.display=\'none\';tr.appendChild(tdP);\n    // Pre\u00e7o teto\n    var tdT=document.createElement(\'td\');tdT.textContent=teto?fBRL(teto):\'\u2014\';tr.appendChild(tdT);\n    // Upside\n    var tdU=document.createElement(\'td\');\n    if(upside!==null){tdU.className=upside>=0?\'pos\':\'neg\';tdU.textContent=(upside>=0?\'+\':\'\')+fPct(upside);}else tdU.textContent=\'\u2014\';\n    if(!temCot)tdU.style.display=\'none\';tr.appendChild(tdU);\n    // Peso\n    var tdPe=document.createElement(\'td\');\n    var pd=document.createElement(\'div\');pd.className=\'peso-bar\';\n    var fw=document.createElement(\'div\');fw.className=\'peso-fill-wrap\';\n    var fl=document.createElement(\'div\');fl.className=\'peso-fill\';fl.style.width=((peso/maxP)*100)+\'%\';\n    fw.appendChild(fl);pd.appendChild(fw);\n    var pn=document.createElement(\'span\');pn.style.cssText=\'font-size:12px;font-weight:700;min-width:40px;\';pn.textContent=fPct(peso);\n    pd.appendChild(pn);tdPe.appendChild(pd);tr.appendChild(tdPe);\n    // Status\n    var tdStat=document.createElement(\'td\');tdStat.innerHTML=stHtml;tr.appendChild(tdStat);\n    // A\u00e7\u00f5es master\n    if(isMaster){\n      var tdAc=document.createElement(\'td\');\n      var be=document.createElement(\'button\');be.className=\'btn btn-outline btn-sm\';be.textContent=\'\u270e Editar\';\n      be.onclick=(function(x){return function(){abrirModal(x);};})(a);\n      var bd=document.createElement(\'button\');bd.className=\'btn btn-danger btn-sm\';bd.textContent=\'\u2715\';bd.style.marginLeft=\'6px\';\n      bd.onclick=(function(id){return function(){excluir(id);};})(a.id);\n      tdAc.appendChild(be);tdAc.appendChild(bd);tr.appendChild(tdAc);\n    }\n    corpo.appendChild(tr);\n  });\n  var somaEl=document.getElementById(\'tfoot-soma\');\n  if(somaEl){somaEl.textContent=fPct(soma);somaEl.style.color=Math.abs(soma-100)<0.1?\'var(--green)\':\' var(--red)\';}\n  if(isMaster){var tf=document.getElementById(\'tfoot-acao\');if(tf)tf.innerHTML=\'<span style="font-size:11px;color:var(--ink2);">Soma deve ser 100%</span>\';}\n  atualizarCards(ativos.length,soma,oport,acima);\n}\nfunction atualizarCards(tot,soma,op,ac){\n  document.getElementById(\'res-total\').textContent=tot;\n  document.getElementById(\'res-oport\').textContent=op;\n  document.getElementById(\'res-acima\').textContent=ac;\n  var el=document.getElementById(\'res-pesos\');el.textContent=fPct(soma);\n  el.style.color=Math.abs(soma-100)<0.1?\'var(--green)\':\'var(--red)\';\n}\nfunction atualizarCamposModal(){\n  var classeSel=document.getElementById(\'f-classe\').value;\n  var ehRF=classeSel===\'Renda Fixa\';\n  var ehFII=classeSel===\'FIIs\';\n  document.getElementById(\'fg-ticker\').style.display=ehRF?\'none\':\'\';\n  document.getElementById(\'fg-teto\').style.display=(ehRF||ehFII)?\'none\':\'\';\n  document.getElementById(\'fg-taxa\').style.display=ehRF?\'\':\'none\';\n}\ndocument.getElementById(\'f-classe\').addEventListener(\'change\',atualizarCamposModal);\nfunction abrirModal(a){\n  editandoId=a?a.id:null;\n  document.getElementById(\'modal-titulo\').textContent=a?\'Editar ativo\':\'Adicionar ativo\';\n  document.getElementById(\'f-classe\').value=a?(a.classe||classeAtiva):classeAtiva;\n  document.getElementById(\'f-ticker\').value=a?(a.ticker||\'\'): \'\';\n  document.getElementById(\'f-nome\').value=a?(a.nome||\'\'): \'\';\n  document.getElementById(\'f-setor\').value=a?(a.setor||\'\'): \'\';\n  document.getElementById(\'f-peso\').value=a?(a.peso_alvo||\'\'): \'\';\n  document.getElementById(\'f-teto\').value=a?(a.preco_teto||\'\'): \'\';\n  document.getElementById(\'f-just\').value=a?(a.justificativa||\'\'): \'\';\n  document.getElementById(\'f-ordem\').value=a?(a.ordem||\'\'): \'\';\n  document.getElementById(\'f-ativo\').value=a?String(a.ativo!==false):\'true\';\n  document.getElementById(\'f-taxa\').value=a?(a.taxa_contratada||\'\'): \'\';\n  atualizarCamposModal();\n  document.getElementById(\'overlay\').classList.add(\'open\');\n}\ndocument.getElementById(\'btn-add\').onclick=function(){abrirModal(null);};\ndocument.getElementById(\'btn-importar-alvo\').onclick=function(){document.getElementById(\'input-planilha-alvo\').click();};\ndocument.getElementById(\'input-planilha-alvo\').onchange=function(ev){\n  var arquivo=ev.target.files&&ev.target.files[0];\n  if(!arquivo)return;\n  var statusEl=document.getElementById(\'importar-alvo-status\');\n  var leitor=new FileReader();\n  leitor.onload=function(evt){\n    try{\n      var pasta=XLSX.read(evt.target.result,{type:\'array\'});\n      var planilha=pasta.Sheets[\'Multiplos\'];\n      if(!planilha){alert(\'A aba "Multiplos" não foi encontrada nesta planilha.\');return;}\n      var linhas=XLSX.utils.sheet_to_json(planilha,{header:1,raw:true});\n      var atualizacoes=[];\n      var todasAcoesXP=[];\n      var agora=new Date().toISOString();\n      for(var i=7;i<linhas.length;i++){\n        var linha=linhas[i]||[];\n        var ticker=(linha[2]||\'\').toString().trim().toUpperCase();\n        if(!ticker)continue;\n        var alvoBruto=linha[6];\n        var alvoNum=(typeof alvoBruto===\'number\'&&!isNaN(alvoBruto))?alvoBruto:null;\n        if(alvoNum!==null)atualizacoes.push({ticker:ticker,alvo:alvoNum});\n        var atualBruto=linha[7];\n        var atualNum=(typeof atualBruto===\'number\'&&!isNaN(atualBruto))?atualBruto:null;\n        var upsideBruto=linha[8];\n        var upsideNum=(typeof upsideBruto===\'number\'&&!isNaN(upsideBruto))?upsideBruto*100:null;\n        todasAcoesXP.push({\n          ticker:ticker,\n          empresa:(linha[1]||\'\').toString().trim(),\n          setor:(linha[3]||\'\').toString().trim(),\n          analista:(linha[4]||\'\').toString().trim(),\n          recomendacao:(linha[5]||\'\').toString().trim(),\n          preco_alvo:alvoNum,\n          preco_atual:atualNum,\n          upside:upsideNum,\n          atualizado_em:agora\n        });\n      }\n      processarImportacaoAlvo(atualizacoes,todasAcoesXP,statusEl);\n    }catch(erro){\n      alert(\'Erro ao ler a planilha: \'+erro.message);\n    }\n  };\n  leitor.readAsArrayBuffer(arquivo);\n  ev.target.value=\'\';\n};\nfunction importarXPCompleto(todasAcoesXP){\n  if(!todasAcoesXP||!todasAcoesXP.length)return Promise.resolve();\n  var LOTE=50,i=0;\n  function proximo(){\n    if(i>=todasAcoesXP.length)return Promise.resolve();\n    var lote=todasAcoesXP.slice(i,i+LOTE);\n    i+=LOTE;\n    return sb.from(\'xp_precos_alvo\').upsert(lote,{onConflict:\'ticker\'}).then(function(r){\n      if(r.error)console.error(r.error);\n      return proximo();\n    });\n  }\n  return proximo();\n}\nfunction processarImportacaoAlvo(atualizacoes,todasAcoesXP,statusEl){\n  if(!atualizacoes.length&&!(todasAcoesXP&&todasAcoesXP.length)){alert(\'Nenhuma ação com ticker válido foi encontrada na planilha.\');return;}\n  if(statusEl){statusEl.style.display=\'inline\';statusEl.textContent=\'Importando 0/\'+atualizacoes.length+\'...\';}\n  var atualizados=0,naoEncontrados=[],processados=0,LOTE=15;\n  function proximoLote(i){\n    if(i>=atualizacoes.length){\n      importarXPCompleto(todasAcoesXP).then(function(){\n        if(statusEl)statusEl.textContent=atualizados+\' preço(s)-alvo atualizado(s) de \'+atualizacoes.length+\'. \'+naoEncontrados.length+\' ticker(s) da planilha não estão cadastrados na carteira recomendada. \'+(todasAcoesXP?todasAcoesXP.length:0)+\' ação(ões) sincronizada(s) na aba Preço Alvo XP.\';\n        carregarCarteira();\n        xpCarregado=false;\n        if(classeAtiva===\'Preço Alvo XP\')carregarXP();\n      });\n      return;\n    }\n    var lote=atualizacoes.slice(i,i+LOTE);\n    Promise.all(lote.map(function(item){\n      return sb.from(\'carteira_recomendada\').update({preco_teto:item.alvo}).eq(\'ticker\',item.ticker).select(\'id\').then(function(r){\n        processados++;\n        if(!r.error&&r.data&&r.data.length)atualizados++;\n        else if(!r.error)naoEncontrados.push(item.ticker);\n        if(statusEl)statusEl.textContent=\'Importando \'+processados+\'/\'+atualizacoes.length+\'...\';\n      });\n    })).then(function(){proximoLote(i+LOTE);});\n  }\n  proximoLote(0);\n}\ndocument.getElementById(\'modal-close\').onclick=fecharModal;\ndocument.getElementById(\'btn-cancelar-modal\').onclick=fecharModal;\nfunction fecharModal(){document.getElementById(\'overlay\').classList.remove(\'open\');}\ndocument.getElementById(\'btn-salvar-modal\').onclick=function(){\n  var classeSalvar=document.getElementById(\'f-classe\').value;\n  var ehRFSalvar=classeSalvar===\'Renda Fixa\';\n  var nomeSalvar=(document.getElementById(\'f-nome\').value||\'\').trim();\n  // Renda Fixa n\u00e3o tem ticker de bolsa \u2014 o campo fica oculto no formul\u00e1rio\n  // (ver atualizarCamposModal) e o identificador (coluna ticker, n\u00e3o-nula)\n  // \u00e9 derivado do Nome, j\u00e1 que n\u00e3o existe um c\u00f3digo p\u00fablico equivalente.\n  var tickerSalvar=ehRFSalvar\n    ?nomeSalvar.toUpperCase().replace(/[^A-Z0-9]+/g,\'-\').replace(/^-+|-+$/g,\'\').slice(0,80)\n    :(document.getElementById(\'f-ticker\').value||\'\').trim().toUpperCase();\n  var payload={\n    classe:classeSalvar,\n    ticker:tickerSalvar,\n    nome:nomeSalvar,\n    setor:(document.getElementById(\'f-setor\').value||\'\').trim(),\n    peso_alvo:parseFloat(document.getElementById(\'f-peso\').value)||0,\n    preco_teto:parseFloat(document.getElementById(\'f-teto\').value)||null,\n    taxa_contratada:ehRFSalvar?((document.getElementById(\'f-taxa\').value||\'\').trim()||null):null,\n    justificativa:(document.getElementById(\'f-just\').value||\'\').trim(),\n    ordem:parseInt(document.getElementById(\'f-ordem\').value)||0,\n    ativo:document.getElementById(\'f-ativo\').value===\'true\'\n  };\n  if(!payload.ticker){alert(ehRFSalvar?\'Informe o nome do ativo de renda fixa.\':\'Informe o ticker ou c\u00f3digo.\');return;}\n  var self=document.getElementById(\'btn-salvar-modal\');self.textContent=\'Salvando...\';self.disabled=true;\n  var prom=editandoId\n    ?sb.from(\'carteira_recomendada\').update(payload).eq(\'id\',editandoId)\n    :sb.from(\'carteira_recomendada\').insert(payload);\n  prom.then(function(r){if(r.error){alert(\'Erro: \'+r.error.message);return;}fecharModal();carregarCarteira();})\n    .finally(function(){self.textContent=\'Salvar ativo\';self.disabled=false;});\n};\nfunction excluir(id){\n  if(!confirm(\'Remover este ativo?\'))return;\n  sb.from(\'carteira_recomendada\').delete().eq(\'id\',id).then(function(r){\n    if(r.error){alert(\'Erro: \'+r.error.message);return;}carregarCarteira();\n  });\n}\nvar contratosCarregados=false,contratosDados=[];\nfunction atualizarFormContratos(){\n  var area=document.getElementById(\'contratos-form-area\');\n  if(area)area.style.display=(isMaster&&classeAtiva===\'Contratos FII\')?\'block\':\'none\';\n  var th=document.getElementById(\'th-contratos-acoes\');\n  if(th)th.style.display=isMaster?\'\':\'none\';\n}\nfunction carregarContratos(){\n  sb.from(\'fii_contratos_tipicos\').select(\'*\').order(\'ticker\',{ascending:true}).then(function(r){\n    contratosCarregados=true;\n    if(r.error){console.error(r.error);return;}\n    contratosDados=r.data||[];\n    renderizarContratos();\n  });\n}\nfunction renderizarContratos(){\n  var corpo=document.getElementById(\'contratos-corpo\');if(!corpo)return;\n  corpo.innerHTML=\'\';\n  var vazio=document.getElementById(\'contratos-vazio\');\n  if(!contratosDados.length){vazio.style.display=\'block\';return;}\n  vazio.style.display=\'none\';\n  contratosDados.forEach(function(c){\n    var tr=document.createElement(\'tr\');\n    var tdTk=document.createElement(\'td\');tdTk.className=\'ticker-bold\';tdTk.textContent=c.ticker||\'—\';tr.appendChild(tdTk);\n    var tdVT=document.createElement(\'td\');tdVT.textContent=(c.valor_tipico!==null&&c.valor_tipico!==undefined)?fBRL(c.valor_tipico):\'—\';tr.appendChild(tdVT);\n    var tdPT=document.createElement(\'td\');tdPT.textContent=(c.pct_tipico!==null&&c.pct_tipico!==undefined)?fPct(c.pct_tipico):\'—\';tr.appendChild(tdPT);\n    var tdVA=document.createElement(\'td\');tdVA.textContent=(c.valor_atipico!==null&&c.valor_atipico!==undefined)?fBRL(c.valor_atipico):\'—\';tr.appendChild(tdVA);\n    var tdPA=document.createElement(\'td\');tdPA.textContent=(c.pct_atipico!==null&&c.pct_atipico!==undefined)?fPct(c.pct_atipico):\'—\';tr.appendChild(tdPA);\n    var tdMeta=document.createElement(\'td\');tdMeta.textContent=c.meta_rentabilidade||\'—\';tr.appendChild(tdMeta);\n    var tdAt=document.createElement(\'td\');tdAt.textContent=fmtDataXP(c.atualizado_em);tr.appendChild(tdAt);\n    if(isMaster){\n      var tdAc=document.createElement(\'td\');\n      var bd=document.createElement(\'button\');bd.className=\'btn btn-danger btn-sm\';bd.textContent=\'✕\';\n      bd.onclick=(function(tk){return function(){excluirContrato(tk);};})(c.ticker);\n      tdAc.appendChild(bd);tr.appendChild(tdAc);\n    }\n    corpo.appendChild(tr);\n  });\n}\nfunction excluirContrato(ticker){\n  if(!confirm(\'Remover o cadastro de \'+ticker+\'?\'))return;\n  sb.from(\'fii_contratos_tipicos\').delete().eq(\'ticker\',ticker).then(function(r){\n    if(r.error){alert(\'Erro: \'+r.error.message);return;}\n    carregarContratos();\n  });\n}\nvar btnSalvarContrato=document.getElementById(\'btn-salvar-contrato\');\nif(btnSalvarContrato)btnSalvarContrato.onclick=function(){\n  var ticker=(document.getElementById(\'ct-ticker\').value||\'\').trim().toUpperCase();\n  if(!ticker){alert(\'Informe o ticker.\');return;}\n  var payload={\n    ticker:ticker,\n    valor_tipico:parseFloat(document.getElementById(\'ct-valor-tipico\').value)||null,\n    pct_tipico:parseFloat(document.getElementById(\'ct-pct-tipico\').value)||null,\n    valor_atipico:parseFloat(document.getElementById(\'ct-valor-atipico\').value)||null,\n    pct_atipico:parseFloat(document.getElementById(\'ct-pct-atipico\').value)||null,\n    meta_rentabilidade:(document.getElementById(\'ct-meta-rentabilidade\').value||\'\').trim()||null,\n    atualizado_em:new Date().toISOString()\n  };\n  var statusEl=document.getElementById(\'contratos-status\');\n  var self=btnSalvarContrato;self.textContent=\'Salvando...\';self.disabled=true;\n  sb.from(\'fii_contratos_tipicos\').upsert(payload,{onConflict:\'ticker\'}).then(function(r){\n    if(r.error){if(statusEl)statusEl.textContent=\'Erro: \'+r.error.message;return;}\n    if(statusEl)statusEl.textContent=ticker+\' salvo com sucesso.\';\n    document.getElementById(\'ct-ticker\').value=\'\';\n    document.getElementById(\'ct-valor-tipico\').value=\'\';\n    document.getElementById(\'ct-pct-tipico\').value=\'\';\n    document.getElementById(\'ct-valor-atipico\').value=\'\';\n    document.getElementById(\'ct-pct-atipico\').value=\'\';\n    document.getElementById(\'ct-meta-rentabilidade\').value=\'\';\n    contratosCarregados=false;\n    carregarContratos();\n  }).finally(function(){self.textContent=\'Salvar\';self.disabled=false;});\n};\natualizarColunas();\n<\/script>\n</body>\n</html>');
   }
 
   /* ========================= CRIPTO (ÍNDICE MEDO & GANÂNCIA) ========================= */
@@ -17088,7 +16228,6 @@ document.querySelectorAll('.tab').forEach(function(btn){
   document.getElementById('btn-nav-seguros').addEventListener('click', abrirSegurosPrevidencia);
   document.getElementById('btn-nav-cetipados').addEventListener('click', abrirCetipados);
   document.getElementById('btn-nav-pesquisa').addEventListener('click', abrirPesquisaAtivo);
-  document.getElementById('btn-nav-valuation').addEventListener('click', abrirValuationDCF);
   document.getElementById('btn-nav-carteira-rec').addEventListener('click', abrirCarteiraRecomendada);
   document.getElementById('link-nav-medo-ganancia').addEventListener('click', abrirCripto);
   document.getElementById('link-nav-tesouro-direto').addEventListener('click', abrirRendaFixa);
