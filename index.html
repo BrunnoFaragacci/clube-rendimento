@@ -3024,7 +3024,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
       : (opcoes.acoes && !opcoes.fiis) ? 'Total em ações'
       : 'Total em renda variável';
     var sLimitesRiscoFII = opcoes.fiis
-      ? '<h2 class="quadro-titulo" id="fii-risco-header" style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;">' +
+      ? '<div class="pdf-secao-oculta-export">' +
+        '<h2 class="quadro-titulo" id="fii-risco-header" style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;">' +
           '<span>Sinalizar FIIs da carteira com</span>' +
           '<span id="fii-risco-seta" style="font-size:18px;color:var(--orange);transition:transform .3s;display:inline-block;transform:rotate(-90deg);">▼</span>' +
         '</h2>' +
@@ -3034,6 +3035,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
             '<div class="fii-risco-campo"><label for="fr-liquidez">Liquidez abaixo de</label><input type="number" id="fr-liquidez" value="1000" min="0" step="50"><span>R$ mil/dia</span></div>' +
             '<div class="fii-risco-campo"><label for="fr-mercado">Valor de mercado abaixo de</label><input type="number" id="fr-mercado" value="500" min="0" step="10"><span>R$ milhões</span></div>' +
           '</div>' +
+        '</div>' +
         '</div>'
       : '';
     // Card de Insights compartilhado pelas 3 seções (Ações/FIIs, Renda Fixa e
@@ -3222,6 +3224,14 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var resumoUpsideAcoes = (opcoes.acoes && !opcoes.fiis)
       ? '<div class="resumo-card"><span class="resumo-label">Potencial de upside (XP)</span><span class="resumo-valor" id="tot-upside-rv">—</span></div>'
       : '';
+    // Yield separado por tipo de fundo (Papel x Tijolo) — só faz sentido
+    // quando a análise inclui FIIs; segue o mesmo formato do "Yield da
+    // carteira (mês)" (dividendos ÷ valor total, só que restrito aos FIIs
+    // classificados em cada tipo pelo Investidor10 — ver atualizarYieldRV).
+    var resumoYieldFII = opcoes.fiis
+      ? '<div class="resumo-card resumo-card-verde"><span class="resumo-label">Yield papel (mês)</span><span class="resumo-valor resumo-valor-verde" id="tot-yield-papel">—</span></div>' +
+        '<div class="resumo-card resumo-card-verde"><span class="resumo-label">Yield tijolo (mês)</span><span class="resumo-valor resumo-valor-verde" id="tot-yield-tijolo">—</span></div>'
+      : '';
     var resumoRV = opcoes.rv
       ? '<div class="resumo-card"><span class="resumo-label">' + labelResumoRV + '</span><span class="resumo-valor" id="tot-rv">—</span></div>' +
         '<div class="resumo-card"><span class="resumo-label">Quantidade de ativos</span><span class="resumo-valor" id="tot-qtd-rv">—</span></div>' +
@@ -3229,6 +3239,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '<div class="resumo-card resumo-card-verde"><span class="resumo-label">Total de dividendos a pagar</span><span class="resumo-valor resumo-valor-verde" id="tot-div-rv">—</span></div>' +
         '<div class="resumo-card resumo-card-verde"><span class="resumo-label">Yield da carteira (mês)</span><span class="resumo-valor resumo-valor-verde" id="tot-yield-rv">—</span></div>' +
         '<div class="resumo-card resumo-card-verde"><span class="resumo-label">Yield on cost (mês)</span><span class="resumo-valor resumo-valor-verde" id="tot-yield-cost-rv">—</span></div>' +
+        resumoYieldFII +
         resumoUpsideAcoes
       : '';
     var resumoRF = opcoes.rf
@@ -3412,7 +3423,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       '</div>'
     ) : '';
 
-        var numCards = (opcoes.rv?6:0) + ((opcoes.acoes && !opcoes.fiis)?1:0) + (opcoes.rf?3:0) + (opcoes.cetip?5:0) +
+        var numCards = (opcoes.rv?6:0) + ((opcoes.acoes && !opcoes.fiis)?1:0) + (opcoes.fiis?2:0) + (opcoes.rf?3:0) + (opcoes.cetip?5:0) +
           (opcoes.previdencia?3:0) + (opcoes.coe?2:0) + (opcoes.tesouro?3:0);
     var gridCols = 'repeat(' + numCards + ',1fr)';
 
@@ -5519,6 +5530,21 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var totUltimoProvRV = 0; // acumula o último provento efetivamente pago (rate × quantidade) de ações e FIIs, para o DY da carteira inteira
     var totYieldRvEl  = D.getElementById('tot-yield-rv');
     var totYieldCostRvEl = D.getElementById('tot-yield-cost-rv');
+    // Yield separado por tipo de fundo (Papel x Tijolo), com o mesmo
+    // critério do "Yield da carteira" acima, mas restrito aos FIIs cujo
+    // Tipo de Fundo (Investidor10) contém "papel"/"títulos e valores
+    // mobiliários" ou "tijolo" — ver classificarTipoFundoRV, chamada junto
+    // com as demais acumulações de valor total e dividendos de cada linha.
+    var totDivPapelAcum = 0, totValorPapelAcum = 0;
+    var totDivTijoloAcum = 0, totValorTijoloAcum = 0;
+    var totYieldPapelEl  = D.getElementById('tot-yield-papel');
+    var totYieldTijoloEl = D.getElementById('tot-yield-tijolo');
+    function classificarTipoFundoRV(tipoFundo) {
+      var t = normalizar(tipoFundo || '');
+      if (t.indexOf('papel') !== -1 || t.indexOf('titulos e valores mobiliarios') !== -1) return 'papel';
+      if (t.indexOf('tijolo') !== -1) return 'tijolo';
+      return null;
+    }
     // Yield da carteira = próximos dividendos anunciados ÷ total investido nos
     // ativos já carregados, em %. Recalculado a cada atualização de total (tanto
     // dividendos quanto valor investido), refletindo o progresso do carregamento.
@@ -5535,6 +5561,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
       if (totYieldCostRvEl) {
         var totalInvestidoRV = totRV - totVarRV;
         totYieldCostRvEl.textContent = totalInvestidoRV > 0 ? formatarNumero((totDivRvAcum / totalInvestidoRV) * 100, 2) + '%' : '—';
+      }
+      if (totYieldPapelEl) {
+        totYieldPapelEl.textContent = totValorPapelAcum > 0 ? formatarNumero((totDivPapelAcum / totValorPapelAcum) * 100, 2) + '%' : '—';
+      }
+      if (totYieldTijoloEl) {
+        totYieldTijoloEl.textContent = totValorTijoloAcum > 0 ? formatarNumero((totDivTijoloAcum / totValorTijoloAcum) * 100, 2) + '%' : '—';
       }
     }
     var totUpsideRvEl = D.getElementById('tot-upside-rv');
@@ -5897,6 +5929,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     // manuais posteriores nas células.
     function excluirLinhaRV(tr) {
       var ticker = tr.id.replace('rv-tr-', '');
+      var bucketFIIExcluir = tr.getAttribute('data-bucket-fii') || null;
 
       var idxGraf = -1;
       for (var i = 0; i < dadosGraficoRV.length; i++) {
@@ -5906,6 +5939,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
         var entradaGraf = dadosGraficoRV[idxGraf];
         totRV -= entradaGraf.valorTotal;
         if (entradaGraf.isFII) totFIIsOnly -= entradaGraf.valorTotal; else totAcoesOnly -= entradaGraf.valorTotal;
+        if (bucketFIIExcluir === 'papel') totValorPapelAcum -= entradaGraf.valorTotal;
+        else if (bucketFIIExcluir === 'tijolo') totValorTijoloAcum -= entradaGraf.valorTotal;
         qtdAtivosRV--;
         if (totQtdRvEl) totQtdRvEl.textContent = String(qtdAtivosRV);
         dadosGraficoRV.splice(idxGraf, 1);
@@ -5929,6 +5964,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var divAttr = tr.getAttribute('data-div');
       if (divAttr) {
         totDivRvAcum -= parseFloat(divAttr);
+        if (bucketFIIExcluir === 'papel') totDivPapelAcum -= parseFloat(divAttr);
+        else if (bucketFIIExcluir === 'tijolo') totDivTijoloAcum -= parseFloat(divAttr);
         if (totDivRvEl) totDivRvEl.textContent = 'R$ ' + formatarNumero(totDivRvAcum, 2);
       }
 
@@ -6384,9 +6421,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
             // Tipo de FII (Papel/Tijolo/Híbrido/Fundo de Fundos) — só disponível
             // via Investidor10 (fii-dados-extra), não retornado pela Brapi.
+            var bucketFII = null;
             if (isFII) {
               var extraTipoFII = mapaFIIExtra[at.ticker];
               c[2].textContent = (extraTipoFII && extraTipoFII.tipoFundo) || '—';
+              bucketFII = classificarTipoFundoRV(extraTipoFII && extraTipoFII.tipoFundo);
+              if (tr) tr.setAttribute('data-bucket-fii', bucketFII || '');
             } else {
               c[2].textContent = '—';
             }
@@ -6426,6 +6466,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
               if (linhaVisivel) {
                 totRV += vt;
                 if (isFII) totFIIsOnly += vt; else totAcoesOnly += vt;
+                if (bucketFII === 'papel') totValorPapelAcum += vt;
+                else if (bucketFII === 'tijolo') totValorTijoloAcum += vt;
                 qtdAtivosRV++;
                 if (totQtdRvEl) totQtdRvEl.textContent = String(qtdAtivosRV);
                 dadosGraficoRV.push({ ticker: at.ticker, valorTotal: vt, segmento: segNome, dy: null, quoteType: quoteType, isFII: isFII, _idx: globalIdx });
@@ -6445,6 +6487,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
                   if (delta === 0) return;
                   totRV += delta;
                   if (isFII) totFIIsOnly += delta; else totAcoesOnly += delta;
+                  if (bucketFII === 'papel') totValorPapelAcum += delta;
+                  else if (bucketFII === 'tijolo') totValorTijoloAcum += delta;
                   if (entradaG) entradaG.valorTotal = novoNum;
                   for (var _ai = 0; _ai < todosAtivos.length; _ai++) {
                     if (todosAtivos[_ai].classe === 'RV' && todosAtivos[_ai].nome === at.ticker) {
@@ -6677,6 +6721,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
               // filtro selecionado (mesmo critério usado no total de valor em RV).
               if (linhaVisivel) {
                 totDivRvAcum += valorProv;
+                if (bucketFII === 'papel') totDivPapelAcum += valorProv;
+                else if (bucketFII === 'tijolo') totDivTijoloAcum += valorProv;
                 tr.setAttribute('data-div', String(valorProv));
                 if (entrada) entrada.div = valorProv;
                 if (totDivRvEl) totDivRvEl.textContent = 'R$ ' + formatarNumero(totDivRvAcum, 2);
@@ -6693,6 +6739,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
                 // anúncio oficial ainda.
                 if (linhaVisivel) {
                   totDivRvAcum += valorEstimadoFII;
+                  if (bucketFII === 'papel') totDivPapelAcum += valorEstimadoFII;
+                  else if (bucketFII === 'tijolo') totDivTijoloAcum += valorEstimadoFII;
                   tr.setAttribute('data-div', String(valorEstimadoFII));
                   if (entrada) entrada.div = valorEstimadoFII;
                   if (totDivRvEl) totDivRvEl.textContent = 'R$ ' + formatarNumero(totDivRvAcum, 2);
@@ -6711,6 +6759,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
                 c[11 + o].textContent = 'R$ ' + formatarNumero(valorEstimadoPorDY, 2);
                 if (linhaVisivel) {
                   totDivRvAcum += valorEstimadoPorDY;
+                  if (bucketFII === 'papel') totDivPapelAcum += valorEstimadoPorDY;
+                  else if (bucketFII === 'tijolo') totDivTijoloAcum += valorEstimadoPorDY;
                   tr.setAttribute('data-div', String(valorEstimadoPorDY));
                   if (entrada) entrada.div = valorEstimadoPorDY;
                   if (totDivRvEl) totDivRvEl.textContent = 'R$ ' + formatarNumero(totDivRvAcum, 2);
@@ -6738,6 +6788,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
                 var anteriorDiv = parseFloat(tr.getAttribute('data-div')) || 0;
                 if (novoNum === anteriorDiv) return;
                 totDivRvAcum += novoNum - anteriorDiv;
+                if (bucketFII === 'papel') totDivPapelAcum += novoNum - anteriorDiv;
+                else if (bucketFII === 'tijolo') totDivTijoloAcum += novoNum - anteriorDiv;
                 tr.setAttribute('data-div', String(novoNum));
                 if (entrada) entrada.div = novoNum;
                 if (totDivRvEl) totDivRvEl.textContent = 'R$ ' + formatarNumero(totDivRvAcum, 2);
