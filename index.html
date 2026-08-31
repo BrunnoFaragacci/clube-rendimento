@@ -12388,7 +12388,12 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 .basileia-busca button{padding:10px 18px;border:none;border-radius:8px;background:var(--orange);color:#fff;font-family:inherit;font-weight:600;font-size:13.5px;cursor:pointer;}
 .basileia-busca button:disabled{opacity:.6;cursor:default;}
 .basileia-busca-status{font-size:12.5px;color:var(--ink-soft);min-height:18px;margin-bottom:16px;}
-.filtro-tabela-input{padding:9px 14px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);width:280px;max-width:100%;background:#fff;margin-bottom:14px;display:block;}
+.filtro-tabela-input{padding:9px 14px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);width:280px;max-width:100%;background:#fff;}
+.basileia-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
+.basileia-print-area{display:flex;align-items:center;gap:10px;}
+.basileia-print-status{font-size:12.5px;color:var(--ink-soft);}
+#btn-print-basileia{display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--orange);color:var(--og);font-family:inherit;font-weight:600;font-size:13px;padding:8px 14px;border-radius:8px;cursor:pointer;}
+#btn-print-basileia:disabled{opacity:.5;cursor:not-allowed;}
 .col-redimensionar{position:absolute;top:0;right:0;width:8px;height:100%;cursor:col-resize;user-select:none;z-index:4;}
 .col-redimensionar:hover{background:rgba(255,255,255,.25);}
 .col-arrastando{opacity:.4;}
@@ -12430,11 +12435,17 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
     <div class="basileia-legenda-item"><span class="basileia-dot basileia-dot-solido"></span>Acima de 14% — sólido</div>
   </div>
 
-  <input type="text" class="filtro-tabela-input" id="basileia-filtro" placeholder="Filtrar por nome...">
+  <div class="basileia-toolbar">
+    <input type="text" class="filtro-tabela-input" id="basileia-filtro" placeholder="Filtrar por nome...">
+    <div class="basileia-print-area">
+      <span class="basileia-print-status" id="basileia-print-status">0 selecionadas</span>
+      <button type="button" id="btn-print-basileia">📷 Tirar print</button>
+    </div>
+  </div>
 
   <div class="basileia-table-wrap">
     <table class="basileia-table">
-      <thead><tr><th>Instituição</th><th class="th-tip">Índice de Basileia<div class="th-tip-box"><div class="th-tip-titulo">Índice de Basileia</div><div class="th-tip-desc">Mede o quanto do capital próprio do banco cobre os riscos assumidos em suas operações, servindo de colchão contra perdas inesperadas.</div><ul class="th-tip-lista"><li><strong>Fórmula:</strong> Patrimônio de Referência ÷ Ativos Ponderados pelo Risco</li><li><strong>Interpretação:</strong> O mínimo regulatório do Banco Central é de 10,5%; bancos com índices bem acima disso (14% ou mais) têm folga de capital mais confortável.</li></ul></div></th><th>Período</th><th></th></tr></thead>
+      <thead><tr><th style="text-align:center;"><input type="checkbox" id="basileia-check-todas" title="Selecionar/desmarcar todas as linhas visíveis"></th><th>Instituição</th><th class="th-tip">Índice de Basileia<div class="th-tip-box"><div class="th-tip-titulo">Índice de Basileia</div><div class="th-tip-desc">Mede o quanto do capital próprio do banco cobre os riscos assumidos em suas operações, servindo de colchão contra perdas inesperadas.</div><ul class="th-tip-lista"><li><strong>Fórmula:</strong> Patrimônio de Referência ÷ Ativos Ponderados pelo Risco</li><li><strong>Interpretação:</strong> O mínimo regulatório do Banco Central é de 10,5%; bancos com índices bem acima disso (14% ou mais) têm folga de capital mais confortável.</li></ul></div></th><th>Período</th><th></th></tr></thead>
       <tbody id="basileia-corpo"></tbody>
     </table>
   </div>
@@ -12481,6 +12492,12 @@ var linhasPorCnpj = {};
 // em "Consultar" na linha correspondente.
 function criarLinha(nome, cnpj8) {
   var tr = document.createElement('tr');
+  var tdCheck = document.createElement('td');
+  tdCheck.style.textAlign = 'center';
+  var chkLinha = document.createElement('input');
+  chkLinha.type = 'checkbox';
+  chkLinha.className = 'basileia-check-linha';
+  tdCheck.appendChild(chkLinha);
   var tdNome = document.createElement('td');
   tdNome.className = 'basileia-nome';
   tdNome.textContent = nome;
@@ -12519,15 +12536,15 @@ function criarLinha(nome, cnpj8) {
   btnExcluir.title = 'Remover esta instituição da lista';
   btnExcluir.textContent = '🗑️';
   tdAcao.appendChild(btnExcluir);
-  tr.appendChild(tdNome); tr.appendChild(tdValor); tr.appendChild(tdPeriodo); tr.appendChild(tdAcao);
+  tr.appendChild(tdCheck); tr.appendChild(tdNome); tr.appendChild(tdValor); tr.appendChild(tdPeriodo); tr.appendChild(tdAcao);
   return tr;
 }
 function preencherLinha(tr, nome, basileia, periodo) {
-  tr.children[0].textContent = nome;
-  tr.children[1].textContent = fmtPct(basileia);
-  tr.children[1].className = 'basileia-valor ' + classificarBasileia(basileia);
-  tr.children[1].title = 'Referência geral: mínimo regulatório de 10,5%; abaixo de 11% pede atenção, acima de 14% indica folga confortável.';
-  tr.children[2].textContent = fmtPeriodo(periodo);
+  tr.children[1].textContent = nome;
+  tr.children[2].textContent = fmtPct(basileia);
+  tr.children[2].className = 'basileia-valor ' + classificarBasileia(basileia);
+  tr.children[2].title = 'Referência geral: mínimo regulatório de 10,5%; abaixo de 11% pede atenção, acima de 14% indica folga confortável.';
+  tr.children[3].textContent = fmtPeriodo(periodo);
 }
 
 BANCOS.forEach(function(b) {
@@ -12729,8 +12746,124 @@ function tornarColunasAjustaveis(tabela) {
 tornarTabelaOrdenavel(document.querySelector('.basileia-table'), document.getElementById('basileia-filtro'));
 tornarColunasAjustaveis(document.querySelector('.basileia-table'));
 tornarLinhasMarcaveisExcluiveis(corpo);
+configurarSelecaoPrintBasileia();
 
+// Checkbox por linha + botão "Tirar print" — mesmo mecanismo usado em
+// Fundos Cetipados e na Análise de Crédito Privado (html2canvas + área
+// de transferência): clona a tabela fora da tela com só as linhas
+// marcadas e sem as colunas de seleção/excluir, captura como PNG e
+// copia para a área de transferência.
+function configurarSelecaoPrintBasileia() {
+  var checkTodas = document.getElementById('basileia-check-todas');
+  var statusPrint = document.getElementById('basileia-print-status');
+  var btnPrint = document.getElementById('btn-print-basileia');
+  if (!btnPrint) return;
+
+  function linhasVisiveis() {
+    return Array.prototype.filter.call(corpo.children, function(tr) { return tr.style.display !== 'none'; });
+  }
+  function atualizarStatusPrint() {
+    var marcadas = corpo.querySelectorAll('.basileia-check-linha:checked').length;
+    if (statusPrint) statusPrint.textContent = marcadas + (marcadas === 1 ? ' selecionada' : ' selecionadas');
+    btnPrint.disabled = marcadas === 0;
+  }
+  corpo.addEventListener('change', function(ev) {
+    if (ev.target.classList.contains('basileia-check-linha')) atualizarStatusPrint();
+  });
+  // A exclusão de linha (lixeira) vem de tornarLinhasMarcaveisExcluiveis,
+  // que só remove o <tr> do DOM sem disparar 'change' — observa remoções
+  // para manter a contagem de selecionadas correta se uma linha marcada
+  // for excluída.
+  new MutationObserver(atualizarStatusPrint).observe(corpo, { childList: true });
+  if (checkTodas) {
+    checkTodas.addEventListener('change', function() {
+      linhasVisiveis().forEach(function(tr) {
+        var chk = tr.querySelector('.basileia-check-linha');
+        if (chk) chk.checked = checkTodas.checked;
+      });
+      atualizarStatusPrint();
+    });
+  }
+  atualizarStatusPrint();
+
+  btnPrint.addEventListener('click', function() {
+    var H2C = window.html2canvas;
+    if (!H2C) { alert('Não foi possível gerar a imagem agora. Tente novamente em instantes.'); return; }
+
+    var haSelecionada = corpo.querySelector('.basileia-check-linha:checked');
+    if (!haSelecionada) { alert('Selecione ao menos uma instituição para tirar o print.'); return; }
+
+    var textoOriginal = btnPrint.textContent;
+    btnPrint.disabled = true;
+    btnPrint.textContent = 'Copiando…';
+
+    var wrapOriginal = document.querySelector('.basileia-table-wrap');
+    var captura = document.createElement('div');
+    captura.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:24px;width:max-content;' +
+      'font-family:' + getComputedStyle(document.body).fontFamily + ';';
+
+    var wrapClone = wrapOriginal.cloneNode(true);
+    wrapClone.style.overflow = 'visible';
+    wrapClone.style.maxHeight = 'none';
+    var tabelaClone = wrapClone.querySelector('.basileia-table');
+    tabelaClone.style.minWidth = '0';
+
+    // Mesmo índice em corpo (original) e nas linhas do clone, já que o
+    // clone é feito agora, refletindo a ordem/estado atual da tabela.
+    var linhasOriginais = Array.prototype.slice.call(corpo.children);
+    var linhasClone = Array.prototype.slice.call(tabelaClone.querySelectorAll('tbody tr'));
+    linhasClone.forEach(function(trClone, i) {
+      var chk = linhasOriginais[i] ? linhasOriginais[i].querySelector('.basileia-check-linha') : null;
+      if (!chk || !chk.checked) trClone.remove();
+    });
+    Array.prototype.forEach.call(tabelaClone.querySelectorAll('thead th:first-child, tbody td:first-child'), function(el) { el.remove(); });
+    Array.prototype.forEach.call(tabelaClone.querySelectorAll('thead th:last-child, tbody td:last-child'), function(el) { el.remove(); });
+
+    captura.appendChild(wrapClone);
+    document.body.appendChild(captura);
+
+    var largura = captura.scrollWidth;
+    var altura = captura.scrollHeight;
+
+    function encerrar(msgFinal, restaurarApos) {
+      btnPrint.disabled = false;
+      btnPrint.textContent = msgFinal || textoOriginal;
+      if (restaurarApos) setTimeout(function() { btnPrint.textContent = textoOriginal; }, 2000);
+    }
+
+    H2C(captura, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      width: largura,
+      height: altura,
+      windowWidth: largura,
+      windowHeight: altura
+    }).then(function(canvas) {
+      document.body.removeChild(captura);
+      canvas.toBlob(function(blob) {
+        if (!blob) { encerrar(); alert('Não foi possível gerar a imagem.'); return; }
+        var clipboard = navigator.clipboard;
+        if (clipboard && clipboard.write && window.ClipboardItem) {
+          clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(function() {
+            encerrar('✅ Copiado!', true);
+          }).catch(function(e) {
+            encerrar();
+            alert('Não foi possível copiar a imagem para a área de transferência: ' + e.message);
+          });
+        } else {
+          encerrar();
+          alert('Este navegador não permite copiar imagens diretamente para a área de transferência.');
+        }
+      }, 'image/png');
+    }).catch(function(e) {
+      if (document.body.contains(captura)) document.body.removeChild(captura);
+      encerrar();
+      alert('Não foi possível gerar a imagem: ' + e.message);
+    });
+  });
+}
 <\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
 </body>
 </html>`);
   }
