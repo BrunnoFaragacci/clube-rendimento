@@ -12757,11 +12757,6 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
 .eyebrow{display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:600;color:var(--og);margin-bottom:14px;}
 .eyebrow::before{content:"";width:18px;height:2px;background:var(--orange);display:inline-block;}
 h1{font-size:26px;font-weight:700;margin-bottom:8px;}
-.cp-legenda{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;box-shadow:var(--shadow);}
-.cp-legenda-titulo{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:10px;}
-.cp-legenda-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px 24px;}
-.cp-legenda-grid div{font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
-.cp-legenda-grid strong{color:var(--ink);}
 .th-tip{cursor:help;}.th-tip::after{content:"?";display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:rgba(255,255,255,.3);color:#fff;font-size:9px;font-weight:700;margin-left:5px;vertical-align:middle;}.th-tip-box{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:6px;width:280px;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow);z-index:50;text-transform:none;font-weight:400;letter-spacing:normal;white-space:normal;cursor:auto;}.th-tip:hover .th-tip-box{display:block;}.th-tip-titulo{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:6px;}.th-tip-desc{font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:8px;}.th-tip-lista{margin:0;padding-left:16px;font-size:12px;color:var(--ink-soft);line-height:1.5;}.th-tip-lista li{margin-bottom:4px;}
 .cp-busca-status{font-size:12.5px;color:var(--ink-soft);min-height:18px;margin-bottom:12px;}
 .filtro-tabela-input{padding:9px 14px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);width:280px;max-width:100%;background:#fff;margin-bottom:14px;display:block;}
@@ -12787,8 +12782,6 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 .cp-valor-atencao{color:var(--red);font-weight:700;}
 .cp-valor-adequado{color:var(--amber);font-weight:700;}
 .cp-valor-solido{color:var(--green);font-weight:700;}
-.cp-nota{margin-top:16px;font-size:12.5px;color:var(--ink-soft);line-height:1.6;max-width:760px;}
-.cp-nota strong{color:var(--ink);}
 </style>
 </head>
 <body>
@@ -12800,26 +12793,6 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 <div class="container">
   <span class="eyebrow">Renda Fixa</span>
   <h1>Análise de Crédito Privado</h1>
-  <div class="cp-legenda">
-    <span class="cp-legenda-titulo">O que significa cada indicador</span>
-    <div class="cp-legenda-grid">
-      <div><strong>Segmento</strong> — setor de atuação da empresa, classificado manualmente.</div>
-      <div><strong>Rating</strong> — nota de crédito mais recente encontrada (agência entre parênteses), pesquisada manualmente; sem atualização automática. "—" quando não localizada.</div>
-      <div><strong>Referência</strong> — data de fim do exercício social a que os números se referem (fechamento do último balanço anual disponível).</div>
-      <div><strong>Receita Líquida</strong> — total vendido pela empresa no ano, já descontados impostos sobre vendas e devoluções.</div>
-      <div><strong>EBITDA</strong> — lucro operacional antes de juros, impostos, depreciação e amortização; mede a geração de caixa do negócio, sem o efeito da estrutura de capital.</div>
-      <div><strong>Margem EBITDA</strong> — EBITDA dividido pela Receita Líquida; quanto maior, mais eficiente é a operação.</div>
-      <div><strong>Lucro Líquido</strong> — resultado final do ano, depois de juros, impostos e todas as despesas.</div>
-      <div><strong>Caixa</strong> — dinheiro e aplicações de liquidez imediata disponíveis no balanço.</div>
-      <div><strong>Dívida Bruta</strong> — soma de todos os empréstimos, financiamentos e debêntures, de curto e longo prazo.</div>
-      <div><strong>Dívida Curto Prazo</strong> — parcela da Dívida Bruta com vencimento em até 1 ano (Passivo Circulante).</div>
-      <div><strong>Dívida Longo Prazo</strong> — parcela da Dívida Bruta com vencimento acima de 1 ano (Passivo Não Circulante).</div>
-      <div><strong>Dívida Líquida</strong> — Dívida Bruta menos o Caixa disponível; quanto a empresa efetivamente deve, se usasse todo o caixa para abater dívida.</div>
-      <div><strong>Dív.Líq./EBITDA</strong> — quantos anos de geração de caixa seriam necessários para quitar a Dívida Líquida; principal indicador de alavancagem usado no mercado de crédito.</div>
-      <div><strong>Índice de Cobertura de Juros</strong> — EBIT dividido pelas Despesas Financeiras; mede quantas vezes o resultado operacional cobre o custo da dívida no período.</div>
-      <div><strong>Liquidez Corrente</strong> — Ativo Circulante dividido pelo Passivo Circulante; mede a capacidade de pagar as obrigações de curto prazo.</div>
-    </div>
-  </div>
 
   <p class="cp-busca-status" id="cp-status">Carregando indicadores...</p>
 
@@ -12850,15 +12823,7 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
     </table>
   </div>
 
-  <p class="cp-nota">
-    Fonte: CVM — Demonstrações Financeiras Padronizadas (DFP, anual), dados.cvm.gov.br. Valores em R$ milhões/bilhões, conforme o porte da empresa.
-    <strong>EBITDA</strong> é uma aproximação (Resultado Antes do Resultado Financeiro e dos Tributos + Depreciação/Amortização apurada na Demonstração do Fluxo de Caixa), não a "EBITDA ajustado" que a própria empresa costuma divulgar em relatórios de resultados — pode haver diferença por itens não recorrentes.
-    <strong>Dív.Líq./EBITDA</strong> classificado como sólido (verde) até 2,5x, adequado (âmbar) até 4x e atenção (vermelho) acima disso — uma leitura geral de mercado, não um critério oficial.
-    <strong>Índice de Cobertura de Juros</strong> classificado como sólido (verde) a partir de 3,0x, adequado (âmbar) a partir de 1,5x e atenção (vermelho) abaixo disso — também uma leitura geral de mercado, não um critério oficial.
-    Não há fonte pública para Covenants (cláusula contratual da escritura de emissão de cada dívida), por isso não aparecem aqui.
-    <strong>Rating</strong> vem de pesquisa manual (S&P, Moody's, Fitch ou agências locais como SR Rating/Austin Rating), sem fonte pública única/estruturada — diferente dos demais indicadores desta tabela, não é atualizado automaticamente e pode ficar desatualizado com o tempo.
-    Bancos que não emitem dívida pública registrada na CVM (ex.: Banco Master, C6 Bank) não têm demonstrações nesta base — para bancos, ver "Índice de Basileia" neste mesmo menu.
-  </p>
+
 </div>
 
 <script>
