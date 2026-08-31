@@ -11237,6 +11237,11 @@ tbody tr:hover td{background:#fafafa;}
 .cc-td-attr{position:sticky;left:0;z-index:1;background:#fff;font-weight:700;white-space:nowrap;border-right:1px solid var(--line);}
 tbody tr:hover .cc-td-attr{background:#fafafa;}
 .cc-mockup{width:96px;height:60px;border-radius:8px;background:linear-gradient(135deg,#1a1a1a,#000);color:#fff;display:flex;align-items:flex-end;padding:8px;font-size:9px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;margin-bottom:8px;box-shadow:0 3px 8px rgba(0,0,0,.25);}
+.cc-print-area{display:flex;align-items:center;gap:10px;}
+.cc-print-status{font-size:12.5px;color:var(--ink2);}
+#btn-print-cc{display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--line);color:var(--ink);font-family:inherit;font-weight:600;font-size:13px;padding:7px 14px;border-radius:8px;cursor:pointer;}
+#btn-print-cc:disabled{opacity:.5;cursor:not-allowed;}
+.cc-check-cartao-wrap{margin-bottom:6px;}
 .cc-card-nome{font-weight:700;font-size:13.5px;margin-bottom:6px;}
 .cc-card-acoes{display:flex;gap:6px;margin-top:2px;}
 .cc-card-acoes .btn{text-transform:none;letter-spacing:normal;font-weight:600;}
@@ -11282,7 +11287,13 @@ textarea.form-inp{resize:vertical;min-height:56px;}
 <div class="tbl-area">
   <div class="tbl-hd">
     <span class="tbl-title">Cartões cadastrados</span>
-    <button class="btn btn-master btn-sm" id="btn-add" style="display:none;">+ Adicionar cartão</button>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div class="cc-print-area">
+        <span class="cc-print-status" id="cc-print-status">0 selecionados</span>
+        <button type="button" id="btn-print-cc">📷 Tirar print</button>
+      </div>
+      <button class="btn btn-master btn-sm" id="btn-add" style="display:none;">+ Adicionar cartão</button>
+    </div>
   </div>
   <div class="tbl-wrap">
     <div class="tbl-scroll">
@@ -11443,6 +11454,14 @@ function renderizar(){
   cab.appendChild(thAttr);
   cartoes.forEach(function(c){
     var th=document.createElement('th');
+    var checkWrap=document.createElement('div');
+    checkWrap.className='cc-check-cartao-wrap';
+    var chkCartao=document.createElement('input');
+    chkCartao.type='checkbox';
+    chkCartao.className='cc-check-cartao';
+    chkCartao.title='Selecionar este cartão para o print';
+    checkWrap.appendChild(chkCartao);
+    th.appendChild(checkWrap);
     // Sem foto real do cartão (direitos de imagem do banco) — miniatura
     // ilustrativa própria do site, mostrando a bandeira/categoria.
     if(c.bandeira){
@@ -11543,7 +11562,120 @@ function excluir(id){
     carregarCartoes();
   });
 }
+
+// Checkbox por CARTÃO (coluna, não linha, já que aqui os atributos ficam
+// nas linhas) + botão "Tirar print" — mesmo mecanismo html2canvas + área
+// de transferência já usado em Fundos Cetipados, Análise de Crédito
+// Privado e Índice de Basileia. Delegação de evento em "cab" (thead)
+// porque renderizar() reconstrói os checkboxes do zero a cada chamada
+// (troca de sessão master, recarregamento após salvar/excluir cartão).
+configurarSelecaoPrintCartoes();
+function configurarSelecaoPrintCartoes(){
+  var statusPrint=document.getElementById('cc-print-status');
+  var btnPrint=document.getElementById('btn-print-cc');
+  var cab=document.getElementById('cc-cabecalho');
+  if(!btnPrint||!cab)return;
+
+  function atualizarStatusPrint(){
+    var marcados=cab.querySelectorAll('.cc-check-cartao:checked').length;
+    if(statusPrint)statusPrint.textContent=marcados+(marcados===1?' selecionado':' selecionados');
+    btnPrint.disabled=marcados===0;
+  }
+  cab.addEventListener('change',function(ev){
+    if(ev.target.classList.contains('cc-check-cartao'))atualizarStatusPrint();
+  });
+  new MutationObserver(atualizarStatusPrint).observe(cab,{childList:true});
+  atualizarStatusPrint();
+
+  btnPrint.addEventListener('click',function(){
+    var H2C=window.html2canvas;
+    if(!H2C){alert('Não foi possível gerar a imagem agora. Tente novamente em instantes.');return;}
+
+    var checksCartao=Array.prototype.slice.call(cab.querySelectorAll('.cc-check-cartao'));
+    var indicesSelecionados=[];
+    checksCartao.forEach(function(chk,i){if(chk.checked)indicesSelecionados.push(i);});
+    if(!indicesSelecionados.length){alert('Selecione ao menos um cartão para tirar o print.');return;}
+
+    var textoOriginal=btnPrint.textContent;
+    btnPrint.disabled=true;
+    btnPrint.textContent='Copiando…';
+
+    var wrapOriginal=document.querySelector('.tbl-wrap');
+    var captura=document.createElement('div');
+    captura.style.cssText='position:fixed;left:-9999px;top:0;background:#fff;padding:24px;width:max-content;'+
+      'font-family:'+getComputedStyle(document.body).fontFamily+';';
+
+    var wrapClone=wrapOriginal.cloneNode(true);
+    var scrollClone=wrapClone.querySelector('.tbl-scroll');
+    if(scrollClone){scrollClone.style.overflow='visible';scrollClone.style.maxHeight='none';}
+    var tabelaClone=wrapClone.querySelector('#cc-tabela');
+    tabelaClone.style.minWidth='0';
+
+    // Remove do clone os cartões (colunas) não selecionados. Índice de
+    // coluna = índice do cartão + 1 (a primeira coluna é "Atributo").
+    // Coleta as células a remover ANTES de remover qualquer uma: removê-
+    // las já durante o forEach desloca os índices das colunas seguintes
+    // na mesma linha e faria tr.children[i+1] apontar pro cartão errado.
+    var linhasClone=tabelaClone.querySelectorAll('tr');
+    linhasClone.forEach(function(tr){
+      var remover=[];
+      cartoes.forEach(function(_,i){
+        if(indicesSelecionados.indexOf(i)===-1){
+          var cel=tr.children[i+1];
+          if(cel)remover.push(cel);
+        }
+      });
+      remover.forEach(function(el){el.remove();});
+    });
+    // Checkbox de seleção e, se master, Editar/Excluir não fazem sentido
+    // numa imagem estática.
+    Array.prototype.forEach.call(tabelaClone.querySelectorAll('.cc-check-cartao-wrap, .cc-card-acoes'),function(el){el.remove();});
+
+    captura.appendChild(wrapClone);
+    document.body.appendChild(captura);
+
+    var largura=captura.scrollWidth;
+    var altura=captura.scrollHeight;
+
+    function encerrar(msgFinal,restaurarApos){
+      btnPrint.disabled=false;
+      btnPrint.textContent=msgFinal||textoOriginal;
+      if(restaurarApos)setTimeout(function(){btnPrint.textContent=textoOriginal;},2000);
+    }
+
+    H2C(captura,{
+      backgroundColor:'#ffffff',
+      scale:2,
+      width:largura,
+      height:altura,
+      windowWidth:largura,
+      windowHeight:altura
+    }).then(function(canvas){
+      document.body.removeChild(captura);
+      canvas.toBlob(function(blob){
+        if(!blob){encerrar();alert('Não foi possível gerar a imagem.');return;}
+        var clipboard=navigator.clipboard;
+        if(clipboard&&clipboard.write&&window.ClipboardItem){
+          clipboard.write([new ClipboardItem({'image/png':blob})]).then(function(){
+            encerrar('✅ Copiado!',true);
+          }).catch(function(e){
+            encerrar();
+            alert('Não foi possível copiar a imagem para a área de transferência: '+e.message);
+          });
+        }else{
+          encerrar();
+          alert('Este navegador não permite copiar imagens diretamente para a área de transferência.');
+        }
+      },'image/png');
+    }).catch(function(e){
+      if(document.body.contains(captura))document.body.removeChild(captura);
+      encerrar();
+      alert('Não foi possível gerar a imagem: '+e.message);
+    });
+  });
+}
 <\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
 </body>
 </html>`);
   }
