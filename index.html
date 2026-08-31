@@ -11236,6 +11236,7 @@ tbody tr:last-child td{border-bottom:none;}
 tbody tr:hover td{background:#fafafa;}
 .cc-td-attr{position:sticky;left:0;z-index:1;background:#fff;font-weight:700;white-space:nowrap;border-right:1px solid var(--line);}
 tbody tr:hover .cc-td-attr{background:#fafafa;}
+.cc-mockup{width:96px;height:60px;border-radius:8px;background:linear-gradient(135deg,#1a1a1a,#000);color:#fff;display:flex;align-items:flex-end;padding:8px;font-size:9px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;margin-bottom:8px;box-shadow:0 3px 8px rgba(0,0,0,.25);}
 .cc-card-nome{font-weight:700;font-size:13.5px;margin-bottom:6px;}
 .cc-card-acoes{display:flex;gap:6px;margin-top:2px;}
 .cc-card-acoes .btn{text-transform:none;letter-spacing:normal;font-weight:600;}
@@ -11300,6 +11301,7 @@ textarea.form-inp{resize:vertical;min-height:56px;}
     <h3 id="modal-titulo">Adicionar cartão</h3>
     <div class="form-row">
       <div class="form-group form-inp-full"><label class="form-label">Nome do cartão</label><input class="form-inp" id="f-nome" placeholder="Ex.: XP Legacy (Visa Infinite)" autocomplete="off"></div>
+      <div class="form-group form-inp-full"><label class="form-label">Bandeira/categoria (mostrada na miniatura ilustrativa)</label><input class="form-inp" id="f-bandeira" placeholder="Ex.: Visa Infinite, Mastercard Black" autocomplete="off"></div>
       <div class="form-group"><label class="form-label">Anuidade</label><textarea class="form-inp" id="f-anuidade" placeholder="Ex.: R$ 4.200/ano (12x R$ 350); isenção com..."></textarea></div>
       <div class="form-group"><label class="form-label">Pontos (nacional/internacional)</label><textarea class="form-inp" id="f-pontos"></textarea></div>
       <div class="form-group"><label class="form-label">Cashback / Investback</label><textarea class="form-inp" id="f-cashback"></textarea></div>
@@ -11441,6 +11443,14 @@ function renderizar(){
   cab.appendChild(thAttr);
   cartoes.forEach(function(c){
     var th=document.createElement('th');
+    // Sem foto real do cartão (direitos de imagem do banco) — miniatura
+    // ilustrativa própria do site, mostrando a bandeira/categoria.
+    if(c.bandeira){
+      var mockup=document.createElement('div');
+      mockup.className='cc-mockup';
+      mockup.textContent=c.bandeira;
+      th.appendChild(mockup);
+    }
     var nomeDiv=document.createElement('div');
     nomeDiv.className='cc-card-nome';
     nomeDiv.textContent=c.nome;
@@ -11483,6 +11493,7 @@ function abrirModal(c){
   editandoId=c?c.id:null;
   document.getElementById('modal-titulo').textContent=c?'Editar cartão':'Adicionar cartão';
   document.getElementById('f-nome').value=c?(c.nome||''):'';
+  document.getElementById('f-bandeira').value=c?(c.bandeira||''):'';
   document.getElementById('f-anuidade').value=c?(c.anuidade||''):'';
   document.getElementById('f-pontos').value=c?(c.pontos||''):'';
   document.getElementById('f-cashback').value=c?(c.cashback_investback||''):'';
@@ -11504,6 +11515,7 @@ function fecharModal(){document.getElementById('overlay').classList.remove('open
 document.getElementById('btn-salvar-modal').onclick=function(){
   var payload={
     nome:(document.getElementById('f-nome').value||'').trim(),
+    bandeira:(document.getElementById('f-bandeira').value||'').trim()||null,
     anuidade:(document.getElementById('f-anuidade').value||'').trim()||null,
     pontos:(document.getElementById('f-pontos').value||'').trim()||null,
     cashback_investback:(document.getElementById('f-cashback').value||'').trim()||null,
