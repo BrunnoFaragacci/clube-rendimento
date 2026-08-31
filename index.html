@@ -12759,7 +12759,12 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
 h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 .th-tip{cursor:help;}.th-tip::after{content:"?";display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:rgba(255,255,255,.3);color:#fff;font-size:9px;font-weight:700;margin-left:5px;vertical-align:middle;}.th-tip-box{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:6px;width:280px;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow);z-index:50;text-transform:none;font-weight:400;letter-spacing:normal;white-space:normal;cursor:auto;}.th-tip:hover .th-tip-box{display:block;}.th-tip-titulo{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:6px;}.th-tip-desc{font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:8px;}.th-tip-lista{margin:0;padding-left:16px;font-size:12px;color:var(--ink-soft);line-height:1.5;}.th-tip-lista li{margin-bottom:4px;}
 .cp-busca-status{font-size:12.5px;color:var(--ink-soft);min-height:18px;margin-bottom:12px;}
-.filtro-tabela-input{padding:9px 14px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);width:280px;max-width:100%;background:#fff;margin-bottom:14px;display:block;}
+.filtro-tabela-input{padding:9px 14px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);width:280px;max-width:100%;background:#fff;}
+.cp-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
+.cp-print-area{display:flex;align-items:center;gap:10px;}
+.cp-print-status{font-size:12.5px;color:var(--ink-soft);}
+#btn-print-cp{display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--orange);color:var(--og);font-family:inherit;font-weight:600;font-size:13px;padding:8px 14px;border-radius:8px;cursor:pointer;}
+#btn-print-cp:disabled{opacity:.5;cursor:not-allowed;}
 .col-redimensionar{position:absolute;top:0;right:0;width:8px;height:100%;cursor:col-resize;user-select:none;z-index:4;}
 .col-redimensionar:hover{background:rgba(255,255,255,.25);}
 .col-arrastando{opacity:.4;}
@@ -12796,11 +12801,18 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 
   <p class="cp-busca-status" id="cp-status">Carregando indicadores...</p>
 
-  <input type="text" class="filtro-tabela-input" id="cp-filtro" placeholder="Filtrar por nome...">
+  <div class="cp-toolbar">
+    <input type="text" class="filtro-tabela-input" id="cp-filtro" placeholder="Filtrar por nome...">
+    <div class="cp-print-area">
+      <span class="cp-print-status" id="cp-print-status">0 selecionadas</span>
+      <button type="button" id="btn-print-cp">📷 Tirar print</button>
+    </div>
+  </div>
 
   <div class="cp-table-wrap">
     <table class="cp-table">
       <thead><tr>
+        <th style="text-align:center;"><input type="checkbox" id="cp-check-todas" title="Selecionar/desmarcar todas as linhas visíveis"></th>
         <th>Empresa</th>
         <th class="th-tip">Segmento<div class="th-tip-box"><div class="th-tip-titulo">Segmento</div><div class="th-tip-desc">Setor de atuação da empresa, classificado manualmente.</div><ul class="th-tip-lista"><li><strong>Interpretação:</strong> empresas do mesmo segmento tendem a ter margens e níveis de endividamento parecidos — compare sempre dentro do mesmo grupo.</li></ul></div></th>
         <th class="th-tip">Rating<div class="th-tip-box"><div class="th-tip-titulo">Rating</div><div class="th-tip-desc">Nota de crédito mais recente encontrada (agência entre parênteses), pesquisada manualmente; sem atualização automática.</div><ul class="th-tip-lista"><li><strong>Interpretação:</strong> ratings mais altos (AAA, AA) indicam menor risco de crédito percebido pelas agências; ratings mais baixos pedem atenção redobrada.</li></ul></div></th>
@@ -13105,6 +13117,7 @@ fetch(SB_URL + '/rest/v1/credito_privado_indicadores?select=*&order=nome.asc', {
       var tituloCobertura = 'Referência geral: acima de 3,0x é confortável; abaixo de 1,5x indica dificuldade de pagar juros só com a operação.';
       var tituloLiq = 'Referência geral: acima de 1,0 indica folga financeira no curto prazo.';
       return '<tr>' +
+        '<td style="text-align:center;"><input type="checkbox" class="cp-check-linha"></td>' +
         '<td class="cp-nome">' + l.nome + '</td>' +
         '<td>' + (l.segmento || '—') + '</td>' +
         '<td>' + fmtRating(l.rating, l.rating_agencia) + '</td>' +
@@ -13127,11 +13140,129 @@ fetch(SB_URL + '/rest/v1/credito_privado_indicadores?select=*&order=nome.asc', {
     tornarTabelaOrdenavel(document.querySelector('.cp-table'), document.getElementById('cp-filtro'));
     tornarColunasAjustaveis(document.querySelector('.cp-table'));
     tornarLinhasMarcaveisExcluiveis(corpo);
+    configurarSelecaoPrint();
   })
   .catch(function(e) {
     statusEl.textContent = 'Não foi possível carregar os indicadores agora. Tente novamente em instantes.';
   });
+
+// Checkbox por linha ("selecionar os ativos que quero que apareça no
+// print") + botão "Tirar print", mesmo mecanismo de captura via
+// html2canvas + área de transferência já usado em Fundos Cetipados: um
+// clone da tabela é montado fora da tela com só as linhas marcadas (e
+// sem as colunas de seleção/excluir, que não fazem sentido numa imagem
+// estática), depois capturado e copiado como PNG.
+function configurarSelecaoPrint() {
+  var checkTodas = document.getElementById('cp-check-todas');
+  var statusPrint = document.getElementById('cp-print-status');
+  var btnPrint = document.getElementById('btn-print-cp');
+  if (!btnPrint) return;
+
+  function linhasVisiveis() {
+    return Array.prototype.filter.call(corpo.children, function(tr) { return tr.style.display !== 'none'; });
+  }
+  function atualizarStatusPrint() {
+    var marcadas = corpo.querySelectorAll('.cp-check-linha:checked').length;
+    if (statusPrint) statusPrint.textContent = marcadas + (marcadas === 1 ? ' selecionada' : ' selecionadas');
+    btnPrint.disabled = marcadas === 0;
+  }
+  corpo.addEventListener('change', function(ev) {
+    if (ev.target.classList.contains('cp-check-linha')) atualizarStatusPrint();
+  });
+  // A exclusão de linha (lixeira) vem de tornarLinhasMarcaveisExcluiveis,
+  // que só remove o <tr> do DOM sem disparar 'change' — observa remoções
+  // para manter a contagem de selecionadas correta se uma linha marcada
+  // for excluída.
+  new MutationObserver(atualizarStatusPrint).observe(corpo, { childList: true });
+  if (checkTodas) {
+    checkTodas.addEventListener('change', function() {
+      linhasVisiveis().forEach(function(tr) {
+        var chk = tr.querySelector('.cp-check-linha');
+        if (chk) chk.checked = checkTodas.checked;
+      });
+      atualizarStatusPrint();
+    });
+  }
+  atualizarStatusPrint();
+
+  btnPrint.addEventListener('click', function() {
+    var H2C = window.html2canvas;
+    if (!H2C) { alert('Não foi possível gerar a imagem agora. Tente novamente em instantes.'); return; }
+
+    var haSelecionada = corpo.querySelector('.cp-check-linha:checked');
+    if (!haSelecionada) { alert('Selecione ao menos uma empresa para tirar o print.'); return; }
+
+    var textoOriginal = btnPrint.textContent;
+    btnPrint.disabled = true;
+    btnPrint.textContent = 'Copiando…';
+
+    var wrapOriginal = document.querySelector('.cp-table-wrap');
+    var captura = document.createElement('div');
+    captura.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:24px;width:max-content;' +
+      'font-family:' + getComputedStyle(document.body).fontFamily + ';';
+
+    var wrapClone = wrapOriginal.cloneNode(true);
+    wrapClone.style.overflow = 'visible';
+    wrapClone.style.maxHeight = 'none';
+    var tabelaClone = wrapClone.querySelector('.cp-table');
+    tabelaClone.style.minWidth = '0';
+
+    // Mesmo índice em corpo (original) e nas linhas do clone, já que o
+    // clone é feito agora, refletindo a ordem/estado atual da tabela.
+    var linhasOriginais = Array.prototype.slice.call(corpo.children);
+    var linhasClone = Array.prototype.slice.call(tabelaClone.querySelectorAll('tbody tr'));
+    linhasClone.forEach(function(trClone, i) {
+      var chk = linhasOriginais[i] ? linhasOriginais[i].querySelector('.cp-check-linha') : null;
+      if (!chk || !chk.checked) trClone.remove();
+    });
+    Array.prototype.forEach.call(tabelaClone.querySelectorAll('thead th:first-child, tbody td:first-child'), function(el) { el.remove(); });
+    Array.prototype.forEach.call(tabelaClone.querySelectorAll('thead th:last-child, tbody td:last-child'), function(el) { el.remove(); });
+
+    captura.appendChild(wrapClone);
+    document.body.appendChild(captura);
+
+    var largura = captura.scrollWidth;
+    var altura = captura.scrollHeight;
+
+    function encerrar(msgFinal, restaurarApos) {
+      btnPrint.disabled = false;
+      btnPrint.textContent = msgFinal || textoOriginal;
+      if (restaurarApos) setTimeout(function() { btnPrint.textContent = textoOriginal; }, 2000);
+    }
+
+    H2C(captura, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      width: largura,
+      height: altura,
+      windowWidth: largura,
+      windowHeight: altura
+    }).then(function(canvas) {
+      document.body.removeChild(captura);
+      canvas.toBlob(function(blob) {
+        if (!blob) { encerrar(); alert('Não foi possível gerar a imagem.'); return; }
+        var clipboard = navigator.clipboard;
+        if (clipboard && clipboard.write && window.ClipboardItem) {
+          clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(function() {
+            encerrar('✅ Copiado!', true);
+          }).catch(function(e) {
+            encerrar();
+            alert('Não foi possível copiar a imagem para a área de transferência: ' + e.message);
+          });
+        } else {
+          encerrar();
+          alert('Este navegador não permite copiar imagens diretamente para a área de transferência.');
+        }
+      }, 'image/png');
+    }).catch(function(e) {
+      if (document.body.contains(captura)) document.body.removeChild(captura);
+      encerrar();
+      alert('Não foi possível gerar a imagem: ' + e.message);
+    });
+  });
+}
 <\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
 </body>
 </html>`);
   }
