@@ -11243,6 +11243,11 @@ tbody tr:hover .cc-td-attr{background:#fafafa;}
 #btn-print-cc{display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--line);color:var(--ink);font-family:inherit;font-weight:600;font-size:13px;padding:7px 14px;border-radius:8px;cursor:pointer;}
 #btn-print-cc:disabled{opacity:.5;cursor:not-allowed;}
 .cc-check-cartao-wrap{margin-bottom:6px;}
+.cc-card-imagem{width:100px;height:62px;border-radius:8px;object-fit:cover;margin-bottom:8px;box-shadow:0 4px 10px rgba(0,0,0,.35);background:#fff;}
+.cc-upload-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.cc-upload-preview{width:100px;height:62px;border-radius:8px;object-fit:cover;border:1.5px solid var(--line);background:var(--soft);}
+.cc-upload-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.cc-upload-status{font-size:12px;color:var(--ink2);}
 .cc-card-nome{font-weight:700;font-size:13.5px;margin-bottom:6px;}
 .cc-card-acoes{display:flex;gap:6px;margin-top:2px;}
 .cc-card-acoes .btn{text-transform:none;letter-spacing:normal;font-weight:600;}
@@ -11313,7 +11318,19 @@ textarea.form-inp{resize:vertical;min-height:56px;}
     <h3 id="modal-titulo">Adicionar cartão</h3>
     <div class="form-row">
       <div class="form-group form-inp-full"><label class="form-label">Nome do cartão</label><input class="form-inp" id="f-nome" placeholder="Ex.: XP Legacy (Visa Infinite)" autocomplete="off"></div>
-      <div class="form-group form-inp-full"><label class="form-label">Bandeira/categoria (mostrada na miniatura ilustrativa)</label><input class="form-inp" id="f-bandeira" placeholder="Ex.: Visa Infinite, Mastercard Black" autocomplete="off"></div>
+      <div class="form-group form-inp-full"><label class="form-label">Bandeira/categoria (usada na miniatura genérica, só quando não há imagem)</label><input class="form-inp" id="f-bandeira" placeholder="Ex.: Visa Infinite, Mastercard Black" autocomplete="off"></div>
+      <div class="form-group form-inp-full">
+        <label class="form-label">Imagem do cartão</label>
+        <div class="cc-upload-row">
+          <img id="f-imagem-preview" class="cc-upload-preview" style="display:none;" alt="Pré-visualização">
+          <div class="cc-upload-controls">
+            <input type="file" id="f-imagem" accept="image/*" style="display:none;">
+            <button type="button" class="btn btn-outline btn-sm" id="btn-imagem-escolher">Escolher imagem…</button>
+            <button type="button" class="btn btn-outline btn-sm" id="btn-imagem-remover" style="display:none;">Remover imagem</button>
+            <span class="cc-upload-status" id="cc-upload-status"></span>
+          </div>
+        </div>
+      </div>
       <div class="form-group"><label class="form-label">Anuidade</label><textarea class="form-inp" id="f-anuidade" placeholder="Ex.: R$ 4.200/ano (12x R$ 350); isenção com..."></textarea></div>
       <div class="form-group"><label class="form-label">Pontos (nacional/internacional)</label><textarea class="form-inp" id="f-pontos"></textarea></div>
       <div class="form-group"><label class="form-label">Cashback / Investback</label><textarea class="form-inp" id="f-cashback"></textarea></div>
@@ -11357,7 +11374,7 @@ var SESSAO_INICIAL = ${JSON.stringify(sessaoAtual)};
   ajustarStickyTop();
   window.addEventListener('resize',ajustarStickyTop);
 })();
-var isMaster=false, cartoes=[], editandoId=null;
+var isMaster=false, cartoes=[], editandoId=null, imagemAtualDataUri=null;
 var CAMPOS=[
   {key:'anuidade',label:'Anuidade'},
   {key:'pontos',label:'Pontos (Nacional/Internacional)'},
@@ -11463,9 +11480,15 @@ function renderizar(){
     chkCartao.title='Selecionar este cartão para o print';
     checkWrap.appendChild(chkCartao);
     th.appendChild(checkWrap);
-    // Sem foto real do cartão (direitos de imagem do banco) — miniatura
-    // ilustrativa própria do site, mostrando a bandeira/categoria.
-    if(c.bandeira){
+    // Imagem enviada pelo master (data URI) tem prioridade; sem ela, cai
+    // na miniatura ilustrativa genérica (bandeira/categoria).
+    if(c.imagem_url){
+      var imgEl=document.createElement('img');
+      imgEl.className='cc-card-imagem';
+      imgEl.src=c.imagem_url;
+      imgEl.alt=c.nome||'';
+      th.appendChild(imgEl);
+    }else if(c.bandeira){
       var mockup=document.createElement('div');
       mockup.className='cc-mockup';
       mockup.textContent=c.bandeira;
@@ -11514,6 +11537,20 @@ function abrirModal(c){
   document.getElementById('modal-titulo').textContent=c?'Editar cartão':'Adicionar cartão';
   document.getElementById('f-nome').value=c?(c.nome||''):'';
   document.getElementById('f-bandeira').value=c?(c.bandeira||''):'';
+  imagemAtualDataUri=c?(c.imagem_url||null):null;
+  var previewEl=document.getElementById('f-imagem-preview');
+  var removerBtn=document.getElementById('btn-imagem-remover');
+  var uploadStatusEl=document.getElementById('cc-upload-status');
+  if(imagemAtualDataUri){
+    previewEl.src=imagemAtualDataUri;
+    previewEl.style.display='';
+    removerBtn.style.display='inline-block';
+  }else{
+    previewEl.style.display='none';
+    previewEl.src='';
+    removerBtn.style.display='none';
+  }
+  if(uploadStatusEl)uploadStatusEl.textContent='';
   document.getElementById('f-anuidade').value=c?(c.anuidade||''):'';
   document.getElementById('f-pontos').value=c?(c.pontos||''):'';
   document.getElementById('f-cashback').value=c?(c.cashback_investback||''):'';
@@ -11528,6 +11565,60 @@ function abrirModal(c){
   document.getElementById('overlay').classList.add('open');
 }
 document.getElementById('btn-add').onclick=function(){abrirModal(null);};
+
+// Upload de imagem: redimensiona/comprime no navegador (largura máxima
+// 480px, JPEG 82%) antes de virar data URI — evita linhas gigantes no
+// banco e mantém a imagem funcionando no "Tirar print" sem depender de
+// link externo (data URI não tem problema de CORS no html2canvas).
+function processarImagemCartao(file,callback){
+  var status=document.getElementById('cc-upload-status');
+  if(status)status.textContent='Processando…';
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){
+      var MAX_W=480,MAX_H=300;
+      var w=img.width,h=img.height;
+      var escala=Math.min(1,MAX_W/w,MAX_H/h);
+      var cw=Math.max(1,Math.round(w*escala)),ch=Math.max(1,Math.round(h*escala));
+      var canvas=document.createElement('canvas');
+      canvas.width=cw;canvas.height=ch;
+      canvas.getContext('2d').drawImage(img,0,0,cw,ch);
+      var dataUri=canvas.toDataURL('image/jpeg',0.82);
+      if(status)status.textContent=Math.round(dataUri.length/1024)+' KB';
+      callback(dataUri);
+    };
+    img.onerror=function(){
+      if(status)status.textContent='Não foi possível ler essa imagem.';
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+document.getElementById('btn-imagem-escolher').onclick=function(){
+  document.getElementById('f-imagem').click();
+};
+document.getElementById('f-imagem').addEventListener('change',function(ev){
+  var file=ev.target.files&&ev.target.files[0];
+  ev.target.value='';
+  if(!file)return;
+  processarImagemCartao(file,function(dataUri){
+    imagemAtualDataUri=dataUri;
+    var preview=document.getElementById('f-imagem-preview');
+    preview.src=dataUri;
+    preview.style.display='';
+    document.getElementById('btn-imagem-remover').style.display='inline-block';
+  });
+});
+document.getElementById('btn-imagem-remover').onclick=function(){
+  imagemAtualDataUri=null;
+  var preview=document.getElementById('f-imagem-preview');
+  preview.style.display='none';
+  preview.src='';
+  document.getElementById('btn-imagem-remover').style.display='none';
+  var status=document.getElementById('cc-upload-status');
+  if(status)status.textContent='';
+};
 document.getElementById('modal-close').onclick=fecharModal;
 document.getElementById('btn-cancelar-modal').onclick=fecharModal;
 function fecharModal(){document.getElementById('overlay').classList.remove('open');}
@@ -11536,6 +11627,7 @@ document.getElementById('btn-salvar-modal').onclick=function(){
   var payload={
     nome:(document.getElementById('f-nome').value||'').trim(),
     bandeira:(document.getElementById('f-bandeira').value||'').trim()||null,
+    imagem_url:imagemAtualDataUri,
     anuidade:(document.getElementById('f-anuidade').value||'').trim()||null,
     pontos:(document.getElementById('f-pontos').value||'').trim()||null,
     cashback_investback:(document.getElementById('f-cashback').value||'').trim()||null,
