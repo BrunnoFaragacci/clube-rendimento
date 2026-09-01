@@ -11248,6 +11248,11 @@ tbody tr:hover .cc-td-attr{background:#fafafa;}
 .cc-upload-preview{width:100px;height:62px;border-radius:8px;object-fit:cover;border:1.5px solid var(--line);background:var(--soft);}
 .cc-upload-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .cc-upload-status{font-size:12px;color:var(--ink2);}
+.cc-simulador{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 22px;margin-bottom:20px;display:flex;flex-direction:column;gap:10px;}
+.cc-simulador-campo{display:flex;flex-direction:column;gap:6px;max-width:280px;}
+.cc-simulador-nota{font-size:12px;color:var(--ink2);line-height:1.5;margin:0;max-width:820px;}
+.cc-tr-calc td{background:var(--soft);font-weight:700;}
+.cc-tr-calc .cc-td-attr{background:var(--soft);}
 .cc-card-nome{font-weight:700;font-size:13.5px;margin-bottom:6px;}
 .cc-card-acoes{display:flex;gap:6px;margin-top:2px;}
 .cc-card-acoes .btn{text-transform:none;letter-spacing:normal;font-weight:600;}
@@ -11290,6 +11295,14 @@ textarea.form-inp{resize:vertical;min-height:56px;}
 
 <p class="intro">Comparativo de cartões de crédito premium — anuidade, pontuação, cashback/investback, salas VIP e demais benefícios. Dados informados manualmente a partir do material comercial de cada emissor; sujeitos a alteração pelos bancos sem aviso prévio.</p>
 
+<div class="cc-simulador">
+  <div class="cc-simulador-campo">
+    <label class="form-label" for="cc-gasto-mensal">Gasto médio mensal do cliente (R$)</label>
+    <input type="text" class="form-inp" id="cc-gasto-mensal" placeholder="Ex.: 15.000,00" inputmode="decimal">
+  </div>
+  <p class="cc-simulador-nota">Estimativa de pontos e cashback/investback por mês, considerando só a taxa de acúmulo nacional informada — não inclui categorias bonificadas, promoções, limites do programa nem a taxa de câmbio real (pontos por dólar convertidos com cotação aproximada de R$ 5,40). "—" quando o cartão não tem taxa cadastrada para o simulador.</p>
+</div>
+
 <div class="tbl-area">
   <div class="tbl-hd">
     <span class="tbl-title">Cartões cadastrados</span>
@@ -11305,6 +11318,7 @@ textarea.form-inp{resize:vertical;min-height:56px;}
     <div class="tbl-scroll">
       <table id="cc-tabela">
         <thead><tr id="cc-cabecalho"></tr></thead>
+        <tbody id="cc-corpo-calc"></tbody>
         <tbody id="cc-corpo"></tbody>
       </table>
     </div>
@@ -11340,6 +11354,8 @@ textarea.form-inp{resize:vertical;min-height:56px;}
       <div class="form-group"><label class="form-label">IOF</label><textarea class="form-inp" id="f-iof"></textarea></div>
       <div class="form-group form-inp-full"><label class="form-label">Diferenciais</label><textarea class="form-inp" id="f-diferenciais"></textarea></div>
       <div class="form-group form-inp-full"><label class="form-label">Seguros (separe cada item com ; )</label><textarea class="form-inp" id="f-seguros" style="min-height:100px;"></textarea></div>
+      <div class="form-group"><label class="form-label">Pontos por R$1 gasto (simulador, nacional)</label><input class="form-inp" type="number" id="f-pontos-real" min="0" step="0.001" placeholder="Ex.: 0,556"></div>
+      <div class="form-group"><label class="form-label">Cashback/Investback % (simulador, nacional)</label><input class="form-inp" type="number" id="f-cashback-calculo" min="0" step="0.01" placeholder="Ex.: 1,5"></div>
       <div class="form-group"><label class="form-label">Ordem</label><input class="form-inp" type="number" id="f-ordem" min="0" step="1" placeholder="1"></div>
       <div class="form-group"><label class="form-label">Ativo</label><select class="form-inp" id="f-ativo"><option value="true">Sim</option><option value="false">Não</option></select></div>
     </div>
@@ -11530,7 +11546,62 @@ function renderizar(){
     });
     corpo.appendChild(tr);
   });
+  renderizarCalculoGasto();
 }
+
+function parseValorGasto(v){
+  if(!v)return NaN;
+  var limpo=String(v).replace(/[R$\s.]/g,'').replace(',','.');
+  return parseFloat(limpo);
+}
+
+// Simulador "gasto médio mensal": duas linhas fixas no topo do corpo da
+// tabela (pontos e cashback/investback estimados), recalculadas a cada
+// alteração do campo ou reconstrução da tabela (renderizar()). Fica num
+// <tbody> separado (cc-corpo-calc) só pra não se misturar com CAMPOS,
+// que são os atributos de texto livre vindos do banco.
+function renderizarCalculoGasto(){
+  var corpoCalc=document.getElementById('cc-corpo-calc');
+  var gastoInp=document.getElementById('cc-gasto-mensal');
+  if(!corpoCalc||!gastoInp)return;
+  corpoCalc.innerHTML='';
+  var gasto=parseValorGasto(gastoInp.value);
+  if(!cartoes.length||isNaN(gasto)||gasto<=0)return;
+
+  var trPontos=document.createElement('tr');
+  trPontos.className='cc-tr-calc';
+  var tdLabelPontos=document.createElement('td');
+  tdLabelPontos.className='cc-td-attr';
+  tdLabelPontos.textContent='Pontos estimados/mês';
+  trPontos.appendChild(tdLabelPontos);
+
+  var trCash=document.createElement('tr');
+  trCash.className='cc-tr-calc';
+  var tdLabelCash=document.createElement('td');
+  tdLabelCash.className='cc-td-attr';
+  tdLabelCash.textContent='Cashback/Investback estimado/mês';
+  trCash.appendChild(tdLabelCash);
+
+  cartoes.forEach(function(c){
+    var tdP=document.createElement('td');
+    var taxaPontos=c.pontos_por_real!=null?+c.pontos_por_real:null;
+    tdP.textContent=(taxaPontos!=null&&!isNaN(taxaPontos))
+      ?Math.round(gasto*taxaPontos).toLocaleString('pt-BR')+' pts'
+      :'—';
+    trPontos.appendChild(tdP);
+
+    var tdC=document.createElement('td');
+    var taxaCash=c.cashback_pct_calculo!=null?+c.cashback_pct_calculo:null;
+    tdC.textContent=(taxaCash!=null&&!isNaN(taxaCash))
+      ?'R$ '+(gasto*taxaCash/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})
+      :'—';
+    trCash.appendChild(tdC);
+  });
+
+  corpoCalc.appendChild(trPontos);
+  corpoCalc.appendChild(trCash);
+}
+document.getElementById('cc-gasto-mensal').addEventListener('input',renderizarCalculoGasto);
 
 function abrirModal(c){
   editandoId=c?c.id:null;
@@ -11560,6 +11631,8 @@ function abrirModal(c){
   document.getElementById('f-iof').value=c?(c.iof||''):'';
   document.getElementById('f-diferenciais').value=c?(c.diferenciais||''):'';
   document.getElementById('f-seguros').value=c?(c.seguros||''):'';
+  document.getElementById('f-pontos-real').value=c&&c.pontos_por_real!=null?c.pontos_por_real:'';
+  document.getElementById('f-cashback-calculo').value=c&&c.cashback_pct_calculo!=null?c.cashback_pct_calculo:'';
   document.getElementById('f-ordem').value=c?(c.ordem||0):cartoes.length;
   document.getElementById('f-ativo').value=c?String(c.ativo!==false):'true';
   document.getElementById('overlay').classList.add('open');
@@ -11637,6 +11710,8 @@ document.getElementById('btn-salvar-modal').onclick=function(){
     iof:(document.getElementById('f-iof').value||'').trim()||null,
     diferenciais:(document.getElementById('f-diferenciais').value||'').trim()||null,
     seguros:(document.getElementById('f-seguros').value||'').trim()||null,
+    pontos_por_real:document.getElementById('f-pontos-real').value===''?null:parseFloat(document.getElementById('f-pontos-real').value),
+    cashback_pct_calculo:document.getElementById('f-cashback-calculo').value===''?null:parseFloat(document.getElementById('f-cashback-calculo').value),
     ordem:parseInt(document.getElementById('f-ordem').value)||0,
     ativo:document.getElementById('f-ativo').value==='true'
   };
