@@ -11354,6 +11354,7 @@ textarea.form-inp{resize:vertical;min-height:56px;}
       <div class="form-group"><label class="form-label">IOF</label><textarea class="form-inp" id="f-iof"></textarea></div>
       <div class="form-group form-inp-full"><label class="form-label">Diferenciais</label><textarea class="form-inp" id="f-diferenciais"></textarea></div>
       <div class="form-group form-inp-full"><label class="form-label">Seguros (separe cada item com ; )</label><textarea class="form-inp" id="f-seguros" style="min-height:100px;"></textarea></div>
+      <div class="form-group form-inp-full"><label class="form-label">Link do cartão (página oficial do banco)</label><input class="form-inp" type="url" id="f-link" placeholder="Ex.: https://www.banco.com.br/cartao"></div>
       <div class="form-group"><label class="form-label">Pontos por R$1 gasto (simulador, nacional)</label><input class="form-inp" type="number" id="f-pontos-real" min="0" step="0.001" placeholder="Ex.: 0,556"></div>
       <div class="form-group"><label class="form-label">Cashback/Investback % (simulador, nacional)</label><input class="form-inp" type="number" id="f-cashback-calculo" min="0" step="0.01" placeholder="Ex.: 1,5"></div>
       <div class="form-group"><label class="form-label">Ordem</label><input class="form-inp" type="number" id="f-ordem" min="0" step="1" placeholder="1"></div>
@@ -11400,7 +11401,8 @@ var CAMPOS=[
   {key:'adicionais',label:'Adicionais'},
   {key:'iof',label:'IOF'},
   {key:'diferenciais',label:'Diferenciais'},
-  {key:'seguros',label:'Seguros'}
+  {key:'seguros',label:'Seguros'},
+  {key:'link_url',label:'Link do cartão'}
 ];
 function sincronizarSessaoDoOpener(){
   try{
@@ -11541,7 +11543,21 @@ function renderizar(){
     tr.appendChild(tdLabel);
     cartoes.forEach(function(c){
       var td=document.createElement('td');
-      td.appendChild(celulaValor(c[campo.key]));
+      if(campo.key==='link_url'){
+        if(c.link_url){
+          var a=document.createElement('a');
+          a.href=c.link_url;
+          a.target='_blank';
+          a.rel='noopener noreferrer';
+          a.className='btn btn-outline btn-sm';
+          a.textContent='Ver detalhes ↗';
+          td.appendChild(a);
+        }else{
+          td.appendChild(document.createTextNode('—'));
+        }
+      }else{
+        td.appendChild(celulaValor(c[campo.key]));
+      }
       tr.appendChild(td);
     });
     corpo.appendChild(tr);
@@ -11631,6 +11647,7 @@ function abrirModal(c){
   document.getElementById('f-iof').value=c?(c.iof||''):'';
   document.getElementById('f-diferenciais').value=c?(c.diferenciais||''):'';
   document.getElementById('f-seguros').value=c?(c.seguros||''):'';
+  document.getElementById('f-link').value=c?(c.link_url||''):'';
   document.getElementById('f-pontos-real').value=c&&c.pontos_por_real!=null?c.pontos_por_real:'';
   document.getElementById('f-cashback-calculo').value=c&&c.cashback_pct_calculo!=null?c.cashback_pct_calculo:'';
   document.getElementById('f-ordem').value=c?(c.ordem||0):cartoes.length;
@@ -11710,6 +11727,7 @@ document.getElementById('btn-salvar-modal').onclick=function(){
     iof:(document.getElementById('f-iof').value||'').trim()||null,
     diferenciais:(document.getElementById('f-diferenciais').value||'').trim()||null,
     seguros:(document.getElementById('f-seguros').value||'').trim()||null,
+    link_url:(document.getElementById('f-link').value||'').trim()||null,
     pontos_por_real:document.getElementById('f-pontos-real').value===''?null:parseFloat(document.getElementById('f-pontos-real').value),
     cashback_pct_calculo:document.getElementById('f-cashback-calculo').value===''?null:parseFloat(document.getElementById('f-cashback-calculo').value),
     ordem:parseInt(document.getElementById('f-ordem').value)||0,
