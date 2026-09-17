@@ -14715,6 +14715,7 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
     <button type="button" class="calc-side-btn" data-alvo="p-amortizacao">Amortização (SAC/Price)</button>
     <button type="button" class="calc-side-btn" data-alvo="p-aluguel-financiar">Aluguel x Financiamento</button>
     <button type="button" class="calc-side-btn" data-alvo="p-imoveis-rf">Imóveis x Renda Fixa</button>
+    <button type="button" class="calc-side-btn" data-alvo="p-dividendos">Simulador de Dividendos</button>
   </aside>
 
   <main class="calc-content">
@@ -15128,6 +15129,30 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
             <div class="calc-stat"><div class="calc-stat-label">Conclusão</div><div class="calc-stat-valor destaque" id="imv-conclusao">—</div></div>
           </div>
           <p class="calc-nota">O cenário do imóvel considera a venda ao final do prazo (descontando corretagem e IR sobre o ganho de capital) somada aos aluguéis recebidos mês a mês, sem reinvestimento. O cenário de renda fixa aplica a taxa informada ao mesmo capital inicial, com juros compostos anuais. Ambos os retornos reais são calculados descontando o IPCA médio informado. Estimativa educacional; não considera IR sobre o aluguel recebido, vacância, IPTU ou custos de manutenção do imóvel.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-panel" id="p-dividendos">
+      <div class="calc-panel-titulo">Simulador de Dividendos</div>
+      <p class="calc-panel-sub">Compare, ao longo de 30 anos, o saldo acumulado sem reinvestir os dividendos recebidos com o saldo reinvestindo-os todo mês.</p>
+      <div class="calc-card">
+        <div class="calc-grid">
+          <div class="calc-field"><label for="div-aporte-inicial">Aporte inicial (R$)</label><input type="number" id="div-aporte-inicial" value="100000" min="0" step="1000"></div>
+          <div class="calc-field"><label for="div-aporte-mensal">Aporte mensal (R$)</label><input type="number" id="div-aporte-mensal" value="500" min="0" step="50"></div>
+          <div class="calc-field"><label for="div-juros-mes">Dividendo/juros mensal (%)</label><input type="number" id="div-juros-mes" value="1" min="0" step="0.05"></div>
+        </div>
+        <div class="calc-actions"><button type="button" class="btn btn-primary" id="div-calcular">Calcular</button></div>
+        <div class="calc-resultado" id="div-resultado">
+          <div class="calc-resultado-grid">
+            <div class="calc-stat"><div class="calc-stat-label">Total de dividendos em 30 anos (sem reinvestir)</div><div class="calc-stat-valor" id="div-total-sem">—</div></div>
+            <div class="calc-stat"><div class="calc-stat-label">Total de dividendos em 30 anos (reinvestindo)</div><div class="calc-stat-valor destaque" id="div-total-com">—</div></div>
+          </div>
+          <div class="calc-resultado-titulo">Saldo total por período</div>
+          <div class="calc-tabela-wrap" id="div-tabela-saldo"></div>
+          <div class="calc-resultado-titulo">Dividendo mensal por período</div>
+          <div class="calc-tabela-wrap" id="div-tabela-dividendos"></div>
+          <p class="calc-nota">"Sem reinvestir": o dividendo do mês é calculado sobre o saldo (aportes acumulados), mas não é somado a ele — apenas os aportes fazem o saldo crescer. "Reinvestindo": o dividendo do mês é somado ao saldo antes do próximo aporte, compondo o crescimento. "Dividendo mensal por período" mostra o valor recebido naquele mês específico (não acumulado). Estimativa educacional com taxa mensal fixa, sem considerar impostos.</p>
         </div>
       </div>
     </div>
@@ -15579,6 +15604,53 @@ document.getElementById('imv-calcular').addEventListener('click', function(){
   if (retornoRealRF > retornoRealImovel) { elConclImv.textContent = 'Renda fixa venceu em termos reais'; }
   else { elConclImv.textContent = 'Imóvel venceu em termos reais'; }
   document.getElementById('imv-resultado').classList.add('ativo');
+});
+
+/* 17) Simulador de Dividendos */
+function divCalcularSerie(aporteInicial, aporteMensal, jurosMes, nMeses) {
+  var semReinvestir = [], comReinvestir = [];
+  var saldoSem = 0, saldoCom = 0, somaSem = 0, somaCom = 0;
+  for (var m = 1; m <= nMeses; m++) {
+    var aporte = m === 1 ? (aporteInicial + aporteMensal) : aporteMensal;
+    saldoSem = saldoSem + aporte;
+    var dividendoSem = jurosMes * saldoSem;
+    somaSem += dividendoSem;
+    semReinvestir.push({ mes: m, saldo: saldoSem, dividendo: dividendoSem });
+
+    var aporteEsaldo = m === 1 ? (aporteInicial + aporteMensal) : (saldoCom + aporteMensal);
+    var dividendoCom = jurosMes * aporteEsaldo;
+    saldoCom = aporteEsaldo + dividendoCom;
+    somaCom += dividendoCom;
+    comReinvestir.push({ mes: m, saldo: saldoCom, dividendo: dividendoCom });
+  }
+  return { semReinvestir: semReinvestir, comReinvestir: comReinvestir, somaSem: somaSem, somaCom: somaCom };
+}
+function divRenderizarTabela(containerId, periodos, semReinvestir, comReinvestir, chave) {
+  var thead = '<th>Período</th><th>Sem reinvestir</th><th>Reinvestindo</th>';
+  var corpo = periodos.map(function (p) {
+    var linhaSem = semReinvestir[p.meses - 1], linhaCom = comReinvestir[p.meses - 1];
+    return '<tr><td>' + p.rotulo + '</td><td>' + fBRL(linhaSem[chave]) + '</td><td>' + fBRL(linhaCom[chave]) + '</td></tr>';
+  }).join('');
+  document.getElementById(containerId).innerHTML = '<table class="calc-tabela"><thead><tr>' + thead + '</tr></thead><tbody>' + corpo + '</tbody></table>';
+}
+document.getElementById('div-calcular').addEventListener('click', function () {
+  var aporteInicial = parseFloat(document.getElementById('div-aporte-inicial').value) || 0;
+  var aporteMensal = parseFloat(document.getElementById('div-aporte-mensal').value) || 0;
+  var jurosMes = (parseFloat(document.getElementById('div-juros-mes').value) || 0) / 100;
+  var r = divCalcularSerie(aporteInicial, aporteMensal, jurosMes, 360);
+  document.getElementById('div-total-sem').textContent = fBRL(r.somaSem);
+  document.getElementById('div-total-com').textContent = fBRL(r.somaCom);
+  var periodos = [
+    { meses: 12, rotulo: '12 meses / 1 ano' },
+    { meses: 24, rotulo: '24 meses / 2 anos' },
+    { meses: 36, rotulo: '36 meses / 3 anos' },
+    { meses: 48, rotulo: '48 meses / 4 anos' },
+    { meses: 120, rotulo: '120 meses / 10 anos' },
+    { meses: 360, rotulo: '360 meses / 30 anos' }
+  ];
+  divRenderizarTabela('div-tabela-saldo', periodos, r.semReinvestir, r.comReinvestir, 'saldo');
+  divRenderizarTabela('div-tabela-dividendos', periodos, r.semReinvestir, r.comReinvestir, 'dividendo');
+  document.getElementById('div-resultado').classList.add('ativo');
 });
 <\/script>
 </body>
