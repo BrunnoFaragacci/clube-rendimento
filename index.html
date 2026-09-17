@@ -13212,7 +13212,7 @@ function configurarSelecaoPrintBasileia() {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--line:#E2E2E2;--orange:#111111;--og:#000000;--ol:#EAEAEA;--green:#16A34A;--red:#DC2626;--radius:16px;--radius-lg:24px;--shadow:0 10px 28px rgba(0,0,0,.08);--shadow-sm:0 2px 10px rgba(0,0,0,.05);}
+:root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--line:#E2E2E2;--orange:#111111;--og:#000000;--ol:#EAEAEA;--green:#16A34A;--red:#DC2626;--yellow:#FFEB84;--radius:16px;--radius-lg:24px;--shadow:0 10px 28px rgba(0,0,0,.08);--shadow-sm:0 2px 10px rgba(0,0,0,.05);}
 *{box-sizing:border-box;margin:0;padding:0;}
 [hidden]{display:none!important;}
 body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-soft);color:var(--ink);min-height:100vh;font-size:14px;}
@@ -13245,9 +13245,10 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
 .calc-tabela-wrap{margin-top:10px;overflow:auto;max-height:420px;border:1px solid var(--line);border-radius:12px;}
 .calc-tabela{width:100%;border-collapse:collapse;min-width:560px;}
 .calc-tabela th{background:var(--orange);color:#fff;text-align:left;padding:10px 12px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;position:sticky;top:0;}
-.calc-tabela td{padding:8px 12px;border-bottom:1px solid var(--line);font-size:12.5px;white-space:nowrap;}
+.calc-tabela td{padding:8px 12px;border-bottom:1px solid var(--line);font-size:12.5px;white-space:nowrap;color:var(--ink);}
 .calc-tabela tr:last-child td{border-bottom:none;}
-.calc-tabela tr.calc-melhor td{background:var(--bg-soft);font-weight:700;}
+.calc-tabela tr.calc-melhor td{font-weight:700;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);}
+.calc-tabela td.mam-cel{text-align:right;}
 @media(max-width:860px){.calc-shell{flex-direction:column;}.calc-sidebar{width:100%;position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);display:flex;overflow-x:auto;padding:14px;gap:6px;}.calc-side-btn{width:auto;white-space:nowrap;margin-bottom:0;}.calc-sidebar-title{display:none;}.calc-content{padding:22px 18px 60px;max-width:none;}}
 @media(max-width:640px){.calc-grid{grid-template-columns:1fr;}}
 </style>
@@ -13406,14 +13407,42 @@ function mamFormatarPct(v, casas) {
   return v.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas }) + '%';
 }
 
+// Escala de cor vermelho -> amarelo -> verde (mesmos tokens usados no resto
+// do site para ganho/perda), interpolada linearmente em 2 trechos a partir
+// da posição relativa (0 = pior valor da coluna, 1 = melhor).
+function mamCorGradiente(t) {
+  function hexParaRgb(hex) {
+    var n = parseInt(hex.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function misturar(a, b, f) {
+    return a.map(function (canal, i) { return Math.round(canal + (b[i] - canal) * f); });
+  }
+  var vermelho = hexParaRgb('#DC2626'), amarelo = hexParaRgb('#FFEB84'), verde = hexParaRgb('#16A34A');
+  var rgb = t <= 0.5 ? misturar(vermelho, amarelo, t * 2) : misturar(amarelo, verde, (t - 0.5) * 2);
+  return 'rgb(' + rgb.join(',') + ')';
+}
+
 function mamRenderizarTabela(containerId, linhas, nPeriodos, unidadeLabel, formatoCDI) {
+  // Min/max por coluna (período), ignorando células sem valor (—), para
+  // colorir cada célula pela sua posição relativa dentro da própria coluna.
+  var minPorColuna = [], maxPorColuna = [];
+  for (var c = 0; c < nPeriodos; c++) {
+    var valoresColuna = linhas.map(function (l) { return l.valores[c]; }).filter(function (v) { return v != null; });
+    minPorColuna.push(valoresColuna.length ? Math.min.apply(null, valoresColuna) : 0);
+    maxPorColuna.push(valoresColuna.length ? Math.max.apply(null, valoresColuna) : 0);
+  }
   var thead = '<th>Taxa de saída</th><th>Variação</th>';
   for (var p = 1; p <= nPeriodos; p++) thead += '<th>' + p + ' ' + unidadeLabel + (p > 1 ? 's' : '') + '</th>';
   var linhasHtml = linhas.map(function (l) {
     var tds = '<td>' + l.label + '</td><td>' + (l.delta >= 0 ? '+' : '') + mamFormatarPct(l.delta * 100, 2) + '</td>';
-    l.valores.forEach(function (v) {
-      if (v == null) { tds += '<td>—</td>'; return; }
-      tds += formatoCDI ? '<td>' + mamFormatarPct(v * 100, 1) + ' do CDI</td>' : '<td>' + mamFormatarPct(v * 100, 2) + '</td>';
+    l.valores.forEach(function (v, i) {
+      if (v == null) { tds += '<td class="mam-cel">—</td>'; return; }
+      var amplitude = maxPorColuna[i] - minPorColuna[i];
+      var t = amplitude ? (v - minPorColuna[i]) / amplitude : 0.5;
+      var cor = mamCorGradiente(t);
+      var texto = formatoCDI ? mamFormatarPct(v * 100, 1) + ' do CDI' : mamFormatarPct(v * 100, 2);
+      tds += '<td class="mam-cel" style="background:' + cor + ';">' + texto + '</td>';
     });
     var destaque = l.delta === 0 ? ' class="calc-melhor"' : '';
     return '<tr' + destaque + '>' + tds + '</tr>';
