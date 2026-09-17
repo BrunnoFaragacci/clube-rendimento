@@ -274,6 +274,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       <button type="button" class="btn-nav" id="btn-nav-carteira-rec">Carteira Recomendada ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-cartoes">Comparar Cartões ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-seguros">Seguros e Previdência ↗</button>
+      <button type="button" class="btn-nav" id="btn-nav-consorcio">Consórcio ↗</button>
       <div class="nav-dropdown-wrap">
         <button type="button" class="btn-nav nav-dropdown-trigger" id="btn-nav-cripto" aria-expanded="false">Cripto <span class="nav-caret">▾</span></button>
         <div class="nav-dropdown" id="dropdown-cripto" hidden>
@@ -13522,6 +13523,369 @@ document.getElementById('mmcdim-calcular').click();
 </html>`);
   }
 
+  function abrirConsorcio() {
+    var win = window.open('', '_blank');
+    if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
+    escreverConteudoJanela(win, `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Comparativo de Consórcio — Clube do Rendimento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--line:#E2E2E2;--orange:#111111;--og:#000000;--ol:#EAEAEA;--green:#16A34A;--red:#DC2626;--radius:16px;--radius-lg:24px;--shadow:0 10px 28px rgba(0,0,0,.08);--shadow-sm:0 2px 10px rgba(0,0,0,.05);}
+*{box-sizing:border-box;margin:0;padding:0;}
+[hidden]{display:none!important;}
+body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-soft);color:var(--ink);min-height:100vh;font-size:14px;}
+.nav{background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;}
+.nav-brand{font-weight:700;font-size:15px;text-decoration:none;color:var(--ink);}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:9px 18px;border-radius:8px;font-weight:600;font-size:13px;border:1px solid transparent;cursor:pointer;font-family:inherit;}
+.btn-primary{background:linear-gradient(135deg,var(--orange),var(--og));color:#fff;box-shadow:0 8px 18px rgba(0,0,0,.22);transition:transform .15s,box-shadow .15s;}.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 22px rgba(0,0,0,.28);}
+.calc-shell{display:flex;align-items:flex-start;}
+.calc-sidebar{width:260px;flex-shrink:0;background:#fff;border-right:1px solid var(--line);padding:24px 14px;position:sticky;top:57px;height:calc(100vh - 57px);overflow-y:auto;}
+.calc-sidebar-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);padding:0 10px 12px;}
+.calc-side-btn{display:block;width:100%;text-align:left;background:none;border:none;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;margin-bottom:2px;transition:background .15s,color .15s;}
+.calc-side-btn:hover{background:var(--bg-soft);color:var(--ink);}
+.calc-side-btn.ativo{background:#111111;color:#fff;}
+.calc-content{flex:1;padding:28px 32px 80px;max-width:1100px;}
+.calc-panel{display:none;}
+.calc-panel.ativo{display:block;}
+.calc-panel-titulo{font-size:20px;font-weight:700;margin-bottom:4px;}
+.calc-panel-sub{font-size:13px;color:var(--ink-soft);margin-bottom:22px;line-height:1.5;}
+.calc-card{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);padding:26px 28px;box-shadow:var(--shadow-sm);}
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.calc-field{display:flex;flex-direction:column;gap:6px;}
+.calc-field label{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);}
+.calc-field input,.calc-field select{padding:10px 13px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:14px;color:var(--ink);background:var(--bg);width:100%;}
+.calc-field input:focus,.calc-field select:focus{outline:none;border-color:var(--orange);}
+.calc-actions{margin-top:20px;}
+.calc-resultado{margin-top:22px;padding-top:22px;border-top:1px solid var(--line);display:none;}
+.calc-resultado.ativo{display:block;}
+.calc-resultado-titulo{font-size:13px;font-weight:700;margin:18px 0 8px;}
+.calc-resultado-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;margin-bottom:8px;}
+.calc-stat{background:var(--bg-soft);border-radius:var(--radius);padding:16px 18px;}
+.calc-stat-label{font-size:11px;color:var(--ink-soft);font-weight:600;text-transform:uppercase;letter-spacing:.02em;}
+.calc-stat-valor{font-size:19px;font-weight:700;margin-top:4px;color:var(--ink);}
+.calc-stat-valor.destaque{color:var(--green);}
+.calc-stat-valor.alerta{color:var(--red);}
+.calc-nota{font-size:12px;color:var(--ink-soft);margin-top:14px;line-height:1.5;}
+.calc-tabela-wrap{margin-top:10px;overflow:auto;max-height:420px;border:1px solid var(--line);border-radius:12px;}
+.calc-tabela{width:100%;border-collapse:collapse;min-width:560px;}
+.calc-tabela th{background:var(--orange);color:#fff;text-align:left;padding:10px 12px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;position:sticky;top:0;}
+.calc-tabela td{padding:8px 12px;border-bottom:1px solid var(--line);font-size:12.5px;white-space:nowrap;color:var(--ink);}
+.calc-tabela tr:last-child td{border-bottom:none;}
+.calc-tabela tr.calc-melhor td{font-weight:700;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);}
+@media(max-width:860px){.calc-shell{flex-direction:column;}.calc-sidebar{width:100%;position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);display:flex;overflow-x:auto;padding:14px;gap:6px;}.calc-side-btn{width:auto;white-space:nowrap;margin-bottom:0;}.calc-sidebar-title{display:none;}.calc-content{padding:22px 18px 60px;max-width:none;}}
+@media(max-width:640px){.calc-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <a href="javascript:window.close()" class="nav-brand">← Clube do Rendimento</a>
+</header>
+
+<div class="calc-shell">
+  <aside class="calc-sidebar">
+    <div class="calc-sidebar-title">Comparativo de Consórcio</div>
+    <button type="button" class="calc-side-btn ativo" data-alvo="p-cs-parametros">Parâmetros</button>
+    <button type="button" class="calc-side-btn" data-alvo="p-cs-cenario1">Cenário 1 — FGTS x IPCA x Imóvel</button>
+    <button type="button" class="calc-side-btn" data-alvo="p-cs-cenario2">Cenário 2 — Venda da carta</button>
+    <button type="button" class="calc-side-btn" data-alvo="p-cs-cenario3">Cenário 3 — Carta rendendo CDI</button>
+  </aside>
+
+  <main class="calc-content">
+
+    <div class="calc-panel ativo" id="p-cs-parametros">
+      <div class="calc-panel-titulo">Parâmetros</div>
+      <p class="calc-panel-sub">Preencha os parâmetros do cliente e do consórcio. Os 3 cenários são recalculados juntos a partir destes valores.</p>
+      <div class="calc-card">
+        <div class="calc-grid">
+          <div class="calc-field"><label for="cs-data-inicial">Data inicial</label><input type="date" id="cs-data-inicial" value="2026-03-01"></div>
+          <div class="calc-field"><label for="cs-horizonte">Horizonte de projeção (anos)</label><input type="number" id="cs-horizonte" value="10" min="1" step="1"></div>
+          <div class="calc-field"><label for="cs-fgts-base">Saldo FGTS base (R$)</label><input type="number" id="cs-fgts-base" value="500000" min="0" step="1000"></div>
+          <div class="calc-field"><label for="cs-fgts-rent">Rentabilidade FGTS (% a.a.)</label><input type="number" id="cs-fgts-rent" value="3" step="0.1"></div>
+          <div class="calc-field"><label for="cs-tr">Taxa TR (% a.a.)</label><input type="number" id="cs-tr" value="0.5" step="0.1"></div>
+          <div class="calc-field"><label for="cs-ipca">IPCA projetado (% a.a.)</label><input type="number" id="cs-ipca" value="5" step="0.1"></div>
+          <div class="calc-field"><label for="cs-imovel-base">Valor do imóvel base (R$)</label><input type="number" id="cs-imovel-base" value="1000000" min="0" step="1000"></div>
+          <div class="calc-field"><label for="cs-imovel-valoriz">Valorização do imóvel (% a.a.)</label><input type="number" id="cs-imovel-valoriz" value="6" step="0.1"></div>
+          <div class="calc-field"><label for="cs-cdi">CDI projetado (% a.a.)</label><input type="number" id="cs-cdi" value="15" step="0.1"></div>
+          <div class="calc-field"><label for="cs-valor-carta">Valor da carta de crédito (R$)</label><input type="number" id="cs-valor-carta" value="1000000" min="0" step="1000"></div>
+          <div class="calc-field"><label for="cs-prazo-meses">Prazo do consórcio (meses)</label><input type="number" id="cs-prazo-meses" value="180" min="1" step="1"></div>
+          <div class="calc-field"><label for="cs-taxa-admin">Taxa de administração (% sobre a carta)</label><input type="number" id="cs-taxa-admin" value="16" step="0.1"></div>
+          <div class="calc-field"><label for="cs-meses-contemplacao">Meses até a contemplação</label><input type="number" id="cs-meses-contemplacao" value="24" min="1" step="1"></div>
+          <div class="calc-field"><label for="cs-pct-venda">% de venda da carta contemplada</label><input type="number" id="cs-pct-venda" value="30" min="0" step="0.1"></div>
+          <div class="calc-field"><label for="cs-meses-rendendo">Meses rendendo após a contemplação (Cenário 3)</label><input type="number" id="cs-meses-rendendo" value="12" min="0" step="1"></div>
+        </div>
+        <div class="calc-actions"><button type="button" class="btn btn-primary" id="cs-calcular">Calcular cenários</button></div>
+        <p class="calc-nota">As datas mensais seguem a mesma convenção da planilha original (incrementos fixos de 30 dias a partir da data inicial), e não o calendário civil.</p>
+      </div>
+    </div>
+
+    <div class="calc-panel" id="p-cs-cenario1">
+      <div class="calc-panel-titulo">Cenário 1 — Rentabilidade FGTS x IPCA x Imóvel</div>
+      <p class="calc-panel-sub">Linha de base sem consórcio: evolução do saldo do FGTS, de um capital equivalente corrigido pelo IPCA e do valor do imóvel, ano a ano, até o horizonte definido.</p>
+      <div class="calc-card">
+        <div class="calc-tabela-wrap" id="cs1-tabela"></div>
+        <p class="calc-nota">Saldo FGTS: capitalizado mensalmente pela soma de "Rentabilidade FGTS" e "Taxa TR". Capital corrigido pelo IPCA: mesmo valor inicial do FGTS, capitalizado pelo IPCA — serve de referência para comparar o poder de compra. Valor do imóvel: capitalizado pela valorização anual informada. Tabela com posições de fechamento de cada ano; o cálculo interno é mensal.</p>
+      </div>
+    </div>
+
+    <div class="calc-panel" id="p-cs-cenario2">
+      <div class="calc-panel-titulo">Cenário 2 — Vendendo a carta no mercado secundário</div>
+      <p class="calc-panel-sub">Paga as parcelas até a contemplação e revende a carta contemplada por um percentual do valor de face.</p>
+      <div class="calc-card">
+        <div class="calc-resultado-grid">
+          <div class="calc-stat"><div class="calc-stat-label">Parcela estimada</div><div class="calc-stat-valor" id="cs2-parcela">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">TIR (XIRR, a.a.)</div><div class="calc-stat-valor destaque" id="cs2-tir">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Valor de venda da carta</div><div class="calc-stat-valor" id="cs2-venda">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Resultado líquido acumulado</div><div class="calc-stat-valor" id="cs2-aplicado">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Resultado ÷ valor de venda</div><div class="calc-stat-valor" id="cs2-rentabilidade">—</div></div>
+        </div>
+        <div class="calc-resultado-titulo">Fluxo de caixa mensal</div>
+        <div class="calc-tabela-wrap" id="cs2-tabela"></div>
+        <p class="calc-nota">Parcela = (Valor da carta × (1 + Taxa de administração)) ÷ Prazo do consórcio. Ao final dos meses até a contemplação, a carta é vendida no mercado secundário pelo percentual informado. TIR calculada pelo método XIRR sobre o fluxo de caixa completo.</p>
+      </div>
+    </div>
+
+    <div class="calc-panel" id="p-cs-cenario3">
+      <div class="calc-panel-titulo">Cenário 3 — Carta contemplada rendendo 100% do CDI</div>
+      <p class="calc-panel-sub">Paga as parcelas normalmente e, após a contemplação, mantém o crédito rendendo 100% do CDI por um período antes de resgatar.</p>
+      <div class="calc-card">
+        <div class="calc-resultado-grid">
+          <div class="calc-stat"><div class="calc-stat-label">Parcela estimada</div><div class="calc-stat-valor" id="cs3-parcela">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">TIR (XIRR, a.a.)</div><div class="calc-stat-valor destaque" id="cs3-tir">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Crédito resgatado ao final</div><div class="calc-stat-valor" id="cs3-credito-final">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Rendimento do crédito (100% CDI)</div><div class="calc-stat-valor" id="cs3-rendimento-cdi">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Total pago em parcelas até o resgate</div><div class="calc-stat-valor" id="cs3-aplicado">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Por ano (%)</div><div class="calc-stat-valor" id="cs3-por-ano">—</div></div>
+        </div>
+        <div class="calc-resultado-titulo">Fluxo de caixa mensal</div>
+        <div class="calc-tabela-wrap" id="cs3-tabela"></div>
+        <p class="calc-nota">Mesma parcela do Cenário 2. Após a contemplação, o crédito (valor da carta) passa a render 100% do CDI mensal equivalente. No último mês do período informado, o crédito é resgatado — substituindo a parcela daquele mês no fluxo de caixa, replicando exatamente a lógica da planilha original.</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+Array.prototype.forEach.call(document.querySelectorAll('.calc-side-btn'), function (btn) {
+  btn.addEventListener('click', function () {
+    Array.prototype.forEach.call(document.querySelectorAll('.calc-side-btn'), function (b) { b.classList.remove('ativo'); });
+    Array.prototype.forEach.call(document.querySelectorAll('.calc-panel'), function (p) { p.classList.remove('ativo'); });
+    btn.classList.add('ativo');
+    document.getElementById(btn.getAttribute('data-alvo')).classList.add('ativo');
+  });
+});
+
+function csFormatarBRL(v) {
+  return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function csFormatarPct(v, casas) {
+  return (v * 100).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas }) + '%';
+}
+function csFormatarData(d) {
+  return d.toLocaleDateString('pt-BR');
+}
+function csAddDias(data, dias) {
+  var nova = new Date(data.getTime());
+  nova.setDate(nova.getDate() + dias);
+  return nova;
+}
+function csTaxaMensalEquivalente(taxaAnual) {
+  return Math.pow(1 + taxaAnual, 1 / 12) - 1;
+}
+
+// XIRR por Newton-Raphson (convenção Excel: dias corridos / 365 a partir do
+// primeiro fluxo). Fluxos de caixa deste comparativo têm no máximo uma
+// mudança de sinal, então converge em poucas iterações.
+function csXirr(fluxos, datas) {
+  var d0 = datas[0];
+  function vpl(taxa) {
+    var soma = 0;
+    for (var i = 0; i < fluxos.length; i++) {
+      var dias = (datas[i] - d0) / 86400000;
+      soma += fluxos[i] / Math.pow(1 + taxa, dias / 365);
+    }
+    return soma;
+  }
+  function derivadaVpl(taxa) {
+    var soma = 0;
+    for (var i = 0; i < fluxos.length; i++) {
+      var dias = (datas[i] - d0) / 86400000;
+      var t = dias / 365;
+      soma += -t * fluxos[i] / Math.pow(1 + taxa, t + 1);
+    }
+    return soma;
+  }
+  var taxa = 0.1;
+  for (var iter = 0; iter < 100; iter++) {
+    var f = vpl(taxa);
+    var fLinha = derivadaVpl(taxa);
+    if (Math.abs(fLinha) < 1e-12) break;
+    var novaTaxa = taxa - f / fLinha;
+    if (!isFinite(novaTaxa) || novaTaxa <= -0.999999) { novaTaxa = (taxa - 0.999999) / 2 + 0.999999; }
+    if (Math.abs(novaTaxa - taxa) < 1e-10) { taxa = novaTaxa; break; }
+    taxa = novaTaxa;
+  }
+  return taxa;
+}
+
+function csCalcularCenario1(dataInicial, horizonteAnos, saldoFgtsBase, fgtsRent, taxaTR, ipca, valorImovelBase, valorizacaoImovel) {
+  var nMeses = Math.round(horizonteAnos * 12);
+  var taxaFgtsMensal = csTaxaMensalEquivalente(fgtsRent + taxaTR);
+  var taxaIpcaMensal = csTaxaMensalEquivalente(ipca);
+  var taxaImovelMensal = csTaxaMensalEquivalente(valorizacaoImovel);
+  var linhas = [];
+  var fgts = saldoFgtsBase, capitalIpca = saldoFgtsBase, imovel = valorImovelBase;
+  for (var m = 1; m <= nMeses; m++) {
+    if (m > 1) {
+      fgts = fgts * (1 + taxaFgtsMensal);
+      capitalIpca = capitalIpca * (1 + taxaIpcaMensal);
+      imovel = imovel * (1 + taxaImovelMensal);
+    }
+    linhas.push({ mes: m, data: csAddDias(dataInicial, 30 * (m - 1)), fgts: fgts, capitalIpca: capitalIpca, imovel: imovel });
+  }
+  return linhas;
+}
+
+function csRenderizarCenario1(linhas, horizonteAnos) {
+  var thead = '<th>Ano</th><th>Data</th><th>Saldo FGTS</th><th>Capital corrigido pelo IPCA</th><th>Valor do imóvel</th>';
+  var corpo = '';
+  for (var ano = 1; ano <= horizonteAnos; ano++) {
+    var idx = ano * 12 - 1;
+    if (idx >= linhas.length) break;
+    var l = linhas[idx];
+    corpo += '<tr><td>' + ano + '</td><td>' + csFormatarData(l.data) + '</td><td>' + csFormatarBRL(l.fgts) + '</td><td>' + csFormatarBRL(l.capitalIpca) + '</td><td>' + csFormatarBRL(l.imovel) + '</td></tr>';
+  }
+  document.getElementById('cs1-tabela').innerHTML = '<table class="calc-tabela"><thead><tr>' + thead + '</tr></thead><tbody>' + corpo + '</tbody></table>';
+}
+
+function csCalcularCenario2(dataInicial, valorCarta, prazoMeses, taxaAdmin, mesesContemplacao, pctVenda) {
+  var parcela = (valorCarta * (1 + taxaAdmin)) / prazoMeses;
+  var linhas = [];
+  var acumulado = 0;
+  for (var m = 1; m <= mesesContemplacao; m++) {
+    var fluxo = -parcela;
+    acumulado += fluxo;
+    linhas.push({ mes: m, data: csAddDias(dataInicial, 30 * (m - 1)), fluxo: fluxo, acumulado: acumulado, obs: 'Parcela' });
+  }
+  var mVenda = mesesContemplacao + 1;
+  var fluxoVenda = valorCarta * pctVenda;
+  acumulado += fluxoVenda;
+  linhas.push({ mes: mVenda, data: csAddDias(dataInicial, 30 * (mVenda - 1)), fluxo: fluxoVenda, acumulado: acumulado, obs: 'Venda carta 2º mercado' });
+
+  var tir = csXirr(linhas.map(function (l) { return l.fluxo; }), linhas.map(function (l) { return l.data; }));
+  var aplicado = acumulado;
+  var valorVenda = fluxoVenda;
+  var rentabilidade = valorVenda ? aplicado / valorVenda : 0;
+
+  return { parcela: parcela, linhas: linhas, tir: tir, aplicado: aplicado, valorVenda: valorVenda, rentabilidade: rentabilidade };
+}
+
+function csRenderizarFluxoCaixa(containerId, linhas, colunaExtra) {
+  var thead = '<th>Mês</th><th>Data</th>' + (colunaExtra ? '<th>' + colunaExtra.titulo + '</th>' : '') + '<th>Fluxo de caixa</th><th>Acumulado</th><th>Observação</th>';
+  var corpo = linhas.map(function (l) {
+    var extra = colunaExtra ? '<td>' + (l[colunaExtra.chave] != null ? csFormatarBRL(l[colunaExtra.chave]) : '—') + '</td>' : '';
+    var destaque = l.fluxo >= 0 && l.obs !== 'Parcela' ? ' class="calc-melhor"' : '';
+    return '<tr' + destaque + '><td>' + l.mes + '</td><td>' + csFormatarData(l.data) + '</td>' + extra + '<td>' + csFormatarBRL(l.fluxo) + '</td><td>' + csFormatarBRL(l.acumulado) + '</td><td>' + l.obs + '</td></tr>';
+  }).join('');
+  document.getElementById(containerId).innerHTML = '<table class="calc-tabela"><thead><tr>' + thead + '</tr></thead><tbody>' + corpo + '</tbody></table>';
+}
+
+function csRenderizarCenario2(r) {
+  document.getElementById('cs2-parcela').textContent = csFormatarBRL(r.parcela);
+  document.getElementById('cs2-tir').textContent = csFormatarPct(r.tir, 2);
+  document.getElementById('cs2-venda').textContent = csFormatarBRL(r.valorVenda);
+  document.getElementById('cs2-aplicado').textContent = csFormatarBRL(r.aplicado);
+  document.getElementById('cs2-rentabilidade').textContent = csFormatarPct(r.rentabilidade, 2);
+  csRenderizarFluxoCaixa('cs2-tabela', r.linhas, null);
+}
+
+function csCalcularCenario3(dataInicial, parcela, valorCarta, mesesContemplacao, mesesRendendo, cdiAno, pctVenda) {
+  var totalMeses = mesesContemplacao + mesesRendendo;
+  var taxaCdiMensal = csTaxaMensalEquivalente(cdiAno);
+  var linhas = [];
+  var acumulado = 0;
+  var credito = null;
+  for (var m = 1; m <= totalMeses; m++) {
+    var data = csAddDias(dataInicial, 30 * (m - 1));
+    if (m === mesesContemplacao + 1) {
+      credito = valorCarta;
+    } else if (m > mesesContemplacao + 1) {
+      credito = credito * (1 + taxaCdiMensal);
+    }
+    var fluxo, obs;
+    if (m === totalMeses) {
+      fluxo = credito;
+      obs = 'Resgate do crédito (CDI 100%)';
+    } else {
+      fluxo = -parcela;
+      obs = 'Parcela';
+    }
+    acumulado += fluxo;
+    linhas.push({ mes: m, data: data, fluxo: fluxo, credito: credito, acumulado: acumulado, obs: obs });
+  }
+
+  var tir = csXirr(linhas.map(function (l) { return l.fluxo; }), linhas.map(function (l) { return l.data; }));
+  var creditoFinal = linhas[linhas.length - 1].credito;
+  var aplicado = linhas.length >= 2 ? linhas[linhas.length - 2].acumulado : 0;
+  var rendimentoCdi = creditoFinal - valorCarta;
+  var lucroVendaCarta = creditoFinal * pctVenda;
+  var rentabilidadePct = lucroVendaCarta ? aplicado / lucroVendaCarta : 0;
+  var porAno = totalMeses ? rentabilidadePct / (totalMeses / 12) : 0;
+
+  return { linhas: linhas, tir: tir, creditoFinal: creditoFinal, aplicado: aplicado, rendimentoCdi: rendimentoCdi, lucroVendaCarta: lucroVendaCarta, rentabilidadePct: rentabilidadePct, porAno: porAno };
+}
+
+function csRenderizarCenario3(r, parcela) {
+  document.getElementById('cs3-parcela').textContent = csFormatarBRL(parcela);
+  document.getElementById('cs3-tir').textContent = csFormatarPct(r.tir, 2);
+  document.getElementById('cs3-credito-final').textContent = csFormatarBRL(r.creditoFinal);
+  document.getElementById('cs3-rendimento-cdi').textContent = csFormatarBRL(r.rendimentoCdi);
+  document.getElementById('cs3-aplicado').textContent = csFormatarBRL(Math.abs(r.aplicado));
+  document.getElementById('cs3-por-ano').textContent = csFormatarPct(r.porAno, 2);
+  csRenderizarFluxoCaixa('cs3-tabela', r.linhas, { titulo: 'Crédito aplicado (100% CDI)', chave: 'credito' });
+}
+
+function csCalcularTudo() {
+  var dataInicial = new Date(document.getElementById('cs-data-inicial').value + 'T00:00:00');
+  var horizonteAnos = parseFloat(document.getElementById('cs-horizonte').value) || 0;
+  var saldoFgtsBase = parseFloat(document.getElementById('cs-fgts-base').value) || 0;
+  var fgtsRent = (parseFloat(document.getElementById('cs-fgts-rent').value) || 0) / 100;
+  var taxaTR = (parseFloat(document.getElementById('cs-tr').value) || 0) / 100;
+  var ipca = (parseFloat(document.getElementById('cs-ipca').value) || 0) / 100;
+  var valorImovelBase = parseFloat(document.getElementById('cs-imovel-base').value) || 0;
+  var valorizacaoImovel = (parseFloat(document.getElementById('cs-imovel-valoriz').value) || 0) / 100;
+  var cdiAno = (parseFloat(document.getElementById('cs-cdi').value) || 0) / 100;
+  var valorCarta = parseFloat(document.getElementById('cs-valor-carta').value) || 0;
+  var prazoMeses = parseFloat(document.getElementById('cs-prazo-meses').value) || 0;
+  var taxaAdmin = (parseFloat(document.getElementById('cs-taxa-admin').value) || 0) / 100;
+  var mesesContemplacao = parseFloat(document.getElementById('cs-meses-contemplacao').value) || 0;
+  var pctVenda = (parseFloat(document.getElementById('cs-pct-venda').value) || 0) / 100;
+  var mesesRendendo = parseFloat(document.getElementById('cs-meses-rendendo').value) || 0;
+
+  var linhas1 = csCalcularCenario1(dataInicial, horizonteAnos, saldoFgtsBase, fgtsRent, taxaTR, ipca, valorImovelBase, valorizacaoImovel);
+  csRenderizarCenario1(linhas1, horizonteAnos);
+
+  var r2 = csCalcularCenario2(dataInicial, valorCarta, prazoMeses, taxaAdmin, mesesContemplacao, pctVenda);
+  csRenderizarCenario2(r2);
+
+  var r3 = csCalcularCenario3(dataInicial, r2.parcela, valorCarta, mesesContemplacao, mesesRendendo, cdiAno, pctVenda);
+  csRenderizarCenario3(r3, r2.parcela);
+}
+
+document.getElementById('cs-calcular').addEventListener('click', csCalcularTudo);
+csCalcularTudo();
+<\/script>
+</body>
+</html>`);
+  }
+
   function abrirCreditoPrivado() {
     var win = window.open('', '_blank');
     if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
@@ -17578,6 +17942,7 @@ document.querySelectorAll('.tab').forEach(function(btn){
 
   document.getElementById('btn-nav-calculadoras').addEventListener('click', abrirCalculadoras);
   document.getElementById('btn-nav-seguros').addEventListener('click', abrirSegurosPrevidencia);
+  document.getElementById('btn-nav-consorcio').addEventListener('click', abrirConsorcio);
   document.getElementById('btn-nav-cetipados').addEventListener('click', abrirCetipados);
   document.getElementById('btn-nav-pesquisa').addEventListener('click', abrirPesquisaAtivo);
   document.getElementById('btn-nav-carteira-rec').addEventListener('click', abrirCarteiraRecomendada);
