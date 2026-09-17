@@ -287,6 +287,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           <button type="button" class="nav-dropdown-item" id="link-nav-focus">Boletim Focus (BCB) ↗</button>
           <button type="button" class="nav-dropdown-item" id="link-nav-basileia">Índice de Basileia (Bancos) ↗</button>
           <button type="button" class="nav-dropdown-item" id="link-nav-credito-privado">Análise de Crédito Privado ↗</button>
+          <button type="button" class="nav-dropdown-item" id="link-nav-mam-duration">Marcação a Mercado (Duration) ↗</button>
         </div>
       </div>
     </nav>
@@ -13198,6 +13199,300 @@ function configurarSelecaoPrintBasileia() {
 </html>`);
   }
 
+  function abrirMarcacaoMercadoDuration() {
+    var win = window.open('', '_blank');
+    if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
+    escreverConteudoJanela(win, `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Marcação a Mercado (Duration) — Clube do Rendimento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--line:#E2E2E2;--orange:#111111;--og:#000000;--ol:#EAEAEA;--green:#16A34A;--red:#DC2626;--radius:16px;--radius-lg:24px;--shadow:0 10px 28px rgba(0,0,0,.08);--shadow-sm:0 2px 10px rgba(0,0,0,.05);}
+*{box-sizing:border-box;margin:0;padding:0;}
+[hidden]{display:none!important;}
+body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-soft);color:var(--ink);min-height:100vh;font-size:14px;}
+.nav{background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;}
+.nav-brand{font-weight:700;font-size:15px;text-decoration:none;color:var(--ink);}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:9px 18px;border-radius:8px;font-weight:600;font-size:13px;border:1px solid transparent;cursor:pointer;font-family:inherit;}
+.btn-primary{background:linear-gradient(135deg,var(--orange),var(--og));color:#fff;box-shadow:0 8px 18px rgba(0,0,0,.22);transition:transform .15s,box-shadow .15s;}.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 22px rgba(0,0,0,.28);}
+.calc-shell{display:flex;align-items:flex-start;}
+.calc-sidebar{width:260px;flex-shrink:0;background:#fff;border-right:1px solid var(--line);padding:24px 14px;position:sticky;top:57px;height:calc(100vh - 57px);overflow-y:auto;}
+.calc-sidebar-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);padding:0 10px 12px;}
+.calc-side-btn{display:block;width:100%;text-align:left;background:none;border:none;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;margin-bottom:2px;transition:background .15s,color .15s;}
+.calc-side-btn:hover{background:var(--bg-soft);color:var(--ink);}
+.calc-side-btn.ativo{background:#111111;color:#fff;}
+.calc-content{flex:1;padding:28px 32px 80px;max-width:1100px;}
+.calc-panel{display:none;}
+.calc-panel.ativo{display:block;}
+.calc-panel-titulo{font-size:20px;font-weight:700;margin-bottom:4px;}
+.calc-panel-sub{font-size:13px;color:var(--ink-soft);margin-bottom:22px;line-height:1.5;}
+.calc-card{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);padding:26px 28px;box-shadow:var(--shadow-sm);}
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.calc-field{display:flex;flex-direction:column;gap:6px;}
+.calc-field label{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);}
+.calc-field input,.calc-field select{padding:10px 13px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:14px;color:var(--ink);background:var(--bg);width:100%;}
+.calc-field input:focus,.calc-field select:focus{outline:none;border-color:var(--orange);}
+.calc-actions{margin-top:20px;}
+.calc-resultado{margin-top:22px;padding-top:22px;border-top:1px solid var(--line);display:none;}
+.calc-resultado.ativo{display:block;}
+.calc-resultado-titulo{font-size:13px;font-weight:700;margin:18px 0 8px;}
+.calc-nota{font-size:12px;color:var(--ink-soft);margin-top:14px;line-height:1.5;}
+.calc-tabela-wrap{margin-top:10px;overflow:auto;max-height:420px;border:1px solid var(--line);border-radius:12px;}
+.calc-tabela{width:100%;border-collapse:collapse;min-width:560px;}
+.calc-tabela th{background:var(--orange);color:#fff;text-align:left;padding:10px 12px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;position:sticky;top:0;}
+.calc-tabela td{padding:8px 12px;border-bottom:1px solid var(--line);font-size:12.5px;white-space:nowrap;}
+.calc-tabela tr:last-child td{border-bottom:none;}
+.calc-tabela tr.calc-melhor td{background:var(--bg-soft);font-weight:700;}
+@media(max-width:860px){.calc-shell{flex-direction:column;}.calc-sidebar{width:100%;position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);display:flex;overflow-x:auto;padding:14px;gap:6px;}.calc-side-btn{width:auto;white-space:nowrap;margin-bottom:0;}.calc-sidebar-title{display:none;}.calc-content{padding:22px 18px 60px;max-width:none;}}
+@media(max-width:640px){.calc-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <a href="javascript:window.close()" class="nav-brand">← Clube do Rendimento</a>
+</header>
+
+<div class="calc-shell">
+  <aside class="calc-sidebar">
+    <div class="calc-sidebar-title">Marcação a Mercado</div>
+    <button type="button" class="calc-side-btn ativo" data-alvo="p-mam-ipca">IPCA+</button>
+    <button type="button" class="calc-side-btn" data-alvo="p-mam-pre">Prefixado</button>
+    <button type="button" class="calc-side-btn" data-alvo="p-mam-cdi-anual">% CDI (Anual)</button>
+    <button type="button" class="calc-side-btn" data-alvo="p-mam-cdi-mensal">% CDI (Mensal)</button>
+  </aside>
+
+  <main class="calc-content">
+
+    <div class="calc-panel ativo" id="p-mam-ipca">
+      <div class="calc-panel-titulo">Marcação a Mercado — IPCA+</div>
+      <p class="calc-panel-sub">Estima o retorno de um título IPCA+ ao ser vendido antes do vencimento, cruzando cenários de taxa de saída com o tempo decorrido, a partir do carrego (título + inflação projetada) e da duration.</p>
+      <div class="calc-card">
+        <div class="calc-grid">
+          <div class="calc-field"><label for="mmipca-taxa">Taxa do título — IPCA + ___ (% a.a.)</label><input type="number" id="mmipca-taxa" value="6.05" step="0.01"></div>
+          <div class="calc-field"><label for="mmipca-duration">Duration (anos)</label><input type="number" id="mmipca-duration" value="6" min="0" step="0.1"></div>
+          <div class="calc-field"><label for="mmipca-inflacao">Inflação (IPCA) projetada (% a.a.)</label><input type="number" id="mmipca-inflacao" value="5" step="0.1"></div>
+          <div class="calc-field"><label for="mmipca-cdi">CDI projetado para comparação (% a.a.)</label><input type="number" id="mmipca-cdi" value="11" step="0.1"></div>
+        </div>
+        <div class="calc-actions"><button type="button" class="btn btn-primary" id="mmipca-calcular">Calcular</button></div>
+        <div class="calc-resultado" id="mmipca-resultado">
+          <div class="calc-resultado-titulo">Retorno absoluto por prazo decorrido</div>
+          <div class="calc-tabela-wrap" id="mmipca-tabela-abs"></div>
+          <div class="calc-resultado-titulo">Equivalente em % do CDI</div>
+          <div class="calc-tabela-wrap" id="mmipca-tabela-cdi"></div>
+          <p class="calc-nota">MaM = Carrego (título + inflação projetada, acumulados até o prazo) − Duration × Variação na taxa de saída. Linha destacada = taxa de saída igual à taxa contratada (sem variação). Aproximação de sensibilidade a taxas; não substitui o preço de mercado real do título.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-panel" id="p-mam-pre">
+      <div class="calc-panel-titulo">Marcação a Mercado — Prefixado</div>
+      <p class="calc-panel-sub">Estima o retorno de um título prefixado ao ser vendido antes do vencimento, cruzando cenários de taxa de saída com o tempo decorrido.</p>
+      <div class="calc-card">
+        <div class="calc-grid">
+          <div class="calc-field"><label for="mmpre-taxa">Taxa do título (% a.a.)</label><input type="number" id="mmpre-taxa" value="14" step="0.01"></div>
+          <div class="calc-field"><label for="mmpre-duration">Duration (anos)</label><input type="number" id="mmpre-duration" value="1.5" min="0" step="0.1"></div>
+          <div class="calc-field"><label for="mmpre-cdi">CDI projetado para comparação (% a.a.)</label><input type="number" id="mmpre-cdi" value="11" step="0.1"></div>
+        </div>
+        <div class="calc-actions"><button type="button" class="btn btn-primary" id="mmpre-calcular">Calcular</button></div>
+        <div class="calc-resultado" id="mmpre-resultado">
+          <div class="calc-resultado-titulo">Retorno absoluto por prazo decorrido</div>
+          <div class="calc-tabela-wrap" id="mmpre-tabela-abs"></div>
+          <div class="calc-resultado-titulo">Equivalente em % do CDI</div>
+          <div class="calc-tabela-wrap" id="mmpre-tabela-cdi"></div>
+          <p class="calc-nota">MaM = Carrego (compostos da taxa contratada até o prazo) − Duration × Variação na taxa de saída. Para cada 1 p.p. de variação na taxa do papel, o preço marca a mercado o equivalente a "Duration" pontos percentuais. Linha destacada = taxa de saída igual à taxa contratada.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-panel" id="p-mam-cdi-anual">
+      <div class="calc-panel-titulo">Marcação a Mercado — % CDI (projeção anual)</div>
+      <p class="calc-panel-sub">Estima o retorno de um título pós-fixado (CDI + spread) ao ser vendido antes do vencimento, com o CDI projetado ano a ano.</p>
+      <div class="calc-card">
+        <div class="calc-grid">
+          <div class="calc-field"><label for="mmcdia-spread">Spread sobre o CDI (% a.a.)</label><input type="number" id="mmcdia-spread" value="1.75" step="0.01"></div>
+          <div class="calc-field"><label for="mmcdia-duration">Duration (anos)</label><input type="number" id="mmcdia-duration" value="1.38" min="0" step="0.1"></div>
+          <div class="calc-field"><label for="mmcdia-cdi">CDI projetado (% a.a.)</label><input type="number" id="mmcdia-cdi" value="11" step="0.1"></div>
+        </div>
+        <div class="calc-actions"><button type="button" class="btn btn-primary" id="mmcdia-calcular">Calcular</button></div>
+        <div class="calc-resultado" id="mmcdia-resultado">
+          <div class="calc-resultado-titulo">Retorno absoluto por prazo decorrido</div>
+          <div class="calc-tabela-wrap" id="mmcdia-tabela-abs"></div>
+          <div class="calc-resultado-titulo">Equivalente em % do CDI</div>
+          <div class="calc-tabela-wrap" id="mmcdia-tabela-cdi"></div>
+          <p class="calc-nota">MaM = Carrego (CDI + spread, acumulados até o prazo) − Duration × Variação no spread de saída. O CDI projetado é usado tanto no carrego do título quanto como referência de comparação (% do CDI). Linha destacada = spread de saída igual ao contratado.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-panel" id="p-mam-cdi-mensal">
+      <div class="calc-panel-titulo">Marcação a Mercado — % CDI (grade mensal)</div>
+      <p class="calc-panel-sub">Mesma lógica do CDI com projeção anual, mas com o carrego composto mês a mês — útil para títulos de prazo mais curto.</p>
+      <div class="calc-card">
+        <div class="calc-grid">
+          <div class="calc-field"><label for="mmcdim-spread">Spread sobre o CDI (% a.a.)</label><input type="number" id="mmcdim-spread" value="1.75" step="0.01"></div>
+          <div class="calc-field"><label for="mmcdim-duration">Duration (anos)</label><input type="number" id="mmcdim-duration" value="1.5" min="0" step="0.1"></div>
+          <div class="calc-field"><label for="mmcdim-cdi">CDI projetado para 12 meses (% a.a.)</label><input type="number" id="mmcdim-cdi" value="14" step="0.1"></div>
+        </div>
+        <div class="calc-actions"><button type="button" class="btn btn-primary" id="mmcdim-calcular">Calcular</button></div>
+        <div class="calc-resultado" id="mmcdim-resultado">
+          <div class="calc-resultado-titulo">Retorno absoluto por mês decorrido</div>
+          <div class="calc-tabela-wrap" id="mmcdim-tabela-abs"></div>
+          <div class="calc-resultado-titulo">Equivalente em % do CDI</div>
+          <div class="calc-tabela-wrap" id="mmcdim-tabela-cdi"></div>
+          <p class="calc-nota">O CDI anual e o spread contratado são convertidos para taxas mensais equivalentes antes de compor o carrego mês a mês. A duration (em anos) é aplicada diretamente sobre a variação do spread, independentemente do número de meses decorridos.</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+Array.prototype.forEach.call(document.querySelectorAll('.calc-side-btn'), function (btn) {
+  btn.addEventListener('click', function () {
+    Array.prototype.forEach.call(document.querySelectorAll('.calc-side-btn'), function (b) { b.classList.remove('ativo'); });
+    Array.prototype.forEach.call(document.querySelectorAll('.calc-panel'), function (p) { p.classList.remove('ativo'); });
+    btn.classList.add('ativo');
+    document.getElementById(btn.getAttribute('data-alvo')).classList.add('ativo');
+  });
+});
+
+// Variações de taxa de saída usadas em todas as grades (pontos percentuais
+// sobre a taxa/spread contratado), unificadas para simplificar a leitura
+// entre os 4 tipos de indexador.
+var MAM_DELTAS = [-0.02, -0.015, -0.01, -0.005, 0, 0.005, 0.01, 0.015, 0.02];
+
+function mamCarregoAcumulado(taxaPeriodica, indexPeriodica, nPeriodos) {
+  var arr = [], fator = 1;
+  for (var t = 1; t <= nPeriodos; t++) {
+    fator = fator * (1 + indexPeriodica) * (1 + taxaPeriodica);
+    arr.push(fator - 1);
+  }
+  return arr;
+}
+
+function mamCdiAcumulado(cdiPeriodica, nPeriodos) {
+  var arr = [], fator = 1;
+  for (var t = 1; t <= nPeriodos; t++) {
+    fator = fator * (1 + cdiPeriodica);
+    arr.push(fator - 1);
+  }
+  return arr;
+}
+
+function mamMontarGrade(duration, carregoPorPeriodo, cdiAcumPorPeriodo, labelFn) {
+  var linhasAbs = [], linhasCdi = [];
+  MAM_DELTAS.forEach(function (delta) {
+    var valoresAbs = [], valoresCdi = [];
+    carregoPorPeriodo.forEach(function (carrego, i) {
+      var mam = carrego - duration * delta;
+      var cdiAcum = cdiAcumPorPeriodo[i];
+      valoresAbs.push(mam);
+      valoresCdi.push(cdiAcum ? mam / cdiAcum : null);
+    });
+    linhasAbs.push({ label: labelFn(delta), delta: delta, valores: valoresAbs });
+    linhasCdi.push({ label: labelFn(delta), delta: delta, valores: valoresCdi });
+  });
+  return { linhasAbs: linhasAbs, linhasCdi: linhasCdi };
+}
+
+function mamFormatarPct(v, casas) {
+  return v.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas }) + '%';
+}
+
+function mamRenderizarTabela(containerId, linhas, nPeriodos, unidadeLabel, formatoCDI) {
+  var thead = '<th>Taxa de saída</th><th>Variação</th>';
+  for (var p = 1; p <= nPeriodos; p++) thead += '<th>' + p + ' ' + unidadeLabel + (p > 1 ? 's' : '') + '</th>';
+  var linhasHtml = linhas.map(function (l) {
+    var tds = '<td>' + l.label + '</td><td>' + (l.delta >= 0 ? '+' : '') + mamFormatarPct(l.delta * 100, 2) + '</td>';
+    l.valores.forEach(function (v) {
+      if (v == null) { tds += '<td>—</td>'; return; }
+      tds += formatoCDI ? '<td>' + mamFormatarPct(v * 100, 1) + ' do CDI</td>' : '<td>' + mamFormatarPct(v * 100, 2) + '</td>';
+    });
+    var destaque = l.delta === 0 ? ' class="calc-melhor"' : '';
+    return '<tr' + destaque + '>' + tds + '</tr>';
+  }).join('');
+  document.getElementById(containerId).innerHTML = '<table class="calc-tabela"><thead><tr>' + thead + '</tr></thead><tbody>' + linhasHtml + '</tbody></table>';
+}
+
+document.getElementById('mmipca-calcular').addEventListener('click', function () {
+  var taxa = (parseFloat(document.getElementById('mmipca-taxa').value) || 0) / 100;
+  var duration = parseFloat(document.getElementById('mmipca-duration').value) || 0;
+  var inflacao = (parseFloat(document.getElementById('mmipca-inflacao').value) || 0) / 100;
+  var cdiRef = (parseFloat(document.getElementById('mmipca-cdi').value) || 0) / 100;
+  var n = 5;
+  var carrego = mamCarregoAcumulado(taxa, inflacao, n);
+  var cdiAcum = mamCdiAcumulado(cdiRef, n);
+  var grade = mamMontarGrade(duration, carrego, cdiAcum, function (d) {
+    return 'IPCA + ' + mamFormatarPct((taxa + d) * 100, 2);
+  });
+  mamRenderizarTabela('mmipca-tabela-abs', grade.linhasAbs, n, 'ano', false);
+  mamRenderizarTabela('mmipca-tabela-cdi', grade.linhasCdi, n, 'ano', true);
+  document.getElementById('mmipca-resultado').classList.add('ativo');
+});
+
+document.getElementById('mmpre-calcular').addEventListener('click', function () {
+  var taxa = (parseFloat(document.getElementById('mmpre-taxa').value) || 0) / 100;
+  var duration = parseFloat(document.getElementById('mmpre-duration').value) || 0;
+  var cdiRef = (parseFloat(document.getElementById('mmpre-cdi').value) || 0) / 100;
+  var n = 5;
+  var carrego = mamCarregoAcumulado(taxa, 0, n);
+  var cdiAcum = mamCdiAcumulado(cdiRef, n);
+  var grade = mamMontarGrade(duration, carrego, cdiAcum, function (d) {
+    return mamFormatarPct((taxa + d) * 100, 2);
+  });
+  mamRenderizarTabela('mmpre-tabela-abs', grade.linhasAbs, n, 'ano', false);
+  mamRenderizarTabela('mmpre-tabela-cdi', grade.linhasCdi, n, 'ano', true);
+  document.getElementById('mmpre-resultado').classList.add('ativo');
+});
+
+document.getElementById('mmcdia-calcular').addEventListener('click', function () {
+  var spread = (parseFloat(document.getElementById('mmcdia-spread').value) || 0) / 100;
+  var duration = parseFloat(document.getElementById('mmcdia-duration').value) || 0;
+  var cdi = (parseFloat(document.getElementById('mmcdia-cdi').value) || 0) / 100;
+  var n = 5;
+  var carrego = mamCarregoAcumulado(spread, cdi, n);
+  var cdiAcum = mamCdiAcumulado(cdi, n);
+  var grade = mamMontarGrade(duration, carrego, cdiAcum, function (d) {
+    return 'CDI + ' + mamFormatarPct((spread + d) * 100, 2);
+  });
+  mamRenderizarTabela('mmcdia-tabela-abs', grade.linhasAbs, n, 'ano', false);
+  mamRenderizarTabela('mmcdia-tabela-cdi', grade.linhasCdi, n, 'ano', true);
+  document.getElementById('mmcdia-resultado').classList.add('ativo');
+});
+
+document.getElementById('mmcdim-calcular').addEventListener('click', function () {
+  var spreadAnual = (parseFloat(document.getElementById('mmcdim-spread').value) || 0) / 100;
+  var duration = parseFloat(document.getElementById('mmcdim-duration').value) || 0;
+  var cdiAnual = (parseFloat(document.getElementById('mmcdim-cdi').value) || 0) / 100;
+  var n = 12;
+  var spreadMensal = Math.pow(1 + spreadAnual, 1 / 12) - 1;
+  var cdiMensal = Math.pow(1 + cdiAnual, 1 / 12) - 1;
+  var carrego = mamCarregoAcumulado(spreadMensal, cdiMensal, n);
+  var cdiAcum = mamCdiAcumulado(cdiMensal, n);
+  var grade = mamMontarGrade(duration, carrego, cdiAcum, function (d) {
+    return 'CDI + ' + mamFormatarPct((spreadAnual + d) * 100, 2);
+  });
+  mamRenderizarTabela('mmcdim-tabela-abs', grade.linhasAbs, n, 'mês', false);
+  mamRenderizarTabela('mmcdim-tabela-cdi', grade.linhasCdi, n, 'mês', true);
+  document.getElementById('mmcdim-resultado').classList.add('ativo');
+});
+
+document.getElementById('mmipca-calcular').click();
+document.getElementById('mmpre-calcular').click();
+document.getElementById('mmcdia-calcular').click();
+document.getElementById('mmcdim-calcular').click();
+<\/script>
+</body>
+</html>`);
+  }
+
   function abrirCreditoPrivado() {
     var win = window.open('', '_blank');
     if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
@@ -17263,6 +17558,7 @@ document.querySelectorAll('.tab').forEach(function(btn){
   document.getElementById('link-nav-focus').addEventListener('click', abrirFocus);
   document.getElementById('link-nav-basileia').addEventListener('click', abrirBasileia);
   document.getElementById('link-nav-credito-privado').addEventListener('click', abrirCreditoPrivado);
+  document.getElementById('link-nav-mam-duration').addEventListener('click', abrirMarcacaoMercadoDuration);
 
   document.addEventListener('DOMContentLoaded', function() {
     // Tentar re-inicializar o cliente Supabase se não carregou na primeira execução
