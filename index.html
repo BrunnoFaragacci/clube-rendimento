@@ -275,6 +275,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       <button type="button" class="btn-nav" id="btn-nav-cartoes">Comparar Cartões ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-seguros">Seguros e Previdência ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-consorcio">Consórcio ↗</button>
+      <button type="button" class="btn-nav" id="btn-nav-sucessorio">Planejamento Sucessório ↗</button>
       <div class="nav-dropdown-wrap">
         <button type="button" class="btn-nav nav-dropdown-trigger" id="btn-nav-cripto" aria-expanded="false">Cripto <span class="nav-caret">▾</span></button>
         <div class="nav-dropdown" id="dropdown-cripto" hidden>
@@ -13886,6 +13887,361 @@ csCalcularTudo();
 </html>`);
   }
 
+  function abrirPlanejamentoSucessorio() {
+    var win = window.open('', '_blank');
+    if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
+    escreverConteudoJanela(win, `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Planejamento Sucessório — Clube do Rendimento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--line:#E2E2E2;--orange:#111111;--og:#000000;--ol:#EAEAEA;--green:#16A34A;--red:#DC2626;--radius:16px;--radius-lg:24px;--shadow:0 10px 28px rgba(0,0,0,.08);--shadow-sm:0 2px 10px rgba(0,0,0,.05);}
+*{box-sizing:border-box;margin:0;padding:0;}
+[hidden]{display:none!important;}
+body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-soft);color:var(--ink);min-height:100vh;font-size:14px;}
+.nav{background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;}
+.nav-brand{font-weight:700;font-size:15px;text-decoration:none;color:var(--ink);}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:9px 18px;border-radius:8px;font-weight:600;font-size:13px;border:1px solid transparent;cursor:pointer;font-family:inherit;}
+.btn-primary{background:linear-gradient(135deg,var(--orange),var(--og));color:#fff;box-shadow:0 8px 18px rgba(0,0,0,.22);transition:transform .15s,box-shadow .15s;}.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 22px rgba(0,0,0,.28);}
+.calc-shell{display:flex;align-items:flex-start;}
+.calc-sidebar{width:260px;flex-shrink:0;background:#fff;border-right:1px solid var(--line);padding:24px 14px;position:sticky;top:57px;height:calc(100vh - 57px);overflow-y:auto;}
+.calc-sidebar-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);padding:0 10px 12px;}
+.calc-side-btn{display:block;width:100%;text-align:left;background:none;border:none;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;margin-bottom:2px;transition:background .15s,color .15s;}
+.calc-side-btn:hover{background:var(--bg-soft);color:var(--ink);}
+.calc-side-btn.ativo{background:#111111;color:#fff;}
+.calc-content{flex:1;padding:28px 32px 80px;max-width:1100px;}
+.calc-panel{display:none;}
+.calc-panel.ativo{display:block;}
+.calc-panel-titulo{font-size:20px;font-weight:700;margin-bottom:4px;}
+.calc-panel-sub{font-size:13px;color:var(--ink-soft);margin-bottom:22px;line-height:1.5;}
+.calc-card{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);padding:26px 28px;box-shadow:var(--shadow-sm);margin-bottom:20px;}
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.calc-field{display:flex;flex-direction:column;gap:6px;}
+.calc-field label{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);}
+.calc-field input,.calc-field select{padding:10px 13px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:14px;color:var(--ink);background:var(--bg);width:100%;}
+.calc-field input:focus,.calc-field select:focus{outline:none;border-color:var(--orange);}
+.calc-actions{margin-top:20px;}
+.calc-resultado-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:8px;}
+.calc-stat{background:var(--bg-soft);border-radius:var(--radius);padding:16px 18px;}
+.calc-stat-label{font-size:11px;color:var(--ink-soft);font-weight:600;text-transform:uppercase;letter-spacing:.02em;}
+.calc-stat-valor{font-size:19px;font-weight:700;margin-top:4px;color:var(--ink);}
+.calc-stat-valor.destaque{color:var(--green);}
+.calc-stat-valor.alerta{color:var(--red);}
+.calc-nota{font-size:12px;color:var(--ink-soft);margin-top:14px;line-height:1.5;}
+.calc-resultado-titulo{font-size:13px;font-weight:700;margin:18px 0 8px;}
+.calc-tabela-wrap{margin-top:10px;overflow:auto;max-height:420px;border:1px solid var(--line);border-radius:12px;}
+.calc-tabela{width:100%;border-collapse:collapse;min-width:520px;}
+.calc-tabela th{background:var(--orange);color:#fff;text-align:left;padding:10px 12px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;position:sticky;top:0;}
+.calc-tabela td{padding:8px 12px;border-bottom:1px solid var(--line);font-size:12.5px;white-space:nowrap;color:var(--ink);}
+.calc-tabela tr:last-child td{border-bottom:none;}
+.calc-tabela tr.calc-melhor td{font-weight:700;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);}
+@media(max-width:860px){.calc-shell{flex-direction:column;}.calc-sidebar{width:100%;position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);display:flex;overflow-x:auto;padding:14px;gap:6px;}.calc-side-btn{width:auto;white-space:nowrap;margin-bottom:0;}.calc-sidebar-title{display:none;}.calc-content{padding:22px 18px 60px;max-width:none;}}
+@media(max-width:640px){.calc-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <a href="javascript:window.close()" class="nav-brand">← Clube do Rendimento</a>
+</header>
+
+<div class="calc-shell">
+  <aside class="calc-sidebar">
+    <div class="calc-sidebar-title">Planejamento Sucessório</div>
+    <button type="button" class="calc-side-btn ativo" data-alvo="p-suc-parametros">Parâmetros</button>
+    <button type="button" class="calc-side-btn" data-alvo="p-suc-sem">Sem Planejamento</button>
+    <button type="button" class="calc-side-btn" data-alvo="p-suc-holding">Holding Patrimonial</button>
+    <button type="button" class="calc-side-btn" data-alvo="p-suc-prev">Previdência Privada</button>
+    <button type="button" class="calc-side-btn" data-alvo="p-suc-seguro">Seguro Resgatável</button>
+    <button type="button" class="calc-side-btn" data-alvo="p-suc-resumo">Resumo Comparativo</button>
+  </aside>
+
+  <main class="calc-content">
+
+    <div class="calc-panel ativo" id="p-suc-parametros">
+      <div class="calc-panel-titulo">Parâmetros</div>
+      <p class="calc-panel-sub">Preencha os dados do cliente e das 3 estratégias. Os 4 cenários são recalculados juntos a partir destes valores.</p>
+
+      <div class="calc-card">
+        <div class="calc-resultado-titulo" style="margin-top:0;">Parâmetros gerais</div>
+        <div class="calc-grid">
+          <div class="calc-field"><label for="suc-patrimonio-financeiro">Patrimônio financeiro (R$)</label><input type="number" id="suc-patrimonio-financeiro" value="10000000" min="0" step="10000"></div>
+          <div class="calc-field"><label for="suc-patrimonio-imobilizado">Patrimônio imobilizado (R$)</label><input type="number" id="suc-patrimonio-imobilizado" value="3000000" min="0" step="10000"></div>
+          <div class="calc-field"><label for="suc-idade-atual">Idade atual (anos)</label><input type="number" id="suc-idade-atual" value="67" min="0" step="1"></div>
+          <div class="calc-field"><label for="suc-expectativa-vida">Expectativa de vida (anos)</label><input type="number" id="suc-expectativa-vida" value="80" min="0" step="1"></div>
+          <div class="calc-field"><label for="suc-rentabilidade-financeiros">Rentabilidade líquida anual — financeiros (%)</label><input type="number" id="suc-rentabilidade-financeiros" value="10" step="0.1"></div>
+          <div class="calc-field"><label for="suc-valorizacao-imoveis">Valorização anual — imóveis (%)</label><input type="number" id="suc-valorizacao-imoveis" value="5" step="0.1"></div>
+          <div class="calc-field"><label for="suc-itcmd-pct">Alíquota ITCMD na sucessão + custos de cartório (%)</label><input type="number" id="suc-itcmd-pct" value="20" step="0.1"></div>
+        </div>
+      </div>
+
+      <div class="calc-card">
+        <div class="calc-resultado-titulo" style="margin-top:0;">Cenário: Holding Patrimonial</div>
+        <div class="calc-grid">
+          <div class="calc-field"><label for="suc-holding-manutencao">Custo de manutenção anual (R$)</label><input type="number" id="suc-holding-manutencao" value="12000" min="0" step="500"></div>
+          <div class="calc-field"><label for="suc-holding-rentabilidade">Rentabilidade líquida anual na holding (%)</label><input type="number" id="suc-holding-rentabilidade" value="5" step="0.1"></div>
+          <div class="calc-field"><label for="suc-holding-itcmd">ITCMD na integralização de imóveis (%)</label><input type="number" id="suc-holding-itcmd" value="4" step="0.1"></div>
+        </div>
+        <p class="calc-nota">A holding, neste simulador, abriga apenas o patrimônio imobilizado. O custo de constituição (pago uma única vez, tipicamente entre R$ 20 mil e R$ 50 mil) é informativo e não é descontado da projeção, assim como na planilha original.</p>
+      </div>
+
+      <div class="calc-card">
+        <div class="calc-resultado-titulo" style="margin-top:0;">Cenário: Previdência Privada</div>
+        <div class="calc-grid">
+          <div class="calc-field"><label for="suc-prev-pct">% do patrimônio financeiro alocado à previdência</label><input type="number" id="suc-prev-pct" value="25" min="0" max="100" step="1"></div>
+          <div class="calc-field"><label for="suc-prev-rentabilidade">Rentabilidade bruta anual da previdência (%)</label><input type="number" id="suc-prev-rentabilidade" value="10" step="0.1"></div>
+          <div class="calc-field"><label for="suc-prev-ir">Alíquota de IR sobre o saldo no resgate (%)</label><input type="number" id="suc-prev-ir" value="25" step="0.1"></div>
+          <div class="calc-field"><label for="suc-prev-itcmd">Incidência de ITCMD na transmissão da previdência (%)</label><input type="number" id="suc-prev-itcmd" value="0" step="0.1"></div>
+        </div>
+      </div>
+
+      <div class="calc-card">
+        <div class="calc-resultado-titulo" style="margin-top:0;">Cenário: Seguro Resgatável</div>
+        <div class="calc-grid">
+          <div class="calc-field"><label for="suc-seguro-capital">Capital segurado projetado no fim do horizonte (R$)</label><input type="number" id="suc-seguro-capital" value="2922756" min="0" step="1000"></div>
+          <div class="calc-field"><label for="suc-seguro-itcmd">Incidência de ITCMD sobre o benefício (%)</label><input type="number" id="suc-seguro-itcmd" value="0" step="0.1"></div>
+        </div>
+        <p class="calc-nota">Informe aqui o capital segurado já projetado na cotação da seguradora para o fim do horizonte (idade na expectativa de vida). Este simulador não reproduz a tabela atuarial de prêmios e resgate de nenhuma seguradora específica — use a cotação oficial do produto escolhido.</p>
+      </div>
+
+      <div class="calc-actions"><button type="button" class="btn btn-primary" id="suc-calcular">Calcular cenários</button></div>
+    </div>
+
+    <div class="calc-panel" id="p-suc-sem">
+      <div class="calc-panel-titulo">Sem Planejamento</div>
+      <p class="calc-panel-sub">Crescimento do patrimônio até o óbito, sem nenhuma estratégia sucessória — sujeito integralmente ao ITCMD e custos de inventário.</p>
+      <div class="calc-card">
+        <div class="calc-resultado-grid">
+          <div class="calc-stat"><div class="calc-stat-label">Valor total no óbito</div><div class="calc-stat-valor" id="suc-sem-total">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Custos de inventário (ITCMD)</div><div class="calc-stat-valor alerta" id="suc-sem-custo">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Patrimônio líquido aos herdeiros</div><div class="calc-stat-valor destaque" id="suc-sem-liquido">—</div></div>
+        </div>
+        <div class="calc-tabela-wrap" id="suc-sem-tabela"></div>
+      </div>
+    </div>
+
+    <div class="calc-panel" id="p-suc-holding">
+      <div class="calc-panel-titulo">Holding Patrimonial</div>
+      <p class="calc-panel-sub">O patrimônio imobilizado é integralizado em uma holding, que passa a administrá-lo até a sucessão.</p>
+      <div class="calc-card">
+        <div class="calc-resultado-grid">
+          <div class="calc-stat"><div class="calc-stat-label">Valor na holding no óbito</div><div class="calc-stat-valor" id="suc-hold-total">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">ITCMD na integralização</div><div class="calc-stat-valor alerta" id="suc-hold-itcmd">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Patrimônio líquido via holding</div><div class="calc-stat-valor destaque" id="suc-hold-liquido">—</div></div>
+        </div>
+        <div class="calc-tabela-wrap" id="suc-hold-tabela"></div>
+        <p class="calc-nota">O patrimônio financeiro (fora da holding) não está incluído nestes valores — ele segue as mesmas regras do cenário "Sem Planejamento", a menos que também receba algum planejamento específico.</p>
+      </div>
+    </div>
+
+    <div class="calc-panel" id="p-suc-prev">
+      <div class="calc-panel-titulo">Previdência Privada</div>
+      <p class="calc-panel-sub">Uma parte do patrimônio financeiro é alocada em previdência privada, que passa a compor a herança fora do inventário.</p>
+      <div class="calc-card">
+        <div class="calc-resultado-grid">
+          <div class="calc-stat"><div class="calc-stat-label">Patrimônio fora da previdência no óbito</div><div class="calc-stat-valor" id="suc-prev-fora">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Saldo em previdência no óbito</div><div class="calc-stat-valor" id="suc-prev-saldo">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">IR sobre a previdência</div><div class="calc-stat-valor alerta" id="suc-prev-ir-valor">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Valor líquido transmitido da previdência</div><div class="calc-stat-valor destaque" id="suc-prev-liquido">—</div></div>
+        </div>
+        <div class="calc-tabela-wrap" id="suc-prev-tabela"></div>
+        <p class="calc-nota">O patrimônio financeiro fora da previdência não está incluído no valor líquido acima — ele segue as mesmas regras do cenário "Sem Planejamento".</p>
+      </div>
+    </div>
+
+    <div class="calc-panel" id="p-suc-seguro">
+      <div class="calc-panel-titulo">Seguro Resgatável</div>
+      <p class="calc-panel-sub">Benefício líquido de um seguro de vida resgatável (Whole Life), a partir do capital segurado informado nos parâmetros.</p>
+      <div class="calc-card">
+        <div class="calc-resultado-grid">
+          <div class="calc-stat"><div class="calc-stat-label">Capital segurado informado</div><div class="calc-stat-valor" id="suc-seg-capital">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">ITCMD sobre o benefício</div><div class="calc-stat-valor alerta" id="suc-seg-itcmd-valor">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Valor líquido do benefício</div><div class="calc-stat-valor destaque" id="suc-seg-liquido">—</div></div>
+        </div>
+        <p class="calc-nota">O seguro é tratado como um ativo adicional, recebido pelos beneficiários fora do inventário — não substitui nem reduz o patrimônio já existente, que segue seu próprio curso sucessório.</p>
+      </div>
+    </div>
+
+    <div class="calc-panel" id="p-suc-resumo">
+      <div class="calc-panel-titulo">Resumo Comparativo</div>
+      <p class="calc-panel-sub">Comparação do valor líquido de cada estratégia. As linhas de "Sem Planejamento" servem como referência; o melhor cenário é escolhido entre as 3 estratégias de planejamento.</p>
+      <div class="calc-card">
+        <div class="calc-tabela-wrap" id="suc-resumo-tabela"></div>
+        <div class="calc-resultado-grid" style="margin-top:20px;">
+          <div class="calc-stat"><div class="calc-stat-label">Melhor cenário</div><div class="calc-stat-valor destaque" id="suc-resumo-melhor-nome">—</div></div>
+          <div class="calc-stat"><div class="calc-stat-label">Valor correspondente</div><div class="calc-stat-valor destaque" id="suc-resumo-melhor-valor">—</div></div>
+        </div>
+        <p class="calc-nota">"Sem planejamento (valor líquido recebido)" é uma referência do patrimônio total sem nenhuma estratégia — não entra na disputa pelo "melhor cenário", que compara apenas as 3 técnicas de planejamento entre si, cada uma pelo benefício líquido que agrega.</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+Array.prototype.forEach.call(document.querySelectorAll('.calc-side-btn'), function (btn) {
+  btn.addEventListener('click', function () {
+    Array.prototype.forEach.call(document.querySelectorAll('.calc-side-btn'), function (b) { b.classList.remove('ativo'); });
+    Array.prototype.forEach.call(document.querySelectorAll('.calc-panel'), function (p) { p.classList.remove('ativo'); });
+    btn.classList.add('ativo');
+    document.getElementById(btn.getAttribute('data-alvo')).classList.add('ativo');
+  });
+});
+
+function sucFBRL(v) {
+  return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function sucFPct(v, casas) {
+  return (v * 100).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas }) + '%';
+}
+
+function sucCalcularSemPlanejamento(patFin, patImov, rentFin, valorizImov, itcmdPct, horizonte) {
+  var linhas = [];
+  var fin = patFin, imov = patImov;
+  for (var ano = 0; ano <= horizonte; ano++) {
+    if (ano > 0) { fin = fin * (1 + rentFin); imov = imov * (1 + valorizImov); }
+    linhas.push({ ano: ano, fin: fin, imov: imov, total: fin + imov });
+  }
+  var valorObito = linhas[horizonte].total;
+  var custoInventario = valorObito * itcmdPct;
+  return { linhas: linhas, valorObito: valorObito, custoInventario: custoInventario, liquido: valorObito - custoInventario };
+}
+
+function sucCalcularHolding(patImov, manutencaoAnual, rentHolding, itcmdHolding, horizonte) {
+  var linhas = [];
+  var ativos = patImov, total = ativos - manutencaoAnual;
+  linhas.push({ ano: 0, ativos: ativos, manutencao: manutencaoAnual, total: total });
+  for (var ano = 1; ano <= horizonte; ano++) {
+    ativos = total * (1 + rentHolding);
+    total = ativos - manutencaoAnual;
+    linhas.push({ ano: ano, ativos: ativos, manutencao: manutencaoAnual, total: total });
+  }
+  var valorObito = linhas[horizonte].total;
+  var itcmdValor = valorObito * itcmdHolding;
+  return { linhas: linhas, valorObito: valorObito, itcmdValor: itcmdValor, liquido: valorObito - itcmdValor };
+}
+
+function sucCalcularPrevidencia(patFin, patImov, pctAlocado, rentFin, rentPrevBruta, aliquotaIR, horizonte) {
+  var linhas = [];
+  var fora = patFin * (1 - pctAlocado) + patImov;
+  var prev = patFin * pctAlocado;
+  linhas.push({ ano: 0, fora: fora, prev: prev, total: fora + prev });
+  for (var ano = 1; ano <= horizonte; ano++) {
+    fora = fora * (1 + rentFin);
+    prev = prev + prev * rentPrevBruta;
+    linhas.push({ ano: ano, fora: fora, prev: prev, total: fora + prev });
+  }
+  var foraObito = linhas[horizonte].fora;
+  var prevObito = linhas[horizonte].prev;
+  var irValor = prevObito * aliquotaIR;
+  return { linhas: linhas, foraObito: foraObito, prevObito: prevObito, irValor: irValor, liquido: prevObito - irValor };
+}
+
+function sucCalcularSeguro(capital, itcmdPct) {
+  var itcmdValor = capital * itcmdPct;
+  return { capital: capital, itcmdValor: itcmdValor, liquido: capital - itcmdValor };
+}
+
+function sucRenderizarTabelaAnos(containerId, linhas, colunas) {
+  var thead = '<th>Ano</th>' + colunas.map(function (c) { return '<th>' + c.titulo + '</th>'; }).join('');
+  var corpo = linhas.map(function (l) {
+    var tds = colunas.map(function (c) { return '<td>' + sucFBRL(l[c.chave]) + '</td>'; }).join('');
+    return '<tr><td>' + l.ano + '</td>' + tds + '</tr>';
+  }).join('');
+  document.getElementById(containerId).innerHTML = '<table class="calc-tabela"><thead><tr>' + thead + '</tr></thead><tbody>' + corpo + '</tbody></table>';
+}
+
+function sucCalcularTudo() {
+  var patFin = parseFloat(document.getElementById('suc-patrimonio-financeiro').value) || 0;
+  var patImov = parseFloat(document.getElementById('suc-patrimonio-imobilizado').value) || 0;
+  var idade = parseFloat(document.getElementById('suc-idade-atual').value) || 0;
+  var expectativa = parseFloat(document.getElementById('suc-expectativa-vida').value) || 0;
+  var horizonte = Math.max(1, Math.round(expectativa - idade));
+  var rentFin = (parseFloat(document.getElementById('suc-rentabilidade-financeiros').value) || 0) / 100;
+  var valorizImov = (parseFloat(document.getElementById('suc-valorizacao-imoveis').value) || 0) / 100;
+  var itcmdPct = (parseFloat(document.getElementById('suc-itcmd-pct').value) || 0) / 100;
+
+  var holdManutencao = parseFloat(document.getElementById('suc-holding-manutencao').value) || 0;
+  var holdRentabilidade = (parseFloat(document.getElementById('suc-holding-rentabilidade').value) || 0) / 100;
+  var holdItcmd = (parseFloat(document.getElementById('suc-holding-itcmd').value) || 0) / 100;
+
+  var prevPct = (parseFloat(document.getElementById('suc-prev-pct').value) || 0) / 100;
+  var prevRentabilidade = (parseFloat(document.getElementById('suc-prev-rentabilidade').value) || 0) / 100;
+  var prevIR = (parseFloat(document.getElementById('suc-prev-ir').value) || 0) / 100;
+
+  var segCapital = parseFloat(document.getElementById('suc-seguro-capital').value) || 0;
+  var segItcmd = (parseFloat(document.getElementById('suc-seguro-itcmd').value) || 0) / 100;
+
+  var sem = sucCalcularSemPlanejamento(patFin, patImov, rentFin, valorizImov, itcmdPct, horizonte);
+  document.getElementById('suc-sem-total').textContent = sucFBRL(sem.valorObito);
+  document.getElementById('suc-sem-custo').textContent = sucFBRL(sem.custoInventario);
+  document.getElementById('suc-sem-liquido').textContent = sucFBRL(sem.liquido);
+  sucRenderizarTabelaAnos('suc-sem-tabela', sem.linhas, [
+    { titulo: 'Patrimônio financeiro (R$)', chave: 'fin' },
+    { titulo: 'Patrimônio imobilizado (R$)', chave: 'imov' },
+    { titulo: 'Total (R$)', chave: 'total' }
+  ]);
+
+  var hold = sucCalcularHolding(patImov, holdManutencao, holdRentabilidade, holdItcmd, horizonte);
+  document.getElementById('suc-hold-total').textContent = sucFBRL(hold.valorObito);
+  document.getElementById('suc-hold-itcmd').textContent = sucFBRL(hold.itcmdValor);
+  document.getElementById('suc-hold-liquido').textContent = sucFBRL(hold.liquido);
+  sucRenderizarTabelaAnos('suc-hold-tabela', hold.linhas, [
+    { titulo: 'Ativos em holding (R$)', chave: 'ativos' },
+    { titulo: 'Custo manutenção anual (R$)', chave: 'manutencao' },
+    { titulo: 'Total após custos (R$)', chave: 'total' }
+  ]);
+
+  var prev = sucCalcularPrevidencia(patFin, patImov, prevPct, rentFin, prevRentabilidade, prevIR, horizonte);
+  document.getElementById('suc-prev-fora').textContent = sucFBRL(prev.foraObito);
+  document.getElementById('suc-prev-saldo').textContent = sucFBRL(prev.prevObito);
+  document.getElementById('suc-prev-ir-valor').textContent = sucFBRL(prev.irValor);
+  document.getElementById('suc-prev-liquido').textContent = sucFBRL(prev.liquido);
+  sucRenderizarTabelaAnos('suc-prev-tabela', prev.linhas, [
+    { titulo: 'Patrimônio fora da previdência (R$)', chave: 'fora' },
+    { titulo: 'Saldo em previdência (R$)', chave: 'prev' },
+    { titulo: 'Total (R$)', chave: 'total' }
+  ]);
+
+  var seg = sucCalcularSeguro(segCapital, segItcmd);
+  document.getElementById('suc-seg-capital').textContent = sucFBRL(seg.capital);
+  document.getElementById('suc-seg-itcmd-valor').textContent = sucFBRL(seg.itcmdValor);
+  document.getElementById('suc-seg-liquido').textContent = sucFBRL(seg.liquido);
+
+  var opcoes = [
+    { nome: 'Holding Patrimonial', valor: hold.liquido },
+    { nome: 'Previdência Privada', valor: prev.liquido },
+    { nome: 'Seguro Resgatável', valor: seg.liquido }
+  ];
+  var melhor = opcoes.reduce(function (a, b) { return b.valor > a.valor ? b : a; });
+  var linhasResumo = [
+    { nome: 'Sem planejamento (custo do inventário)', valor: sem.custoInventario, ref: true },
+    { nome: 'Sem planejamento (valor líquido recebido)', valor: sem.liquido, ref: true },
+    { nome: 'Holding Patrimonial', valor: hold.liquido, ref: false },
+    { nome: 'Previdência Privada', valor: prev.liquido, ref: false },
+    { nome: 'Seguro Resgatável', valor: seg.liquido, ref: false }
+  ];
+  var corpoResumo = linhasResumo.map(function (l) {
+    var destaque = (!l.ref && l.nome === melhor.nome) ? ' class="calc-melhor"' : '';
+    return '<tr' + destaque + '><td>' + l.nome + '</td><td>' + sucFBRL(l.valor) + '</td></tr>';
+  }).join('');
+  document.getElementById('suc-resumo-tabela').innerHTML = '<table class="calc-tabela"><thead><tr><th>Cenário</th><th>Valor líquido (R$)</th></tr></thead><tbody>' + corpoResumo + '</tbody></table>';
+  document.getElementById('suc-resumo-melhor-nome').textContent = melhor.nome;
+  document.getElementById('suc-resumo-melhor-valor').textContent = sucFBRL(melhor.valor);
+}
+
+document.getElementById('suc-calcular').addEventListener('click', sucCalcularTudo);
+sucCalcularTudo();
+<\/script>
+</body>
+</html>`);
+  }
+
   function abrirCreditoPrivado() {
     var win = window.open('', '_blank');
     if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
@@ -18015,6 +18371,7 @@ document.querySelectorAll('.tab').forEach(function(btn){
   document.getElementById('btn-nav-calculadoras').addEventListener('click', abrirCalculadoras);
   document.getElementById('btn-nav-seguros').addEventListener('click', abrirSegurosPrevidencia);
   document.getElementById('btn-nav-consorcio').addEventListener('click', abrirConsorcio);
+  document.getElementById('btn-nav-sucessorio').addEventListener('click', abrirPlanejamentoSucessorio);
   document.getElementById('btn-nav-cetipados').addEventListener('click', abrirCetipados);
   document.getElementById('btn-nav-pesquisa').addEventListener('click', abrirPesquisaAtivo);
   document.getElementById('btn-nav-carteira-rec').addEventListener('click', abrirCarteiraRecomendada);
