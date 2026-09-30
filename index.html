@@ -28,6 +28,10 @@ body{margin:0;font-family:'Poppins','Segoe UI',Arial,sans-serif;color:var(--ink)
 a{color:inherit;}
 :focus-visible{outline:2px solid var(--orange-dark);outline-offset:3px;border-radius:4px;}
 .container{max-width:1080px;margin:0 auto;padding:0 24px;}
+.alertas-precos-lista{display:flex;flex-direction:column;gap:10px;}
+.alerta-preco-item{background:#fff;border:1px solid var(--line);border-left:4px solid var(--red);border-radius:12px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;box-shadow:var(--shadow-sm);}
+.alerta-preco-texto{font-size:13.5px;color:var(--ink);}
+.alerta-preco-valores{font-size:13px;color:var(--ink-soft);white-space:nowrap;}
 /* Nav */
 .nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.85);backdrop-filter:saturate(180%) blur(14px);border-bottom:1px solid var(--line);box-shadow:0 1px 0 rgba(28,23,18,.02);}
 .nav-inner{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:14px 24px;}
@@ -315,6 +319,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
 
 <main>
 
+  <section id="alertas-precos" class="section" style="display:none;padding-top:24px;padding-bottom:0;">
+    <div class="container">
+      <div class="alertas-precos-lista" id="alertas-precos-lista"></div>
+    </div>
+  </section>
 
   <section id="noticias" class="section">
     <div class="container">
@@ -9414,12 +9423,51 @@ h2{font-size:32px;letter-spacing:-.02em;}
           if (itemGerenciar) itemGerenciar.hidden = !isMasterAtual;
         });
       }
+      verificarPrecosAlvoAtingidos();
     } else {
       mostrarId('auth-deslogado');
       esconderId('auth-logado');
       esconderId('user-dropdown');
       isMasterAtual = false;
+      esconderId('alertas-precos');
     }
+  }
+
+  // Alerta na tela inicial: compara o preço atual de cada ticker com
+  // "preços-alvo de venda" cadastrados por cliente (ver "Preços-alvo de
+  // venda" na página de Diversificação do cliente) e mostra um aviso para
+  // cada ativo cujo preço de mercado já alcançou o alvo.
+  function verificarPrecosAlvoAtingidos() {
+    if (!supabaseClient || !sessaoAtual) return;
+    supabaseClient.from('precos_alvo').select('id,ticker,preco_alvo,clientes(nome)').then(function(r) {
+      if (r.error || !r.data || !r.data.length) { esconderId('alertas-precos'); return; }
+      var alvos = r.data;
+      var tickersUnicos = alvos.map(function(a) { return a.ticker; }).filter(function(t, i, arr) { return arr.indexOf(t) === i; });
+      Promise.all(tickersUnicos.map(function(ticker) {
+        return buscarCotacaoMercado(ticker)
+          .then(function(d) { return { ticker: ticker, preco: d.regularMarketPrice }; })
+          .catch(function() { return { ticker: ticker, preco: null }; });
+      })).then(function(precos) {
+        var mapaPrecos = {};
+        precos.forEach(function(p) { mapaPrecos[p.ticker] = p.preco; });
+        var atingidos = alvos.filter(function(a) {
+          var atual = mapaPrecos[a.ticker];
+          return typeof atual === 'number' && atual >= Number(a.preco_alvo);
+        });
+        renderizarAlertasPrecos(atingidos, mapaPrecos);
+      });
+    });
+  }
+  function renderizarAlertasPrecos(atingidos, mapaPrecos) {
+    var lista = document.getElementById('alertas-precos-lista');
+    if (!lista) return;
+    if (!atingidos.length) { esconderId('alertas-precos'); return; }
+    lista.innerHTML = atingidos.map(function(a) {
+      var nomeCliente = (a.clientes && a.clientes.nome) || 'cliente';
+      var atual = mapaPrecos[a.ticker];
+      return '<div class="alerta-preco-item"><div class="alerta-preco-texto">🔔 <strong>' + a.ticker + '</strong> atingiu o preço-alvo de venda cadastrado para <strong>' + nomeCliente + '</strong></div><div class="alerta-preco-valores">Alvo: R$ ' + Number(a.preco_alvo).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' · Atual: R$ ' + atual.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</div></div>';
+    }).join('');
+    mostrarId('alertas-precos');
   }
 
   function abrirPainelConta() {
@@ -9917,6 +9965,18 @@ h1{font-size:24px;font-weight:700;margin-bottom:6px;}
   </div>
 
   <div class="card">
+    <h2>Preços-alvo de venda</h2>
+    <p class="card-nota">Cadastre o preço-alvo de venda de cada ativo deste cliente — você será avisado na tela inicial quando o preço atual atingir o valor informado.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+      <div class="campo" style="flex:1;min-width:140px;"><label>Ticker</label><input type="text" id="pa-ticker" placeholder="Ex.: PETR4" style="text-transform:uppercase;" autocomplete="off"></div>
+      <div class="campo" style="flex:1;min-width:140px;"><label>Preço-alvo (R$)</label><input type="number" id="pa-preco" step="0.01" min="0" placeholder="0,00"></div>
+      <button type="button" class="btn" id="btn-adicionar-preco-alvo" style="height:38px;">Adicionar</button>
+    </div>
+    <p class="msg msg-erro" id="pa-erro" hidden></p>
+    <div id="pa-lista-wrap" style="margin-top:16px;"></div>
+  </div>
+
+  <div class="card">
     <h2>Carteira atual</h2>
     <p class="card-nota">Envie a planilha "Posição Consolidada" exportada da corretora (mesmo arquivo aceito na Análise de Carteira) para comparar com a diversificação ideal acima.</p>
     <div class="upload-box">
@@ -10133,6 +10193,46 @@ document.getElementById('upload-posicao').addEventListener('change', function(ev
 });
 
 sincronizarSessaoDoOpener().then(function() { carregarCliente(); });
+
+function renderizarPrecosAlvo(lista) {
+  var wrap = document.getElementById('pa-lista-wrap');
+  if (!lista.length) { wrap.innerHTML = '<p class="vazio-comp">Nenhum preço-alvo cadastrado para este cliente.</p>'; return; }
+  var linhas = lista.map(function(p) {
+    return '<tr><td>' + p.ticker + '</td><td>R$ ' + formatarNumero(Number(p.preco_alvo), 2) + '</td><td>' + new Date(p.criado_em).toLocaleDateString('pt-BR') + '</td>' +
+      '<td><button type="button" data-id="' + p.id + '" style="background:none;border:1px solid #e0b0a8;color:var(--red);border-radius:6px;padding:4px 10px;font-size:12px;font-family:inherit;cursor:pointer;">Excluir</button></td></tr>';
+  }).join('');
+  wrap.innerHTML = '<table class="comp-table"><thead><tr><th>Ticker</th><th>Preço-alvo</th><th>Cadastrado em</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table>';
+  Array.prototype.forEach.call(wrap.querySelectorAll('button[data-id]'), function(btn) {
+    btn.addEventListener('click', function() {
+      if (!confirm('Remover este preço-alvo?')) return;
+      sb.from('precos_alvo').delete().eq('id', btn.getAttribute('data-id')).then(function(r) {
+        if (r.error) { alert('Erro: ' + r.error.message); return; }
+        carregarPrecosAlvo();
+      });
+    });
+  });
+}
+function carregarPrecosAlvo() {
+  sb.from('precos_alvo').select('id,ticker,preco_alvo,criado_em').eq('cliente_id', CLIENTE_ID).order('criado_em', { ascending: false }).then(function(r) {
+    if (r.error) { document.getElementById('pa-lista-wrap').innerHTML = '<p class="vazio-comp">Erro ao carregar preços-alvo.</p>'; return; }
+    renderizarPrecosAlvo(r.data || []);
+  });
+}
+document.getElementById('btn-adicionar-preco-alvo').addEventListener('click', function() {
+  var erroEl = document.getElementById('pa-erro');
+  erroEl.hidden = true;
+  var ticker = (document.getElementById('pa-ticker').value || '').trim().toUpperCase();
+  var preco = parseFloat(document.getElementById('pa-preco').value);
+  if (!ticker) { erroEl.textContent = 'Informe o ticker.'; erroEl.hidden = false; return; }
+  if (!preco || preco <= 0) { erroEl.textContent = 'Informe um preço-alvo válido.'; erroEl.hidden = false; return; }
+  sb.from('precos_alvo').insert({ cliente_id: CLIENTE_ID, ticker: ticker, preco_alvo: preco }).then(function(r) {
+    if (r.error) { erroEl.textContent = 'Erro: ' + r.error.message; erroEl.hidden = false; return; }
+    document.getElementById('pa-ticker').value = '';
+    document.getElementById('pa-preco').value = '';
+    carregarPrecosAlvo();
+  });
+});
+sincronizarSessaoDoOpener().then(function() { carregarPrecosAlvo(); });
 <\/script>
 </body>
 </html>`);
