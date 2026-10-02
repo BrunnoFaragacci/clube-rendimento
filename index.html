@@ -14461,6 +14461,19 @@ tbody tr:last-child td{border-bottom:none;}
 .sem-cobertura{color:var(--ink-soft);}
 .nota{margin-top:14px;font-size:12px;color:var(--ink-soft);line-height:1.5;}
 .vazio{padding:28px;text-align:center;color:var(--ink-soft);font-size:13px;}
+.resultado-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px;}
+.stat{background:var(--bg-soft);border-radius:var(--radius);padding:14px 16px;}
+.stat-label{font-size:11px;color:var(--ink-soft);font-weight:600;text-transform:uppercase;letter-spacing:.02em;}
+.stat-valor{font-size:18px;font-weight:700;margin-top:4px;color:var(--ink);}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:6px;}
+.print-area{display:flex;align-items:center;gap:10px;}
+.print-status{font-size:12.5px;color:var(--ink-soft);}
+#btn-print-nota{display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--orange);color:var(--ink);font-family:inherit;font-weight:600;font-size:13px;padding:8px 14px;border-radius:8px;cursor:pointer;}
+#btn-print-nota:disabled{opacity:.5;cursor:not-allowed;}
+.input-pm{width:110px;padding:6px 8px;border:1.5px solid var(--line);border-radius:6px;font-family:inherit;font-size:13px;text-align:right;color:var(--ink);}
+.input-pm:focus{outline:none;border-color:var(--orange);}
+.situacao-isento{color:var(--ink-soft);}
+.situacao-prejuizo{color:var(--ink-soft);}
 </style>
 </head>
 <body>
@@ -14472,7 +14485,6 @@ tbody tr:last-child td{border-bottom:none;}
 <div class="container">
   <span class="eyebrow">Renda Variável</span>
   <h1>Nota de Corretagem</h1>
-  <p class="sub">Envie a nota de negociação (PDF) emitida pela corretora para ver, em uma tabela, os ativos negociados e o preço-alvo da XP para cada um — útil para checar rapidamente se a operação foi feita acima ou abaixo do potencial estimado pela equipe de research.</p>
 
   <div class="card">
     <div class="upload-box">
@@ -14484,18 +14496,42 @@ tbody tr:last-child td{border-bottom:none;}
   </div>
 
   <div class="card" id="nota-resultado-wrap" hidden>
-    <div class="resultado-titulo">Ativos negociados</div>
+    <div class="resultado-grid" id="nota-totais-grid"></div>
+
+    <div class="toolbar">
+      <div class="resultado-titulo" style="margin-bottom:0;">Ativos negociados</div>
+      <div class="print-area">
+        <span class="print-status" id="nota-print-status">0 selecionados</span>
+        <button type="button" id="btn-print-nota">📷 Tirar print</button>
+      </div>
+    </div>
     <p class="resultado-sub" id="nota-resultado-resumo"></p>
     <div class="tabela-wrap">
-      <table>
+      <table id="nota-tabela">
         <thead><tr>
+          <th style="text-align:center;"><input type="checkbox" id="nota-check-todas" title="Selecionar/desmarcar todas"></th>
           <th>Ativo (nota)</th><th>Ticker</th><th>C/V</th><th>Quantidade</th><th>Preço (nota)</th><th>Valor (nota)</th>
           <th>Preço-alvo (XP)</th><th>Recomendação (XP)</th><th>Potencial vs. preço da nota</th>
         </tr></thead>
         <tbody id="nota-tabela-corpo"></tbody>
       </table>
     </div>
-    <p class="nota">Identificação do ativo feita pelo nome impresso na nota (não pelo código de negociação), por aproximação de texto — confira o ticker identificado antes de usar os dados. Preço-alvo e recomendação vêm do relatório de múltiplos da XP, atualizados periodicamente; ativos sem cobertura da XP (muitos FIIs, small caps e renda fixa) aparecem como "sem cobertura". Calibrado para o layout padrão da nota de negociação B3 (Rico/XP/Clear/BTG etc.); notas com layout não padronizado podem não ser reconhecidas corretamente.</p>
+  </div>
+
+  <div class="card" id="nota-darf-wrap" hidden>
+    <div class="resultado-titulo">Cálculo de DARF</div>
+    <p class="resultado-sub">Informe o preço médio de compra de cada ativo vendido nesta nota para estimar o resultado e o DARF. Cálculo considera apenas as vendas desta nota (não soma com outras vendas do mês nem compensa prejuízo de meses anteriores) — para a apuração mensal completa, use a calculadora de Venda de Ativos e DARF dentro da Análise de Carteira.</p>
+    <div class="tabela-wrap">
+      <table>
+        <thead><tr>
+          <th>Ticker</th><th>Qtd. vendida</th><th>Valor vendido</th><th>Preço médio de venda</th><th>Preço médio de compra (R$)</th><th>Resultado</th><th>Situação</th><th>DARF estimado</th>
+        </tr></thead>
+        <tbody id="nota-darf-corpo"></tbody>
+      </table>
+    </div>
+    <div class="resultado-grid" style="margin-top:16px;">
+      <div class="stat"><div class="stat-label">DARF total a pagar</div><div class="stat-valor" id="nota-darf-total">—</div></div>
+    </div>
   </div>
 </div>
 
@@ -14573,6 +14609,8 @@ function parseLinhasNegocio(linhas) {
   return negocios;
 }
 
+var precosMedios = {}; // ticker -> preço médio de compra informado pelo assessor (para o DARF)
+
 function renderizarResultado(negocios, mapaXP) {
   var corpo = document.getElementById('nota-tabela-corpo');
   corpo.innerHTML = negocios.map(function (n) {
@@ -14580,6 +14618,7 @@ function renderizarResultado(negocios, mapaXP) {
     var xp = ticker ? mapaXP[ticker] : null;
     var potencial = (xp && xp.preco_alvo != null && n.preco) ? ((xp.preco_alvo / n.preco) - 1) * 100 : null;
     return '<tr>' +
+      '<td style="text-align:center;"><input type="checkbox" class="nota-check-linha" checked></td>' +
       '<td>' + n.ativo + '</td>' +
       '<td>' + (ticker || '<span class="sem-cobertura">não identificado</span>') + '</td>' +
       '<td class="' + (n.cv === 'C' ? 'cv-c' : 'cv-v') + '">' + (n.cv === 'C' ? 'Compra' : 'Venda') + '</td>' +
@@ -14593,6 +14632,196 @@ function renderizarResultado(negocios, mapaXP) {
   }).join('');
   document.getElementById('nota-resultado-resumo').textContent = negocios.length + (negocios.length === 1 ? ' negócio identificado nesta nota.' : ' negócios identificados nesta nota.');
   document.getElementById('nota-resultado-wrap').hidden = false;
+
+  renderizarTotais(negocios);
+  configurarSelecaoPrint();
+  renderizarDarf(negocios);
+}
+
+function renderizarTotais(negocios) {
+  var totalVendido = 0, totalComprado = 0;
+  negocios.forEach(function (n) {
+    if (n.cv === 'V') totalVendido += n.valor; else totalComprado += n.valor;
+  });
+  var grid = document.getElementById('nota-totais-grid');
+  var cartoes = [
+    { label: 'Total vendido', valor: totalVendido },
+    { label: 'Total comprado', valor: totalComprado }
+  ];
+  grid.innerHTML = cartoes.map(function (c) {
+    return '<div class="stat"><div class="stat-label">' + c.label + '</div><div class="stat-valor">' + fBRL(c.valor) + '</div></div>';
+  }).join('');
+}
+
+// Agrupa as vendas desta nota por ticker identificado, para o cálculo
+// (isolado, por nota) de resultado e DARF — mesma regra usada na calculadora
+// de Venda de Ativos e DARF (alíquota 15% sobre ações, isenção quando o total
+// vendido do grupo é até R$20.000), mas sem somar outras vendas do mês nem
+// compensar prejuízo de meses anteriores, que a nota sozinha não tem como ver.
+function agruparVendasPorTicker(negocios) {
+  var grupos = {};
+  negocios.forEach(function (n) {
+    if (n.cv !== 'V') return;
+    var ticker = tickerB3(n.ativo);
+    if (!ticker) return;
+    if (!grupos[ticker]) grupos[ticker] = { ticker: ticker, quantidade: 0, valorVendido: 0 };
+    grupos[ticker].quantidade += n.quantidade;
+    grupos[ticker].valorVendido += n.valor;
+  });
+  return Object.keys(grupos).map(function (k) { return grupos[k]; });
+}
+
+function renderizarDarf(negocios) {
+  var grupos = agruparVendasPorTicker(negocios);
+  var wrap = document.getElementById('nota-darf-wrap');
+  if (!grupos.length) { wrap.hidden = true; return; }
+  wrap.hidden = false;
+
+  var corpo = document.getElementById('nota-darf-corpo');
+  corpo.innerHTML = grupos.map(function (g) {
+    var precoVendaMedio = g.valorVendido / g.quantidade;
+    return '<tr data-ticker="' + g.ticker + '">' +
+      '<td>' + g.ticker + '</td>' +
+      '<td>' + g.quantidade.toLocaleString('pt-BR') + '</td>' +
+      '<td>' + fBRL(g.valorVendido) + '</td>' +
+      '<td>' + fBRL(precoVendaMedio) + '</td>' +
+      '<td><input type="number" class="input-pm" min="0" step="0.01" placeholder="0,00" data-ticker="' + g.ticker + '" value="' + (precosMedios[g.ticker] != null ? precosMedios[g.ticker] : '') + '"></td>' +
+      '<td data-campo="resultado">—</td>' +
+      '<td data-campo="situacao">—</td>' +
+      '<td data-campo="darf">—</td>' +
+      '</tr>';
+  }).join('');
+
+  Array.prototype.forEach.call(corpo.querySelectorAll('.input-pm'), function (inp) {
+    inp.addEventListener('input', function () {
+      var ticker = inp.getAttribute('data-ticker');
+      var v = parseFloat(inp.value);
+      if (isNaN(v)) delete precosMedios[ticker]; else precosMedios[ticker] = v;
+      atualizarCalculoDarf(grupos);
+    });
+  });
+
+  atualizarCalculoDarf(grupos);
+}
+
+function atualizarCalculoDarf(grupos) {
+  var corpo = document.getElementById('nota-darf-corpo');
+  var darfTotal = 0, algumCalculado = false;
+  grupos.forEach(function (g) {
+    var tr = corpo.querySelector('tr[data-ticker="' + g.ticker + '"]');
+    if (!tr) return;
+    var precoMedioCompra = precosMedios[g.ticker];
+    var celResultado = tr.querySelector('[data-campo="resultado"]');
+    var celSituacao = tr.querySelector('[data-campo="situacao"]');
+    var celDarf = tr.querySelector('[data-campo="darf"]');
+    if (typeof precoMedioCompra !== 'number' || isNaN(precoMedioCompra)) {
+      celResultado.textContent = '—';
+      celSituacao.textContent = 'informe o preço médio';
+      celSituacao.className = '';
+      celDarf.textContent = '—';
+      return;
+    }
+    var precoVendaMedio = g.valorVendido / g.quantidade;
+    var resultado = (precoVendaMedio - precoMedioCompra) * g.quantidade;
+    celResultado.textContent = fBRL(resultado);
+    celResultado.className = resultado >= 0 ? 'pos' : 'neg';
+    algumCalculado = true;
+    if (resultado <= 0) {
+      celSituacao.textContent = 'Prejuízo';
+      celSituacao.className = 'situacao-prejuizo';
+      celDarf.textContent = fBRL(0);
+    } else if (g.valorVendido <= 20000) {
+      celSituacao.textContent = 'Isento (venda ≤ R$20.000)';
+      celSituacao.className = 'situacao-isento';
+      celDarf.textContent = fBRL(0);
+    } else {
+      var darf = resultado * 0.15;
+      celSituacao.textContent = 'Tributável (15%)';
+      celSituacao.className = '';
+      celDarf.textContent = fBRL(darf);
+      darfTotal += darf;
+    }
+  });
+  document.getElementById('nota-darf-total').textContent = algumCalculado ? fBRL(darfTotal) : '—';
+}
+
+function configurarSelecaoPrint() {
+  var statusPrint = document.getElementById('nota-print-status');
+  var btnPrint = document.getElementById('btn-print-nota');
+  var checkTodas = document.getElementById('nota-check-todas');
+  var tabela = document.getElementById('nota-tabela');
+
+  function atualizarStatusPrint() {
+    var marcados = tabela.querySelectorAll('.nota-check-linha:checked').length;
+    statusPrint.textContent = marcados + (marcados === 1 ? ' selecionado' : ' selecionados');
+    btnPrint.disabled = marcados === 0;
+  }
+  checkTodas.checked = true;
+  checkTodas.onchange = function () {
+    Array.prototype.forEach.call(tabela.querySelectorAll('.nota-check-linha'), function (c) { c.checked = checkTodas.checked; });
+    atualizarStatusPrint();
+  };
+  tabela.addEventListener('change', function (ev) {
+    if (ev.target.classList.contains('nota-check-linha')) atualizarStatusPrint();
+  });
+  atualizarStatusPrint();
+
+  btnPrint.onclick = function () {
+    var H2C = window.html2canvas;
+    if (!H2C) { alert('Não foi possível gerar a imagem agora. Tente novamente em instantes.'); return; }
+
+    var linhasOriginais = Array.prototype.slice.call(document.getElementById('nota-tabela-corpo').children);
+    var textoOriginal = btnPrint.textContent;
+    btnPrint.disabled = true;
+    btnPrint.textContent = 'Copiando…';
+
+    var wrapOriginal = document.querySelector('.tabela-wrap');
+    var captura = document.createElement('div');
+    captura.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:24px;width:max-content;font-family:' + getComputedStyle(document.body).fontFamily + ';';
+
+    var wrapClone = wrapOriginal.cloneNode(true);
+    var tabelaClone = wrapClone.querySelector('table');
+    var linhasClone = Array.prototype.slice.call(tabelaClone.querySelectorAll('tbody tr'));
+    linhasClone.forEach(function (trClone, i) {
+      var chk = linhasOriginais[i] ? linhasOriginais[i].querySelector('.nota-check-linha') : null;
+      if (!chk || !chk.checked) trClone.remove();
+    });
+    Array.prototype.forEach.call(tabelaClone.querySelectorAll('thead th:first-child, tbody td:first-child'), function (el) { el.remove(); });
+
+    captura.appendChild(wrapClone);
+    document.body.appendChild(captura);
+
+    var largura = captura.scrollWidth, altura = captura.scrollHeight;
+
+    function encerrar(msgFinal, restaurarApos) {
+      btnPrint.disabled = false;
+      btnPrint.textContent = msgFinal || textoOriginal;
+      if (restaurarApos) setTimeout(function () { btnPrint.textContent = textoOriginal; }, 2000);
+    }
+
+    H2C(captura, { backgroundColor: '#ffffff', scale: 2, width: largura, height: altura, windowWidth: largura, windowHeight: altura }).then(function (canvas) {
+      document.body.removeChild(captura);
+      canvas.toBlob(function (blob) {
+        if (!blob) { encerrar(); alert('Não foi possível gerar a imagem.'); return; }
+        var clipboard = navigator.clipboard;
+        if (clipboard && clipboard.write && window.ClipboardItem) {
+          clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(function () {
+            encerrar('✅ Copiado!', true);
+          }).catch(function () {
+            encerrar();
+            alert('Este navegador não permite copiar imagens diretamente para a área de transferência.');
+          });
+        } else {
+          encerrar();
+          alert('Este navegador não permite copiar imagens diretamente para a área de transferência.');
+        }
+      }, 'image/png');
+    }).catch(function (e) {
+      if (document.body.contains(captura)) document.body.removeChild(captura);
+      encerrar();
+      alert('Não foi possível gerar a imagem: ' + e.message);
+    });
+  };
 }
 
 function processarPDF(arquivo) {
@@ -14641,6 +14870,7 @@ document.getElementById('nota-arquivo').addEventListener('change', function (ev)
   processarPDF(arquivo);
 });
 <\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
 </body>
 </html>`);
   }
