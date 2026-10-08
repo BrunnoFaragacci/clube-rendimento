@@ -3177,11 +3177,14 @@ h2{font-size:32px;letter-spacing:-.02em;}
             '<div class="darf-field darf-field-btn"><button type="button" id="darf-add" style="display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:13px;padding:9px 18px;border-radius:8px;cursor:pointer;">+ Adicionar venda</button></div>' +
           '</div>' +
           '<p class="darf-erro" id="darf-erro" style="display:none;"></p>' +
+          '<div id="darf-info" style="display:none;background:var(--bg-soft);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:12.5px;color:var(--ink);margin:0 0 12px;line-height:1.5;"></div>' +
           '<div class="darf-tabela-wrap" id="darf-lancamentos-wrap" style="display:none;">' +
             '<table class="darf-tabela"><thead><tr><th>Ativo</th><th>Classe</th><th>Data</th><th>Qtd.</th><th>Preço médio</th><th>Preço venda</th><th>Resultado</th><th></th></tr></thead>' +
             '<tbody id="darf-lancamentos-corpo"></tbody></table>' +
           '</div>' +
           '<div class="darf-actions" id="darf-actions" style="display:none;gap:10px;">' +
+            '<button type="button" id="darf-equilibrar" title="Reduz a quantidade vendida dos ativos com lucro, em cada mês e classe, até que o lucro seja integralmente compensado pelo prejuízo dos ativos vendidos com perda — imposto estimado igual a zero." style="display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;">⚖ Equilibrar vendas</button>' +
+            '<button type="button" id="darf-restaurar" style="display:none;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--line);color:var(--ink-soft);font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;">↺ Restaurar quantidades</button>' +
             '<button type="button" id="darf-calcular" style="display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;">Calcular DARF</button>' +
             '<button type="button" id="darf-enviar-ordem" style="display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--orange);color:var(--orange-dark);font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;cursor:pointer;">✉ Enviar ordem por e-mail</button>' +
           '</div>' +
@@ -3684,6 +3687,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
     }
 
     var lancamentos = [];
+    var tickersDescartadosDarf = {};
     var linhasResultado = []; // preenchido por "Calcular DARF"; "Prejuízo compensado" fica editável (ver recalcularLinhaResultado)
 
     function fmtBRLDarf(v) { return 'R$ ' + formatarNumero(v, 2); }
@@ -3708,7 +3712,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           + '<td>' + l.dataBR + '</td>'
           + '<td class="darf-editavel" data-idx="' + idx + '" data-campo="quantidade" style="cursor:text;" title="Clique para editar">' + formatarNumero(l.quantidade, 0) + '</td>'
           + '<td class="darf-editavel" data-idx="' + idx + '" data-campo="precoMedio" style="cursor:text;" title="Clique para informar o preço médio">' + (temPM ? fmtBRLDarf(l.precoMedio) : '— (clique p/ informar)') + '</td>'
-          + '<td>' + fmtBRLDarf(l.precoVenda) + '</td>'
+          + '<td class="darf-editavel" data-idx="' + idx + '" data-campo="precoVenda" style="cursor:text;" title="Clique para editar o preço de venda">' + fmtBRLDarf(l.precoVenda) + '</td>'
           + '<td class="' + (resultado === null ? '' : (resultado >= 0 ? 'pos' : 'neg')) + '">' + (resultado === null ? '—' : (resultado >= 0 ? '' : '-') + fmtBRLDarf(Math.abs(resultado))) + '</td>'
           + '<td><button type="button" class="darf-remover" data-idx="' + idx + '" title="Remover">×</button></td>'
           + '</tr>';
@@ -3764,6 +3768,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       // conferir aqui de novo se o ativo passou no filtro de categoria
       // (ativosComPM), e não só na primeira passada síncrona logo abaixo.
       if (ativosComPM.indexOf(ativo) === -1) return;
+      if (tickersDescartadosDarf[ativo.ticker]) return;
       if (typeof ativo.cotacaoAtual !== 'number' || ativo.cotacaoAtual <= 0) return;
       if (typeof ativo.quantidade !== 'number' || ativo.quantidade <= 0) return;
       if (lancamentos.some(function(l) { return l.ticker === ativo.ticker && l._automatico; })) return;
@@ -3879,6 +3884,95 @@ h2{font-size:32px;letter-spacing:-.02em;}
             return false;
           });
         });
+      });
+    }
+
+    // "Equilibrar vendas": em cada grupo mês + classe (ações e FIIs não se
+    // compensam entre si), mantém a quantidade dos ativos vendidos com
+    // prejuízo e reduz a dos vendidos com lucro até que o lucro total caiba
+    // inteiro no prejuízo — resultado líquido do grupo ≤ 0, ou seja, DARF
+    // estimado igual a zero. Primeiro aplica um fator proporcional (piso
+    // inteiro, o que nunca ultrapassa o prejuízo) e depois devolve unidades
+    // inteiras enquanto couberem na folga restante. Itens sem preço médio
+    // ficam de fora (não há como apurar ganho/perda). Não considera a
+    // isenção de R$ 20 mil/mês em vendas de ações nem prejuízos de meses
+    // anteriores — é uma compensação dentro do próprio lançamento.
+    var elInfo = D.getElementById('darf-info');
+    var btnEquilibrar = D.getElementById('darf-equilibrar');
+    var btnRestaurar = D.getElementById('darf-restaurar');
+    var snapshotAntesEquilibrio = null;
+    function resultadoLancamento(l) { return (l.precoVenda - l.precoMedio) * l.quantidade - l.custos; }
+    function equilibrarVendas() {
+      elErro.style.display = 'none';
+      var grupos = {};
+      lancamentos.forEach(function(l) {
+        if (typeof l.precoMedio !== 'number' || isNaN(l.precoMedio)) return;
+        var chave = l.ano + '-' + l.mes + '-' + l.classe;
+        if (!grupos[chave]) grupos[chave] = { ano: l.ano, mes: l.mes, classe: l.classe, itens: [] };
+        grupos[chave].itens.push(l);
+      });
+      var snapshot = lancamentos.map(function(l) { return Object.assign({}, l); });
+      var mensagens = [];
+      var alterou = false;
+      Object.keys(grupos).forEach(function(k) {
+        var g = grupos[k];
+        var rotulo = (g.classe === 'fiis' ? 'FIIs' : 'Ações') + ' (' + String(g.mes).padStart(2, '0') + '/' + g.ano + ')';
+        var ganhos = g.itens.filter(function(l) { return resultadoLancamento(l) > 0; });
+        var perdas = g.itens.filter(function(l) { return resultadoLancamento(l) < 0; });
+        if (!ganhos.length) return;
+        var totalGanhos = ganhos.reduce(function(a, l) { return a + resultadoLancamento(l); }, 0);
+        var totalPerdas = perdas.reduce(function(a, l) { return a - resultadoLancamento(l); }, 0);
+        if (!perdas.length) { mensagens.push(rotulo + ': não há ativos vendidos com prejuízo para compensar o lucro.'); return; }
+        if (totalGanhos <= totalPerdas) { mensagens.push(rotulo + ': o lucro já está integralmente compensado pelo prejuízo — nenhuma alteração.'); return; }
+
+        var fator = totalPerdas / totalGanhos;
+        var originais = ganhos.map(function(l) { return l.quantidade; });
+        ganhos.forEach(function(l) { l.quantidade = Math.floor(l.quantidade * fator); });
+        // Folga restante (≥ 0): devolve unidades inteiras, começando pelo
+        // ativo de menor lucro unitário, enquanto o resultado do grupo
+        // permanecer ≤ 0.
+        var liquido = g.itens.reduce(function(a, l) { return a + resultadoLancamento(l); }, 0);
+        var folga = -liquido;
+        var ordem = ganhos.map(function(l, i) { return i; }).sort(function(a, b) {
+          return (ganhos[a].precoVenda - ganhos[a].precoMedio) - (ganhos[b].precoVenda - ganhos[b].precoMedio);
+        });
+        ordem.forEach(function(i) {
+          var l = ganhos[i];
+          var unitario = l.precoVenda - l.precoMedio;
+          if (unitario <= 0 || folga <= 0) return;
+          var extra = Math.min(originais[i] - l.quantidade, Math.floor(folga / unitario));
+          if (extra > 0) { l.quantidade += extra; folga -= extra * unitario; }
+        });
+        var liquidoFinal = g.itens.reduce(function(a, l) { return a + resultadoLancamento(l); }, 0);
+        mensagens.push(rotulo + ': quantidades dos ativos com lucro reduzidas (lucro de ' + fmtBRLDarf(totalGanhos) + ' ajustado para caber no prejuízo de ' + fmtBRLDarf(totalPerdas) + '); resultado líquido do mês: ' + (liquidoFinal < 0 ? '-' : '') + fmtBRLDarf(Math.abs(liquidoFinal)) + ' — DARF estimado de R$ 0,00.');
+        alterou = true;
+      });
+      if (alterou) {
+        if (!snapshotAntesEquilibrio) snapshotAntesEquilibrio = snapshot;
+        // Itens que ficaram sem quantidade saem da tabela (e não voltam
+        // quando uma cotação atrasada chegar — ver tickersDescartadosDarf).
+        lancamentos = lancamentos.filter(function(l) {
+          if (l.quantidade >= 1) return true;
+          tickersDescartadosDarf[l.ticker] = true;
+          return false;
+        });
+        renderizarLancamentos();
+        if (btnRestaurar) btnRestaurar.style.display = 'flex';
+      }
+      if (!mensagens.length) mensagens.push('Não há lançamentos com lucro e prejuízo para equilibrar.');
+      elInfo.innerHTML = mensagens.map(function(m) { return '<div>' + m + '</div>'; }).join('');
+      elInfo.style.display = 'block';
+    }
+    if (btnEquilibrar) btnEquilibrar.addEventListener('click', equilibrarVendas);
+    if (btnRestaurar) {
+      btnRestaurar.addEventListener('click', function() {
+        if (!snapshotAntesEquilibrio) return;
+        lancamentos = snapshotAntesEquilibrio.map(function(l) { return Object.assign({}, l); });
+        snapshotAntesEquilibrio = null;
+        tickersDescartadosDarf = {};
+        elInfo.style.display = 'none';
+        btnRestaurar.style.display = 'none';
+        renderizarLancamentos();
       });
     }
 
