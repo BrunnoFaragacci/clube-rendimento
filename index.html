@@ -3094,8 +3094,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
     var sHistDiv = (opcoes.rv && opcoes.acoes)
       ? '<div id="pdf-secao-hist-div" class="pdf-secao" style="display:none;">' +
         '<h2 class="quadro-titulo">Histórico anual de dividendos da carteira</h2>' +
-        '<p style="font-size:12px;color:var(--ink-soft);margin:0 0 10px;">Proventos brutos por ação pagos em cada ano (dividendos e JCP), multiplicados pela quantidade atual de cada ativo. A posição histórica do cliente não é considerada. O ano corrente refere-se apenas aos pagamentos já realizados.</p>' +
+        '<p style="font-size:12px;color:var(--ink-soft);margin:0 0 10px;">Proventos brutos por ação pagos em cada ano ou mês (dividendos e JCP), multiplicados pela quantidade atual de cada ativo. A posição histórica do cliente não é considerada. O período corrente refere-se apenas aos pagamentos já realizados.</p>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px;">' +
+          '<select id="sel-hist-div-modo" class="btn-add-manual"><option value="anual">Visão anual</option><option value="mensal">Visão mensal</option></select>' +
+          '<select id="sel-hist-div-ano" class="btn-add-manual" style="display:none;"></select>' +
           '<button type="button" id="btn-print-hist-div" class="btn-add-manual">📷 Tirar print</button>' +
           '<button type="button" id="btn-excel-hist-div" class="btn-add-manual">⬇ Excel</button>' +
         '</div>' +
@@ -4838,8 +4840,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
     // proventos com data futura. Como a posição histórica do cliente é
     // desconhecida, o cálculo assume a quantidade atual em todos os anos.
     var histDivPorTicker = {};
+    var histDivModo = 'anual';       // 'anual' | 'mensal'
+    var histDivAnoMensal = null;     // ano exibido na visão mensal
+    var NOMES_MESES_HIST = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     function registrarHistDiv(ticker, quantidade, listaProventos) {
       var porAno = {};
+      var porMes = {};
       var h = new Date();
       var hojeIso = h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
       (listaProventos || []).forEach(function(p) {
@@ -4849,8 +4855,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
         if (!taxa || isNaN(taxa)) return;
         var ano = parseInt(ref.slice(0, 4), 10);
         porAno[ano] = (porAno[ano] || 0) + taxa * quantidade;
+        var chaveMes = ref.slice(0, 7);
+        porMes[chaveMes] = (porMes[chaveMes] || 0) + taxa * quantidade;
       });
-      histDivPorTicker[ticker] = porAno;
+      histDivPorTicker[ticker] = { anos: porAno, meses: porMes };
       renderizarHistDiv();
     }
     function removerHistDiv(ticker) {
@@ -4864,15 +4872,51 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var tabela = D.getElementById('tabela-hist-div');
       if (!secao || !tabela) return;
       var tickers = Object.keys(histDivPorTicker).filter(function(t) {
-        var anosT = histDivPorTicker[t];
-        return Object.keys(anosT).length > 0;
+        return Object.keys(histDivPorTicker[t].anos).length > 0;
       }).sort();
       if (!tickers.length) { secao.style.display = 'none'; return; }
       var anoAtual = new Date().getFullYear();
-      var anos = [];
-      for (var a = anoAtual - 5; a <= anoAtual; a++) anos.push(a);
-      var totaisAno = {};
-      anos.forEach(function(a2) { totaisAno[a2] = 0; });
+
+      // Seletores de visão e de ano (visão mensal): anos com algum provento
+      // mais o ano corrente
+      var selAno = D.getElementById('sel-hist-div-ano');
+      var selModo = D.getElementById('sel-hist-div-modo');
+      var anosDisponiveis = {};
+      anosDisponiveis[anoAtual] = true;
+      tickers.forEach(function(t) {
+        Object.keys(histDivPorTicker[t].anos).forEach(function(a) { anosDisponiveis[a] = true; });
+      });
+      var listaAnos = Object.keys(anosDisponiveis).map(Number).filter(function(x) { return x >= anoAtual - 10; }).sort(function(x, y) { return y - x; });
+      if (histDivAnoMensal === null || listaAnos.indexOf(histDivAnoMensal) === -1) histDivAnoMensal = anoAtual;
+      if (selAno) {
+        selAno.innerHTML = '';
+        listaAnos.forEach(function(a) {
+          var op = D.createElement('option');
+          op.value = String(a);
+          op.textContent = String(a);
+          selAno.appendChild(op);
+        });
+        selAno.value = String(histDivAnoMensal);
+        selAno.style.display = histDivModo === 'mensal' ? '' : 'none';
+      }
+      if (selModo) selModo.value = histDivModo;
+
+      // Colunas da tabela: rótulo + função que devolve o valor de um ativo
+      var colunas = [];
+      if (histDivModo === 'mensal') {
+        var anoSel = histDivAnoMensal;
+        NOMES_MESES_HIST.forEach(function(nome, idx) {
+          var chave = anoSel + '-' + String(idx + 1).padStart(2, '0');
+          colunas.push({ rotulo: nome + '/' + String(anoSel).slice(2), valor: function(t) { return histDivPorTicker[t].meses[chave] || 0; } });
+        });
+      } else {
+        for (var a = anoAtual - 5; a <= anoAtual; a++) {
+          (function(ano) {
+            colunas.push({ rotulo: ano === anoAtual ? ano + ' (parcial)' : String(ano), valor: function(t) { return histDivPorTicker[t].anos[ano] || 0; } });
+          })(a);
+        }
+      }
+      var totaisCol = colunas.map(function() { return 0; });
       var totalGeral = 0;
 
       function celula(tag, texto, alinharDireita, negrito) {
@@ -4888,7 +4932,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       thead.innerHTML = '';
       var trCab = D.createElement('tr');
       trCab.appendChild(celula('th', 'Ativo', false));
-      anos.forEach(function(a3) { trCab.appendChild(celula('th', a3 === anoAtual ? a3 + ' (parcial)' : String(a3), true)); });
+      colunas.forEach(function(c) { trCab.appendChild(celula('th', c.rotulo, true)); });
       trCab.appendChild(celula('th', 'Total', true));
       thead.appendChild(trCab);
 
@@ -4898,10 +4942,10 @@ h2{font-size:32px;letter-spacing:-.02em;}
         var tr = D.createElement('tr');
         tr.appendChild(celula('td', t2, false, true));
         var totalAtivo = 0;
-        anos.forEach(function(a4) {
-          var v = histDivPorTicker[t2][a4] || 0;
+        colunas.forEach(function(c, k) {
+          var v = c.valor(t2);
           totalAtivo += v;
-          totaisAno[a4] += v;
+          totaisCol[k] += v;
           tr.appendChild(celula('td', moeda(v), true));
         });
         totalGeral += totalAtivo;
@@ -4913,10 +4957,24 @@ h2{font-size:32px;letter-spacing:-.02em;}
       rodape.innerHTML = '';
       var trTot = D.createElement('tr');
       trTot.appendChild(celula('td', 'Total da carteira', false, true));
-      anos.forEach(function(a5) { trTot.appendChild(celula('td', moeda(totaisAno[a5]), true, true)); });
+      totaisCol.forEach(function(v) { trTot.appendChild(celula('td', moeda(v), true, true)); });
       trTot.appendChild(celula('td', moeda(totalGeral), true, true));
       rodape.appendChild(trTot);
       secao.style.display = '';
+    }
+    var selModoHistDiv = D.getElementById('sel-hist-div-modo');
+    if (selModoHistDiv) {
+      selModoHistDiv.addEventListener('change', function() {
+        histDivModo = selModoHistDiv.value === 'mensal' ? 'mensal' : 'anual';
+        renderizarHistDiv();
+      });
+    }
+    var selAnoHistDiv = D.getElementById('sel-hist-div-ano');
+    if (selAnoHistDiv) {
+      selAnoHistDiv.addEventListener('change', function() {
+        histDivAnoMensal = parseInt(selAnoHistDiv.value, 10);
+        renderizarHistDiv();
+      });
     }
 
     var btnExcelHistDiv = D.getElementById('btn-excel-hist-div');
