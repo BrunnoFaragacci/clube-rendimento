@@ -4513,7 +4513,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
             estilo = D.createElement('style');
             estilo.id = estiloId;
             var n = idx + 1;
-            estilo.textContent = '#' + idTabela + '>thead>tr>th:nth-child(' + n + '),#' + idTabela + '>tbody>tr>td:nth-child(' + n + '){display:none;}';
+            estilo.textContent = '#' + idTabela + '>thead>tr>th:nth-child(' + n + '),#' + idTabela + '>tbody>tr>td:nth-child(' + n + '),#' + idTabela + '>tfoot>tr>td:nth-child(' + n + '){display:none;}';
             D.head.appendChild(estilo);
           }
         }
@@ -5031,6 +5031,22 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var n = /,/.test(t) ? parseNumeroBR(t) : (/^\d+\.\d{1,2}$/.test(t) ? Number(t) : parseNumeroBR(t));
       return isNaN(n) ? NaN : n;
     }
+    // Campo "Cupons pagos até o momento": texto livre (aceita colar "5.034,40"
+    // ou "5034.40"), lido como número por numeroManual e reformatado no
+    // padrão brasileiro ao sair do campo.
+    function prepararCampoCupons(inp) {
+      inp.type = 'text';
+      inp.setAttribute('inputmode', 'decimal');
+      inp.className = 'input-cupons';
+      inp.addEventListener('blur', function() {
+        var n = numeroManual(inp.value);
+        if (n !== null && !isNaN(n)) inp.value = formatarNumero(n, 2);
+      });
+    }
+    function lerCupons(inp) {
+      var n = numeroManual(inp.value);
+      return (n === null || isNaN(n)) ? 0 : n;
+    }
     function dataIsoParaBR(iso) {
       var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
       return m ? m[3] + '/' + m[2] + '/' + m[1] : '';
@@ -5498,10 +5514,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           tdCup.className = 'col-cupons';
           tdCup.style.cssText = 'padding:8px 14px;vertical-align:middle;';
           var inpCup = D.createElement('input');
-          inpCup.type = 'number';
-          inpCup.className = 'input-cupons';
-          inpCup.step = '0.01';
-          inpCup.min = '0';
+          prepararCampoCupons(inpCup);
           inpCup.placeholder = 'R$ 0,00';
           inpCup.title = 'Insira o valor de cupons pagos até o momento';
           tdCup.appendChild(inpCup);
@@ -5559,7 +5572,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
             }
           }
           inpCup.addEventListener('input', function() {
-            cuponsAtual = parseFloat(inpCup.value) || 0;
+            cuponsAtual = lerCupons(inpCup);
             edicoesManuais.tesouro[idxTes] = edicoesManuais.tesouro[idxTes] || {};
             edicoesManuais.tesouro[idxTes].cupons = cuponsAtual;
             recomputarLucroTesouro();
@@ -5610,7 +5623,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
             aplicarEdicaoSalva(tdPosicao, edicaoTesSalva.posicao);
             aplicarEdicaoSalva(tdValAplic, edicaoTesSalva.valorAplicado);
             if (typeof edicaoTesSalva.cupons === 'number') {
-              inpCup.value = edicaoTesSalva.cupons.toFixed(2);
+              inpCup.value = formatarNumero(edicaoTesSalva.cupons, 2);
               cuponsAtual = edicaoTesSalva.cupons;
               recomputarLucroTesouro();
             }
@@ -5747,6 +5760,13 @@ h2{font-size:32px;letter-spacing:-.02em;}
             while (nomesUsados[nome]) { contador++; nome = (nomeBase.substring(0, 28) + ' ' + contador).substring(0, 31); }
             nomesUsados[nome] = true;
             var clone = tabela.cloneNode(true);
+            // Valores digitados nos campos de cupons (propriedade "value",
+            // não copiada pelo cloneNode) passam a ser o texto da célula
+            var camposOrig = tabela.querySelectorAll('input.input-cupons');
+            Array.prototype.forEach.call(clone.querySelectorAll('input.input-cupons'), function(inp, k) {
+              var vOrig = camposOrig[k] ? camposOrig[k].value : '';
+              if (inp.parentNode) inp.parentNode.textContent = vOrig;
+            });
             Array.prototype.forEach.call(clone.querySelectorAll('button, input[type="checkbox"], .th-tip-box, .col-redimensionar'), function(el) { el.remove(); });
             // Sinalizações ocultas na tela também não saem no Excel
             if (D.getElementById('estilo-ocultar-badges-rf')) {
@@ -7658,14 +7678,11 @@ h2{font-size:32px;letter-spacing:-.02em;}
         tdCup.className = 'col-cupons';
         tdCup.style.cssText = 'padding:8px 14px;vertical-align:middle;';
         var inpCup = D.createElement('input');
-        inpCup.type = 'number';
-        inpCup.className = 'input-cupons';
-        inpCup.step = '0.01';
-        inpCup.min = '0';
+        prepararCampoCupons(inpCup);
         inpCup.placeholder = 'R$ 0,00';
         inpCup.title = 'Insira o valor de cupons pagos até o momento';
         if (typeof item.cupons === 'number') {
-          inpCup.value = item.cupons.toFixed(2);
+          inpCup.value = formatarNumero(item.cupons, 2);
         }
         tdCup.appendChild(inpCup);
         tr.appendChild(tdCup);
@@ -7764,13 +7781,21 @@ h2{font-size:32px;letter-spacing:-.02em;}
         // RF e a linha de total (cupons + lucro) pela diferença frente ao
         // valor anterior.
         inpCup.addEventListener('input', function() {
-          var novoCupons = parseFloat(inpCup.value) || 0;
+          var novoCupons = lerCupons(inpCup);
           totTfLinha.cupons += novoCupons - cuponsAtual;
           cuponsAtual = novoCupons;
           edicoesManuais.rf[i] = edicoesManuais.rf[i] || {};
           edicoesManuais.rf[i].cupons = novoCupons;
           recomputarLucroRF();
         });
+        // Cupons já informados no próprio item (vindos da planilha ou de
+        // análise salva) entram no total da tabela e no lucro desde o início
+        // — antes só edições feitas à mão eram somadas, deixando o subtotal
+        // de cupons incorreto.
+        if (cuponsAtual > 0) {
+          totTfLinha.cupons += cuponsAtual;
+          recomputarLucroRF();
+        }
 
         // Valor aplicado editado: recalcula o Lucro (R$)/(%) desta linha e
         // ajusta a linha de total (o card de resumo não depende do valor
@@ -7861,7 +7886,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           aplicarEdicaoSalva(tdLiq, edicaoRfSalva.valorLiquido);
           aplicarEdicaoSalva(tdPosicao, edicaoRfSalva.posicao);
           if (typeof edicaoRfSalva.cupons === 'number') {
-            inpCup.value = edicaoRfSalva.cupons.toFixed(2);
+            inpCup.value = formatarNumero(edicaoRfSalva.cupons, 2);
             totTfLinha.cupons += edicaoRfSalva.cupons - cuponsAtual;
             cuponsAtual = edicaoRfSalva.cupons;
             recomputarLucroRF();
