@@ -778,6 +778,39 @@ h2{font-size:32px;letter-spacing:-.02em;}
     el.className = 'variacao ' + (positivo ? 'pos' : 'neg');
   }
 
+  // Calendário de divulgação de resultados trimestrais (Edge Function
+  // resultados-calendario — Yahoo Finance; a Brapi não fornece esse dado).
+  // Devolve { TICKER: { data:'aaaa-mm-dd'|null, estimada:bool, trimestre:'3T26' } }.
+  function buscarCalendarioResultados(tickers) {
+    var lista = (tickers || []).filter(Boolean);
+    if (!lista.length) return Promise.resolve({});
+    return fetch(_SB_URL + '/functions/v1/resultados-calendario?tickers=' + encodeURIComponent(lista.join(',')), {
+      headers: { 'Authorization': 'Bearer ' + _SB_KEY, 'apikey': _SB_KEY }
+    })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(d) { return (d && d.resultados) || {}; })
+      .catch(function() { return {}; });
+  }
+  function dataIsoParaBRResultado(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+    return m ? m[3] + '/' + m[2] + '/' + m[1] : '—';
+  }
+  function diasAteDataResultado(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+    if (!m) return null;
+    var alvo = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    var h = new Date();
+    var hoje = new Date(h.getFullYear(), h.getMonth(), h.getDate());
+    return Math.round((alvo - hoje) / 86400000);
+  }
+  function textoPrazoResultado(iso) {
+    var dias = diasAteDataResultado(iso);
+    if (dias === null) return '—';
+    if (dias === 0) return 'Hoje';
+    if (dias === 1) return 'Amanhã';
+    return 'Em ' + dias + ' dias';
+  }
+
   function buscarCotacaoMercado(ticker) {
     return fetch(BRAPI_PROXY + '/quote/' + encodeURIComponent(ticker))
       .then(function(r) {
@@ -3104,6 +3137,15 @@ h2{font-size:32px;letter-spacing:-.02em;}
         '<div class="table-wrap" id="table-wrap-tabela-hist-div"><table id="tabela-hist-div"><thead></thead><tbody></tbody><tfoot></tfoot></table></div>' +
         '</div>'
       : '';
+    // Calendário de divulgação de resultados das ações da carteira — começa
+    // oculto; renderizarResultados o exibe quando há ao menos uma ação.
+    var sResultados = (opcoes.rv && opcoes.acoes)
+      ? '<div id="pdf-secao-resultados" class="pdf-secao" style="display:none;">' +
+        '<h2 class="quadro-titulo">Próximas divulgações de resultado</h2>' +
+        '<p style="font-size:12px;color:var(--ink-soft);margin:0 0 10px;">Datas previstas para o balanço trimestral de cada ação da carteira (fonte: Yahoo Finance). Datas marcadas como estimadas são projetadas a partir do último balanço divulgado. Confirme sempre no site de Relações com Investidores da companhia.</p>' +
+        '<div class="table-wrap" id="table-wrap-tabela-resultados"><table id="tabela-resultados"><thead></thead><tbody></tbody></table></div>' +
+        '</div>'
+      : '';
     var sRV = opcoes.rv
       ? '<div id="pdf-carteira-wrap" class="pdf-secao">' + sLimitesRiscoFII +
         '<p id="rv-aviso-pm" style="display:none;background:var(--bg-soft);border:1px solid var(--line);color:var(--ink-soft);border-radius:8px;padding:8px 12px;font-size:11.5px;margin-bottom:12px;"></p>' +
@@ -3485,7 +3527,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       '</div>' +
       '<div class="quadrantes-ocultos-barra" id="quadrantes-ocultos-barra"></div>' +
       construirCardInsight('carteira', 'pdf-secao') +
-      sAlocacaoCarteira + sDarf + sDiversificacao + sGraficosRV + sRV + sHistDiv + sFIIComposicao + sRF + sCetip + sPrevidencia + sCOE + sTesouro +
+      sAlocacaoCarteira + sDarf + sDiversificacao + sGraficosRV + sRV + sHistDiv + sResultados + sFIIComposicao + sRF + sCetip + sPrevidencia + sCOE + sTesouro +
       '</div>' +
       '<script src=\"https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js\"><\/script>' +
       '<script src=\"https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2/dist/chartjs-plugin-datalabels.min.js\"><\/script>' +
@@ -4977,6 +5019,76 @@ h2{font-size:32px;letter-spacing:-.02em;}
       });
     }
 
+    // Próximas divulgações de resultado: cada ação visível se registra
+    // (registrarResultado, no laço de RV); uma única consulta em lote é
+    // feita após uma pequena pausa, e os resultados são acumulados em
+    // mapaResultados (consultas atrasadas não sobrescrevem as anteriores).
+    var tickersResultados = [];
+    var mapaResultados = {};
+    var timerResultados = null;
+    function registrarResultado(ticker) {
+      if (tickersResultados.indexOf(ticker) === -1) tickersResultados.push(ticker);
+      clearTimeout(timerResultados);
+      timerResultados = setTimeout(function() {
+        buscarCalendarioResultados(tickersResultados.slice()).then(function(m) {
+          Object.keys(m).forEach(function(k) { mapaResultados[k] = m[k]; });
+          renderizarResultados();
+        });
+      }, 700);
+    }
+    function removerResultado(ticker) {
+      var idx = tickersResultados.indexOf(ticker);
+      if (idx !== -1) {
+        tickersResultados.splice(idx, 1);
+        renderizarResultados();
+      }
+    }
+    function renderizarResultados() {
+      var secao = D.getElementById('pdf-secao-resultados');
+      var tabela = D.getElementById('tabela-resultados');
+      if (!secao || !tabela) return;
+      var linhas = tickersResultados.map(function(t) {
+        return { ticker: t, r: mapaResultados[t] || null };
+      });
+      var comData = linhas.filter(function(l) { return l.r && l.r.data; })
+        .sort(function(a, b) { return a.r.data < b.r.data ? -1 : (a.r.data > b.r.data ? 1 : 0); });
+      if (!comData.length) { secao.style.display = 'none'; return; }
+      var semData = linhas.filter(function(l) { return !(l.r && l.r.data); });
+
+      function celula(tag, texto, negrito) {
+        var el = D.createElement(tag);
+        el.textContent = texto;
+        if (negrito) el.style.fontWeight = '700';
+        return el;
+      }
+      var thead = tabela.tHead || tabela.createTHead();
+      thead.innerHTML = '';
+      var trCab = D.createElement('tr');
+      ['Ativo', 'Trimestre', 'Data de divulgação', 'Prazo', 'Situação'].forEach(function(t) { trCab.appendChild(celula('th', t)); });
+      thead.appendChild(trCab);
+      var corpo = tabela.tBodies[0] || tabela.createTBody();
+      corpo.innerHTML = '';
+      comData.forEach(function(l) {
+        var tr = D.createElement('tr');
+        tr.appendChild(celula('td', l.ticker, true));
+        tr.appendChild(celula('td', l.r.trimestre || '—'));
+        tr.appendChild(celula('td', dataIsoParaBRResultado(l.r.data)));
+        tr.appendChild(celula('td', textoPrazoResultado(l.r.data)));
+        tr.appendChild(celula('td', l.r.estimada ? 'Estimada' : 'Prevista'));
+        corpo.appendChild(tr);
+      });
+      semData.forEach(function(l) {
+        var tr = D.createElement('tr');
+        tr.appendChild(celula('td', l.ticker, true));
+        tr.appendChild(celula('td', '—'));
+        tr.appendChild(celula('td', 'Não divulgada'));
+        tr.appendChild(celula('td', '—'));
+        tr.appendChild(celula('td', '—'));
+        corpo.appendChild(tr);
+      });
+      secao.style.display = '';
+    }
+
     var btnExcelHistDiv = D.getElementById('btn-excel-hist-div');
     if (btnExcelHistDiv) {
       btnExcelHistDiv.addEventListener('click', function() {
@@ -5713,6 +5825,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       { id: 'pdf-carteira-wrap', rotulo: 'Ações/FIIs' },
       { id: 'rv-insight-card', rotulo: 'Insights (Ações/FIIs)', desmarcadoPadrao: true },
       { id: 'pdf-secao-hist-div', rotulo: 'Histórico de dividendos', exigeVisivel: true },
+      { id: 'pdf-secao-resultados', rotulo: 'Próximas divulgações de resultado', exigeVisivel: true },
       { id: 'pdf-secao-fii-composicao', rotulo: 'Portfólio dos FIIs' },
       { id: 'pdf-secao-rf', rotulo: 'Renda Fixa' },
       { id: ['bcb-rf-secao', 'cp-rf-secao'], rotulo: 'Indicadores fundamentalistas' },
@@ -6501,6 +6614,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       var ticker = tr.id.replace('rv-tr-', '');
       var bucketFIIExcluir = tr.getAttribute('data-bucket-fii') || null;
       removerHistDiv(ticker);
+      removerResultado(ticker);
 
       var idxGraf = -1;
       for (var i = 0; i < dadosGraficoRV.length; i++) {
@@ -7024,6 +7138,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
             if (linhaVisivel && !isFII && dado.dividendsData && dado.dividendsData.cashDividends) {
               registrarHistDiv(at.ticker, at.quantidade, dado.dividendsData.cashDividends);
             }
+            // Calendário de resultados: ações (não FII/ETF) visíveis
+            if (linhaVisivel && !isFII && !isETF) registrarResultado(at.ticker);
 
             // Cotação e valor total — a linha na tabela é sempre preenchida (mesmo
             // quando oculta pelo filtro acima), mas só entra no total do card e nos
@@ -17485,6 +17601,7 @@ a{color:var(--orange);text-decoration:none;}a:hover{text-decoration:underline;}
         <div class="hero-stat"><span class="hero-stat-label">Mín. 52 sem.</span><span id="hero-low52" class="hero-stat-valor"></span></div>
         <div class="hero-stat"><span class="hero-stat-label">Vol. médio 3m</span><span id="hero-avgvol" class="hero-stat-valor"></span></div>
         <div class="hero-stat"><span class="hero-stat-label">Beta</span><span id="hero-beta" class="hero-stat-valor"></span></div>
+        <div class="hero-stat" id="hero-stat-resultado" style="display:none;"><span class="hero-stat-label">Próx. resultado</span><span id="hero-resultado" class="hero-stat-valor">—</span></div>
       </div>
     </div>
 
@@ -18769,6 +18886,29 @@ function renderizar(d, d2){
     || (longNamePA.indexOf('FUNDO')!==-1 && longNamePA.indexOf('IMOBILI')!==-1)
     || (longNamePA.indexOf('FUNDO')!==-1 && longNamePA.indexOf('COTAS')!==-1)
   );
+
+  // ── Próxima divulgação de resultado (somente ações/BDRs) ─────────
+  // Esta página é independente do restante do site: consulta direto a Edge
+  // Function resultados-calendario (pública, sem autenticação).
+  (function(){
+    var boxRes=document.getElementById('hero-stat-resultado'),valRes=document.getElementById('hero-resultado');
+    if(!boxRes||!valRes)return;
+    if(isFIIpa||isETFpa||!d.symbol){boxRes.style.display='none';return;}
+    boxRes.style.display='';valRes.textContent='…';valRes.title='';
+    var simboloRes=d.symbol;
+    fetch('https://segeufywrjmstfmfscdi.supabase.co/functions/v1/resultados-calendario?tickers='+encodeURIComponent(simboloRes))
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(j){
+        var r=j&&j.resultados?j.resultados[simboloRes]:null;
+        if(!r||!r.data){valRes.textContent='Não divulgada';valRes.title='Calendário de resultados indisponível para este ativo.';return;}
+        var p=r.data.split('-'),h=new Date(),hoje=new Date(h.getFullYear(),h.getMonth(),h.getDate());
+        var dias=Math.round((new Date(Number(p[0]),Number(p[1])-1,Number(p[2]))-hoje)/86400000);
+        var prazo=dias===0?'Hoje':(dias===1?'Amanhã':'Em '+dias+' dias');
+        valRes.textContent=p[2]+'/'+p[1]+'/'+p[0]+' ('+(r.trimestre||'')+')'+(r.estimada?' · estimada':'');
+        valRes.title=(r.estimada?'Data estimada a partir do último balanço divulgado. ':'Data prevista no calendário de resultados. ')+prazo+'. Confirme no site de Relações com Investidores da companhia.';
+      })
+      .catch(function(){valRes.textContent='Não divulgada';});
+  })();
 
   // ── Mostrar/ocultar seções conforme tipo ──────────────────────────
   var secaoFII       = document.getElementById('secao-fii');
