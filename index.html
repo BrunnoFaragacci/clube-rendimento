@@ -2849,7 +2849,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
     'BANCO BMG':'BMGB4','BMG':'BMGB4','BANCO PINE':'PINE4','PINE':'PINE4',
     'BANCO ABC BRASIL':'ABCB4','ABC BRASIL':'ABCB4','ITAU':'ITUB4','BRADESCO':'BBDC4',
     'SANTANDER':'SANB11','BANCO DO BRASIL':'BBAS3','BTG PACTUAL':'BPAC11',
-    'BANRISUL':'BRSR6','ELETROBRAS':'ELET3'
+    'BANRISUL':'BRSR6','ELETROBRAS':'ELET3',
+    // ETFs (a especificação na nota traz o nome do fundo, não o código)
+    'TREND CASH':'LFTX11'
   };
 
   function tickerB3(emissor) {
@@ -15799,11 +15801,13 @@ sucCalcularTudo();
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"><\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>
 <style>
 :root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--line:#E2E2E2;--orange:#111111;--og:#000000;--green:#16A34A;--red:#DC2626;--radius:16px;--radius-lg:24px;--shadow:0 10px 28px rgba(0,0,0,.08);--shadow-sm:0 2px 10px rgba(0,0,0,.05);}
 *{box-sizing:border-box;margin:0;padding:0;}
 [hidden]{display:none!important;}
 body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-soft);color:var(--ink);min-height:100vh;font-size:14px;}
+@media print{.nav,#nota-upload-card,.print-area,#nota-check-todas,.nota-check-linha,.nota-remover{display:none!important;}body{background:#fff;}.card{box-shadow:none;break-inside:auto;}.tabela-wrap{overflow:visible!important;}table{min-width:0!important;}thead th{position:static;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.container{max-width:none;padding:12px;}}
 .nav{background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;}
 .nav-brand{font-weight:700;font-size:15px;text-decoration:none;color:var(--ink);}
 .container{max-width:1400px;margin:0 auto;padding:32px 20px 60px;}
@@ -15857,12 +15861,16 @@ tbody tr:last-child td{border-bottom:none;}
   <span class="eyebrow">Renda Variável</span>
   <h1>Nota de Corretagem</h1>
 
-  <div class="card">
+  <div class="card" id="nota-upload-card">
     <div class="upload-box">
       <label for="nota-arquivo" class="btn btn-primary" style="cursor:pointer;">Selecionar nota(s) de corretagem (PDF)</label>
       <input type="file" id="nota-arquivo" accept="application/pdf" multiple hidden>
       <span class="upload-nome" id="nota-arquivo-nome">Nenhum arquivo selecionado.</span>
       <button type="button" class="btn" id="nota-limpar" style="background:#fff;border-color:var(--line);color:var(--ink-soft);">Limpar notas</button>
+      <span id="nota-exportar-grupo" style="display:inline-flex;gap:8px;margin-left:auto;" hidden>
+        <button type="button" class="btn" id="nota-exportar-excel" style="background:#fff;border-color:var(--ink);color:var(--ink);">⬇ Extrair em Excel</button>
+        <button type="button" class="btn" id="nota-exportar-pdf" style="background:#fff;border-color:var(--ink);color:var(--ink);">⬇ Extrair em PDF</button>
+      </span>
     </div>
     <p class="resultado-sub" style="margin:12px 0 0;">É possível selecionar várias notas de uma vez e adicionar outras em seguida: os totais, a tabela de negócios e o imposto devido consideram todas as notas carregadas.</p>
     <p class="status" id="nota-status" hidden></p>
@@ -15949,9 +15957,14 @@ function normalizar(texto) {
   return String(texto === undefined || texto === null ? '' : texto)
     .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').trim().toUpperCase();
 }
+// Tickers informados manualmente pelo usuário (clique em "não identificado")
+// para ativos cuja especificação na nota não permite identificar o código —
+// ex.: ETFs, que trazem o nome do fundo em vez do ticker.
+var tickerManual = {};
 function tickerB3(nomeAtivo) {
   if (!nomeAtivo) return null;
   var txt = normalizar(nomeAtivo);
+  if (tickerManual[txt]) return tickerManual[txt];
   // FIIs (e alguns outros ativos) trazem o ticker escrito na própria
   // especificação do título — ex.: "FII ATHENA I FATN11 CI ER @#" — então
   // um código no padrão B3 (4 letras + 1 ou 2 dígitos) tem prioridade sobre
@@ -16030,7 +16043,11 @@ function parseLinhasNegocio(linhas) {
 
 var precosMedios = {}; // ticker -> preço médio de compra informado pelo assessor (para o DARF)
 
+var negociosExibidos = [];
+function indiceNegocio(n) { return negociosExibidos.indexOf(n); }
+
 function renderizarResultado(negocios, mapaXP) {
+  negociosExibidos = negocios;
   var corpo = document.getElementById('nota-tabela-corpo');
   corpo.innerHTML = negocios.map(function (n) {
     var ticker = tickerB3(n.ativo);
@@ -16040,7 +16057,7 @@ function renderizarResultado(negocios, mapaXP) {
       '<td style="text-align:center;"><input type="checkbox" class="nota-check-linha" checked></td>' +
       '<td>' + dataIsoParaBR(n.dataIso) + '</td>' +
       '<td>' + n.ativo + '</td>' +
-      '<td>' + (ticker || '<span class="sem-cobertura">não identificado</span>') + '</td>' +
+      '<td>' + (ticker || '<span class="sem-cobertura ticker-editar" data-ativo="' + indiceNegocio(n) + '" title="Clique para informar o ticker" style="cursor:pointer;text-decoration:underline dotted;">não identificado</span>') + '</td>' +
       '<td class="' + (n.cv === 'C' ? 'cv-c' : 'cv-v') + '">' + (n.cv === 'C' ? 'Compra' : 'Venda') + '</td>' +
       '<td>' + n.quantidade.toLocaleString('pt-BR') + '</td>' +
       '<td>' + fBRL(n.preco) + '</td>' +
@@ -16431,6 +16448,7 @@ function dataIsoParaBR(iso) {
 function renderizarListaNotas() {
   var wrap = document.getElementById('nota-lista-wrap');
   var corpo = document.getElementById('nota-lista-corpo');
+  document.getElementById('nota-exportar-grupo').hidden = !notasCarregadas.length;
   if (!notasCarregadas.length) { wrap.hidden = true; return; }
   wrap.hidden = false;
   corpo.innerHTML = notasCarregadas.map(function (n, i) {
@@ -16507,6 +16525,67 @@ document.getElementById('nota-arquivo').addEventListener('change', function (ev)
       statusEl.hidden = true;
     }
   });
+});
+
+// Ticker não identificado (ex.: ETF): clique na célula para informá-lo — vale
+// para todos os negócios com a mesma especificação.
+document.getElementById('nota-tabela-corpo').addEventListener('click', function (ev) {
+  var alvo = ev.target.closest ? ev.target.closest('.ticker-editar') : null;
+  if (!alvo) return;
+  var n = negociosExibidos[Number(alvo.getAttribute('data-ativo'))];
+  if (!n) return;
+  var informado = prompt('Informe o ticker de "' + n.ativo + '" (ex.: LFTX11):');
+  if (!informado) return;
+  informado = informado.trim().toUpperCase();
+  if (!/^[A-Z0-9]{4,7}$/.test(informado)) { alert('Ticker inválido.'); return; }
+  tickerManual[normalizar(n.ativo)] = informado;
+  recalcularTudo();
+});
+
+// Extração dos dados: Excel (várias abas) e PDF (impressão da página sem os
+// controles de envio — "Salvar como PDF" na janela de impressão).
+function tabelaParaExcel(tabela, removerPrimeiraColuna) {
+  var clone = tabela.cloneNode(true);
+  var originais = tabela.querySelectorAll('input[type="number"], input[type="text"]');
+  Array.prototype.forEach.call(clone.querySelectorAll('input[type="number"], input[type="text"]'), function (inp, i) {
+    if (inp.parentNode) inp.parentNode.textContent = originais[i] ? originais[i].value : '';
+  });
+  Array.prototype.forEach.call(clone.querySelectorAll('button, input[type="checkbox"]'), function (el) { el.remove(); });
+  if (removerPrimeiraColuna) {
+    Array.prototype.forEach.call(clone.querySelectorAll('thead th:first-child, tbody td:first-child'), function (el) { el.remove(); });
+  }
+  return clone;
+}
+
+document.getElementById('nota-exportar-excel').addEventListener('click', function () {
+  if (typeof XLSX === 'undefined') { alert('Não foi possível carregar o gerador de Excel. Tente novamente em instantes.'); return; }
+  if (!notasCarregadas.length) return;
+  var livro = XLSX.utils.book_new();
+  function adicionar(nome, tabela, removerPrimeira) {
+    if (!tabela || !tabela.querySelector('tbody tr')) return;
+    XLSX.utils.book_append_sheet(livro, XLSX.utils.table_to_sheet(tabelaParaExcel(tabela, removerPrimeira)), nome);
+  }
+  adicionar('Notas', document.querySelector('#nota-lista-wrap table'), false);
+  adicionar('Negócios', document.getElementById('nota-tabela'), true);
+  if (!document.getElementById('nota-darf-wrap').hidden) {
+    adicionar('Resultado por ativo', document.querySelector('#nota-darf-wrap table'), false);
+    adicionar('Apuração mensal', document.getElementById('nota-imposto-corpo').parentNode, false);
+    var resumo = [
+      ['Item', 'Valor'],
+      ['DARF total a pagar', document.getElementById('nota-darf-total').textContent],
+      ['Prejuízo a compensar em meses futuros', document.getElementById('nota-prejuizo-futuro').textContent],
+      ['Crédito de IRRF a compensar', document.getElementById('nota-irrf-credito').textContent]
+    ];
+    XLSX.utils.book_append_sheet(livro, XLSX.utils.aoa_to_sheet(resumo), 'Resumo do imposto');
+  }
+  var agora = new Date();
+  var carimbo = agora.getFullYear() + String(agora.getMonth() + 1).padStart(2, '0') + String(agora.getDate()).padStart(2, '0');
+  XLSX.writeFile(livro, 'notas_corretagem_' + carimbo + '.xlsx');
+});
+
+document.getElementById('nota-exportar-pdf').addEventListener('click', function () {
+  if (!notasCarregadas.length) return;
+  window.print();
 });
 
 document.getElementById('nota-limpar').addEventListener('click', function () {
