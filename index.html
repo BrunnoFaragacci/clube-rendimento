@@ -280,6 +280,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       <button type="button" class="btn-nav" id="btn-nav-seguros">Seguros e Previdência ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-consorcio">Consórcio ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-sucessorio">Planejamento Sucessório ↗</button>
+      <button type="button" class="btn-nav" id="btn-nav-holding">Viabilidade de Holding ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-nota-corretagem">Nota de Corretagem ↗</button>
       <div class="nav-dropdown-wrap">
         <button type="button" class="btn-nav nav-dropdown-trigger" id="btn-nav-cripto" aria-expanded="false">Cripto <span class="nav-caret">▾</span></button>
@@ -14797,6 +14798,431 @@ csCalcularTudo();
 </html>`);
   }
 
+  function abrirViabilidadeHolding() {
+    var win = window.open('', '_blank');
+    if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
+    escreverConteudoJanela(win, `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Viabilidade de Holding Patrimonial — Clube do Rendimento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--line:#E2E2E2;--orange:#111111;--og:#000000;--green:#16A34A;--amber:#B45309;--red:#DC2626;--radius:16px;--radius-lg:24px;--shadow-sm:0 2px 10px rgba(0,0,0,.05);}
+*{box-sizing:border-box;margin:0;padding:0;}
+[hidden]{display:none!important;}
+body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-soft);color:var(--ink);min-height:100vh;font-size:14px;}
+.nav{background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;}
+.nav-brand{font-weight:700;font-size:15px;text-decoration:none;color:var(--ink);}
+.container{max-width:980px;margin:0 auto;padding:32px 20px 80px;}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:600;margin-bottom:14px;}
+.eyebrow::before{content:"";width:18px;height:2px;background:var(--orange);display:inline-block;}
+h1{font-size:24px;font-weight:700;margin-bottom:6px;}
+.sub{font-size:13px;color:var(--ink-soft);margin-bottom:24px;line-height:1.55;max-width:760px;}
+.card{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);padding:24px 26px;box-shadow:var(--shadow-sm);margin-bottom:20px;}
+.card-titulo{font-size:15px;font-weight:700;margin-bottom:4px;}
+.card-sub{font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;line-height:1.5;}
+.pergunta{padding:14px 0;border-top:1px solid var(--line);}
+.pergunta:first-of-type{border-top:none;padding-top:4px;}
+.pergunta-rotulo{font-size:13.5px;font-weight:600;margin-bottom:8px;line-height:1.45;}
+.opcoes{display:flex;flex-wrap:wrap;gap:8px;}
+.opcao{display:inline-flex;align-items:center;gap:7px;border:1.5px solid var(--line);border-radius:10px;padding:8px 13px;font-size:13px;cursor:pointer;background:#fff;}
+.opcao:hover{border-color:var(--ink);}
+.opcao input{accent-color:#111;}
+.opcao.marcada{border-color:var(--ink);background:var(--bg-soft);font-weight:600;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.campo{display:flex;flex-direction:column;gap:6px;}
+.campo label{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);}
+.campo input{padding:10px 13px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:14px;color:var(--ink);background:var(--bg);width:100%;}
+.campo input:focus{outline:none;border-color:var(--orange);}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:11px 22px;border-radius:8px;font-weight:600;font-size:13px;border:1px solid transparent;cursor:pointer;font-family:inherit;}
+.btn-primary{background:linear-gradient(135deg,var(--orange),var(--og));color:#fff;box-shadow:0 8px 18px rgba(0,0,0,.22);}
+.btn-claro{background:#fff;border-color:var(--ink);color:var(--ink);}
+.erro{color:var(--red);font-size:13px;margin-top:12px;}
+.veredito{border-radius:var(--radius);padding:20px 22px;margin-bottom:18px;border:2px solid var(--ink);}
+.veredito-titulo{font-size:19px;font-weight:700;margin-bottom:6px;}
+.veredito-texto{font-size:13.5px;line-height:1.55;color:var(--ink);}
+.barra-wrap{height:10px;background:var(--bg-soft);border-radius:999px;overflow:hidden;margin:12px 0 4px;border:1px solid var(--line);}
+.barra{height:100%;background:var(--ink);}
+.pontuacao{font-size:12px;color:var(--ink-soft);}
+.lista-titulo{font-size:13px;font-weight:700;margin:20px 0 8px;}
+.lista{list-style:none;}
+.lista li{padding:10px 0;border-bottom:1px solid var(--line);font-size:13px;line-height:1.5;display:flex;gap:10px;}
+.lista li:last-child{border-bottom:none;}
+.marca{flex:0 0 auto;font-weight:700;width:18px;text-align:center;}
+.marca.pos{color:var(--green);}
+.marca.neg{color:var(--red);}
+.marca.neu{color:var(--ink-soft);}
+.alerta{background:#FFF7ED;border:1px solid #FDBA74;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;margin-bottom:10px;}
+.resultado-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:6px 0 4px;}
+.stat{background:var(--bg-soft);border-radius:var(--radius);padding:14px 16px;}
+.stat-label{font-size:11px;color:var(--ink-soft);font-weight:600;text-transform:uppercase;letter-spacing:.02em;}
+.stat-valor{font-size:18px;font-weight:700;margin-top:4px;}
+.stat-valor.pos{color:var(--green);}
+.stat-valor.neg{color:var(--red);}
+.tabela-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;margin-top:12px;}
+table{width:100%;border-collapse:collapse;min-width:520px;}
+th{background:var(--ink);color:#fff;text-align:left;padding:10px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
+td{padding:9px 12px;border-bottom:1px solid var(--line);font-size:13px;}
+tr:last-child td{border-bottom:none;}
+.nota{font-size:12px;color:var(--ink-soft);margin-top:14px;line-height:1.55;}
+@media(max-width:640px){.grid{grid-template-columns:1fr;}}
+@media print{.nav,.acoes,#bloco-form{display:none!important;}body{background:#fff;}.card{box-shadow:none;}}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <a href="javascript:window.close()" class="nav-brand">← Clube do Rendimento</a>
+</header>
+
+<div class="container">
+  <span class="eyebrow">Planejamento patrimonial</span>
+  <h1>Viabilidade de Holding Patrimonial</h1>
+  <p class="sub">Questionário de triagem para avaliar se a constituição de uma holding patrimonial tende a ser vantajosa para o cliente. As respostas são ponderadas por relevância e geram uma indicação preliminar, os principais pontos favoráveis e contrários, alertas e uma estimativa tributária. O resultado não substitui o parecer de advogado e contador especializados.</p>
+
+  <div id="bloco-form">
+    <div id="form-perguntas"></div>
+
+    <div class="card">
+      <div class="card-titulo">Estimativa econômica (opcional)</div>
+      <p class="card-sub">Preencha para comparar a tributação dos aluguéis na pessoa física e na holding (lucro presumido) e estimar o prazo de retorno dos custos de constituição.</p>
+      <div class="grid">
+        <div class="campo"><label for="eco-imoveis">Valor dos imóveis (R$)</label><input type="text" id="eco-imoveis" inputmode="decimal" placeholder="Ex.: 3.000.000"></div>
+        <div class="campo"><label for="eco-aluguel">Renda mensal de aluguéis (R$)</label><input type="text" id="eco-aluguel" inputmode="decimal" placeholder="Ex.: 15.000"></div>
+        <div class="campo"><label for="eco-aliq-pf">Alíquota efetiva de IR sobre os aluguéis na pessoa física (%)</label><input type="text" id="eco-aliq-pf" inputmode="decimal" value="27,5"></div>
+        <div class="campo"><label for="eco-custo-anual">Custo anual de manutenção da holding (R$)</label><input type="text" id="eco-custo-anual" inputmode="decimal" value="18.000"></div>
+        <div class="campo"><label for="eco-custo-const">Custo de constituição (R$)</label><input type="text" id="eco-custo-const" inputmode="decimal" value="15.000"></div>
+        <div class="campo"><label for="eco-itcmd">Alíquota de ITCMD do estado (%)</label><input type="text" id="eco-itcmd" inputmode="decimal" value="4"></div>
+        <div class="campo"><label for="eco-honorarios">Custas e honorários de inventário (% do patrimônio)</label><input type="text" id="eco-honorarios" inputmode="decimal" value="6"></div>
+      </div>
+    </div>
+
+    <div class="acoes"><button type="button" class="btn btn-primary" id="btn-avaliar">Avaliar viabilidade</button></div>
+    <p class="erro" id="erro-form" hidden></p>
+  </div>
+
+  <div id="bloco-resultado" hidden>
+    <div class="acoes" style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;">
+      <button type="button" class="btn btn-claro" id="btn-refazer">← Revisar respostas</button>
+      <button type="button" class="btn btn-claro" id="btn-imprimir">Imprimir / salvar em PDF</button>
+    </div>
+    <div class="veredito" id="res-veredito"></div>
+    <div id="res-alertas"></div>
+    <div class="card" id="res-fatores"></div>
+    <div class="card" id="res-economia" hidden></div>
+    <div class="card" id="res-passos"></div>
+    <p class="nota">Esta avaliação é uma triagem preliminar, baseada exclusivamente nas respostas informadas, e não constitui assessoria jurídica, contábil ou tributária. A legislação (inclusive a tributação de lucros e dividendos, o ITCMD e o ITBI, que variam por estado e município) e as regras de cada caso concreto devem ser confirmadas com advogado e contador especializados antes de qualquer decisão.</p>
+  </div>
+</div>
+
+<script>
+// Cada pergunta: peso de relevância (1 a 3) e opções [valor, rótulo, pontos de -2 a +2, justificativa].
+var PERGUNTAS = [
+  { bloco: 'Perfil patrimonial', itens: [
+    { id: 'patrimonio', peso: 3, titulo: 'Patrimônio total', rotulo: 'Qual é o patrimônio total aproximado do cliente?', opcoes: [
+      ['p1', 'Até R$ 1 milhão', -2, 'O patrimônio é reduzido: os custos fixos de constituição e manutenção da holding tendem a superar os benefícios.'],
+      ['p2', 'De R$ 1 a 3 milhões', -1, 'Patrimônio intermediário: a vantagem depende de renda de aluguel ou de forte necessidade sucessória.'],
+      ['p3', 'De R$ 3 a 10 milhões', 1, 'Patrimônio em faixa em que o custo da estrutura costuma ser diluído.'],
+      ['p4', 'Acima de R$ 10 milhões', 2, 'Patrimônio elevado: ganho de escala na sucessão e na governança.']
+    ] },
+    { id: 'pctImoveis', peso: 3, titulo: 'Concentração em imóveis', rotulo: 'Que parcela do patrimônio está em bens imóveis?', opcoes: [
+      ['i0', 'Nenhuma', -2, 'Sem imóveis, a holding patrimonial perde boa parte da utilidade; previdência privada e carteiras financeiras costumam ser mais adequadas.'],
+      ['i1', 'Até 25%', -1, 'Baixa concentração imobiliária limita o benefício da estrutura.'],
+      ['i2', 'De 25% a 50%', 1, 'Parcela relevante do patrimônio pode ser organizada na holding.'],
+      ['i3', 'Mais de 50%', 2, 'Patrimônio concentrado em imóveis: perfil típico em que a holding é mais eficiente.']
+    ] },
+    { id: 'qtdImoveis', peso: 1, titulo: 'Quantidade de imóveis', rotulo: 'Quantos imóveis o cliente possui?', opcoes: [
+      ['q0', 'Nenhum', -2, 'Não há bens a integralizar.'],
+      ['q1', 'Um', 0, 'Com um único imóvel, os ganhos de gestão centralizada são pequenos.'],
+      ['q2', 'Dois ou três', 1, 'A centralização da gestão já traz algum benefício.'],
+      ['q3', 'Quatro ou mais', 2, 'Vários imóveis justificam a centralização administrativa e societária.']
+    ] },
+    { id: 'aluguel', peso: 3, titulo: 'Renda de aluguéis', rotulo: 'Os imóveis geram renda de aluguel?', opcoes: [
+      ['a0', 'Não', 0, 'Sem aluguéis, não há economia tributária anual relevante; o ganho concentra-se na sucessão e na governança.'],
+      ['a1', 'Sim, até R$ 5 mil por mês', 1, 'Renda de aluguel pequena: a economia tributária anual tende a ser modesta.'],
+      ['a2', 'Sim, de R$ 5 mil a R$ 20 mil por mês', 2, 'A tributação da renda de aluguel na pessoa jurídica (lucro presumido) costuma ser inferior à da pessoa física na faixa mais alta.'],
+      ['a3', 'Sim, acima de R$ 20 mil por mês', 2, 'Renda de aluguel elevada: maior potencial de economia tributária anual na holding.']
+    ] },
+    { id: 'venda', peso: 2, titulo: 'Horizonte de manutenção', rotulo: 'O cliente pretende manter os imóveis por longo prazo (mais de 10 anos)?', opcoes: [
+      ['v1', 'Sim, manter por longo prazo', 2, 'Manter os imóveis na holding é coerente com a finalidade patrimonial e sucessória.'],
+      ['v2', 'Ainda não definido', 0, 'Definir o horizonte antes de integralizar os imóveis evita custos tributários desnecessários.'],
+      ['v3', 'Não, há intenção de vender em breve', -2, 'A venda de imóveis pela pessoa jurídica costuma ter tributação do ganho superior à da pessoa física, o que desfavorece a estrutura.']
+    ] }
+  ] },
+  { bloco: 'Família e sucessão', itens: [
+    { id: 'herdeiros', peso: 3, titulo: 'Número de herdeiros', rotulo: 'Quantos herdeiros necessários o cliente possui (cônjuge e descendentes)?', opcoes: [
+      ['h0', 'Nenhum', -1, 'Sem herdeiros necessários, a necessidade de organizar a sucessão é menor.'],
+      ['h1', 'Um', 0, 'Com um único herdeiro, a divisão do patrimônio tende a ser simples.'],
+      ['h2', 'Dois ou três', 1, 'A holding facilita a divisão do patrimônio em quotas e a administração conjunta.'],
+      ['h3', 'Quatro ou mais', 2, 'Muitos herdeiros: a divisão de quotas evita condomínio entre herdeiros sobre cada imóvel.']
+    ] },
+    { id: 'conflito', peso: 2, titulo: 'Risco de conflito sucessório', rotulo: 'Há risco de conflito na sucessão (filhos de relacionamentos distintos, imóveis em condomínio, empresa familiar)?', opcoes: [
+      ['c2', 'Sim, risco elevado', 2, 'A holding permite definir regras de governança, administração e sucessão previamente, reduzindo disputas.'],
+      ['c1', 'Algum risco', 1, 'Regras societárias claras mitigam parte do risco de conflito.'],
+      ['c0', 'Não há risco aparente', 0, 'Sem conflito previsível, o benefício de governança é menor.']
+    ] },
+    { id: 'menores', peso: 1, titulo: 'Herdeiros menores ou incapazes', rotulo: 'Há herdeiros menores ou incapazes?', opcoes: [
+      ['m1', 'Sim', 1, 'Cláusulas de usufruto e de administração protegem o patrimônio dos menores; atos de disposição podem exigir autorização judicial.'],
+      ['m0', 'Não', 0, 'Sem herdeiros menores ou incapazes, não há necessidade adicional de proteção.']
+    ] },
+    { id: 'idade', peso: 1, titulo: 'Idade do cliente', rotulo: 'Qual é a faixa etária do cliente?', opcoes: [
+      ['d1', 'Até 40 anos', 0, 'Sucessão distante: o planejamento pode aguardar, e os custos de manutenção acompanham todo o período.'],
+      ['d2', 'De 41 a 60 anos', 1, 'Faixa em que o planejamento sucessório já é recomendável.'],
+      ['d3', 'Acima de 60 anos', 2, 'Sucessão mais próxima: a doação de quotas com reserva de usufruto antecipa e organiza a transmissão.']
+    ] },
+    { id: 'alinhamento', peso: 2, titulo: 'Alinhamento familiar', rotulo: 'Os familiares envolvidos (cônjuge e herdeiros) concordam com a estruturação?', opcoes: [
+      ['f1', 'Sim, estão de acordo', 1, 'O alinhamento familiar facilita a constituição e a governança.'],
+      ['f0', 'O assunto ainda não foi discutido', 0, 'Recomenda-se alinhar a família antes de constituir a estrutura.'],
+      ['f2', 'Não, há resistência', -2, 'A resistência de familiares compromete a governança e pode gerar litígios futuros.']
+    ] }
+  ] },
+  { bloco: 'Riscos, situação dos bens e disposição', itens: [
+    { id: 'passivos', peso: 2, titulo: 'Passivos e proteção patrimonial', rotulo: 'Existe risco de passivos, ações judiciais ou dívidas relevantes?', opcoes: [
+      ['s0', 'Não', 0, 'Sem risco relevante de passivos, a proteção patrimonial não é fator determinante.'],
+      ['s1', 'Risco futuro (atividade empresarial ou profissional exposta)', 2, 'A separação entre bens pessoais e da holding oferece camada adicional de proteção patrimonial, desde que constituída preventivamente.'],
+      ['s2', 'Sim, há ações ou dívidas em curso', -2, 'Integralizar bens com passivos existentes pode ser considerado fraude contra credores ou à execução, com risco de anulação do ato.']
+    ] },
+    { id: 'onus', peso: 2, titulo: 'Situação jurídica dos imóveis', rotulo: 'Os imóveis estão livres e regularizados (matrícula atualizada, sem alienação fiduciária, hipoteca, usufruto de terceiros ou inventário pendente)?', opcoes: [
+      ['o1', 'Sim, todos', 1, 'Imóveis regulares podem ser integralizados sem entraves registrais.'],
+      ['o2', 'Parcialmente', -1, 'Os imóveis com pendências devem ser regularizados antes da integralização.'],
+      ['o3', 'Não', -2, 'Pendências relevantes (gravames, financiamentos, inventário aberto) inviabilizam ou encarecem a integralização.']
+    ] },
+    { id: 'custos', peso: 2, titulo: 'Disposição para arcar com custos', rotulo: 'O cliente está disposto a arcar com os custos de constituição e de manutenção anual (contabilidade, balanços, certidões, assessoria jurídica)?', opcoes: [
+      ['k1', 'Sim', 1, 'Há disposição para sustentar os custos fixos da estrutura.'],
+      ['k0', 'Somente se houver economia comprovada', 0, 'A decisão deve se apoiar em estimativa econômica detalhada.'],
+      ['k2', 'Não', -2, 'Sem disposição para arcar com os custos fixos, a holding tende a não ser sustentável.']
+    ] },
+    { id: 'formalidades', peso: 1, titulo: 'Formalidades e governança', rotulo: 'O cliente aceita cumprir as formalidades da estrutura (contabilidade regular, separação entre bens pessoais e da holding, atas e deliberações)?', opcoes: [
+      ['g1', 'Sim', 1, 'Observar as formalidades preserva os benefícios da separação patrimonial.'],
+      ['g2', 'Não', -2, 'A confusão patrimonial entre pessoa física e holding pode levar à desconsideração da personalidade jurídica.']
+    ] }
+  ] }
+];
+
+var respostas = {};
+
+function brl(v) { return 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function numBR(txt) {
+  var t = String(txt === undefined || txt === null ? '' : txt).replace('R$', '').trim();
+  if (!t) return 0;
+  var n = t.indexOf(',') !== -1 ? Number(t.split('.').join('').replace(',', '.')) : (/^\\d+\\.\\d{1,2}$/.test(t) ? Number(t) : Number(t.split('.').join('')));
+  return isNaN(n) ? 0 : n;
+}
+function achar(id) {
+  for (var b = 0; b < PERGUNTAS.length; b++) for (var i = 0; i < PERGUNTAS[b].itens.length; i++) if (PERGUNTAS[b].itens[i].id === id) return PERGUNTAS[b].itens[i];
+  return null;
+}
+
+function montarFormulario() {
+  var html = '';
+  PERGUNTAS.forEach(function (bloco, bi) {
+    html += '<div class="card"><div class="card-titulo">' + (bi + 1) + '. ' + bloco.bloco + '</div><div class="card-sub">Selecione uma opção em cada pergunta.</div>';
+    bloco.itens.forEach(function (q) {
+      html += '<div class="pergunta" data-q="' + q.id + '"><div class="pergunta-rotulo">' + q.rotulo + '</div><div class="opcoes">';
+      q.opcoes.forEach(function (o) {
+        html += '<label class="opcao"><input type="radio" name="' + q.id + '" value="' + o[0] + '"> ' + o[1] + '</label>';
+      });
+      html += '</div></div>';
+    });
+    html += '</div>';
+  });
+  document.getElementById('form-perguntas').innerHTML = html;
+  Array.prototype.forEach.call(document.querySelectorAll('.opcao input'), function (inp) {
+    inp.addEventListener('change', function () {
+      respostas[inp.name] = inp.value;
+      Array.prototype.forEach.call(document.querySelectorAll('input[name="' + inp.name + '"]'), function (r) {
+        r.parentNode.classList.toggle('marcada', r.checked);
+      });
+    });
+  });
+}
+
+function avaliar() {
+  var erro = document.getElementById('erro-form');
+  erro.hidden = true;
+  var faltantes = [];
+  PERGUNTAS.forEach(function (b) { b.itens.forEach(function (q) { if (!respostas[q.id]) faltantes.push(q); }); });
+  if (faltantes.length) {
+    erro.textContent = 'Responda todas as perguntas para obter a avaliação. Pendentes: ' + faltantes.map(function (q) { return q.titulo; }).join('; ') + '.';
+    erro.hidden = false;
+    var el = document.querySelector('.pergunta[data-q="' + faltantes[0].id + '"]');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
+  var soma = 0, maximo = 0, fatores = [];
+  PERGUNTAS.forEach(function (b) {
+    b.itens.forEach(function (q) {
+      var op = q.opcoes.filter(function (o) { return o[0] === respostas[q.id]; })[0];
+      soma += q.peso * op[2];
+      maximo += q.peso * 2;
+      fatores.push({ titulo: q.titulo, rotulo: op[1], pts: op[2], peso: q.peso, texto: op[3] });
+    });
+  });
+  var pct = Math.round(((soma / maximo) + 1) / 2 * 100);
+
+  // Impeditivos: situações que, isoladamente, limitam a indicação
+  var impeditivos = [];
+  if (respostas.passivos === 's2') impeditivos.push('Existência de ações ou dívidas em curso.');
+  if (respostas.onus === 'o3') impeditivos.push('Imóveis com pendências jurídicas ou registrais relevantes.');
+  if (respostas.custos === 'k2') impeditivos.push('Falta de disposição para arcar com os custos da estrutura.');
+  if (respostas.alinhamento === 'f2') impeditivos.push('Resistência dos familiares envolvidos.');
+  if (respostas.formalidades === 'g2') impeditivos.push('Recusa em observar as formalidades da pessoa jurídica.');
+  if (respostas.pctImoveis === 'i0' && respostas.qtdImoveis === 'q0') impeditivos.push('Ausência de imóveis para integralizar.');
+
+  var nivel;
+  if (impeditivos.length && pct >= 40) pct = Math.min(pct, 49);
+  if (pct >= 65 && !impeditivos.length) nivel = 'favoravel';
+  else if (pct >= 40) nivel = 'ressalvas';
+  else nivel = 'desfavoravel';
+
+  renderizarResultado(pct, nivel, fatores, impeditivos);
+  document.getElementById('bloco-form').hidden = true;
+  document.getElementById('bloco-resultado').hidden = false;
+  window.scrollTo(0, 0);
+}
+
+function renderizarResultado(pct, nivel, fatores, impeditivos) {
+  var titulos = {
+    favoravel: 'Indicação favorável: a constituição de uma holding tende a ser viável',
+    ressalvas: 'Viabilidade com ressalvas: recomenda-se análise detalhada antes de decidir',
+    desfavoravel: 'Indicação desfavorável neste momento: a holding tende a não compensar'
+  };
+  var textos = {
+    favoravel: 'O perfil informado reúne a maior parte dos fatores que justificam uma holding patrimonial (concentração em imóveis, renda de aluguel, necessidade sucessória e disposição para sustentar a estrutura). Recomenda-se prosseguir com a análise jurídica e contábil.',
+    ressalvas: 'O perfil apresenta pontos favoráveis, mas também fatores que reduzem a vantagem da estrutura ou exigem correção prévia. A decisão deve se apoiar em estimativa econômica detalhada e na análise de advogado e contador.',
+    desfavoravel: 'Os fatores informados indicam que os custos e as restrições da holding tendem a superar seus benefícios. Podem ser mais adequadas alternativas como previdência privada, doação com usufruto, testamento ou seguro de vida, conforme o objetivo do cliente.'
+  };
+  var v = document.getElementById('res-veredito');
+  v.innerHTML = '<div class="veredito-titulo">' + titulos[nivel] + '</div><div class="veredito-texto">' + textos[nivel] + '</div>' +
+    '<div class="barra-wrap"><div class="barra" style="width:' + pct + '%"></div></div><div class="pontuacao">Aderência ao perfil de holding: ' + pct + '% (índice ponderado das respostas)</div>';
+
+  // Alertas
+  var alertas = [];
+  impeditivos.forEach(function (t) { alertas.push('<b>Impeditivo ou restrição relevante:</b> ' + t); });
+  if (respostas.aluguel && respostas.aluguel !== 'a0') {
+    alertas.push('<b>ITBI na integralização:</b> a imunidade do ITBI na integralização de imóveis ao capital social não se aplica quando a atividade preponderante da empresa é a locação ou a compra e venda de imóveis. Como os imóveis geram aluguel, o município pode exigir o imposto na integralização — verifique a legislação municipal antes de constituir a holding.');
+  }
+  if (respostas.venda === 'v3') {
+    alertas.push('<b>Venda dos imóveis:</b> o ganho de capital na venda por pessoa jurídica é, em regra, mais tributado do que na pessoa física (que possui isenções e alíquotas progressivas). Se a venda é provável, avalie o custo tributário antes de integralizar.');
+  }
+  alertas.push('<b>Valor de integralização:</b> a transferência dos imóveis ao capital pelo valor constante da declaração de imposto de renda não gera ganho de capital; pelo valor de mercado, o ganho é tributado.');
+  alertas.push('<b>ITCMD:</b> a holding não elimina o ITCMD: ele incide na doação ou na transmissão das quotas, com alíquota e regras de cada estado. O benefício está na organização da sucessão, na redução de prazos e custos do inventário e na governança.');
+  if (respostas.menores === 'm1' || respostas.idade === 'd3') {
+    alertas.push('<b>Cláusulas protetivas:</b> considere a doação das quotas com reserva de usufruto e cláusulas de incomunicabilidade, impenhorabilidade e inalienabilidade, observados os limites legais e, para menores, a eventual autorização judicial.');
+  }
+  alertas.push('<b>Tributação de lucros e dividendos:</b> as regras de tributação da distribuição de lucros da pessoa jurídica à pessoa física foram alteradas recentemente (Lei nº 15.270/2025); a estimativa abaixo não considera essa tributação. Confirme a legislação vigente com o contador.');
+  document.getElementById('res-alertas').innerHTML = alertas.map(function (t) { return '<div class="alerta">' + t + '</div>'; }).join('');
+
+  // Fatores
+  var ordenados = fatores.slice().sort(function (a, b) { return Math.abs(b.pts * b.peso) - Math.abs(a.pts * a.peso); });
+  var pos = ordenados.filter(function (f) { return f.pts > 0; });
+  var neg = ordenados.filter(function (f) { return f.pts < 0; });
+  var neu = ordenados.filter(function (f) { return f.pts === 0; });
+  function lista(arr, classe, simbolo) {
+    return '<ul class="lista">' + arr.map(function (f) {
+      return '<li><span class="marca ' + classe + '">' + simbolo + '</span><span><b>' + f.titulo + '</b> — ' + f.rotulo + '. ' + f.texto + '</span></li>';
+    }).join('') + '</ul>';
+  }
+  var h = '<div class="card-titulo">Análise dos fatores</div>';
+  if (pos.length) h += '<div class="lista-titulo">Pontos favoráveis</div>' + lista(pos, 'pos', '+');
+  if (neg.length) h += '<div class="lista-titulo">Pontos contrários</div>' + lista(neg, 'neg', '–');
+  if (neu.length) h += '<div class="lista-titulo">Fatores neutros</div>' + lista(neu, 'neu', '•');
+  document.getElementById('res-fatores').innerHTML = h;
+
+  renderizarEconomia();
+
+  // Próximos passos
+  var passos = [];
+  if (nivel === 'desfavoravel') {
+    passos.push('Avaliar alternativas de planejamento sucessório: previdência privada, seguro de vida, doação com reserva de usufruto e testamento.');
+    passos.push('Reavaliar a holding caso o patrimônio imobiliário, a renda de aluguel ou a necessidade sucessória aumentem.');
+  } else {
+    passos.push('Levantar a documentação dos imóveis (matrículas atualizadas, certidões negativas, valores constantes da declaração de imposto de renda).');
+    passos.push('Consultar o município sobre a incidência de ITBI na integralização e o estado sobre o ITCMD na doação das quotas.');
+    passos.push('Solicitar a um advogado o desenho do contrato social e do acordo de sócios (administração, usufruto, cláusulas protetivas e regras de sucessão).');
+    passos.push('Solicitar a um contador o comparativo de regimes (lucro presumido ou real) e a projeção dos custos anuais com os números do cliente.');
+  }
+  impeditivos.length && passos.unshift('Resolver previamente os impeditivos apontados acima.');
+  document.getElementById('res-passos').innerHTML = '<div class="card-titulo">Próximos passos sugeridos</div><ul class="lista">' + passos.map(function (p, i) { return '<li><span class="marca neu">' + (i + 1) + '.</span><span>' + p + '</span></li>'; }).join('') + '</ul>';
+}
+
+function renderizarEconomia() {
+  var box = document.getElementById('res-economia');
+  var imoveis = numBR(document.getElementById('eco-imoveis').value);
+  var aluguel = numBR(document.getElementById('eco-aluguel').value);
+  if (!imoveis && !aluguel) { box.hidden = true; return; }
+  var aliqPF = numBR(document.getElementById('eco-aliq-pf').value) / 100;
+  var custoAnual = numBR(document.getElementById('eco-custo-anual').value);
+  var custoConst = numBR(document.getElementById('eco-custo-const').value);
+  var itcmd = numBR(document.getElementById('eco-itcmd').value) / 100;
+  var honor = numBR(document.getElementById('eco-honorarios').value) / 100;
+  var h = '<div class="card-titulo">Estimativa econômica</div>';
+
+  if (aluguel > 0) {
+    var receitaAnual = aluguel * 12;
+    var impostoPF = receitaAnual * aliqPF;
+    // Lucro presumido para locação: base de 32% para IRPJ e CSLL; PIS/COFINS cumulativos (3,65%) sobre a receita.
+    var baseTrimestral = aluguel * 3 * 0.32;
+    var irpj = baseTrimestral * 0.15 * 4;
+    var adicional = Math.max(0, baseTrimestral - 60000) * 0.10 * 4;
+    var csll = baseTrimestral * 0.09 * 4;
+    var pisCofins = receitaAnual * 0.0365;
+    var impostoPJ = irpj + adicional + csll + pisCofins;
+    var aliqPJ = impostoPJ / receitaAnual;
+    var economiaBruta = impostoPF - impostoPJ;
+    var economiaLiquida = economiaBruta - custoAnual;
+    h += '<div class="card-sub">Comparativo da tributação anual dos aluguéis (receita de ' + brl(receitaAnual) + ' por ano). Na holding foi considerado o lucro presumido (base de 32% para IRPJ e CSLL, mais PIS e COFINS cumulativos), sem tributação sobre a distribuição de lucros.</div>';
+    h += '<div class="resultado-grid">' +
+      '<div class="stat"><div class="stat-label">Imposto na pessoa física</div><div class="stat-valor">' + brl(impostoPF) + '</div></div>' +
+      '<div class="stat"><div class="stat-label">Imposto na holding (' + (aliqPJ * 100).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + '% da receita)</div><div class="stat-valor">' + brl(impostoPJ) + '</div></div>' +
+      '<div class="stat"><div class="stat-label">Economia tributária bruta</div><div class="stat-valor ' + (economiaBruta >= 0 ? 'pos' : 'neg') + '">' + brl(economiaBruta) + '</div></div>' +
+      '<div class="stat"><div class="stat-label">Economia líquida dos custos anuais</div><div class="stat-valor ' + (economiaLiquida >= 0 ? 'pos' : 'neg') + '">' + brl(economiaLiquida) + '</div></div>' +
+      '</div>';
+    if (economiaLiquida > 0 && custoConst > 0) {
+      var meses = Math.ceil(custoConst / (economiaLiquida / 12));
+      h += '<p class="nota" style="margin-top:8px;">Prazo estimado para recuperar o custo de constituição (' + brl(custoConst) + ') apenas com a economia tributária líquida: ' + (function () {
+        function rotuloMeses(n) { return n + (n === 1 ? ' mês' : ' meses'); }
+        if (meses < 12) return rotuloMeses(meses);
+        var anos = Math.floor(meses / 12);
+        return anos + (anos === 1 ? ' ano' : ' anos') + (meses % 12 ? ' e ' + rotuloMeses(meses % 12) : '');
+      })() + '.</p>';
+    } else if (economiaLiquida <= 0) {
+      h += '<p class="nota" style="margin-top:8px;color:#DC2626;">Com os valores informados, a economia tributária não cobre os custos anuais da holding: o benefício, se houver, estaria restrito à sucessão e à governança.</p>';
+    }
+  }
+  if (imoveis > 0) {
+    var custoItcmd = imoveis * itcmd;
+    var custoHonor = imoveis * honor;
+    h += '<div class="lista-titulo">Custo estimado de inventário sem planejamento (imóveis)</div>';
+    h += '<div class="resultado-grid">' +
+      '<div class="stat"><div class="stat-label">ITCMD estimado</div><div class="stat-valor">' + brl(custoItcmd) + '</div></div>' +
+      '<div class="stat"><div class="stat-label">Custas e honorários</div><div class="stat-valor">' + brl(custoHonor) + '</div></div>' +
+      '<div class="stat"><div class="stat-label">Total estimado</div><div class="stat-valor neg">' + brl(custoItcmd + custoHonor) + '</div></div>' +
+      '</div>';
+    h += '<p class="nota" style="margin-top:8px;">A holding não afasta o ITCMD, que incide também na doação das quotas. A redução tende a ocorrer nas custas, nos honorários e no prazo do inventário, e depende do caso concreto.</p>';
+  }
+  box.innerHTML = h;
+  box.hidden = false;
+}
+
+document.getElementById('btn-avaliar').addEventListener('click', avaliar);
+document.getElementById('btn-refazer').addEventListener('click', function () {
+  document.getElementById('bloco-resultado').hidden = true;
+  document.getElementById('bloco-form').hidden = false;
+  window.scrollTo(0, 0);
+});
+document.getElementById('btn-imprimir').addEventListener('click', function () { window.print(); });
+montarFormulario();
+<\/script>
+</body>
+</html>`);
+  }
+
   function abrirPlanejamentoSucessorio() {
     var win = window.open('', '_blank');
     if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
@@ -20090,6 +20516,7 @@ if (btnExportarExcelPesquisa) {
   document.getElementById('btn-nav-seguros').addEventListener('click', abrirSegurosPrevidencia);
   document.getElementById('btn-nav-consorcio').addEventListener('click', abrirConsorcio);
   document.getElementById('btn-nav-sucessorio').addEventListener('click', abrirPlanejamentoSucessorio);
+  document.getElementById('btn-nav-holding').addEventListener('click', abrirViabilidadeHolding);
   document.getElementById('btn-nav-nota-corretagem').addEventListener('click', abrirNotaCorretagem);
   document.getElementById('btn-nav-cetipados').addEventListener('click', abrirCetipados);
   document.getElementById('btn-nav-pesquisa').addEventListener('click', abrirPesquisaAtivo);
