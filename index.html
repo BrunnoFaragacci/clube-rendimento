@@ -15227,11 +15227,26 @@ tbody tr:last-child td{border-bottom:none;}
 
   <div class="card">
     <div class="upload-box">
-      <label for="nota-arquivo" class="btn btn-primary" style="cursor:pointer;">Selecionar nota de corretagem (PDF)</label>
-      <input type="file" id="nota-arquivo" accept="application/pdf" hidden>
+      <label for="nota-arquivo" class="btn btn-primary" style="cursor:pointer;">Selecionar nota(s) de corretagem (PDF)</label>
+      <input type="file" id="nota-arquivo" accept="application/pdf" multiple hidden>
       <span class="upload-nome" id="nota-arquivo-nome">Nenhum arquivo selecionado.</span>
+      <button type="button" class="btn" id="nota-limpar" style="background:#fff;border-color:var(--line);color:var(--ink-soft);">Limpar notas</button>
     </div>
+    <p class="resultado-sub" style="margin:12px 0 0;">É possível selecionar várias notas de uma vez e adicionar outras em seguida: os totais, a tabela de negócios e o imposto devido consideram todas as notas carregadas.</p>
     <p class="status" id="nota-status" hidden></p>
+  </div>
+
+  <div class="card" id="nota-lista-wrap" hidden>
+    <div class="resultado-titulo">Notas carregadas</div>
+    <p class="resultado-sub">Custos: taxas da B3/CBLC, corretagem e demais despesas da nota (reduzem o resultado). IRRF: imposto retido na fonte, abatido do DARF.</p>
+    <div class="tabela-wrap">
+      <table>
+        <thead><tr>
+          <th>Arquivo</th><th>Nr. nota</th><th>Data do pregão</th><th>Vendas</th><th>Compras</th><th>Custos</th><th>IRRF</th><th></th>
+        </tr></thead>
+        <tbody id="nota-lista-corpo"></tbody>
+      </table>
+    </div>
   </div>
 
   <div class="card" id="nota-resultado-wrap" hidden>
@@ -15249,7 +15264,7 @@ tbody tr:last-child td{border-bottom:none;}
       <table id="nota-tabela">
         <thead><tr>
           <th style="text-align:center;"><input type="checkbox" id="nota-check-todas" title="Selecionar/desmarcar todas"></th>
-          <th>Ativo (nota)</th><th>Ticker</th><th>C/V</th><th>Quantidade</th><th>Preço (nota)</th><th>Valor (nota)</th>
+          <th>Data</th><th>Ativo (nota)</th><th>Ticker</th><th>C/V</th><th>Quantidade</th><th>Preço (nota)</th><th>Valor (nota)</th>
           <th>Preço-alvo (XP)</th><th>Recomendação (XP)</th><th>Potencial vs. preço da nota</th>
         </tr></thead>
         <tbody id="nota-tabela-corpo"></tbody>
@@ -15258,18 +15273,37 @@ tbody tr:last-child td{border-bottom:none;}
   </div>
 
   <div class="card" id="nota-darf-wrap" hidden>
-    <div class="resultado-titulo">Cálculo de DARF</div>
+    <div class="resultado-titulo">Imposto devido (DARF)</div>
+    <p class="resultado-sub">Vendas de todas as notas carregadas, apuradas por mês de pregão e por classe (ações e FIIs). Informe o preço médio de compra de cada ativo vendido para calcular o resultado.</p>
     <div class="tabela-wrap">
       <table>
         <thead><tr>
-          <th>Ticker</th><th>Qtd. vendida</th><th>Valor vendido</th><th>Preço médio de venda</th><th>Preço médio de compra (R$)</th><th>Resultado</th><th>Situação</th><th>DARF estimado</th>
+          <th>Competência</th><th>Classe</th><th>Ativo</th><th>Qtd. vendida</th><th>Valor vendido</th><th>Preço médio de venda</th><th>Preço médio de compra (R$)</th><th>Resultado bruto</th>
         </tr></thead>
         <tbody id="nota-darf-corpo"></tbody>
       </table>
     </div>
+    <div style="margin-top:16px;display:flex;gap:22px;flex-wrap:wrap;align-items:center;">
+      <label style="font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:8px;">Prejuízo acumulado de meses anteriores — Ações (R$)
+        <input type="text" id="prej-ini-acoes" class="input-pm" placeholder="0,00" autocomplete="off"></label>
+      <label style="font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:8px;">FIIs (R$)
+        <input type="text" id="prej-ini-fiis" class="input-pm" placeholder="0,00" autocomplete="off"></label>
+    </div>
+    <div class="resultado-titulo" style="margin-top:22px;">Apuração mensal</div>
+    <div class="tabela-wrap">
+      <table>
+        <thead><tr>
+          <th>Competência</th><th>Classe</th><th>Total vendido</th><th>Resultado (após custos)</th><th>Prejuízo compensado</th><th>Base de cálculo</th><th>Alíquota</th><th>Imposto</th><th>IRRF deduzido</th><th>DARF a pagar</th><th>Situação</th><th>Vencimento</th>
+        </tr></thead>
+        <tbody id="nota-imposto-corpo"></tbody>
+      </table>
+    </div>
     <div class="resultado-grid" style="margin-top:16px;">
       <div class="stat"><div class="stat-label">DARF total a pagar</div><div class="stat-valor" id="nota-darf-total">—</div></div>
+      <div class="stat"><div class="stat-label">Prejuízo a compensar em meses futuros</div><div class="stat-valor" id="nota-prejuizo-futuro" style="font-size:14px;">—</div></div>
+      <div class="stat"><div class="stat-label">Crédito de IRRF a compensar</div><div class="stat-valor" id="nota-irrf-credito">—</div></div>
     </div>
+    <p class="nota">Estimativa para operações comuns (swing trade) com vendas à vista, código de receita 6015: ações com alíquota de 15% e isenção para vendas de até R$ 20.000 no mês; FIIs com alíquota de 20% e sem isenção; prejuízo compensável apenas dentro da mesma classe. Day trade, operações em outras corretoras e prejuízos de meses não informados não são considerados. DARF inferior a R$ 10,00 deve ser acumulado para o mês seguinte. O vencimento considera apenas fins de semana (feriados não são tratados).</p>
   </div>
 </div>
 
@@ -15372,6 +15406,7 @@ function renderizarResultado(negocios, mapaXP) {
     var potencial = (xp && xp.preco_alvo != null && n.preco) ? ((xp.preco_alvo / n.preco) - 1) * 100 : null;
     return '<tr>' +
       '<td style="text-align:center;"><input type="checkbox" class="nota-check-linha" checked></td>' +
+      '<td>' + dataIsoParaBR(n.dataIso) + '</td>' +
       '<td>' + n.ativo + '</td>' +
       '<td>' + (ticker || '<span class="sem-cobertura">não identificado</span>') + '</td>' +
       '<td class="' + (n.cv === 'C' ? 'cv-c' : 'cv-v') + '">' + (n.cv === 'C' ? 'Compra' : 'Venda') + '</td>' +
@@ -15383,7 +15418,8 @@ function renderizarResultado(negocios, mapaXP) {
       '<td class="' + (potencial == null ? '' : potencial >= 0 ? 'pos' : 'neg') + '">' + (potencial == null ? '—' : fPct(potencial)) + '</td>' +
       '</tr>';
   }).join('');
-  document.getElementById('nota-resultado-resumo').textContent = negocios.length + (negocios.length === 1 ? ' negócio identificado nesta nota.' : ' negócios identificados nesta nota.');
+  var qtdNotas = notasCarregadas.length;
+  document.getElementById('nota-resultado-resumo').textContent = negocios.length + (negocios.length === 1 ? ' negócio identificado' : ' negócios identificados') + ' em ' + qtdNotas + (qtdNotas === 1 ? ' nota.' : ' notas.');
   document.getElementById('nota-resultado-wrap').hidden = false;
 
   renderizarTotais(negocios);
@@ -15406,102 +15442,196 @@ function renderizarTotais(negocios) {
   }).join('');
 }
 
-// Agrupa as vendas desta nota por ticker identificado, para o cálculo
-// (isolado, por nota) de resultado e DARF — mesma regra usada na calculadora
-// de Venda de Ativos e DARF (alíquota 15% sobre ações, isenção quando o total
-// vendido do grupo é até R$20.000), mas sem somar outras vendas do mês nem
-// compensar prejuízo de meses anteriores, que a nota sozinha não tem como ver.
-function agruparVendasPorTicker(negocios) {
+// ---------- Imposto devido (DARF) ----------
+// Vendas de TODAS as notas carregadas, agrupadas por competência (mês do
+// pregão) e classe (ações / FIIs — as duas não se compensam entre si), com o
+// custo de aquisição informado pelo assessor (preço médio de compra por
+// ativo). Regras aplicadas (swing trade, operações comuns): ações 15% com
+// isenção quando o total vendido no mês é de até R$ 20.000; FIIs 20% sem
+// isenção; prejuízo do mês acumula para compensar lucros de meses seguintes
+// da mesma classe (mês isento não consome prejuízo); custos operacionais da
+// nota (taxas, emolumentos, corretagem) reduzem o resultado; o IRRF retido
+// na fonte ("dedo-duro") abate o imposto e o saldo excedente acumula para os
+// meses seguintes.
+function chaveAtivoNota(n) { return tickerB3(n.ativo) || normalizar(n.ativo); }
+function rotuloAtivoNota(n) { return tickerB3(n.ativo) || n.ativo; }
+function rotuloCompetencia(comp) {
+  var p = String(comp || '').split('-');
+  return p.length === 2 ? p[1] + '/' + p[0] : '—';
+}
+function numBR(texto) {
+  var t = String(texto === undefined || texto === null ? '' : texto).replace(/R\\$\\s?/gi, '').trim();
+  if (!t) return 0;
+  var n = /,/.test(t) ? Number(t.replace(/\\./g, '').replace(',', '.')) : (/^\\d+\\.\\d{1,2}$/.test(t) ? Number(t) : Number(t.replace(/\\./g, '')));
+  return isNaN(n) ? 0 : n;
+}
+
+function agruparVendas(negocios) {
   var grupos = {};
   negocios.forEach(function (n) {
     if (n.cv !== 'V') return;
-    var ticker = tickerB3(n.ativo);
-    if (!ticker) return;
-    if (!grupos[ticker]) grupos[ticker] = { ticker: ticker, quantidade: 0, valorVendido: 0, fii: ehFII(n.ativo) };
-    grupos[ticker].quantidade += n.quantidade;
-    grupos[ticker].valorVendido += n.valor;
+    var classe = ehFII(n.ativo) ? 'fiis' : 'acoes';
+    var comp = String(n.dataIso || '').slice(0, 7);
+    var chave = comp + '|' + classe;
+    var g = grupos[chave];
+    if (!g) g = grupos[chave] = { competencia: comp, classe: classe, valorVendido: 0, custos: 0, irrf: 0, ativos: {} };
+    g.valorVendido += n.valor;
+    var nota = n.nota;
+    if (nota) {
+      var baseOperacoes = nota.vendas + nota.compras;
+      if (baseOperacoes > 0) g.custos += nota.custos * (n.valor / baseOperacoes);
+      if (nota.vendas > 0) g.irrf += nota.irrf * (n.valor / nota.vendas);
+    }
+    var ck = chaveAtivoNota(n);
+    var a = g.ativos[ck];
+    if (!a) a = g.ativos[ck] = { chave: ck, rotulo: rotuloAtivoNota(n), quantidade: 0, valorVendido: 0 };
+    a.quantidade += n.quantidade;
+    a.valorVendido += n.valor;
   });
-  return Object.keys(grupos).map(function (k) { return grupos[k]; });
+  return Object.keys(grupos).map(function (k) { return grupos[k]; }).sort(function (a, b) {
+    if (a.competencia !== b.competencia) return a.competencia < b.competencia ? -1 : 1;
+    return a.classe === b.classe ? 0 : (a.classe === 'acoes' ? -1 : 1);
+  });
 }
 
+// Último dia útil do mês seguinte à competência (considera apenas fins de
+// semana — feriados não entram aqui).
+function vencimentoDarfNota(competencia) {
+  var p = String(competencia).split('-');
+  var ano = Number(p[0]), mes = Number(p[1]);
+  var d = new Date(ano, mes + 1, 0); // último dia do mês seguinte
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() - 1);
+  return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+}
+
+var gruposImposto = [];
+
 function renderizarDarf(negocios) {
-  var grupos = agruparVendasPorTicker(negocios);
+  gruposImposto = agruparVendas(negocios);
   var wrap = document.getElementById('nota-darf-wrap');
-  if (!grupos.length) { wrap.hidden = true; return; }
+  if (!gruposImposto.length) { wrap.hidden = true; return; }
   wrap.hidden = false;
 
   var corpo = document.getElementById('nota-darf-corpo');
-  corpo.innerHTML = grupos.map(function (g) {
-    var precoVendaMedio = g.valorVendido / g.quantidade;
-    return '<tr data-ticker="' + g.ticker + '">' +
-      '<td>' + g.ticker + '</td>' +
-      '<td>' + g.quantidade.toLocaleString('pt-BR') + '</td>' +
-      '<td>' + fBRL(g.valorVendido) + '</td>' +
-      '<td>' + fBRL(precoVendaMedio) + '</td>' +
-      '<td><input type="number" class="input-pm" min="0" step="0.01" placeholder="0,00" data-ticker="' + g.ticker + '" value="' + (precosMedios[g.ticker] != null ? precosMedios[g.ticker] : '') + '"></td>' +
-      '<td data-campo="resultado">—</td>' +
-      '<td data-campo="situacao">—</td>' +
-      '<td data-campo="darf">—</td>' +
-      '</tr>';
-  }).join('');
+  var linhas = [];
+  gruposImposto.forEach(function (g, gi) {
+    Object.keys(g.ativos).forEach(function (ck) {
+      var a = g.ativos[ck];
+      var precoVendaMedio = a.quantidade ? a.valorVendido / a.quantidade : 0;
+      linhas.push('<tr data-grupo="' + gi + '" data-ativo="' + ck + '">' +
+        '<td>' + rotuloCompetencia(g.competencia) + '</td>' +
+        '<td>' + (g.classe === 'fiis' ? 'FII' : 'Ação') + '</td>' +
+        '<td>' + a.rotulo + '</td>' +
+        '<td>' + a.quantidade.toLocaleString('pt-BR') + '</td>' +
+        '<td>' + fBRL(a.valorVendido) + '</td>' +
+        '<td>' + fBRL(precoVendaMedio) + '</td>' +
+        '<td><input type="number" class="input-pm" min="0" step="0.01" placeholder="0,00" data-ativo="' + ck + '" value="' + (precosMedios[ck] != null ? precosMedios[ck] : '') + '"></td>' +
+        '<td data-campo="resultado">—</td>' +
+        '</tr>');
+    });
+  });
+  corpo.innerHTML = linhas.join('');
 
   Array.prototype.forEach.call(corpo.querySelectorAll('.input-pm'), function (inp) {
     inp.addEventListener('input', function () {
-      var ticker = inp.getAttribute('data-ticker');
+      var ck = inp.getAttribute('data-ativo');
       var v = parseFloat(inp.value);
-      if (isNaN(v)) delete precosMedios[ticker]; else precosMedios[ticker] = v;
-      atualizarCalculoDarf(grupos);
+      if (isNaN(v)) delete precosMedios[ck]; else precosMedios[ck] = v;
+      // o mesmo ativo vendido em meses diferentes compartilha o preço médio
+      Array.prototype.forEach.call(corpo.querySelectorAll('.input-pm'), function (outro) {
+        if (outro !== inp && outro.getAttribute('data-ativo') === ck) outro.value = inp.value;
+      });
+      atualizarCalculoDarf();
     });
   });
+  ['prej-ini-acoes', 'prej-ini-fiis'].forEach(function (id) {
+    document.getElementById(id).oninput = atualizarCalculoDarf;
+  });
 
-  atualizarCalculoDarf(grupos);
+  atualizarCalculoDarf();
 }
 
-function atualizarCalculoDarf(grupos) {
+function atualizarCalculoDarf() {
   var corpo = document.getElementById('nota-darf-corpo');
-  var darfTotal = 0, algumCalculado = false;
-  grupos.forEach(function (g) {
-    var tr = corpo.querySelector('tr[data-ticker="' + g.ticker + '"]');
-    if (!tr) return;
-    var precoMedioCompra = precosMedios[g.ticker];
-    var celResultado = tr.querySelector('[data-campo="resultado"]');
-    var celSituacao = tr.querySelector('[data-campo="situacao"]');
-    var celDarf = tr.querySelector('[data-campo="darf"]');
-    if (typeof precoMedioCompra !== 'number' || isNaN(precoMedioCompra)) {
-      celResultado.textContent = '—';
-      celSituacao.textContent = 'informe o preço médio';
-      celSituacao.className = '';
-      celDarf.textContent = '—';
-      return;
-    }
-    var precoVendaMedio = g.valorVendido / g.quantidade;
-    var resultado = (precoVendaMedio - precoMedioCompra) * g.quantidade;
-    celResultado.textContent = fBRL(resultado);
-    celResultado.className = resultado >= 0 ? 'pos' : 'neg';
-    algumCalculado = true;
-    if (resultado <= 0) {
-      celSituacao.textContent = 'Prejuízo';
-      celSituacao.className = 'situacao-prejuizo';
-      celDarf.textContent = fBRL(0);
-    } else if (g.fii) {
-      var darfFii = resultado * 0.20;
-      celSituacao.textContent = 'Tributável (FII — 20%)';
-      celSituacao.className = '';
-      celDarf.textContent = fBRL(darfFii);
-      darfTotal += darfFii;
-    } else if (g.valorVendido <= 20000) {
-      celSituacao.textContent = 'Isento (venda ≤ R$20.000)';
-      celSituacao.className = 'situacao-isento';
-      celDarf.textContent = fBRL(0);
-    } else {
-      var darf = resultado * 0.15;
-      celSituacao.textContent = 'Tributável (15%)';
-      celSituacao.className = '';
-      celDarf.textContent = fBRL(darf);
-      darfTotal += darf;
-    }
+  var corpoImposto = document.getElementById('nota-imposto-corpo');
+  var completo = true;
+
+  // Resultado bruto por ativo/mês e por grupo (precisa do preço médio de todos)
+  gruposImposto.forEach(function (g, gi) {
+    g.resultadoBruto = 0;
+    g.completo = true;
+    Object.keys(g.ativos).forEach(function (ck) {
+      var a = g.ativos[ck];
+      var tr = corpo.querySelector('tr[data-grupo="' + gi + '"][data-ativo="' + ck + '"]');
+      var cel = tr ? tr.querySelector('[data-campo="resultado"]') : null;
+      var pm = precosMedios[ck];
+      if (typeof pm !== 'number' || isNaN(pm)) {
+        g.completo = false;
+        if (cel) { cel.textContent = '—'; cel.className = ''; }
+        return;
+      }
+      var res = a.valorVendido - pm * a.quantidade;
+      g.resultadoBruto += res;
+      if (cel) { cel.textContent = fBRL(res); cel.className = res >= 0 ? 'pos' : 'neg'; }
+    });
+    if (!g.completo) completo = false;
   });
-  document.getElementById('nota-darf-total').textContent = algumCalculado ? fBRL(darfTotal) : '—';
+
+  var elTotal = document.getElementById('nota-darf-total');
+  var elPrej = document.getElementById('nota-prejuizo-futuro');
+  var elIrrf = document.getElementById('nota-irrf-credito');
+  if (!completo) {
+    corpoImposto.innerHTML = '<tr><td colspan="12" class="vazio">Informe o preço médio de compra de todos os ativos vendidos para apurar o imposto devido.</td></tr>';
+    elTotal.textContent = '—'; elPrej.textContent = '—'; elIrrf.textContent = '—';
+    return;
+  }
+
+  var perda = {
+    acoes: numBR(document.getElementById('prej-ini-acoes').value),
+    fiis: numBR(document.getElementById('prej-ini-fiis').value)
+  };
+  var creditoIrrf = 0, darfTotal = 0;
+  var html = [];
+  gruposImposto.forEach(function (g) {
+    var resultado = g.resultadoBruto - g.custos;
+    var aliquota = g.classe === 'fiis' ? 0.20 : 0.15;
+    var compensado = 0, base = 0, imposto = 0, irrfDeduzido = 0, darf = 0, situacao = '';
+    creditoIrrf += g.irrf;
+    if (resultado <= 0) {
+      perda[g.classe] += -resultado;
+      situacao = 'Prejuízo — acumulado para compensação futura';
+    } else if (g.classe === 'acoes' && g.valorVendido <= 20000) {
+      situacao = 'Isento (vendas de até R$ 20.000 no mês)';
+    } else {
+      compensado = Math.min(perda[g.classe], resultado);
+      perda[g.classe] -= compensado;
+      base = resultado - compensado;
+      imposto = base * aliquota;
+      irrfDeduzido = Math.min(creditoIrrf, imposto);
+      creditoIrrf -= irrfDeduzido;
+      darf = imposto - irrfDeduzido;
+      situacao = base > 0 ? 'Tributável' : 'Lucro compensado integralmente pelo prejuízo';
+    }
+    darfTotal += darf;
+    html.push('<tr>' +
+      '<td>' + rotuloCompetencia(g.competencia) + '</td>' +
+      '<td>' + (g.classe === 'fiis' ? 'FII' : 'Ação') + '</td>' +
+      '<td>' + fBRL(g.valorVendido) + '</td>' +
+      '<td class="' + (resultado >= 0 ? 'pos' : 'neg') + '">' + fBRL(resultado) + '</td>' +
+      '<td>' + (compensado > 0 ? fBRL(compensado) : '—') + '</td>' +
+      '<td>' + fBRL(base) + '</td>' +
+      '<td>' + (aliquota * 100).toLocaleString('pt-BR') + '%</td>' +
+      '<td>' + (imposto > 0 ? fBRL(imposto) : '—') + '</td>' +
+      '<td>' + (irrfDeduzido > 0 ? fBRL(irrfDeduzido) : '—') + '</td>' +
+      '<td><b>' + (darf > 0 ? fBRL(darf) : fBRL(0)) + '</b></td>' +
+      '<td class="sem-cobertura">' + situacao + '</td>' +
+      '<td>' + (darf > 0 ? vencimentoDarfNota(g.competencia) : '—') + '</td>' +
+      '</tr>');
+  });
+  corpoImposto.innerHTML = html.join('');
+  elTotal.textContent = fBRL(darfTotal);
+  elPrej.textContent = 'Ações: ' + fBRL(perda.acoes) + ' · FIIs: ' + fBRL(perda.fiis);
+  elIrrf.textContent = fBRL(creditoIrrf);
 }
 
 function configurarSelecaoPrint() {
@@ -15520,9 +15650,9 @@ function configurarSelecaoPrint() {
     Array.prototype.forEach.call(tabela.querySelectorAll('.nota-check-linha'), function (c) { c.checked = checkTodas.checked; });
     atualizarStatusPrint();
   };
-  tabela.addEventListener('change', function (ev) {
+  tabela.onchange = function (ev) {
     if (ev.target.classList.contains('nota-check-linha')) atualizarStatusPrint();
-  });
+  };
   atualizarStatusPrint();
 
   btnPrint.onclick = function () {
@@ -15534,7 +15664,7 @@ function configurarSelecaoPrint() {
     btnPrint.disabled = true;
     btnPrint.textContent = 'Copiando…';
 
-    var wrapOriginal = document.querySelector('.tabela-wrap');
+    var wrapOriginal = document.getElementById('nota-tabela').parentNode;
     var captura = document.createElement('div');
     captura.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:24px;width:max-content;font-family:' + getComputedStyle(document.body).fontFamily + ';';
 
@@ -15583,50 +15713,174 @@ function configurarSelecaoPrint() {
   };
 }
 
-function processarPDF(arquivo) {
-  var statusEl = document.getElementById('nota-status');
-  statusEl.className = 'status';
-  statusEl.textContent = 'Lendo a nota de corretagem...';
-  statusEl.hidden = false;
-  document.getElementById('nota-resultado-wrap').hidden = true;
+// ---------- Várias notas ----------
+// Cada PDF selecionado vira um item de notasCarregadas; a tabela de negócios,
+// os totais e o imposto devido são sempre recalculados sobre o conjunto.
+var notasCarregadas = [];
+var mapaXPCache = {};
 
-  var leitor = new FileReader();
-  leitor.onload = function (ev) {
-    pdfjsLib.getDocument({ data: new Uint8Array(ev.target.result) }).promise
-      .then(function (pdf) { return extrairLinhasPDF(pdf); })
-      .then(function (linhas) {
-        var negocios = parseLinhasNegocio(linhas);
-        if (!negocios.length) {
-          statusEl.className = 'status erro';
-          statusEl.textContent = 'Não foi possível identificar negócios nesta nota. O layout pode ser diferente do padrão B3 esperado.';
-          return;
-        }
-        statusEl.hidden = true;
-        var tickers = negocios.map(function (n) { return tickerB3(n.ativo); }).filter(function (t, i, arr) { return t && arr.indexOf(t) === i; });
-        if (!tickers.length) { renderizarResultado(negocios, {}); return; }
-        sb.from('xp_precos_alvo').select('ticker,preco_alvo,upside,recomendacao').in('ticker', tickers).then(function (r) {
-          var mapaXP = {};
-          (r.data || []).forEach(function (x) { mapaXP[x.ticker] = x; });
-          renderizarResultado(negocios, mapaXP);
-        });
+function brNumNota(txt) { return parseFloat(String(txt).replace(/\\./g, '').replace(',', '.')); }
+
+// Cabeçalho (número, folha e data do pregão) e valores do resumo financeiro
+// (custos operacionais e IRRF) de uma nota — layout padrão das notas de
+// negociação B3. Custos = taxas da B3/CBLC + corretagem e demais despesas;
+// o IRRF ("dedo-duro") fica de fora dos custos: abate o imposto devido.
+function extrairMetaNota(linhas, negocios, arquivo) {
+  var numero = '', dataIso = '';
+  for (var i = 0; i < linhas.length; i++) {
+    if (/^Nr\\. nota/.test(linhas[i])) {
+      var m = /^(\\d+)\\s+(\\d+)\\s+(\\d{2})\\/(\\d{2})\\/(\\d{4})/.exec(linhas[i + 1] || '');
+      if (m) { numero = m[1]; dataIso = m[5] + '-' + m[4] + '-' + m[3]; }
+      break;
+    }
+  }
+  if (!dataIso) {
+    var h = arquivo && arquivo.lastModified ? new Date(arquivo.lastModified) : new Date();
+    dataIso = h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
+  }
+  function primeiro(re) {
+    for (var k = 0; k < linhas.length; k++) {
+      var mm = re.exec(linhas[k]);
+      if (mm) return brNumNota(mm[1]);
+    }
+    return 0;
+  }
+  var custos = primeiro(/Taxa de liquida[çc][ãa]o\\s+([\\d.]+,\\d{2})/) +
+    primeiro(/Taxa de Registro\\s+([\\d.]+,\\d{2})/) +
+    primeiro(/Total Bovespa\\s*\\/\\s*Soma\\s+([\\d.]+,\\d{2})/) +
+    primeiro(/^Taxa Operacional\\s+([\\d.]+,\\d{2})/) +
+    primeiro(/^Corretagem\\s+([\\d.]+,\\d{2})/) +
+    primeiro(/^Execu[çc][ãa]o\\s+([\\d.]+,\\d{2})/) +
+    primeiro(/^Taxa de Cust[óo]dia\\s+([\\d.]+,\\d{2})/) +
+    primeiro(/^ISS[^\\d]*([\\d.]+,\\d{2})/) +
+    primeiro(/^Impostos\\s+([\\d.]+,\\d{2})/) +
+    primeiro(/^Outros\\s+([\\d.]+,\\d{2})/);
+  var irrf = primeiro(/I\\.R\\.R\\.F\\. s\\/ opera[çc][õo]es,?\\s*base R\\$\\s*[\\d.]+,\\d{2}\\s+([\\d.]+,\\d{2})/);
+  var vendas = 0, compras = 0;
+  negocios.forEach(function (n) { if (n.cv === 'V') vendas += n.valor; else compras += n.valor; });
+  return {
+    arquivo: arquivo ? arquivo.name : '',
+    numero: numero,
+    dataIso: dataIso,
+    chave: numero ? (numero + '|' + dataIso) : ((arquivo ? arquivo.name + '|' + arquivo.size : '') + '|' + dataIso),
+    negocios: negocios,
+    vendas: vendas, compras: compras, custos: custos, irrf: irrf
+  };
+}
+
+function lerNotaPDF(arquivo) {
+  return new Promise(function (resolve, reject) {
+    var leitor = new FileReader();
+    leitor.onload = function (ev) {
+      pdfjsLib.getDocument({ data: new Uint8Array(ev.target.result) }).promise
+        .then(function (pdf) { return extrairLinhasPDF(pdf); })
+        .then(function (linhas) {
+          var negocios = parseLinhasNegocio(linhas);
+          if (!negocios.length) {
+            reject(new Error('não foi possível identificar negócios nesta nota (o layout pode ser diferente do padrão B3 esperado).'));
+            return;
+          }
+          var meta = extrairMetaNota(linhas, negocios, arquivo);
+          negocios.forEach(function (n) { n.nota = meta; n.dataIso = meta.dataIso; });
+          resolve(meta);
+        })
+        .catch(function (erro) { reject(new Error('erro ao ler o PDF: ' + (erro && erro.message ? erro.message : erro))); });
+    };
+    leitor.onerror = function () { reject(new Error('não foi possível ler o arquivo.')); };
+    leitor.readAsArrayBuffer(arquivo);
+  });
+}
+
+function dataIsoParaBR(iso) {
+  var p = String(iso || '').split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : '—';
+}
+
+function renderizarListaNotas() {
+  var wrap = document.getElementById('nota-lista-wrap');
+  var corpo = document.getElementById('nota-lista-corpo');
+  if (!notasCarregadas.length) { wrap.hidden = true; return; }
+  wrap.hidden = false;
+  corpo.innerHTML = notasCarregadas.map(function (n, i) {
+    return '<tr>' +
+      '<td>' + n.arquivo + '</td>' +
+      '<td>' + (n.numero || '—') + '</td>' +
+      '<td>' + dataIsoParaBR(n.dataIso) + '</td>' +
+      '<td>' + fBRL(n.vendas) + '</td>' +
+      '<td>' + fBRL(n.compras) + '</td>' +
+      '<td>' + fBRL(n.custos) + '</td>' +
+      '<td>' + fBRL(n.irrf) + '</td>' +
+      '<td style="text-align:center;"><button type="button" class="nota-remover" data-i="' + i + '" title="Remover esta nota" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--ink-soft);">×</button></td>' +
+      '</tr>';
+  }).join('');
+  Array.prototype.forEach.call(corpo.querySelectorAll('.nota-remover'), function (b) {
+    b.addEventListener('click', function () {
+      notasCarregadas.splice(Number(b.getAttribute('data-i')), 1);
+      recalcularTudo();
+    });
+  });
+  document.getElementById('nota-arquivo-nome').textContent = notasCarregadas.length + (notasCarregadas.length === 1 ? ' nota carregada.' : ' notas carregadas.');
+}
+
+function recalcularTudo() {
+  renderizarListaNotas();
+  if (!notasCarregadas.length) {
+    document.getElementById('nota-resultado-wrap').hidden = true;
+    document.getElementById('nota-darf-wrap').hidden = true;
+    document.getElementById('nota-arquivo-nome').textContent = 'Nenhum arquivo selecionado.';
+    return Promise.resolve();
+  }
+  var negocios = [];
+  notasCarregadas.slice().sort(function (a, b) { return a.dataIso < b.dataIso ? -1 : (a.dataIso > b.dataIso ? 1 : 0); })
+    .forEach(function (n) { negocios = negocios.concat(n.negocios); });
+  var faltantes = negocios.map(function (n) { return tickerB3(n.ativo); })
+    .filter(function (t, i, arr) { return t && arr.indexOf(t) === i && !(t in mapaXPCache); });
+  var buscar = faltantes.length
+    ? sb.from('xp_precos_alvo').select('ticker,preco_alvo,upside,recomendacao').in('ticker', faltantes).then(function (r) {
+        faltantes.forEach(function (t) { mapaXPCache[t] = null; });
+        (r.data || []).forEach(function (x) { mapaXPCache[x.ticker] = x; });
       })
-      .catch(function (erro) {
-        statusEl.className = 'status erro';
-        statusEl.textContent = 'Erro ao ler o PDF: ' + (erro && erro.message ? erro.message : erro);
-      });
-  };
-  leitor.onerror = function () {
-    statusEl.className = 'status erro';
-    statusEl.textContent = 'Não foi possível ler o arquivo selecionado.';
-  };
-  leitor.readAsArrayBuffer(arquivo);
+    : Promise.resolve();
+  return buscar.then(function () {
+    renderizarResultado(negocios, mapaXPCache);
+  });
 }
 
 document.getElementById('nota-arquivo').addEventListener('change', function (ev) {
-  var arquivo = ev.target.files && ev.target.files[0];
-  if (!arquivo) return;
-  document.getElementById('nota-arquivo-nome').textContent = arquivo.name;
-  processarPDF(arquivo);
+  var arquivos = Array.prototype.slice.call(ev.target.files || []);
+  ev.target.value = ''; // permite adicionar outras notas depois (ou o mesmo arquivo de novo)
+  if (!arquivos.length) return;
+  var statusEl = document.getElementById('nota-status');
+  var avisos = [];
+  statusEl.className = 'status';
+  statusEl.hidden = false;
+  var cadeia = Promise.resolve();
+  arquivos.forEach(function (arq, i) {
+    cadeia = cadeia.then(function () {
+      statusEl.textContent = 'Lendo nota ' + (i + 1) + ' de ' + arquivos.length + ': ' + arq.name + '...';
+      return lerNotaPDF(arq).then(function (nota) {
+        if (notasCarregadas.some(function (k) { return k.chave === nota.chave; })) {
+          avisos.push(arq.name + ': esta nota já foi carregada' + (nota.numero ? ' (Nr. ' + nota.numero + ')' : '') + '.');
+          return;
+        }
+        notasCarregadas.push(nota);
+      }).catch(function (erro) { avisos.push(arq.name + ': ' + erro.message); });
+    });
+  });
+  cadeia.then(function () { return recalcularTudo(); }).then(function () {
+    if (avisos.length) {
+      statusEl.className = 'status erro';
+      statusEl.textContent = avisos.join(' ');
+    } else {
+      statusEl.hidden = true;
+    }
+  });
+});
+
+document.getElementById('nota-limpar').addEventListener('click', function () {
+  notasCarregadas = [];
+  document.getElementById('nota-status').hidden = true;
+  recalcularTudo();
 });
 <\/script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
