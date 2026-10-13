@@ -11243,7 +11243,7 @@ body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-sof
       <h1 class="page-title">Fundos Fechados</h1>
       <p style="font-size:13px;color:var(--ink-soft);margin-top:4px;">Base de dados privada. Leitura aberta; edição exige autenticação.</p>
     </div>
-    <div style="display:flex;gap:10px;align-items:center;"><button type="button" class="btn btn-ghost" id="btn-exportar-excel">⤓ Exportar Excel</button><button type="button" class="btn btn-ghost" id="btn-importar-excel" hidden>⤒ Importar Excel</button><input type="file" id="input-planilha-fundos" accept=".xlsx,.xls" hidden><button type="button" class="btn btn-primary" id="btn-add" hidden>+ Adicionar fundo</button></div>
+    <div style="display:flex;gap:10px;align-items:center;"><button type="button" class="btn btn-ghost" id="btn-exportar-excel">⤓ Exportar Excel</button><button type="button" class="btn btn-ghost" id="btn-importar-excel" hidden>⤒ Importar Excel</button><input type="file" id="input-planilha-fundos" accept=".xlsx,.xls" hidden><button type="button" class="btn btn-ghost" id="btn-importar-proventos" hidden>⤒ Importar proventos</button><input type="file" id="input-proventos" accept=".xlsx,.xls" hidden><button type="button" class="btn btn-primary" id="btn-add" hidden>+ Adicionar fundo</button></div>
   </div>
   <p id="status-msg" style="font-size:13px;color:var(--ink-soft);margin-bottom:16px;min-height:18px;"></p>
   <div id="foco-mes-section" hidden></div>
@@ -11463,6 +11463,7 @@ function atualizarAuth(){
     isMaster=false;
     document.getElementById('btn-add').hidden=true;
     document.getElementById('btn-importar-excel').hidden=true;
+    document.getElementById('btn-importar-proventos').hidden=true;
     renderizarFundos();
     return;
   }
@@ -11470,6 +11471,7 @@ function atualizarAuth(){
     isMaster=!!(r.data&&r.data.role==='master');
     document.getElementById('btn-add').hidden=!isMaster;
     document.getElementById('btn-importar-excel').hidden=!isMaster;
+    document.getElementById('btn-importar-proventos').hidden=!isMaster;
     renderizarFundos();
   });
 }
@@ -11597,6 +11599,210 @@ document.getElementById('input-planilha-fundos').addEventListener('change',funct
     return;
   }
   importarExcel(arquivo);
+});
+
+// ── Importar proventos (somente master) ────────────────────────────────────
+// Planilha com as colunas "Fundo", "Data Último Provento" e "Proventos por
+// Cota (último recebido)". Só entram fundos JÁ cadastrados na plataforma: o
+// provento vira um evento do histórico (ultimos_eventos: mês + valor por
+// cota) — mesmo mês já existente é atualizado, mês novo é acrescentado. A
+// correspondência de nomes é exibida para conferência antes de gravar;
+// correspondências aproximadas vêm desmarcadas.
+var RUIDO_NOME_FUNDO = { fii:1, fidc:1, fiagro:1, fip:1, ie:1, fic:1, fi:1, rl:1, de:1, do:1, da:1, e:1, em:1, fundo:1, investimento:1, imobiliario:1, imobiliaria:1, responsabilidade:1, limitada:1 };
+function semAcentoProv(t){ return String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase(); }
+function tokensFundoProv(nome){
+  var t=semAcentoProv(nome).replace(/^\\s*[a-z]{4}\\d{2}\\s*[-–—]?\\s*/,'');
+  var vistos={},lista=[];
+  t.split(/[^a-z0-9]+/).forEach(function(p){ if(p&&!RUIDO_NOME_FUNDO[p]&&!vistos[p]){vistos[p]=1;lista.push(p);} });
+  return lista;
+}
+function chaveFundoProv(nome){ return tokensFundoProv(nome).sort().join(' '); }
+function jaccardProv(a,b){
+  var sb2={},inter=0;
+  b.forEach(function(x){sb2[x]=1;});
+  a.forEach(function(x){if(sb2[x])inter++;});
+  var uniao=a.length+b.length-inter;
+  return uniao?inter/uniao:0;
+}
+function parseDataProv(v){
+  if(v instanceof Date&&!isNaN(v.getTime())){
+    var d2=new Date(v.getTime()+12*3600*1000);
+    return d2.getFullYear()+'-'+String(d2.getMonth()+1).padStart(2,'0')+'-'+String(d2.getDate()).padStart(2,'0');
+  }
+  if(typeof v==='number'&&v>20000){
+    return new Date(Math.round((v-25569)*86400*1000)).toISOString().slice(0,10);
+  }
+  var m=String(v||'').trim().match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/);
+  return m?m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'):null;
+}
+function parseValorProv(v){
+  if(typeof v==='number')return v;
+  var t=String(v===undefined||v===null?'':v).replace('R$','').trim();
+  if(!t)return null;
+  var n=t.indexOf(',')!==-1?parseFloat(t.split('.').join('').replace(',','.')):parseFloat(t);
+  return isNaN(n)?null:n;
+}
+function lerEventosFundo(f){
+  try{var p=JSON.parse(f.ultimos_eventos||'[]');return Array.isArray(p)?p:[];}catch(e){return [];}
+}
+function fmtValorProv(v){ return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4}); }
+function escProv(t){ return String(t===undefined||t===null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtMesProv(m){ var p=m.split('-');return p[1]+'/'+p[0]; }
+
+function prepararImportacaoProventos(arquivo){
+  status('Lendo planilha de proventos...');
+  var leitor=new FileReader();
+  leitor.onload=function(evt){
+    try{
+      var pasta=XLSX.read(evt.target.result,{type:'array',cellDates:true});
+      var aba=pasta.Sheets[pasta.SheetNames[0]];
+      var linhas=XLSX.utils.sheet_to_json(aba,{defval:'',raw:true});
+      if(!linhas.length){alert('A planilha está vazia ou não foi possível lê-la.');status('');return;}
+      var chaves=Object.keys(linhas[0]);
+      var kNome=chaves.filter(function(k){return semAcentoProv(k).indexOf('fundo')!==-1;})[0];
+      var kData=chaves.filter(function(k){return semAcentoProv(k).indexOf('data')!==-1;})[0];
+      var kValor=chaves.filter(function(k){var n=semAcentoProv(k);return n.indexOf('provento')!==-1&&n.indexOf('data')===-1;})[0];
+      if(!kNome||!kData||!kValor){alert('Não foram encontradas as colunas "Fundo", "Data Último Provento" e "Proventos por Cota (último recebido)".');status('');return;}
+
+      var registros=[],semProvento=0;
+      linhas.forEach(function(l){
+        var nome=String(l[kNome]||'').trim();
+        if(!nome)return;
+        var iso=parseDataProv(l[kData]),valor=parseValorProv(l[kValor]);
+        if(!iso||valor===null){semProvento++;return;}
+        registros.push({nome:nome,mes:iso.slice(0,7),valor:valor});
+      });
+      status('');
+      if(!registros.length){alert('Nenhuma linha com data e valor de provento foi encontrada.');return;}
+      abrirPreviaProventos(montarCorrespondenciasProventos(registros),semProvento);
+    }catch(erro){
+      alert('Erro ao ler a planilha: '+erro.message);
+      status('');
+    }
+  };
+  leitor.readAsArrayBuffer(arquivo);
+}
+
+function montarCorrespondenciasProventos(registros){
+  var porChave={},porTicker={};
+  todosFundos.forEach(function(f){
+    var k=chaveFundoProv(f.nome);
+    (porChave[k]=porChave[k]||[]).push(f);
+    if(f.ticker)porTicker[String(f.ticker).toUpperCase()]=f;
+  });
+  var reivindicados={};
+  var itens=registros.map(function(r){
+    var item={planilha:r.nome,mes:r.mes,valor:r.valor,fundo:null,tipo:null};
+    var mt=r.nome.match(/^\\s*([A-Za-z]{4}\\d{2})\\b/);
+    var f=mt?porTicker[mt[1].toUpperCase()]:null;
+    if(!f){
+      var lista=porChave[chaveFundoProv(r.nome)]||[];
+      if(lista.length===1)f=lista[0];
+    }
+    if(f){item.fundo=f;item.tipo='exato';reivindicados[f.id]=true;}
+    return item;
+  });
+  // Correspondência aproximada: melhor candidato único ainda não utilizado
+  var propostas=[];
+  itens.forEach(function(it){
+    if(it.fundo)return;
+    var tk=tokensFundoProv(it.planilha),melhor=null,melhorJ=0,segundoJ=0;
+    todosFundos.forEach(function(f){
+      if(reivindicados[f.id])return;
+      var j=jaccardProv(tk,tokensFundoProv(f.nome));
+      if(j>melhorJ){segundoJ=melhorJ;melhorJ=j;melhor=f;}else if(j>segundoJ){segundoJ=j;}
+    });
+    if(melhor&&melhorJ>=0.5&&melhorJ>segundoJ)propostas.push({item:it,fundo:melhor,j:melhorJ});
+  });
+  propostas.sort(function(a,b){return b.j-a.j;});
+  var usados={};
+  propostas.forEach(function(p){
+    if(usados[p.fundo.id])return;
+    usados[p.fundo.id]=true;
+    p.item.fundo=p.fundo;p.item.tipo='possivel';
+  });
+  itens.forEach(function(it){
+    if(!it.fundo)return;
+    var evs=lerEventosFundo(it.fundo);
+    var atual=evs.filter(function(e){return e.data===it.mes;})[0];
+    if(!atual)it.situacao='Novo mês';
+    else if(Number(atual.valorCota)===it.valor)it.situacao='Sem alteração';
+    else it.situacao='Atualizar (valor atual '+fmtValorProv(atual.valorCota)+')';
+    it.selecionado=it.tipo==='exato'&&it.situacao!=='Sem alteração';
+  });
+  return itens;
+}
+
+function abrirPreviaProventos(itens,semProvento){
+  var anterior=document.getElementById('previa-proventos');
+  if(anterior)anterior.remove();
+  var casados=itens.filter(function(i){return i.fundo;});
+  var naoCadastrados=itens.filter(function(i){return !i.fundo;});
+  var overlay=document.createElement('div');
+  overlay.id='previa-proventos';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px;';
+  var caixa=document.createElement('div');
+  caixa.style.cssText='background:#fff;border-radius:14px;padding:24px;width:min(980px,100%);max-height:90vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.25);';
+  var h='<h3 style="font-size:16px;font-weight:700;margin-bottom:6px;">Importar proventos</h3>'+
+    '<p style="font-size:12.5px;color:#5C5C5C;margin-bottom:14px;line-height:1.5;">'+casados.length+' fundo(s) cadastrado(s) identificado(s) na planilha; '+naoCadastrados.length+' fundo(s) não cadastrado(s) serão ignorados'+(semProvento?'; '+semProvento+' linha(s) sem provento informado foram desconsideradas':'')+'. Confira a correspondência e selecione o que deseja gravar. Correspondências aproximadas ("Verificar") vêm desmarcadas.</p>';
+  h+='<div style="overflow:auto;border:1px solid #E2E2E2;border-radius:10px;"><table style="width:100%;border-collapse:collapse;min-width:760px;font-size:12.5px;"><thead><tr style="background:#111;color:#fff;text-align:left;">'+
+    '<th style="padding:9px 10px;width:34px;"></th><th style="padding:9px 10px;">Fundo na planilha</th><th style="padding:9px 10px;">Fundo cadastrado</th><th style="padding:9px 10px;">Mês</th><th style="padding:9px 10px;">Provento por cota</th><th style="padding:9px 10px;">Situação</th></tr></thead><tbody>';
+  casados.forEach(function(it,i){
+    var bloqueado=it.situacao==='Sem alteração';
+    h+='<tr style="border-bottom:1px solid #E2E2E2;'+(bloqueado?'color:#8a8a8a;':'')+'">'+
+      '<td style="padding:8px 10px;"><input type="checkbox" class="chk-prov" data-i="'+i+'"'+(it.selecionado?' checked':'')+(bloqueado?' disabled':'')+'></td>'+
+      '<td style="padding:8px 10px;">'+escProv(it.planilha)+'</td>'+
+      '<td style="padding:8px 10px;">'+escProv(it.fundo.nome)+(it.tipo==='possivel'?' <b style="color:#B45309;">· Verificar</b>':'')+'</td>'+
+      '<td style="padding:8px 10px;">'+fmtMesProv(it.mes)+'</td>'+
+      '<td style="padding:8px 10px;">'+fmtValorProv(it.valor)+'</td>'+
+      '<td style="padding:8px 10px;">'+it.situacao+'</td></tr>';
+  });
+  if(!casados.length)h+='<tr><td colspan="6" style="padding:16px;text-align:center;color:#5C5C5C;">Nenhum fundo da planilha está cadastrado na plataforma.</td></tr>';
+  h+='</tbody></table></div>';
+  if(naoCadastrados.length){
+    h+='<details style="margin-top:12px;font-size:12.5px;color:#5C5C5C;"><summary style="cursor:pointer;">Fundos não cadastrados (ignorados): '+naoCadastrados.length+'</summary><div style="margin-top:8px;line-height:1.6;">'+naoCadastrados.map(function(i){return escProv(i.planilha);}).join('<br>')+'</div></details>';
+  }
+  h+='<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;"><button type="button" id="prov-cancelar" class="btn btn-ghost">Cancelar</button><button type="button" id="prov-aplicar" class="btn btn-primary">Gravar selecionados</button></div>';
+  caixa.innerHTML=h;
+  overlay.appendChild(caixa);
+  document.body.appendChild(overlay);
+  document.getElementById('prov-cancelar').onclick=function(){overlay.remove();};
+  document.getElementById('prov-aplicar').onclick=function(){
+    var marcados=Array.prototype.slice.call(caixa.querySelectorAll('.chk-prov:checked')).map(function(c){return casados[Number(c.getAttribute('data-i'))];});
+    if(!marcados.length){alert('Nenhum fundo selecionado.');return;}
+    var botao=document.getElementById('prov-aplicar');
+    botao.disabled=true;
+    var feitos=0,erros=[],idx=0;
+    function proximo(){
+      if(idx>=marcados.length){
+        overlay.remove();
+        status(feitos+' fundo(s) atualizado(s) com proventos.'+(erros.length?' '+erros.length+' erro(s): '+erros.slice(0,3).join(' | '):''));
+        carregarFundos();
+        return;
+      }
+      var it=marcados[idx++];
+      botao.textContent='Gravando '+idx+'/'+marcados.length+'...';
+      var evs=lerEventosFundo(it.fundo).filter(function(e){return e.data!==it.mes;});
+      evs.push({data:it.mes,valorCota:it.valor});
+      evs.sort(function(a,b){return String(a.data).localeCompare(String(b.data));});
+      sb.from(TABELA).update({ultimos_eventos:JSON.stringify(evs)}).eq('id',it.fundo.id).select('id').then(function(r){
+        if(r.error)erros.push(it.fundo.nome+': '+r.error.message);
+        else if(!r.data||!r.data.length)erros.push(it.fundo.nome+': sem permissão para editar');
+        else feitos++;
+        proximo();
+      });
+    }
+    proximo();
+  };
+}
+document.getElementById('btn-importar-proventos').addEventListener('click',function(){
+  document.getElementById('input-proventos').click();
+});
+document.getElementById('input-proventos').addEventListener('change',function(ev){
+  var arquivo=ev.target.files&&ev.target.files[0];
+  ev.target.value='';
+  if(!arquivo)return;
+  prepararImportacaoProventos(arquivo);
 });
 
 function exportarExcel(){
