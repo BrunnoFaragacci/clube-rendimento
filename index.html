@@ -15286,11 +15286,26 @@ function normalizar(texto) {
 function tickerB3(nomeAtivo) {
   if (!nomeAtivo) return null;
   var txt = normalizar(nomeAtivo);
+  // FIIs (e alguns outros ativos) trazem o ticker escrito na própria
+  // especificação do título — ex.: "FII ATHENA I FATN11 CI ER @#" — então
+  // um código no padrão B3 (4 letras + 1 ou 2 dígitos) tem prioridade sobre
+  // o mapeamento por nome do emissor.
+  var palavras = txt.split(/\\s+/);
+  for (var p = palavras.length - 1; p >= 0; p--) {
+    if (/^[A-Z]{4}\\d{1,2}$/.test(palavras[p])) return palavras[p];
+  }
   var chaves = Object.keys(EMISSORES_B3);
   for (var i = 0; i < chaves.length; i++) {
     if (txt.indexOf(normalizar(chaves[i])) !== -1) return EMISSORES_B3[chaves[i]];
   }
   return null;
+}
+// Fundo imobiliário: a especificação do título na nota começa com "FII"
+// (ex.: "FII ATHENA I FATN11 CI ER @#"). FIIs têm DARF próprio: alíquota de
+// 20% e sem a isenção de R$ 20 mil por mês das ações.
+function ehFII(nomeAtivo) {
+  var t = normalizar(nomeAtivo);
+  return /(^|\\s)FII(\\s|$)/.test(t) || t.indexOf('FDO INV IMOB') !== -1;
 }
 function fBRL(v) {
   return (typeof v === 'number' && !isNaN(v)) ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
@@ -15402,7 +15417,7 @@ function agruparVendasPorTicker(negocios) {
     if (n.cv !== 'V') return;
     var ticker = tickerB3(n.ativo);
     if (!ticker) return;
-    if (!grupos[ticker]) grupos[ticker] = { ticker: ticker, quantidade: 0, valorVendido: 0 };
+    if (!grupos[ticker]) grupos[ticker] = { ticker: ticker, quantidade: 0, valorVendido: 0, fii: ehFII(n.ativo) };
     grupos[ticker].quantidade += n.quantidade;
     grupos[ticker].valorVendido += n.valor;
   });
@@ -15468,6 +15483,12 @@ function atualizarCalculoDarf(grupos) {
       celSituacao.textContent = 'Prejuízo';
       celSituacao.className = 'situacao-prejuizo';
       celDarf.textContent = fBRL(0);
+    } else if (g.fii) {
+      var darfFii = resultado * 0.20;
+      celSituacao.textContent = 'Tributável (FII — 20%)';
+      celSituacao.className = '';
+      celDarf.textContent = fBRL(darfFii);
+      darfTotal += darfFii;
     } else if (g.valorVendido <= 20000) {
       celSituacao.textContent = 'Isento (venda ≤ R$20.000)';
       celSituacao.className = 'situacao-isento';
