@@ -10886,8 +10886,12 @@ function classificarItem(it) {
   return { liq: liq, isento: isento };
 }
 function completarItens(itens) {
+  // regras memorizadas pelo usuário (por nome do ativo) têm prioridade sobre a classificação automática
+  var regras = (typeof estado !== 'undefined' && estado && estado.regras) ? estado.regras : {};
   (itens || []).forEach(function (it) {
     var c = classificarItem(it);
+    var r = (typeof compacto === 'function') ? regras[compacto(it.nome)] : null;
+    if (r) { it.liq = r.liq; it.isento = !!r.isento; return; }
     if (!it.liq) it.liq = c.liq;
     if (typeof it.isento !== 'boolean') it.isento = c.isento;
   });
@@ -15649,7 +15653,9 @@ table.matriz select{border:1px solid var(--line);border-radius:6px;padding:4px 6
     <div id="diag-conteudo"></div>
     <details id="diag-detalhe" style="margin-top:18px;" hidden>
       <summary style="cursor:pointer;font-size:13px;font-weight:600;">Classificação dos ativos</summary>
-      <div class="tabela-wrap" style="margin-top:10px;"><table class="matriz" id="tabela-itens"></table></div>
+      <p class="card-sub" style="margin:10px 0;">Altere a liquidez ou a tributação de qualquer ativo: a escolha é aplicada na hora, fica memorizada neste navegador para os próximos carregamentos da carteira e é gravada no histórico do cliente ao clicar em "Salvar no histórico do cliente".</p>
+      <div class="tabela-wrap"><table class="matriz" id="tabela-itens"></table></div>
+      <div style="margin-top:10px;"><button type="button" class="btn btn-leve" id="btn-reclassificar">Redefinir para a classificação automática</button></div>
     </details>
   </div>
 
@@ -15984,8 +15990,12 @@ function classificarItem(it) {
   return { liq: liq, isento: isento };
 }
 function completarItens(itens) {
+  // regras memorizadas pelo usuário (por nome do ativo) têm prioridade sobre a classificação automática
+  var regras = (typeof estado !== 'undefined' && estado && estado.regras) ? estado.regras : {};
   (itens || []).forEach(function (it) {
     var c = classificarItem(it);
+    var r = (typeof compacto === 'function') ? regras[compacto(it.nome)] : null;
+    if (r) { it.liq = r.liq; it.isento = !!r.isento; return; }
     if (!it.liq) it.liq = c.liq;
     if (typeof it.isento !== 'boolean') it.isento = c.isento;
   });
@@ -16051,12 +16061,22 @@ function renderDiagnostico() {
   });
   document.getElementById('tabela-itens').innerHTML = h + '</tbody>';
 }
+document.getElementById('btn-reclassificar').addEventListener('click', function () {
+  if (!confirm('Descartar as classificações memorizadas e voltar à classificação automática?')) return;
+  estado.regras = {};
+  (estado.itens || []).forEach(function (it) { delete it.liq; delete it.isento; });
+  completarItens(estado.itens);
+  render();
+});
 document.getElementById('tabela-itens').addEventListener('change', function (ev) {
   var t = ev.target;
   if (!t.dataset || t.dataset.itm === undefined) return;
   var it = estado.itens[Number(t.dataset.itm)];
   if (!it) return;
   if (t.dataset.campo === 'liq') it.liq = t.value; else it.isento = t.value === '1';
+  // memoriza a escolha para este ativo (vale nos próximos carregamentos de carteira)
+  estado.regras = estado.regras || {};
+  estado.regras[compacto(it.nome)] = { liq: it.liq, isento: it.isento };
   document.getElementById('diag-conteudo').innerHTML = htmlDiagnostico(estado.itens);
   salvar();
 });
@@ -16372,6 +16392,7 @@ function carregarSnapshot(id) {
   estado.perfilSel = x.dados.perfilSel || 0;
   estado.patrimonio = x.dados.patrimonio || '';
   estado.itens = clonar(x.dados.itens || []);
+  estado.regras = Object.assign({}, estado.regras || {}, x.dados.regras || {});
   render();
   var st = document.getElementById('hist-status');
   st.style.color = 'var(--ink-soft)';
@@ -16397,7 +16418,7 @@ document.getElementById('btn-salvar-hist').addEventListener('click', function ()
     if (!confirm('Nenhum valor em R$ foi informado: será salvo apenas o percentual atual. Continuar?')) return;
   }
   var perfil = estado.perfis[estado.perfilSel] || {};
-  var snap = { classes: clonar(estado.classes), perfis: clonar(estado.perfis), perfilSel: estado.perfilSel, patrimonio: estado.patrimonio, itens: clonar(estado.itens || []) };
+  var snap = { classes: clonar(estado.classes), perfis: clonar(estado.perfis), perfilSel: estado.perfilSel, patrimonio: estado.patrimonio, itens: clonar(estado.itens || []), regras: clonar(estado.regras || {}) };
   var botao = document.getElementById('btn-salvar-hist');
   botao.disabled = true;
   sb.auth.getUser().then(function (res) {
