@@ -10747,6 +10747,23 @@ h1{font-size:24px;font-weight:700;margin-bottom:6px;}
 .neg{color:var(--red);font-weight:700;}
 .vazio-comp{padding:24px;text-align:center;color:var(--ink-soft);font-size:13px;}
 @media(max-width:640px){.metas-grid{grid-template-columns:1fr 1fr;}}
+.diag-resumo{font-size:14px;margin-bottom:20px;line-height:1.5;}
+.diag-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:36px;}
+.diag-tit{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;padding-left:10px;border-left:4px solid #111;}
+.diag-linha{display:grid;grid-template-columns:100px 1fr 96px;align-items:center;gap:12px;margin:14px 0;}
+.diag-rot{font-size:13px;}
+.diag-trilho{height:26px;background:#F1F1F1;border-radius:999px;overflow:hidden;}
+.diag-fill{height:100%;background:#111;border-radius:999px;}
+.diag-val{text-align:right;display:flex;flex-direction:column;font-size:13px;}
+.diag-val small{color:var(--ink-soft);font-size:11px;}
+.diag-rosca-wrap{display:flex;justify-content:center;}
+.diag-rosca{width:230px;height:230px;}
+.diag-rosca-rot{font-size:11px;fill:#5C5C5C;}
+.diag-rosca-tot{font-size:17px;font-weight:700;fill:#111;}
+.diag-leg{display:flex;justify-content:space-between;font-size:13px;margin:6px 24px;}
+.diag-leg i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:8px;}
+.diag-vazio{font-size:13px;color:var(--ink-soft);}
+@media(max-width:760px){.diag-grid{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -10781,6 +10798,12 @@ h1{font-size:24px;font-weight:700;margin-bottom:6px;}
     <div id="div-resumo" style="font-size:13px;margin-bottom:6px;"></div>
     <div id="div-tabela-wrap"></div>
     <div style="margin-top:16px;"><button type="button" class="btn btn-ghost" id="btn-abrir-ferramenta">Abrir na Diversificação de Carteira</button></div>
+  </div>
+
+  <div class="card">
+    <h2>Diagnóstico — liquidez e tributação</h2>
+    <p class="card-nota">Disponibilidade de resgate e tributação dos ativos do registro selecionado acima.</p>
+    <div id="div-diag"></div>
   </div>
 </div>
 
@@ -10829,6 +10852,92 @@ function carregarCliente() {
 
 // Diversificação atual = registros salvos na ferramenta "Diversificação de Carteira"
 // (tabela diversificacao_historico); o mais recente é exibido por padrão.
+// ── Diagnóstico de liquidez e tributação ──
+// Cada item da carteira recebe uma categoria de disponibilidade (D+0, D+2 a D+5,
+// D+6 a D+30, sem liquidez, previdência) e uma condição de tributação (isento ou
+// tributado), por regras sobre o tipo e o nome do ativo — premissas simplificadas,
+// ajustáveis item a item na tabela de classificação.
+var LIQ_ORDEM = ['d0', 'd2', 'd6', 'sem', 'prev'];
+var LIQ_ROTULOS = { d0: 'D+0', d2: 'D+2 a D+5', d6: 'D+6 a D+30', sem: 'Sem liquidez', prev: 'Previdência' };
+
+function hojeISO() {
+  var h = new Date();
+  return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
+}
+function classificarItem(it) {
+  var nome = String(it.nome || '').toUpperCase().trim();
+  var hoje = hojeISO();
+  var liq = 'sem', isento = false;
+  if (it.tipo === 'caixa') { liq = 'd0'; isento = true; }
+  else if (it.tipo === 'prev') { liq = 'prev'; isento = false; }
+  else if (it.tipo === 'acao' || it.tipo === 'etf') { liq = 'd2'; isento = false; }
+  else if (it.tipo === 'fii') { liq = /^[A-Z]{4}\\d{1,2}$/.test(nome) ? 'd2' : 'sem'; isento = true; }
+  else if (it.tipo === 'rf') {
+    var credito = /^(CRA|CRI|DEB)/.test(nome);
+    if (it.carencia) liq = it.carencia > hoje ? 'sem' : 'd2';
+    else liq = credito ? 'sem' : 'd2';
+    isento = /^(LCA|LCI|LCD|CRA|CRI)/.test(nome) || nome.indexOf('INCENTIVAD') !== -1;
+  }
+  else if (it.tipo === 'fundo') {
+    var fechado = /\\bFII\\b|FIAGRO|\\bFIP\\b|\\bFIDC\\b|IMOBILI|FI-INFRA|FIP-IE/.test(nome);
+    if (fechado) { liq = 'sem'; isento = /\\bFII\\b|FIAGRO|IMOBILI/.test(nome); }
+    else { liq = /\\bDI\\b|SIMPLES|REFERENCIADO|SOBERANO|CASH|LIQUIDEZ/.test(nome) ? 'd0' : 'd6'; isento = false; }
+  }
+  return { liq: liq, isento: isento };
+}
+function completarItens(itens) {
+  (itens || []).forEach(function (it) {
+    var c = classificarItem(it);
+    if (!it.liq) it.liq = c.liq;
+    if (typeof it.isento !== 'boolean') it.isento = c.isento;
+  });
+  return itens;
+}
+function resumirDiagnostico(itens) {
+  var r = { total: 0, liq: { d0: 0, d2: 0, d6: 0, sem: 0, prev: 0 }, isento: 0, tributado: 0 };
+  (itens || []).forEach(function (it) {
+    var v = typeof it.valor === 'number' ? it.valor : 0;
+    if (v <= 0) return;
+    r.total += v;
+    r.liq[LIQ_ORDEM.indexOf(it.liq) !== -1 ? it.liq : 'sem'] += v;
+    if (it.isento) r.isento += v; else r.tributado += v;
+  });
+  return r;
+}
+function fmtPctD(v) { return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%'; }
+function fmtPct1D(v) { return v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%'; }
+function fmtRSD(v) { return 'R$ ' + Math.round(v).toLocaleString('pt-BR'); }
+function fmtCompactoD(v) {
+  if (v >= 1000000) return 'R$ ' + (v / 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' mi';
+  if (v >= 1000) return 'R$ ' + Math.round(v / 1000).toLocaleString('pt-BR') + ' mil';
+  return fmtRSD(v);
+}
+// HTML do diagnóstico (resumo, barras por disponibilidade e rosca por tributação)
+function htmlDiagnostico(itens) {
+  var r = resumirDiagnostico(itens);
+  if (r.total <= 0) return '<p class="diag-vazio">Sem dados de liquidez e tributação. Carregue a carteira do cliente (PDF ou Excel) para gerar o diagnóstico.</p>';
+  var pc = function (v) { return v / r.total * 100; };
+  var resumo = fmtPct1D(pc(r.liq.d0)) + ' do patrimônio tem liquidez em até um dia útil e ' + fmtPct1D(pc(r.isento)) + ' está em ativos isentos de Imposto de Renda.';
+  var barras = LIQ_ORDEM.map(function (k) {
+    var p = pc(r.liq[k]);
+    return '<div class="diag-linha"><span class="diag-rot">' + LIQ_ROTULOS[k] + '</span>' +
+      '<div class="diag-trilho"><div class="diag-fill" style="width:' + Math.max(p, r.liq[k] > 0 ? 1.2 : 0).toFixed(2) + '%"></div></div>' +
+      '<span class="diag-val"><b>' + fmtPctD(p) + '</b><small>' + fmtRSD(r.liq[k]) + '</small></span></div>';
+  }).join('');
+  var raio = 78, circ = 2 * Math.PI * raio;
+  var pTrib = r.tributado / r.total, pIsen = r.isento / r.total;
+  var seg = function (frac, desloc, cor) {
+    if (frac <= 0) return '';
+    return '<circle cx="100" cy="100" r="' + raio + '" fill="none" stroke="' + cor + '" stroke-width="38" stroke-dasharray="' + (frac * circ).toFixed(2) + ' ' + circ.toFixed(2) + '" stroke-dashoffset="' + (-desloc * circ).toFixed(2) + '" transform="rotate(-90 100 100)"/>';
+  };
+  var rosca = '<svg viewBox="0 0 200 200" class="diag-rosca">' + seg(pTrib, 0, '#111111') + seg(pIsen, pTrib, '#D4D4D4') +
+    '<text x="100" y="94" text-anchor="middle" class="diag-rosca-rot">total</text><text x="100" y="116" text-anchor="middle" class="diag-rosca-tot">' + fmtCompactoD(r.total) + '</text></svg>';
+  var legenda = '<div class="diag-leg"><span><i style="background:#111"></i>Tributado</span><b>' + fmtPct1D(pTrib * 100) + '</b></div>' +
+    '<div class="diag-leg"><span><i style="background:#D4D4D4"></i>Isento</span><b>' + fmtPct1D(pIsen * 100) + '</b></div>';
+  return '<p class="diag-resumo">' + resumo + '</p><div class="diag-grid"><div><div class="diag-tit">Por disponibilidade</div>' + barras + '</div>' +
+    '<div><div class="diag-tit">Por tributação</div><div class="diag-rosca-wrap">' + rosca + '</div>' + legenda + '</div></div>';
+}
+
 var registrosDiv = [];
 function pctTxt(v) { return formatarNumero(Number(v) || 0, 1) + '%'; }
 function moedaTxt(v) { return 'R$ ' + formatarNumero(Number(v) || 0, 2); }
@@ -10845,6 +10954,8 @@ function renderizarRegistroDiv(id) {
   var perfil = perfis[dados.perfilSel || 0] || null;
   var idxPerfil = dados.perfilSel || 0;
   var pat = Number(x.patrimonio) || 0;
+  var itensDiag = completarItens(JSON.parse(JSON.stringify(dados.itens || [])));
+  document.getElementById('div-diag').innerHTML = itensDiag.length ? htmlDiagnostico(itensDiag) : '<p class="diag-vazio">Este registro não possui o diagnóstico de liquidez e tributação. Carregue a carteira (PDF ou Excel) na ferramenta Diversificação de Carteira e salve um novo registro.</p>';
   document.getElementById('div-resumo').innerHTML = 'Registrado em <b>' + dataHoraTxt(x.criado_em) + '</b>' +
     (pat ? ' · Patrimônio <b>' + moedaTxt(pat) + '</b>' : '') +
     (perfil ? ' · Perfil <b>' + String(perfil.nome).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</b>' : '') +
@@ -15467,6 +15578,24 @@ tr.total td{font-weight:700;border-top:2px solid var(--ink);}
 .nota{font-size:12px;color:var(--ink-soft);margin-top:12px;line-height:1.55;}
 .pos{color:var(--green);font-weight:600;}
 .neg{color:var(--red);font-weight:600;}
+.diag-resumo{font-size:14px;margin-bottom:20px;line-height:1.5;}
+.diag-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:36px;}
+.diag-tit{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;padding-left:10px;border-left:4px solid #111;}
+.diag-linha{display:grid;grid-template-columns:100px 1fr 96px;align-items:center;gap:12px;margin:14px 0;}
+.diag-rot{font-size:13px;}
+.diag-trilho{height:26px;background:#F1F1F1;border-radius:999px;overflow:hidden;}
+.diag-fill{height:100%;background:#111;border-radius:999px;}
+.diag-val{text-align:right;display:flex;flex-direction:column;font-size:13px;}
+.diag-val small{color:var(--ink-soft);font-size:11px;}
+.diag-rosca-wrap{display:flex;justify-content:center;}
+.diag-rosca{width:230px;height:230px;}
+.diag-rosca-rot{font-size:11px;fill:#5C5C5C;}
+.diag-rosca-tot{font-size:17px;font-weight:700;fill:#111;}
+.diag-leg{display:flex;justify-content:space-between;font-size:13px;margin:6px 24px;}
+.diag-leg i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:8px;}
+.diag-vazio{font-size:13px;color:var(--ink-soft);}
+table.matriz select{border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-family:inherit;font-size:12.5px;background:#fff;color:var(--ink);}
+@media(max-width:760px){.diag-grid{grid-template-columns:1fr;}}
 @media print{.nav,.controles,.barra-acoes,.rm,.sel-btn,#btn-info{display:none!important;}body{background:#fff;}.card{box-shadow:none;border-color:#ccc;}table.matriz input{border-color:transparent!important;}.tabela-wrap{overflow:visible;}table.matriz{min-width:0;}}
 </style>
 </head>
@@ -15512,6 +15641,16 @@ tr.total td{font-weight:700;border-top:2px solid var(--ink);}
     <div class="tabela-wrap"><table class="matriz" id="matriz"></table></div>
     <p class="aviso-soma" id="aviso-soma"></p>
     <p class="nota">Patrimônio a realocar = metade da soma das diferenças absolutas entre a alocação atual e a alocação do perfil, em cada classe (parcela do patrimônio que precisa mudar de classe).</p>
+  </div>
+
+  <div class="card" id="card-diag">
+    <div class="card-titulo">Diagnóstico — liquidez e tributação</div>
+    <p class="card-sub">Disponibilidade de resgate e tributação dos ativos da carteira carregada. As regras de classificação são premissas simplificadas; ajuste ativo a ativo em "Classificação dos ativos".</p>
+    <div id="diag-conteudo"></div>
+    <details id="diag-detalhe" style="margin-top:18px;" hidden>
+      <summary style="cursor:pointer;font-size:13px;font-weight:600;">Classificação dos ativos</summary>
+      <div class="tabela-wrap" style="margin-top:10px;"><table class="matriz" id="tabela-itens"></table></div>
+    </details>
   </div>
 
   <div class="card" id="card-historico" hidden>
@@ -15664,6 +15803,7 @@ function render() {
   else { av.className = 'aviso-soma ok'; av.textContent = 'Todas as colunas somam 100%.'; }
 
   renderAjuste();
+  renderDiagnostico();
   salvar();
 }
 
@@ -15773,6 +15913,7 @@ document.getElementById('btn-limpar').addEventListener('click', function () {
   if (!confirm('Zerar a alocação atual e os pesos de todos os perfis (os nomes das classes e dos perfis são mantidos)?')) return;
   estado.classes.forEach(function (c) { c.atual = 0; c.valor = null; c.alvo = c.alvo.map(function () { return 0; }); });
   estado.patrimonio = '';
+  estado.itens = [];
   estado.perfis.forEach(function (p) { p.drawdown = null; });
   render();
 });
@@ -15808,6 +15949,117 @@ document.getElementById('btn-excel').addEventListener('click', function () {
   XLSX.writeFile(livro, 'diversificacao_carteira_' + ag.getFullYear() + String(ag.getMonth() + 1).padStart(2, '0') + String(ag.getDate()).padStart(2, '0') + '.xlsx');
 });
 
+
+// ── Diagnóstico de liquidez e tributação ──
+// Cada item da carteira recebe uma categoria de disponibilidade (D+0, D+2 a D+5,
+// D+6 a D+30, sem liquidez, previdência) e uma condição de tributação (isento ou
+// tributado), por regras sobre o tipo e o nome do ativo — premissas simplificadas,
+// ajustáveis item a item na tabela de classificação.
+var LIQ_ORDEM = ['d0', 'd2', 'd6', 'sem', 'prev'];
+var LIQ_ROTULOS = { d0: 'D+0', d2: 'D+2 a D+5', d6: 'D+6 a D+30', sem: 'Sem liquidez', prev: 'Previdência' };
+
+function hojeISO() {
+  var h = new Date();
+  return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
+}
+function classificarItem(it) {
+  var nome = String(it.nome || '').toUpperCase().trim();
+  var hoje = hojeISO();
+  var liq = 'sem', isento = false;
+  if (it.tipo === 'caixa') { liq = 'd0'; isento = true; }
+  else if (it.tipo === 'prev') { liq = 'prev'; isento = false; }
+  else if (it.tipo === 'acao' || it.tipo === 'etf') { liq = 'd2'; isento = false; }
+  else if (it.tipo === 'fii') { liq = /^[A-Z]{4}\\d{1,2}$/.test(nome) ? 'd2' : 'sem'; isento = true; }
+  else if (it.tipo === 'rf') {
+    var credito = /^(CRA|CRI|DEB)/.test(nome);
+    if (it.carencia) liq = it.carencia > hoje ? 'sem' : 'd2';
+    else liq = credito ? 'sem' : 'd2';
+    isento = /^(LCA|LCI|LCD|CRA|CRI)/.test(nome) || nome.indexOf('INCENTIVAD') !== -1;
+  }
+  else if (it.tipo === 'fundo') {
+    var fechado = /\\bFII\\b|FIAGRO|\\bFIP\\b|\\bFIDC\\b|IMOBILI|FI-INFRA|FIP-IE/.test(nome);
+    if (fechado) { liq = 'sem'; isento = /\\bFII\\b|FIAGRO|IMOBILI/.test(nome); }
+    else { liq = /\\bDI\\b|SIMPLES|REFERENCIADO|SOBERANO|CASH|LIQUIDEZ/.test(nome) ? 'd0' : 'd6'; isento = false; }
+  }
+  return { liq: liq, isento: isento };
+}
+function completarItens(itens) {
+  (itens || []).forEach(function (it) {
+    var c = classificarItem(it);
+    if (!it.liq) it.liq = c.liq;
+    if (typeof it.isento !== 'boolean') it.isento = c.isento;
+  });
+  return itens;
+}
+function resumirDiagnostico(itens) {
+  var r = { total: 0, liq: { d0: 0, d2: 0, d6: 0, sem: 0, prev: 0 }, isento: 0, tributado: 0 };
+  (itens || []).forEach(function (it) {
+    var v = typeof it.valor === 'number' ? it.valor : 0;
+    if (v <= 0) return;
+    r.total += v;
+    r.liq[LIQ_ORDEM.indexOf(it.liq) !== -1 ? it.liq : 'sem'] += v;
+    if (it.isento) r.isento += v; else r.tributado += v;
+  });
+  return r;
+}
+function fmtPctD(v) { return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%'; }
+function fmtPct1D(v) { return v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%'; }
+function fmtRSD(v) { return 'R$ ' + Math.round(v).toLocaleString('pt-BR'); }
+function fmtCompactoD(v) {
+  if (v >= 1000000) return 'R$ ' + (v / 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' mi';
+  if (v >= 1000) return 'R$ ' + Math.round(v / 1000).toLocaleString('pt-BR') + ' mil';
+  return fmtRSD(v);
+}
+// HTML do diagnóstico (resumo, barras por disponibilidade e rosca por tributação)
+function htmlDiagnostico(itens) {
+  var r = resumirDiagnostico(itens);
+  if (r.total <= 0) return '<p class="diag-vazio">Sem dados de liquidez e tributação. Carregue a carteira do cliente (PDF ou Excel) para gerar o diagnóstico.</p>';
+  var pc = function (v) { return v / r.total * 100; };
+  var resumo = fmtPct1D(pc(r.liq.d0)) + ' do patrimônio tem liquidez em até um dia útil e ' + fmtPct1D(pc(r.isento)) + ' está em ativos isentos de Imposto de Renda.';
+  var barras = LIQ_ORDEM.map(function (k) {
+    var p = pc(r.liq[k]);
+    return '<div class="diag-linha"><span class="diag-rot">' + LIQ_ROTULOS[k] + '</span>' +
+      '<div class="diag-trilho"><div class="diag-fill" style="width:' + Math.max(p, r.liq[k] > 0 ? 1.2 : 0).toFixed(2) + '%"></div></div>' +
+      '<span class="diag-val"><b>' + fmtPctD(p) + '</b><small>' + fmtRSD(r.liq[k]) + '</small></span></div>';
+  }).join('');
+  var raio = 78, circ = 2 * Math.PI * raio;
+  var pTrib = r.tributado / r.total, pIsen = r.isento / r.total;
+  var seg = function (frac, desloc, cor) {
+    if (frac <= 0) return '';
+    return '<circle cx="100" cy="100" r="' + raio + '" fill="none" stroke="' + cor + '" stroke-width="38" stroke-dasharray="' + (frac * circ).toFixed(2) + ' ' + circ.toFixed(2) + '" stroke-dashoffset="' + (-desloc * circ).toFixed(2) + '" transform="rotate(-90 100 100)"/>';
+  };
+  var rosca = '<svg viewBox="0 0 200 200" class="diag-rosca">' + seg(pTrib, 0, '#111111') + seg(pIsen, pTrib, '#D4D4D4') +
+    '<text x="100" y="94" text-anchor="middle" class="diag-rosca-rot">total</text><text x="100" y="116" text-anchor="middle" class="diag-rosca-tot">' + fmtCompactoD(r.total) + '</text></svg>';
+  var legenda = '<div class="diag-leg"><span><i style="background:#111"></i>Tributado</span><b>' + fmtPct1D(pTrib * 100) + '</b></div>' +
+    '<div class="diag-leg"><span><i style="background:#D4D4D4"></i>Isento</span><b>' + fmtPct1D(pIsen * 100) + '</b></div>';
+  return '<p class="diag-resumo">' + resumo + '</p><div class="diag-grid"><div><div class="diag-tit">Por disponibilidade</div>' + barras + '</div>' +
+    '<div><div class="diag-tit">Por tributação</div><div class="diag-rosca-wrap">' + rosca + '</div>' + legenda + '</div></div>';
+}
+
+function renderDiagnostico() {
+  var itens = estado.itens || [];
+  document.getElementById('diag-conteudo').innerHTML = htmlDiagnostico(itens);
+  var det = document.getElementById('diag-detalhe');
+  det.hidden = !itens.length;
+  if (!itens.length) return;
+  var opsLiq = function (atual) { return LIQ_ORDEM.map(function (k) { return '<option value="' + k + '"' + (k === atual ? ' selected' : '') + '>' + LIQ_ROTULOS[k] + '</option>'; }).join(''); };
+  var h = '<thead><tr><th class="col-classe">Ativo</th><th>Valor (R$)</th><th>Liquidez</th><th>Tributação</th></tr></thead><tbody>';
+  itens.forEach(function (it, i) {
+    h += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="col-classe">' + esc(it.nome) + '</td><td>' + fmtNum(it.valor) + '</td>' +
+      '<td><select data-itm="' + i + '" data-campo="liq">' + opsLiq(it.liq) + '</select></td>' +
+      '<td><select data-itm="' + i + '" data-campo="isento"><option value="0"' + (it.isento ? '' : ' selected') + '>Tributado</option><option value="1"' + (it.isento ? ' selected' : '') + '>Isento</option></select></td></tr>';
+  });
+  document.getElementById('tabela-itens').innerHTML = h + '</tbody>';
+}
+document.getElementById('tabela-itens').addEventListener('change', function (ev) {
+  var t = ev.target;
+  if (!t.dataset || t.dataset.itm === undefined) return;
+  var it = estado.itens[Number(t.dataset.itm)];
+  if (!it) return;
+  if (t.dataset.campo === 'liq') it.liq = t.value; else it.isento = t.value === '1';
+  document.getElementById('diag-conteudo').innerHTML = htmlDiagnostico(estado.itens);
+  salvar();
+});
 
 // ── Carregar carteira do cliente (XPerformance em PDF ou Posição Consolidada em Excel) ──
 var ROTULOS_CLASSE = {
@@ -15853,42 +16105,62 @@ function numMoeda(v) {
   return isNaN(n) ? null : (neg ? -n : n);
 }
 
+function dataISO(v) {
+  if (v instanceof Date && !isNaN(v.getTime())) return v.getFullYear() + '-' + String(v.getMonth() + 1).padStart(2, '0') + '-' + String(v.getDate()).padStart(2, '0');
+  if (typeof v === 'number' && v > 20000) return new Date(Math.round((v - 25569) * 86400 * 1000)).toISOString().slice(0, 10);
+  var m = /^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/.exec(String(v === undefined || v === null ? '' : v).trim());
+  return m ? m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0') : '';
+}
 // Excel "Posição Consolidada"/"Carteira Distribuída": blocos "NN%|Nome" (macro e sub-blocos);
-// o valor de cada ativo vem da coluna "Posição" do cabeçalho da tabela corrente.
+// o valor de cada ativo vem da coluna "Posição" do cabeçalho da tabela corrente (as colunas
+// "Carência" e "Vencimento", quando existem, alimentam o diagnóstico de liquidez).
 function lerPosicaoExcel(linhas) {
-  var somas = {}, macro = '', sub = '', colPos = -1, qtd = 0;
-  function somar(chave, v) { if (chave && v !== null && !isNaN(v) && v !== 0) { somas[chave] = (somas[chave] || 0) + v; qtd++; } }
+  var somas = {}, itens = [], macro = '', sub = '', colPos = -1, colCar = -1, colVen = -1, qtd = 0;
+  function somar(chave, v) { if (chave && v !== null && !isNaN(v) && v !== 0) { somas[chave] = (somas[chave] || 0) + v; qtd++; return true; } return false; }
+  function lerCabecalho(l, inicio) {
+    var achou = false;
+    for (var j = inicio; j < l.length; j++) {
+      var n = compacto(l[j]);
+      if (n === 'posicao') { colPos = j; achou = true; }
+      else if (n === 'carencia') colCar = j;
+      else if (n === 'vencimento') colVen = j;
+    }
+    return achou;
+  }
   linhas.forEach(function (l) {
     var c0 = String(l[0] === undefined || l[0] === null ? '' : l[0]).trim();
     if (!c0) return;
     var m = /^[\\d.,]+%\\s*\\|\\s*(.+)$/.exec(c0);
     if (m) {
       var nome = m[1].trim(), nn = compacto(nome);
-      var ehMacro = ['acoes', 'rendafixa', 'fundosdeinvestimento', 'fundosimobiliarios', 'proventos', 'saldoprojetado'].indexOf(nn) !== -1;
+      var ehMacro = ['acoes', 'rendafixa', 'fundosdeinvestimento', 'fundosimobiliarios', 'proventos', 'saldoprojetado', 'previdencia', 'previdenciaprivada'].indexOf(nn) !== -1;
       if (ehMacro) { macro = nn; sub = ''; } else { sub = nome; }
-      colPos = -1;
-      // nos sub-blocos o cabeçalho das colunas vem na própria linha do título
-      for (var k = 1; k < l.length; k++) { if (compacto(l[k]) === 'posicao') { colPos = k; break; } }
+      colPos = -1; colCar = -1; colVen = -1;
+      lerCabecalho(l, 1);
       if (nn === 'proventos' || nn === 'saldoprojetado') {
-        // total do bloco na própria linha (primeira célula monetária)
-        for (var i = 1; i < l.length; i++) { var vv = numMoeda(l[i]); if (vv !== null && String(l[i]).trim() !== '') { somar('caixa', vv); break; } }
+        for (var i = 1; i < l.length; i++) {
+          var vv = numMoeda(l[i]);
+          if (vv !== null && String(l[i]).trim() !== '') { if (somar('caixa', vv)) itens.push({ nome: nn === 'proventos' ? 'Proventos a receber' : 'Saldo em conta', classe: 'caixa', valor: vv, tipo: 'caixa' }); break; }
+        }
       }
       return;
     }
-    // linha de cabeçalho da tabela: define a coluna "Posição"
-    var idxPos = -1;
-    for (var j = 0; j < l.length; j++) { if (compacto(l[j]) === 'posicao') { idxPos = j; break; } }
-    if (idxPos !== -1) { colPos = idxPos; return; }
+    if (lerCabecalho(l, 0)) return;
     if (colPos < 0) return;
     var valor = numMoeda(l[colPos]);
     if (valor === null) return;
-    var chave = null;
-    if (macro === 'acoes') chave = classeDeAcao(c0);
-    else if (macro === 'fundosimobiliarios') chave = 'listados';
-    else chave = chaveClasse(sub) || 'outros';
-    somar(chave, valor);
+    var chave = null, tipo = 'fundo';
+    if (macro === 'acoes') { chave = classeDeAcao(c0); tipo = (chave === 'rvb' && ETFS_POS.indexOf(c0.toUpperCase()) === -1) ? 'acao' : 'etf'; }
+    else if (macro === 'fundosimobiliarios') { chave = 'listados'; tipo = 'fii'; }
+    else if (macro === 'rendafixa') { chave = chaveClasse(sub) || 'outros'; tipo = 'rf'; }
+    else if (macro === 'previdencia' || macro === 'previdenciaprivada') { chave = chaveClasse(sub) || 'outros'; tipo = 'prev'; }
+    else { chave = chaveClasse(sub) || 'outros'; tipo = 'fundo'; }
+    if (somar(chave, valor)) {
+      itens.push({ nome: c0, classe: chave, valor: valor, tipo: tipo,
+        carencia: colCar >= 0 ? dataISO(l[colCar]) : '', vencimento: colVen >= 0 ? dataISO(l[colVen]) : '' });
+    }
   });
-  return qtd ? somas : null;
+  return qtd ? { somas: somas, itens: itens } : null;
 }
 
 // PDF XPerformance: tabela "Estratégia: Composição" — linhas "Nome (xx,xx%) R$ saldo ..."
@@ -15907,6 +16179,34 @@ function lerXPerformanceLinhas(linhas) {
     qtd++;
   });
   return qtd ? somas : null;
+}
+// Itens da "Posição detalhada" do XPerformance: "Nome R$ saldo qtd %aloc ..." (o nome pode vir na linha
+// anterior); as linhas de estratégia têm "-" no lugar da quantidade.
+function lerXPerformanceItens(linhas, somas) {
+  var itens = [], classe = null, emDetalhe = false, pendente = '';
+  linhas.forEach(function (l) {
+    if (/Estrat[ée]gias\\s+Saldo Bruto\\s+Qtd/i.test(l)) { emDetalhe = true; pendente = ''; return; }
+    if (!emDetalhe) return;
+    var m = /^(.*?)\\s*R\\$\\s*([\\d.]+,\\d{2})\\s+(-|[\\d.,]+)\\s+([\\d,]+)%/.exec(l);
+    if (m) {
+      var nome = m[1].trim() || pendente;
+      pendente = '';
+      if (m[3] === '-') { classe = chaveClasse(nome) || 'outros'; return; }
+      var valor = numMoeda(m[2]);
+      if (valor === null || !nome) return;
+      var up = nome.toUpperCase();
+      var tipo;
+      if (/^(LCA|LCI|LCD|CRA|CRI|CDB|LF|LIG|DEB|RDB)\\b/.test(up)) tipo = 'rf';
+      else if (/^[A-Z]{4}\\d{1,2}$/.test(up)) tipo = classe === 'listados' ? 'fii' : (classe === 'rvb' ? 'acao' : 'etf');
+      else tipo = 'fundo';
+      itens.push({ nome: nome.replace(/\\s*-\\s*$/, ''), classe: classe || 'outros', valor: valor, tipo: tipo });
+      return;
+    }
+    if (/XPerformance|Estrat|PRECIFICA|POSI[ÇC]|Legenda|^[\\d.,]+%\\s*(CDI|IPCA|do CDI)|M[ÊE]S ATUAL|Rent\\./i.test(l)) return;
+    if (l.length > 3) pendente = l;
+  });
+  if (somas && somas.caixa) itens.push({ nome: 'Caixa e proventos', classe: 'caixa', valor: somas.caixa, tipo: 'caixa' });
+  return itens;
 }
 function extrairLinhasPDF(pdf) {
   var paginas = [];
@@ -15929,7 +16229,8 @@ function extrairLinhasPDF(pdf) {
   return Promise.all(paginas).then(function (ps) { return [].concat.apply([], ps); });
 }
 
-function aplicarCarteira(somas, origem) {
+function aplicarCarteira(somas, origem, itens) {
+  estado.itens = completarItens(itens || []);
   var total = 0;
   Object.keys(somas).forEach(function (k) { total += somas[k]; });
   if (total <= 0) throw new Error('Não foi possível calcular o patrimônio total.');
@@ -15973,19 +16274,20 @@ document.getElementById('arq-carteira').addEventListener('change', function (ev)
           .then(function (linhas) {
             var somas = lerXPerformanceLinhas(linhas);
             if (!somas) { erro('Não foi encontrada a composição por estratégia (XPerformance) neste PDF.'); return; }
-            aplicarCarteira(somas, 'XPerformance');
+            aplicarCarteira(somas, 'XPerformance', lerXPerformanceItens(linhas, somas));
           })
           .catch(function (err) { erro('Erro ao ler o PDF: ' + (err && err.message ? err.message : err)); });
       } else {
         var pasta = XLSX.read(e.target.result, { type: 'array' });
-        var somas = null;
+        var somas = null, itensLidos = [];
         pasta.SheetNames.forEach(function (nome) {
           if (somas) return;
           var linhas = XLSX.utils.sheet_to_json(pasta.Sheets[nome], { header: 1, raw: true, defval: '' });
-          somas = lerPosicaoExcel(linhas);
+          var lido = lerPosicaoExcel(linhas);
+          if (lido) { somas = lido.somas; itensLidos = lido.itens; }
         });
         if (!somas) { erro('Não foi possível identificar a posição por classe nesta planilha.'); return; }
-        aplicarCarteira(somas, 'Posição Consolidada');
+        aplicarCarteira(somas, 'Posição Consolidada', itensLidos);
       }
     } catch (err) { erro('Erro ao processar o arquivo: ' + err.message); }
   };
@@ -16069,6 +16371,7 @@ function carregarSnapshot(id) {
   estado.perfis = clonar(x.dados.perfis || []);
   estado.perfilSel = x.dados.perfilSel || 0;
   estado.patrimonio = x.dados.patrimonio || '';
+  estado.itens = clonar(x.dados.itens || []);
   render();
   var st = document.getElementById('hist-status');
   st.style.color = 'var(--ink-soft)';
@@ -16094,7 +16397,7 @@ document.getElementById('btn-salvar-hist').addEventListener('click', function ()
     if (!confirm('Nenhum valor em R$ foi informado: será salvo apenas o percentual atual. Continuar?')) return;
   }
   var perfil = estado.perfis[estado.perfilSel] || {};
-  var snap = { classes: clonar(estado.classes), perfis: clonar(estado.perfis), perfilSel: estado.perfilSel, patrimonio: estado.patrimonio };
+  var snap = { classes: clonar(estado.classes), perfis: clonar(estado.perfis), perfilSel: estado.perfilSel, patrimonio: estado.patrimonio, itens: clonar(estado.itens || []) };
   var botao = document.getElementById('btn-salvar-hist');
   botao.disabled = true;
   sb.auth.getUser().then(function (res) {
