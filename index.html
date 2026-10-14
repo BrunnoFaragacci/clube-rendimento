@@ -282,6 +282,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       <button type="button" class="btn-nav" id="btn-nav-consorcio">Consórcio ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-sucessorio">Planejamento Sucessório ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-holding">Viabilidade de Holding ↗</button>
+      <button type="button" class="btn-nav" id="btn-nav-diversificacao">Diversificação de Carteira ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-nota-corretagem">Nota de Corretagem ↗</button>
       <div class="nav-dropdown-wrap">
         <button type="button" class="btn-nav nav-dropdown-trigger" id="btn-nav-cripto" aria-expanded="false">Cripto <span class="nav-caret">▾</span></button>
@@ -15432,6 +15433,359 @@ montarFormulario();
 </html>`);
   }
 
+  function abrirDiversificacaoCarteira() {
+    var win = window.open('', '_blank');
+    if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
+    escreverConteudoJanela(win, `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diversificação de Carteira — Clube do Rendimento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>
+<style>
+:root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--ink-mute:#9A9A9A;--line:#E2E2E2;--green:#16A34A;--red:#DC2626;--radius:16px;--radius-lg:24px;--shadow-sm:0 2px 10px rgba(0,0,0,.05);}
+*{box-sizing:border-box;margin:0;padding:0;}
+[hidden]{display:none!important;}
+body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-soft);color:var(--ink);min-height:100vh;font-size:14px;}
+.nav{background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;}
+.nav-brand{font-weight:700;font-size:15px;text-decoration:none;color:var(--ink);}
+.container{max-width:1280px;margin:0 auto;padding:30px 20px 80px;}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:600;margin-bottom:14px;}
+.eyebrow::before{content:"";width:18px;height:2px;background:var(--ink);display:inline-block;}
+h1{font-size:24px;font-weight:700;margin-bottom:6px;}
+.sub{font-size:13px;color:var(--ink-soft);margin-bottom:22px;line-height:1.55;max-width:780px;}
+.card{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);padding:22px 24px;box-shadow:var(--shadow-sm);margin-bottom:20px;}
+.card-titulo{font-size:15px;font-weight:700;margin-bottom:4px;}
+.card-sub{font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;line-height:1.5;}
+.controles{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;}
+.campo{display:flex;flex-direction:column;gap:6px;}
+.campo label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);}
+.campo input,.campo select{padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:13.5px;color:var(--ink);background:#fff;min-width:190px;}
+.campo input:focus,.campo select:focus{outline:none;border-color:var(--ink);}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:9px 16px;border-radius:8px;font-weight:600;font-size:13px;border:1.5px solid var(--ink);background:#fff;color:var(--ink);cursor:pointer;font-family:inherit;}
+.btn:hover{background:var(--bg-soft);}
+.btn-primary{background:var(--ink);color:#fff;}
+.btn-primary:hover{background:#000;}
+.btn-leve{border-color:var(--line);color:var(--ink-soft);}
+.barra-acoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+.tabela-wrap{overflow:auto;}
+table.matriz{width:100%;border-collapse:collapse;min-width:900px;}
+table.matriz th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-mute);text-align:right;padding:10px 12px;border-bottom:2px solid var(--ink);white-space:nowrap;vertical-align:bottom;}
+table.matriz th.col-classe{text-align:left;}
+table.matriz td{padding:7px 12px;border-bottom:1px solid var(--line);text-align:right;font-size:13.5px;}
+table.matriz td.col-classe{text-align:left;}
+table.matriz tr.zebra td{background:#FAFAF8;}
+table.matriz input{border:1px solid transparent;border-radius:6px;padding:5px 8px;font-family:inherit;font-size:13.5px;background:transparent;color:var(--ink);text-align:right;width:92px;}
+table.matriz input.txt{text-align:left;width:100%;min-width:200px;}
+table.matriz input:hover{border-color:var(--line);}
+table.matriz input:focus{outline:none;border-color:var(--ink);background:#fff;}
+table.matriz td.col-atual input{font-weight:700;}
+table.matriz .sel{background:#EFEFEF!important;}
+table.matriz th.sel{color:var(--ink);}
+table.matriz th input{font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.04em;color:inherit;width:96px;text-align:right;border:1px solid transparent;background:transparent;font-family:inherit;}
+table.matriz th input:hover{border-color:var(--line);}
+.sel-btn{cursor:pointer;font-size:10px;color:var(--ink-mute);display:block;margin-top:2px;text-transform:none;letter-spacing:0;font-weight:600;background:none;border:none;font-family:inherit;}
+.sel-btn.on{color:var(--ink);}
+tr.destaque td{font-weight:700;border-bottom:1px solid var(--line);}
+tr.total td{font-weight:700;border-top:2px solid var(--ink);}
+.rm{background:none;border:none;color:var(--ink-mute);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:6px;}
+.rm:hover{background:#FDECEC;color:var(--red);}
+.aviso-soma{font-size:12px;margin-top:10px;line-height:1.5;}
+.ok{color:var(--green);}
+.alerta{color:var(--red);}
+.nota{font-size:12px;color:var(--ink-soft);margin-top:12px;line-height:1.55;}
+.pos{color:var(--green);font-weight:600;}
+.neg{color:var(--red);font-weight:600;}
+@media print{.nav,.controles,.barra-acoes,.rm,.sel-btn,#btn-info{display:none!important;}body{background:#fff;}.card{box-shadow:none;border-color:#ccc;}table.matriz input{border-color:transparent!important;}.tabela-wrap{overflow:visible;}table.matriz{min-width:0;}}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <a href="javascript:window.close()" class="nav-brand">← Clube do Rendimento</a>
+</header>
+
+<div class="container">
+  <span class="eyebrow">Planejamento de carteira</span>
+  <h1>Diversificação de Carteira</h1>
+  <p class="sub">Informe a alocação atual do cliente e os pesos-alvo de cada classe em cada perfil. A tabela calcula o patrimônio a realocar em cada perfil e, com o patrimônio total, os valores a comprar e a vender para o perfil selecionado. Todas as células são editáveis; os dados ficam salvos neste navegador.</p>
+
+  <div class="card">
+    <div class="controles">
+      <div class="campo"><label for="ctl-cliente">Cliente (opcional)</label><input type="text" id="ctl-cliente" placeholder="Nome do cliente"></div>
+      <div class="campo"><label for="ctl-patrimonio">Patrimônio total (R$)</label><input type="text" id="ctl-patrimonio" inputmode="decimal" placeholder="Ex.: 1.500.000"></div>
+      <div class="campo"><label for="ctl-perfil">Perfil do cliente</label><select id="ctl-perfil"></select></div>
+    </div>
+    <div class="barra-acoes">
+      <button type="button" class="btn" id="btn-add-classe">+ Classe de ativo</button>
+      <button type="button" class="btn" id="btn-add-perfil">+ Perfil</button>
+      <button type="button" class="btn btn-leve" id="btn-rm-perfil">− Remover último perfil</button>
+      <button type="button" class="btn btn-leve" id="btn-exemplo">Restaurar exemplo</button>
+      <button type="button" class="btn btn-leve" id="btn-limpar">Limpar valores</button>
+      <span style="flex:1"></span>
+      <button type="button" class="btn btn-primary" id="btn-excel">⬇ Exportar Excel</button>
+      <button type="button" class="btn" id="btn-imprimir">Imprimir / salvar em PDF</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-titulo" id="titulo-matriz">Alocação atual e perfis</div>
+    <p class="card-sub">Valores em percentual do patrimônio. Clique no nome de um perfil para editá-lo e em "selecionar" para defini-lo como o perfil do cliente (coluna destacada).</p>
+    <div class="tabela-wrap"><table class="matriz" id="matriz"></table></div>
+    <p class="aviso-soma" id="aviso-soma"></p>
+    <p class="nota">Patrimônio a realocar = metade da soma das diferenças absolutas entre a alocação atual e a alocação do perfil, em cada classe (parcela do patrimônio que precisa mudar de classe).</p>
+  </div>
+
+  <div class="card" id="card-ajuste" hidden>
+    <div class="card-titulo" id="titulo-ajuste">Ajuste para o perfil selecionado</div>
+    <p class="card-sub">Valores em reais sobre o patrimônio total informado: positivo indica compra (aumentar a classe) e negativo indica venda (reduzir a classe).</p>
+    <div class="tabela-wrap"><table class="matriz" id="tabela-ajuste"></table></div>
+  </div>
+</div>
+
+<script>
+var CHAVE = 'cr_diversificacao_carteira_v1';
+var EXEMPLO = {
+  cliente: '', patrimonio: '', perfilSel: 3,
+  perfis: [
+    { nome: 'Perfil 1', drawdown: 2 }, { nome: 'Perfil 2', drawdown: 4 }, { nome: 'Perfil 3', drawdown: 7 },
+    { nome: 'Perfil 4', drawdown: 10 }, { nome: 'Perfil 5', drawdown: 15 }
+  ],
+  classes: [
+    { nome: 'RF Pós-fixado', atual: 21.3, alvo: [70.5, 65, 35, 27.5, 13.5] },
+    { nome: 'RF Inflação', atual: 15.8, alvo: [17, 17.5, 27, 27, 30] },
+    { nome: 'RF Prefixado', atual: 12.1, alvo: [6, 6, 11, 8.5, 8] },
+    { nome: 'Multimercados', atual: 1.4, alvo: [1.5, 2, 10.5, 11.5, 7.5] },
+    { nome: 'Renda Variável Brasil', atual: 10.4, alvo: [0, 2, 3.5, 5.5, 15] },
+    { nome: 'Global Renda Variável', atual: 19.5, alvo: [2.5, 2.5, 4.5, 5, 7] },
+    { nome: 'Fundos Listados', atual: 5.6, alvo: [0, 2.5, 3, 5, 7] },
+    { nome: 'Alternativos', atual: 2.3, alvo: [0, 0, 3, 5, 7] },
+    { nome: 'Global Renda Fixa', atual: 11.6, alvo: [2.5, 2.5, 2.5, 5, 5] }
+  ]
+};
+var estado;
+
+function clonar(o) { return JSON.parse(JSON.stringify(o)); }
+function carregar() {
+  try {
+    var bruto = localStorage.getItem(CHAVE);
+    if (bruto) { var e = JSON.parse(bruto); if (e && e.classes && e.perfis) return e; }
+  } catch (err) {}
+  return clonar(EXEMPLO);
+}
+function salvar() { try { localStorage.setItem(CHAVE, JSON.stringify(estado)); } catch (err) {} }
+
+function numBR(t) {
+  if (typeof t === 'number') return t;
+  var s = String(t === undefined || t === null ? '' : t).replace('%', '').replace('R$', '').trim();
+  if (!s) return null;
+  var n;
+  if (s.indexOf(',') !== -1) n = Number(s.split('.').join('').replace(',', '.'));
+  else if (/^\\d{1,3}(\\.\\d{3})+$/.test(s)) n = Number(s.split('.').join(''));
+  else n = Number(s);
+  return isNaN(n) ? null : n;
+}
+function fmtPct(v) {
+  if (v === null || v === undefined) return '';
+  return v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+}
+function fmtBRL(v) { return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function esc(t) { return String(t === undefined || t === null ? '' : t).split('&').join('&amp;').split('"').join('&quot;').split('<').join('&lt;'); }
+function val(v) { return (typeof v === 'number' && !isNaN(v)) ? v : 0; }
+
+function realocar(p) {
+  var soma = 0;
+  estado.classes.forEach(function (c) { soma += Math.abs(val(c.atual) - val(c.alvo[p])); });
+  return soma / 2;
+}
+
+function render() {
+  var np = estado.perfis.length;
+  // seletor de perfil
+  var sel = document.getElementById('ctl-perfil');
+  sel.innerHTML = estado.perfis.map(function (p, i) { return '<option value="' + i + '">' + esc(p.nome) + '</option>'; }).join('');
+  if (estado.perfilSel >= np) estado.perfilSel = np - 1;
+  if (estado.perfilSel < 0) estado.perfilSel = 0;
+  sel.value = String(estado.perfilSel);
+  document.getElementById('ctl-cliente').value = estado.cliente || '';
+  document.getElementById('ctl-patrimonio').value = estado.patrimonio || '';
+  document.getElementById('titulo-matriz').textContent = 'Alocação atual e perfis' + (estado.cliente ? ' — ' + estado.cliente : '');
+
+  var h = '<thead><tr><th class="col-classe">Classe</th><th>Atual</th>';
+  estado.perfis.forEach(function (p, i) {
+    var on = i === estado.perfilSel;
+    h += '<th class="' + (on ? 'sel' : '') + '"><input type="text" data-perfil-nome="' + i + '" value="' + esc(p.nome) + '"><button type="button" class="sel-btn ' + (on ? 'on' : '') + '" data-sel="' + i + '">' + (on ? '● perfil do cliente' : 'selecionar') + '</button></th>';
+  });
+  h += '<th></th></tr></thead><tbody>';
+  estado.classes.forEach(function (c, ci) {
+    h += '<tr class="' + (ci % 2 ? 'zebra' : '') + '"><td class="col-classe"><input type="text" class="txt" data-nome="' + ci + '" value="' + esc(c.nome) + '"></td>' +
+      '<td class="col-atual"><input type="text" inputmode="decimal" data-atual="' + ci + '" value="' + fmtPct(c.atual) + '"></td>';
+    estado.perfis.forEach(function (p, pi) {
+      h += '<td class="' + (pi === estado.perfilSel ? 'sel' : '') + '"><input type="text" inputmode="decimal" data-alvo="' + ci + ',' + pi + '" value="' + fmtPct(c.alvo[pi]) + '"></td>';
+    });
+    h += '<td><button type="button" class="rm" data-rm="' + ci + '" title="Remover classe">×</button></td></tr>';
+  });
+  // linha de totais
+  var totAtual = 0;
+  estado.classes.forEach(function (c) { totAtual += val(c.atual); });
+  h += '<tr class="total"><td class="col-classe">Total</td><td>' + fmtPct(totAtual) + '</td>';
+  estado.perfis.forEach(function (p, pi) {
+    var t = 0; estado.classes.forEach(function (c) { t += val(c.alvo[pi]); });
+    h += '<td class="' + (pi === estado.perfilSel ? 'sel' : '') + '">' + fmtPct(t) + '</td>';
+  });
+  h += '<td></td></tr>';
+  // drawdown
+  h += '<tr class="destaque"><td class="col-classe">Drawdown máximo tolerado</td><td>—</td>';
+  estado.perfis.forEach(function (p, pi) {
+    h += '<td class="' + (pi === estado.perfilSel ? 'sel' : '') + '"><input type="text" inputmode="decimal" data-dd="' + pi + '" value="' + fmtPct(p.drawdown) + '"></td>';
+  });
+  h += '<td></td></tr>';
+  // patrimônio a realocar
+  h += '<tr class="destaque" style="background:#FAFAF8;"><td class="col-classe">Patrimônio a realocar</td><td>—</td>';
+  estado.perfis.forEach(function (p, pi) {
+    h += '<td class="' + (pi === estado.perfilSel ? 'sel' : '') + '">' + fmtPct(realocar(pi)) + '</td>';
+  });
+  h += '<td></td></tr></tbody>';
+  document.getElementById('matriz').innerHTML = h;
+
+  // aviso de soma
+  var avisos = [];
+  if (Math.abs(totAtual - 100) > 0.05) avisos.push('A alocação atual soma ' + fmtPct(totAtual) + ' (esperado: 100,0%).');
+  estado.perfis.forEach(function (p, pi) {
+    var t = 0; estado.classes.forEach(function (c) { t += val(c.alvo[pi]); });
+    if (Math.abs(t - 100) > 0.05) avisos.push(p.nome + ' soma ' + fmtPct(t) + '.');
+  });
+  var av = document.getElementById('aviso-soma');
+  if (avisos.length) { av.className = 'aviso-soma alerta'; av.textContent = 'Atenção: ' + avisos.join(' ') + ' Ajuste os pesos para totalizar 100%.'; }
+  else { av.className = 'aviso-soma ok'; av.textContent = 'Todas as colunas somam 100%.'; }
+
+  renderAjuste();
+  salvar();
+}
+
+function renderAjuste() {
+  var pt = numBR(estado.patrimonio);
+  var card = document.getElementById('card-ajuste');
+  if (!pt || pt <= 0) { card.hidden = true; return; }
+  card.hidden = false;
+  var p = estado.perfilSel;
+  document.getElementById('titulo-ajuste').textContent = 'Ajuste para o ' + estado.perfis[p].nome + (estado.cliente ? ' — ' + estado.cliente : '');
+  var h = '<thead><tr><th class="col-classe">Classe</th><th>Atual (%)</th><th>Perfil (%)</th><th>Diferença (p.p.)</th><th>Atual (R$)</th><th>Alvo (R$)</th><th>Comprar / vender (R$)</th></tr></thead><tbody>';
+  var totCompra = 0, totVenda = 0;
+  estado.classes.forEach(function (c, ci) {
+    var a = val(c.atual), t = val(c.alvo[p]);
+    var dif = t - a, difRS = dif / 100 * pt;
+    if (difRS > 0) totCompra += difRS; else totVenda += -difRS;
+    h += '<tr class="' + (ci % 2 ? 'zebra' : '') + '"><td class="col-classe">' + esc(c.nome) + '</td><td>' + fmtPct(a) + '</td><td>' + fmtPct(t) + '</td>' +
+      '<td class="' + (dif > 0.0001 ? 'pos' : dif < -0.0001 ? 'neg' : '') + '">' + (dif > 0 ? '+' : '') + fmtPct(dif) + '</td>' +
+      '<td>' + fmtBRL(a / 100 * pt) + '</td><td>' + fmtBRL(t / 100 * pt) + '</td>' +
+      '<td class="' + (difRS > 0.005 ? 'pos' : difRS < -0.005 ? 'neg' : '') + '">' + (difRS > 0 ? '+' : difRS < 0 ? '-' : '') + fmtBRL(Math.abs(difRS)) + '</td></tr>';
+  });
+  h += '<tr class="total"><td class="col-classe">Total a comprar / total a vender</td><td></td><td></td><td></td><td></td><td class="pos">' + fmtBRL(totCompra) + '</td><td class="neg">-' + fmtBRL(totVenda) + '</td></tr></tbody>';
+  document.getElementById('tabela-ajuste').innerHTML = h;
+}
+
+// edição de células (delegação)
+var matriz = document.getElementById('matriz');
+function parseCelula(inp) { var n = numBR(inp.value); return n === null ? null : n; }
+matriz.addEventListener('change', function (ev) {
+  var t = ev.target, ds = t.dataset;
+  if (ds.nome !== undefined) estado.classes[Number(ds.nome)].nome = t.value.trim();
+  else if (ds.atual !== undefined) estado.classes[Number(ds.atual)].atual = parseCelula(t);
+  else if (ds.alvo !== undefined) { var ix = ds.alvo.split(','); estado.classes[Number(ix[0])].alvo[Number(ix[1])] = parseCelula(t); }
+  else if (ds.dd !== undefined) estado.perfis[Number(ds.dd)].drawdown = parseCelula(t);
+  else if (ds.perfilNome !== undefined) estado.perfis[Number(ds.perfilNome)].nome = t.value.trim() || ('Perfil ' + (Number(ds.perfilNome) + 1));
+  else return;
+  render();
+});
+matriz.addEventListener('focusin', function (ev) { if (ev.target.tagName === 'INPUT') ev.target.select(); });
+matriz.addEventListener('click', function (ev) {
+  var b = ev.target.closest ? ev.target.closest('button') : null;
+  if (!b) return;
+  if (b.dataset.sel !== undefined) { estado.perfilSel = Number(b.dataset.sel); render(); }
+  else if (b.dataset.rm !== undefined) {
+    var i = Number(b.dataset.rm);
+    if (confirm('Remover a classe "' + estado.classes[i].nome + '"?')) { estado.classes.splice(i, 1); render(); }
+  }
+});
+
+document.getElementById('ctl-cliente').addEventListener('change', function (e) { estado.cliente = e.target.value.trim(); render(); });
+document.getElementById('ctl-patrimonio').addEventListener('change', function (e) {
+  var n = numBR(e.target.value);
+  estado.patrimonio = n ? n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '';
+  render();
+});
+document.getElementById('ctl-perfil').addEventListener('change', function (e) { estado.perfilSel = Number(e.target.value); render(); });
+
+document.getElementById('btn-add-classe').addEventListener('click', function () {
+  estado.classes.push({ nome: 'Nova classe', atual: 0, alvo: estado.perfis.map(function () { return 0; }) });
+  render();
+});
+document.getElementById('btn-add-perfil').addEventListener('click', function () {
+  estado.perfis.push({ nome: 'Perfil ' + (estado.perfis.length + 1), drawdown: null });
+  estado.classes.forEach(function (c) { c.alvo.push(0); });
+  render();
+});
+document.getElementById('btn-rm-perfil').addEventListener('click', function () {
+  if (estado.perfis.length <= 1) { alert('É necessário manter ao menos um perfil.'); return; }
+  if (!confirm('Remover o último perfil (' + estado.perfis[estado.perfis.length - 1].nome + ')?')) return;
+  estado.perfis.pop();
+  estado.classes.forEach(function (c) { c.alvo.pop(); });
+  render();
+});
+document.getElementById('btn-exemplo').addEventListener('click', function () {
+  if (!confirm('Restaurar o exemplo? Os dados atuais serão substituídos.')) return;
+  estado = clonar(EXEMPLO);
+  render();
+});
+document.getElementById('btn-limpar').addEventListener('click', function () {
+  if (!confirm('Zerar a alocação atual e os pesos de todos os perfis (os nomes das classes e dos perfis são mantidos)?')) return;
+  estado.classes.forEach(function (c) { c.atual = 0; c.alvo = c.alvo.map(function () { return 0; }); });
+  estado.perfis.forEach(function (p) { p.drawdown = null; });
+  render();
+});
+document.getElementById('btn-imprimir').addEventListener('click', function () { window.print(); });
+
+document.getElementById('btn-excel').addEventListener('click', function () {
+  if (typeof XLSX === 'undefined') { alert('Não foi possível carregar o gerador de Excel. Tente novamente em instantes.'); return; }
+  var np = estado.perfis.length;
+  var cab = ['Classe', 'Atual (%)'].concat(estado.perfis.map(function (p) { return p.nome + ' (%)'; }));
+  var linhas = [cab];
+  estado.classes.forEach(function (c) {
+    linhas.push([c.nome, val(c.atual)].concat(estado.perfis.map(function (p, i) { return val(c.alvo[i]); })));
+  });
+  var tot = ['Total', 0].concat(estado.perfis.map(function () { return 0; }));
+  estado.classes.forEach(function (c) { tot[1] += val(c.atual); estado.perfis.forEach(function (p, i) { tot[2 + i] += val(c.alvo[i]); }); });
+  linhas.push(tot);
+  linhas.push(['Drawdown máximo tolerado (%)', ''].concat(estado.perfis.map(function (p) { return p.drawdown === null ? '' : p.drawdown; })));
+  linhas.push(['Patrimônio a realocar (%)', ''].concat(estado.perfis.map(function (p, i) { return Math.round(realocar(i) * 10) / 10; })));
+  var livro = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(livro, XLSX.utils.aoa_to_sheet(linhas), 'Perfis');
+  var pt = numBR(estado.patrimonio);
+  if (pt && pt > 0) {
+    var p = estado.perfilSel;
+    var aj = [['Classe', 'Atual (%)', estado.perfis[p].nome + ' (%)', 'Diferença (p.p.)', 'Atual (R$)', 'Alvo (R$)', 'Comprar/vender (R$)']];
+    estado.classes.forEach(function (c) {
+      var a = val(c.atual), t = val(c.alvo[p]);
+      aj.push([c.nome, a, t, Math.round((t - a) * 100) / 100, Math.round(a / 100 * pt * 100) / 100, Math.round(t / 100 * pt * 100) / 100, Math.round((t - a) / 100 * pt * 100) / 100]);
+    });
+    XLSX.utils.book_append_sheet(livro, XLSX.utils.aoa_to_sheet(aj), 'Ajuste');
+  }
+  var ag = new Date();
+  XLSX.writeFile(livro, 'diversificacao_carteira_' + ag.getFullYear() + String(ag.getMonth() + 1).padStart(2, '0') + String(ag.getDate()).padStart(2, '0') + '.xlsx');
+});
+
+estado = carregar();
+render();
+<\/script>
+</body>
+</html>`);
+  }
+
   function abrirPlanejamentoSucessorio() {
     var win = window.open('', '_blank');
     if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
@@ -20803,6 +21157,7 @@ if (btnExportarExcelPesquisa) {
   document.getElementById('btn-nav-consorcio').addEventListener('click', abrirConsorcio);
   document.getElementById('btn-nav-sucessorio').addEventListener('click', abrirPlanejamentoSucessorio);
   document.getElementById('btn-nav-holding').addEventListener('click', abrirViabilidadeHolding);
+  document.getElementById('btn-nav-diversificacao').addEventListener('click', abrirDiversificacaoCarteira);
   document.getElementById('btn-nav-nota-corretagem').addEventListener('click', abrirNotaCorretagem);
   document.getElementById('btn-nav-cetipados').addEventListener('click', abrirCetipados);
   document.getElementById('btn-nav-pesquisa').addEventListener('click', abrirPesquisaAtivo);
