@@ -15446,6 +15446,7 @@ montarFormulario();
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"><\/script>
 <style>
 :root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--ink-mute:#9A9A9A;--line:#E2E2E2;--green:#16A34A;--red:#DC2626;--radius:16px;--radius-lg:24px;--shadow-sm:0 2px 10px rgba(0,0,0,.05);}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -15484,6 +15485,7 @@ table.matriz input.txt{text-align:left;width:100%;min-width:200px;}
 table.matriz input:hover{border-color:var(--line);}
 table.matriz input:focus{outline:none;border-color:var(--ink);background:#fff;}
 table.matriz td.col-atual input{font-weight:700;}
+table.matriz td.col-valor input{width:118px;color:var(--ink-soft);}
 table.matriz .sel{background:#EFEFEF!important;}
 table.matriz th.sel{color:var(--ink);}
 table.matriz th input{font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.04em;color:inherit;width:96px;text-align:right;border:1px solid transparent;background:transparent;font-family:inherit;}
@@ -15519,6 +15521,11 @@ tr.total td{font-weight:700;border-top:2px solid var(--ink);}
       <div class="campo"><label for="ctl-cliente">Cliente (opcional)</label><input type="text" id="ctl-cliente" placeholder="Nome do cliente"></div>
       <div class="campo"><label for="ctl-patrimonio">Patrimônio total (R$)</label><input type="text" id="ctl-patrimonio" inputmode="decimal" placeholder="Ex.: 1.500.000"></div>
       <div class="campo"><label for="ctl-perfil">Perfil do cliente</label><select id="ctl-perfil"></select></div>
+    </div>
+    <div class="barra-acoes" style="margin-top:0;margin-bottom:14px;">
+      <label for="arq-carteira" class="btn btn-primary" style="cursor:pointer;">⬆ Carregar carteira do cliente (PDF ou Excel)</label>
+      <input type="file" id="arq-carteira" accept=".pdf,.xlsx,.xls,.csv" hidden>
+      <span id="import-status" style="font-size:12.5px;color:var(--ink-soft);align-self:center;">Aceita o relatório XPerformance (PDF) ou a Posição Consolidada (Excel).</span>
     </div>
     <div class="barra-acoes">
       <button type="button" class="btn" id="btn-add-classe">+ Classe de ativo</button>
@@ -15603,7 +15610,26 @@ function realocar(p) {
   return soma / 2;
 }
 
+// Modo "valores": quando a carteira foi carregada (ou algum valor em R$ foi
+// digitado), o valor em R$ de cada classe é a base e o percentual atual é
+// calculado sobre o total.
+function modoValores() { return estado.classes.some(function (c) { return typeof c.valor === 'number'; }); }
+function totalValores() { var t = 0; estado.classes.forEach(function (c) { t += val(c.valor); }); return t; }
+function sincronizarValores() {
+  if (!modoValores()) return;
+  var tot = totalValores();
+  estado.classes.forEach(function (c) { c.atual = tot > 0 ? val(c.valor) / tot * 100 : 0; });
+  estado.patrimonio = tot > 0 ? tot.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '';
+}
+function valorClasse(c) {
+  if (typeof c.valor === 'number') return c.valor;
+  var pt = numBR(estado.patrimonio);
+  return pt && pt > 0 ? val(c.atual) / 100 * pt : null;
+}
+function fmtNum(v) { return (v === null || v === undefined) ? '' : v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
 function render() {
+  sincronizarValores();
   var np = estado.perfis.length;
   // seletor de perfil
   var sel = document.getElementById('ctl-perfil');
@@ -15615,7 +15641,7 @@ function render() {
   document.getElementById('ctl-patrimonio').value = estado.patrimonio || '';
   document.getElementById('titulo-matriz').textContent = 'Alocação atual e perfis' + (estado.cliente ? ' — ' + estado.cliente : '');
 
-  var h = '<thead><tr><th class="col-classe">Classe</th><th>Atual</th>';
+  var h = '<thead><tr><th class="col-classe">Classe</th><th>Atual</th><th>Atual (R$)</th>';
   estado.perfis.forEach(function (p, i) {
     var on = i === estado.perfilSel;
     h += '<th class="' + (on ? 'sel' : '') + '"><input type="text" data-perfil-nome="' + i + '" value="' + esc(p.nome) + '"><button type="button" class="sel-btn ' + (on ? 'on' : '') + '" data-sel="' + i + '">' + (on ? '● perfil do cliente' : 'selecionar') + '</button></th>';
@@ -15623,7 +15649,8 @@ function render() {
   h += '<th></th></tr></thead><tbody>';
   estado.classes.forEach(function (c, ci) {
     h += '<tr class="' + (ci % 2 ? 'zebra' : '') + '"><td class="col-classe"><input type="text" class="txt" data-nome="' + ci + '" value="' + esc(c.nome) + '"></td>' +
-      '<td class="col-atual"><input type="text" inputmode="decimal" data-atual="' + ci + '" value="' + fmtPct(c.atual) + '"></td>';
+      '<td class="col-atual"><input type="text" inputmode="decimal" data-atual="' + ci + '" value="' + fmtPct(c.atual) + '"></td>' +
+      '<td class="col-valor"><input type="text" inputmode="decimal" data-valor="' + ci + '" value="' + fmtNum(valorClasse(c)) + '"></td>';
     estado.perfis.forEach(function (p, pi) {
       h += '<td class="' + (pi === estado.perfilSel ? 'sel' : '') + '"><input type="text" inputmode="decimal" data-alvo="' + ci + ',' + pi + '" value="' + fmtPct(c.alvo[pi]) + '"></td>';
     });
@@ -15632,20 +15659,20 @@ function render() {
   // linha de totais
   var totAtual = 0;
   estado.classes.forEach(function (c) { totAtual += val(c.atual); });
-  h += '<tr class="total"><td class="col-classe">Total</td><td>' + fmtPct(totAtual) + '</td>';
+  h += '<tr class="total"><td class="col-classe">Total</td><td>' + fmtPct(totAtual) + '</td><td>' + fmtNum((function () { var t = 0, algum = false; estado.classes.forEach(function (c) { var v = valorClasse(c); if (v !== null) { t += v; algum = true; } }); return algum ? t : null; })()) + '</td>';
   estado.perfis.forEach(function (p, pi) {
     var t = 0; estado.classes.forEach(function (c) { t += val(c.alvo[pi]); });
     h += '<td class="' + (pi === estado.perfilSel ? 'sel' : '') + '">' + fmtPct(t) + '</td>';
   });
   h += '<td></td></tr>';
   // drawdown
-  h += '<tr class="destaque"><td class="col-classe">Drawdown máximo tolerado</td><td>—</td>';
+  h += '<tr class="destaque"><td class="col-classe">Drawdown máximo tolerado</td><td>—</td><td></td>';
   estado.perfis.forEach(function (p, pi) {
     h += '<td class="' + (pi === estado.perfilSel ? 'sel' : '') + '"><input type="text" inputmode="decimal" data-dd="' + pi + '" value="' + fmtPct(p.drawdown) + '"></td>';
   });
   h += '<td></td></tr>';
   // patrimônio a realocar
-  h += '<tr class="destaque" style="background:#FAFAF8;"><td class="col-classe">Patrimônio a realocar</td><td>—</td>';
+  h += '<tr class="destaque" style="background:#FAFAF8;"><td class="col-classe">Patrimônio a realocar</td><td>—</td><td></td>';
   estado.perfis.forEach(function (p, pi) {
     h += '<td class="' + (pi === estado.perfilSel ? 'sel' : '') + '">' + fmtPct(realocar(pi)) + '</td>';
   });
@@ -15683,7 +15710,7 @@ function renderAjuste() {
     h += '<tr class="' + (ci % 2 ? 'zebra' : '') + '"><td class="col-classe">' + esc(c.nome) + '</td><td>' + fmtPct(a) + '</td><td>' + fmtPct(t) + '</td>' +
       '<td class="' + (dif > 0.0001 ? 'pos' : dif < -0.0001 ? 'neg' : '') + '">' + (dif > 0 ? '+' : '') + fmtPct(dif) + '</td>' +
       '<td>' + fmtBRL(a / 100 * pt) + '</td><td>' + fmtBRL(t / 100 * pt) + '</td>' +
-      '<td class="' + (difRS > 0.005 ? 'pos' : difRS < -0.005 ? 'neg' : '') + '">' + (difRS > 0 ? '+' : difRS < 0 ? '-' : '') + fmtBRL(Math.abs(difRS)) + '</td></tr>';
+      '<td class="' + (difRS > 0.005 ? 'pos' : difRS < -0.005 ? 'neg' : '') + '">' + (difRS > 0 ? '+' : '') + fmtBRL(difRS) + '</td></tr>';
   });
   h += '<tr class="total"><td class="col-classe">Total a comprar / total a vender</td><td></td><td></td><td></td><td></td><td class="pos">' + fmtBRL(totCompra) + '</td><td class="neg">-' + fmtBRL(totVenda) + '</td></tr></tbody>';
   document.getElementById('tabela-ajuste').innerHTML = h;
@@ -15695,7 +15722,19 @@ function parseCelula(inp) { var n = numBR(inp.value); return n === null ? null :
 matriz.addEventListener('change', function (ev) {
   var t = ev.target, ds = t.dataset;
   if (ds.nome !== undefined) estado.classes[Number(ds.nome)].nome = t.value.trim();
-  else if (ds.atual !== undefined) estado.classes[Number(ds.atual)].atual = parseCelula(t);
+  else if (ds.atual !== undefined) {
+    var cA = estado.classes[Number(ds.atual)], pct = parseCelula(t);
+    if (modoValores() && totalValores() > 0) cA.valor = (pct || 0) / 100 * totalValores();
+    else cA.atual = pct;
+  }
+  else if (ds.valor !== undefined) {
+    if (!modoValores()) {
+      // primeiro valor em R$: as demais classes passam a partir do percentual atual x patrimônio
+      var ptV = numBR(estado.patrimonio) || 0;
+      estado.classes.forEach(function (c) { c.valor = ptV > 0 ? val(c.atual) / 100 * ptV : 0; });
+    }
+    estado.classes[Number(ds.valor)].valor = parseCelula(t) || 0;
+  }
   else if (ds.alvo !== undefined) { var ix = ds.alvo.split(','); estado.classes[Number(ix[0])].alvo[Number(ix[1])] = parseCelula(t); }
   else if (ds.dd !== undefined) estado.perfis[Number(ds.dd)].drawdown = parseCelula(t);
   else if (ds.perfilNome !== undefined) estado.perfis[Number(ds.perfilNome)].nome = t.value.trim() || ('Perfil ' + (Number(ds.perfilNome) + 1));
@@ -15716,13 +15755,18 @@ matriz.addEventListener('click', function (ev) {
 document.getElementById('ctl-cliente').addEventListener('change', function (e) { estado.cliente = e.target.value.trim(); render(); });
 document.getElementById('ctl-patrimonio').addEventListener('change', function (e) {
   var n = numBR(e.target.value);
+  if (modoValores() && n && n > 0) {
+    // reescala os valores em R$ mantendo os percentuais atuais
+    var antes = totalValores();
+    if (antes > 0) estado.classes.forEach(function (c) { c.valor = val(c.valor) / antes * n; });
+  }
   estado.patrimonio = n ? n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '';
   render();
 });
 document.getElementById('ctl-perfil').addEventListener('change', function (e) { estado.perfilSel = Number(e.target.value); render(); });
 
 document.getElementById('btn-add-classe').addEventListener('click', function () {
-  estado.classes.push({ nome: 'Nova classe', atual: 0, alvo: estado.perfis.map(function () { return 0; }) });
+  estado.classes.push({ nome: 'Nova classe', atual: 0, valor: modoValores() ? 0 : null, alvo: estado.perfis.map(function () { return 0; }) });
   render();
 });
 document.getElementById('btn-add-perfil').addEventListener('click', function () {
@@ -15744,7 +15788,8 @@ document.getElementById('btn-exemplo').addEventListener('click', function () {
 });
 document.getElementById('btn-limpar').addEventListener('click', function () {
   if (!confirm('Zerar a alocação atual e os pesos de todos os perfis (os nomes das classes e dos perfis são mantidos)?')) return;
-  estado.classes.forEach(function (c) { c.atual = 0; c.alvo = c.alvo.map(function () { return 0; }); });
+  estado.classes.forEach(function (c) { c.atual = 0; c.valor = null; c.alvo = c.alvo.map(function () { return 0; }); });
+  estado.patrimonio = '';
   estado.perfis.forEach(function (p) { p.drawdown = null; });
   render();
 });
@@ -15753,16 +15798,17 @@ document.getElementById('btn-imprimir').addEventListener('click', function () { 
 document.getElementById('btn-excel').addEventListener('click', function () {
   if (typeof XLSX === 'undefined') { alert('Não foi possível carregar o gerador de Excel. Tente novamente em instantes.'); return; }
   var np = estado.perfis.length;
-  var cab = ['Classe', 'Atual (%)'].concat(estado.perfis.map(function (p) { return p.nome + ' (%)'; }));
+  var cab = ['Classe', 'Atual (%)', 'Atual (R$)'].concat(estado.perfis.map(function (p) { return p.nome + ' (%)'; }));
   var linhas = [cab];
   estado.classes.forEach(function (c) {
-    linhas.push([c.nome, val(c.atual)].concat(estado.perfis.map(function (p, i) { return val(c.alvo[i]); })));
+    var vC = valorClasse(c);
+    linhas.push([c.nome, val(c.atual), vC === null ? '' : Math.round(vC * 100) / 100].concat(estado.perfis.map(function (p, i) { return val(c.alvo[i]); })));
   });
-  var tot = ['Total', 0].concat(estado.perfis.map(function () { return 0; }));
-  estado.classes.forEach(function (c) { tot[1] += val(c.atual); estado.perfis.forEach(function (p, i) { tot[2 + i] += val(c.alvo[i]); }); });
+  var tot = ['Total', 0, 0].concat(estado.perfis.map(function () { return 0; }));
+  estado.classes.forEach(function (c) { tot[1] += val(c.atual); tot[2] += val(valorClasse(c)); estado.perfis.forEach(function (p, i) { tot[3 + i] += val(c.alvo[i]); }); });
   linhas.push(tot);
-  linhas.push(['Drawdown máximo tolerado (%)', ''].concat(estado.perfis.map(function (p) { return p.drawdown === null ? '' : p.drawdown; })));
-  linhas.push(['Patrimônio a realocar (%)', ''].concat(estado.perfis.map(function (p, i) { return Math.round(realocar(i) * 10) / 10; })));
+  linhas.push(['Drawdown máximo tolerado (%)', '', ''].concat(estado.perfis.map(function (p) { return p.drawdown === null ? '' : p.drawdown; })));
+  linhas.push(['Patrimônio a realocar (%)', '', ''].concat(estado.perfis.map(function (p, i) { return Math.round(realocar(i) * 10) / 10; })));
   var livro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(livro, XLSX.utils.aoa_to_sheet(linhas), 'Perfis');
   var pt = numBR(estado.patrimonio);
@@ -15777,6 +15823,190 @@ document.getElementById('btn-excel').addEventListener('click', function () {
   }
   var ag = new Date();
   XLSX.writeFile(livro, 'diversificacao_carteira_' + ag.getFullYear() + String(ag.getMonth() + 1).padStart(2, '0') + String(ag.getDate()).padStart(2, '0') + '.xlsx');
+});
+
+
+// ── Carregar carteira do cliente (XPerformance em PDF ou Posição Consolidada em Excel) ──
+var ROTULOS_CLASSE = {
+  pos: 'RF Pós-fixado', infl: 'RF Inflação', pre: 'RF Prefixado', multi: 'Multimercados',
+  rvb: 'Renda Variável Brasil', grv: 'Global Renda Variável', listados: 'Fundos Listados',
+  alt: 'Alternativos', grf: 'Global Renda Fixa', caixa: 'Caixa e proventos', outros: 'Outros (verificar)'
+};
+function compacto(t) {
+  return String(t === undefined || t === null ? '' : t).normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+// Classe padrão a partir de um rótulo (nome da estratégia, do bloco da planilha ou da linha da tabela)
+function chaveClasse(texto) {
+  var n = compacto(texto);
+  if (!n) return null;
+  if (n.indexOf('caixa') !== -1 || n.indexOf('provento') !== -1 || n.indexOf('saldo') !== -1) return 'caixa';
+  if (n.indexOf('global') !== -1 || n.indexOf('internacional') !== -1 || n.indexOf('exterior') !== -1) return n.indexOf('fixa') !== -1 ? 'grf' : 'grv';
+  if (n.indexOf('posfix') !== -1) return 'pos';
+  if (n.indexOf('infla') !== -1) return 'infl';
+  if (n.indexOf('prefix') !== -1) return 'pre';
+  if (n.indexOf('multimercado') !== -1) return 'multi';
+  if (n.indexOf('listado') !== -1 || n.indexOf('imobiliario') !== -1) return 'listados';
+  if (n.indexOf('alternativ') !== -1) return 'alt';
+  if (n.indexOf('variavel') !== -1 || n.indexOf('acoes') !== -1) return 'rvb';
+  return null;
+}
+// ETFs de renda fixa e globais negociados como ações (a classe não vem na planilha)
+var ETFS_POS = ['LFTX11', 'LTBX11', 'FIXA11', 'IRFM11', 'IMAB11', 'B5P211', 'IB5M11', 'NTNS11'];
+var ETFS_GLOBAL = ['IVVB11', 'WRLD11', 'SPXI11', 'NASD11', 'ACWI11', 'GOLD11', 'USTK11', 'EURP11', 'XINA11'];
+function classeDeAcao(ticker) {
+  var t = String(ticker).toUpperCase();
+  if (ETFS_POS.indexOf(t) !== -1) return t === 'IMAB11' || t === 'B5P211' || t === 'IB5M11' || t === 'NTNS11' ? 'infl' : 'pos';
+  if (ETFS_GLOBAL.indexOf(t) !== -1) return 'grv';
+  if (/^[A-Z0-9]{4}(32|33|34|35|39)$/.test(t)) return 'grv'; // BDRs
+  return 'rvb';
+}
+function numMoeda(v) {
+  if (typeof v === 'number') return v;
+  var t = String(v === undefined || v === null ? '' : v).replace('R$', '').replace(/\\s/g, '').trim();
+  if (!t || t === '-') return null;
+  var neg = t.charAt(0) === '-';
+  t = t.replace('-', '');
+  var n = Number(t.split('.').join('').replace(',', '.'));
+  return isNaN(n) ? null : (neg ? -n : n);
+}
+
+// Excel "Posição Consolidada"/"Carteira Distribuída": blocos "NN%|Nome" (macro e sub-blocos);
+// o valor de cada ativo vem da coluna "Posição" do cabeçalho da tabela corrente.
+function lerPosicaoExcel(linhas) {
+  var somas = {}, macro = '', sub = '', colPos = -1, qtd = 0;
+  function somar(chave, v) { if (chave && v !== null && !isNaN(v) && v !== 0) { somas[chave] = (somas[chave] || 0) + v; qtd++; } }
+  linhas.forEach(function (l) {
+    var c0 = String(l[0] === undefined || l[0] === null ? '' : l[0]).trim();
+    if (!c0) return;
+    var m = /^[\\d.,]+%\\s*\\|\\s*(.+)$/.exec(c0);
+    if (m) {
+      var nome = m[1].trim(), nn = compacto(nome);
+      var ehMacro = ['acoes', 'rendafixa', 'fundosdeinvestimento', 'fundosimobiliarios', 'proventos', 'saldoprojetado'].indexOf(nn) !== -1;
+      if (ehMacro) { macro = nn; sub = ''; } else { sub = nome; }
+      colPos = -1;
+      // nos sub-blocos o cabeçalho das colunas vem na própria linha do título
+      for (var k = 1; k < l.length; k++) { if (compacto(l[k]) === 'posicao') { colPos = k; break; } }
+      if (nn === 'proventos' || nn === 'saldoprojetado') {
+        // total do bloco na própria linha (primeira célula monetária)
+        for (var i = 1; i < l.length; i++) { var vv = numMoeda(l[i]); if (vv !== null && String(l[i]).trim() !== '') { somar('caixa', vv); break; } }
+      }
+      return;
+    }
+    // linha de cabeçalho da tabela: define a coluna "Posição"
+    var idxPos = -1;
+    for (var j = 0; j < l.length; j++) { if (compacto(l[j]) === 'posicao') { idxPos = j; break; } }
+    if (idxPos !== -1) { colPos = idxPos; return; }
+    if (colPos < 0) return;
+    var valor = numMoeda(l[colPos]);
+    if (valor === null) return;
+    var chave = null;
+    if (macro === 'acoes') chave = classeDeAcao(c0);
+    else if (macro === 'fundosimobiliarios') chave = 'listados';
+    else chave = chaveClasse(sub) || 'outros';
+    somar(chave, valor);
+  });
+  return qtd ? somas : null;
+}
+
+// PDF XPerformance: tabela "Estratégia: Composição" — linhas "Nome (xx,xx%) R$ saldo ..."
+function lerXPerformanceLinhas(linhas) {
+  var somas = {}, qtd = 0;
+  linhas.forEach(function (l) {
+    var m = /^(.*?)\\s*\\(\\s*[\\d.,]+\\s*%\\s*\\)\\s*R\\$\\s*([\\d.]+,\\d{2})/.exec(l);
+    if (!m) return;
+    var nome = m[1].trim();
+    var nn = compacto(nome);
+    if (!nn || nn.indexOf('total') !== -1) return;
+    var chave = chaveClasse(nome) || 'outros';
+    var v = numMoeda(m[2]);
+    if (v === null) return;
+    somas[chave] = (somas[chave] || 0) + v;
+    qtd++;
+  });
+  return qtd ? somas : null;
+}
+function extrairLinhasPDF(pdf) {
+  var paginas = [];
+  for (var i = 1; i <= pdf.numPages; i++) {
+    paginas.push(pdf.getPage(i).then(function (page) {
+      return page.getTextContent().then(function (content) {
+        var itens = content.items.map(function (it) { return { x: it.transform[4], y: it.transform[5], t: it.str }; })
+          .sort(function (a, b) { return b.y - a.y || a.x - b.x; });
+        var grupos = [];
+        itens.forEach(function (it) {
+          var g = grupos[grupos.length - 1];
+          if (g && Math.abs(g.y - it.y) <= 2.5) g.itens.push(it); else grupos.push({ y: it.y, itens: [it] });
+        });
+        return grupos.map(function (g) {
+          return g.itens.sort(function (a, b) { return a.x - b.x; }).map(function (o) { return o.t; }).join(' ').replace(/\\s+/g, ' ').trim();
+        });
+      });
+    }));
+  }
+  return Promise.all(paginas).then(function (ps) { return [].concat.apply([], ps); });
+}
+
+function aplicarCarteira(somas, origem) {
+  var total = 0;
+  Object.keys(somas).forEach(function (k) { total += somas[k]; });
+  if (total <= 0) throw new Error('Não foi possível calcular o patrimônio total.');
+  var usados = {};
+  // zera os valores atuais e preenche pelas classes existentes (mesma chave padrão)
+  estado.classes.forEach(function (c) {
+    var k = chaveClasse(c.nome);
+    c.valor = (k && somas[k] !== undefined && !usados[k]) ? somas[k] : 0;
+    if (k && somas[k] !== undefined) usados[k] = true;
+  });
+  var adicionadas = [];
+  Object.keys(somas).forEach(function (k) {
+    if (usados[k]) return;
+    estado.classes.push({ nome: ROTULOS_CLASSE[k] || k, atual: 0, valor: somas[k], alvo: estado.perfis.map(function () { return 0; }) });
+    adicionadas.push(ROTULOS_CLASSE[k] || k);
+  });
+  render();
+  var st = document.getElementById('import-status');
+  st.style.color = 'var(--green)';
+  st.textContent = '✓ Carteira carregada (' + origem + '): patrimônio de ' + fmtBRL(total) + ' distribuído em ' + Object.keys(somas).length + ' classe(s).' +
+    (adicionadas.length ? ' Classes incluídas na tabela: ' + adicionadas.join(', ') + '.' : '');
+}
+
+document.getElementById('arq-carteira').addEventListener('change', function (ev) {
+  var arquivo = ev.target.files && ev.target.files[0];
+  ev.target.value = '';
+  if (!arquivo) return;
+  var st = document.getElementById('import-status');
+  st.style.color = 'var(--ink-soft)';
+  st.textContent = 'Lendo ' + arquivo.name + '...';
+  function erro(msg) { st.style.color = 'var(--red)'; st.textContent = msg; }
+  var ehPDF = /[.]pdf$/i.test(arquivo.name) || arquivo.type === 'application/pdf';
+  var leitor = new FileReader();
+  leitor.onerror = function () { erro('Não foi possível ler o arquivo.'); };
+  leitor.onload = function (e) {
+    try {
+      if (ehPDF) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        pdfjsLib.getDocument({ data: new Uint8Array(e.target.result) }).promise
+          .then(extrairLinhasPDF)
+          .then(function (linhas) {
+            var somas = lerXPerformanceLinhas(linhas);
+            if (!somas) { erro('Não foi encontrada a composição por estratégia (XPerformance) neste PDF.'); return; }
+            aplicarCarteira(somas, 'XPerformance');
+          })
+          .catch(function (err) { erro('Erro ao ler o PDF: ' + (err && err.message ? err.message : err)); });
+      } else {
+        var pasta = XLSX.read(e.target.result, { type: 'array' });
+        var somas = null;
+        pasta.SheetNames.forEach(function (nome) {
+          if (somas) return;
+          var linhas = XLSX.utils.sheet_to_json(pasta.Sheets[nome], { header: 1, raw: true, defval: '' });
+          somas = lerPosicaoExcel(linhas);
+        });
+        if (!somas) { erro('Não foi possível identificar a posição por classe nesta planilha.'); return; }
+        aplicarCarteira(somas, 'Posição Consolidada');
+      }
+    } catch (err) { erro('Erro ao processar o arquivo: ' + err.message); }
+  };
+  leitor.readAsArrayBuffer(arquivo);
 });
 
 estado = carregar();
