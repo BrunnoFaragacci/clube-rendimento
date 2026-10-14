@@ -15653,7 +15653,7 @@ table.matriz select{border:1px solid var(--line);border-radius:6px;padding:4px 6
     <div id="diag-conteudo"></div>
     <details id="diag-detalhe" style="margin-top:18px;" hidden>
       <summary style="cursor:pointer;font-size:13px;font-weight:600;">Classificação dos ativos</summary>
-      <p class="card-sub" style="margin:10px 0;">Altere a liquidez ou a tributação de qualquer ativo: a escolha é aplicada na hora, fica memorizada neste navegador para os próximos carregamentos da carteira e é gravada no histórico do cliente ao clicar em "Salvar no histórico do cliente".</p>
+      <p class="card-sub" style="margin:10px 0;">Altere a liquidez ou a tributação de qualquer ativo: a escolha é aplicada na hora e fica memorizada de forma permanente na sua conta (vale em qualquer navegador ou computador) para os próximos carregamentos de carteira. Ela também é gravada no histórico do cliente ao clicar em "Salvar no histórico do cliente".</p>
       <div class="tabela-wrap"><table class="matriz" id="tabela-itens"></table></div>
       <div style="margin-top:10px;"><button type="button" class="btn btn-leve" id="btn-reclassificar">Redefinir para a classificação automática</button></div>
     </details>
@@ -16064,6 +16064,7 @@ function renderDiagnostico() {
 document.getElementById('btn-reclassificar').addEventListener('click', function () {
   if (!confirm('Descartar as classificações memorizadas e voltar à classificação automática?')) return;
   estado.regras = {};
+  apagarRegrasRemotas();
   (estado.itens || []).forEach(function (it) { delete it.liq; delete it.isento; });
   completarItens(estado.itens);
   render();
@@ -16077,6 +16078,7 @@ document.getElementById('tabela-itens').addEventListener('change', function (ev)
   // memoriza a escolha para este ativo (vale nos próximos carregamentos de carteira)
   estado.regras = estado.regras || {};
   estado.regras[compacto(it.nome)] = { liq: it.liq, isento: it.isento };
+  gravarRegraRemota(compacto(it.nome), it.nome, estado.regras[compacto(it.nome)]);
   document.getElementById('diag-conteudo').innerHTML = htmlDiagnostico(estado.itens);
   salvar();
 });
@@ -16441,11 +16443,45 @@ document.getElementById('btn-salvar-hist').addEventListener('click', function ()
   }).finally(function () { botao.disabled = !logado; });
 });
 
+// Classificações de liquidez/tributação memorizadas na conta (tabela classificacao_ativos)
+function gravarRegraRemota(chave, nome, regra) {
+  if (!logado || !sb) return;
+  sb.auth.getUser().then(function (res) {
+    var u = res && res.data && res.data.user;
+    if (!u) return;
+    return sb.from('classificacao_ativos').upsert({ user_id: u.id, chave: chave, nome: nome, liq: regra.liq, isento: !!regra.isento, atualizado_em: new Date().toISOString() }, { onConflict: 'user_id,chave' });
+  }).then(function (r) {
+    if (r && r.error) { var st = document.getElementById('hist-status'); st.style.color = 'var(--red)'; st.textContent = 'Não foi possível gravar a classificação na conta: ' + r.error.message; document.getElementById('card-historico').hidden = !estado.clienteId; }
+  });
+}
+function apagarRegrasRemotas() {
+  if (!logado || !sb) return;
+  sb.from('classificacao_ativos').delete().neq('chave', '').then(function () {});
+}
+function carregarRegrasRemotas() {
+  return sb.from('classificacao_ativos').select('chave,nome,liq,isento').then(function (r) {
+    if (r.error) return;
+    var remotas = {};
+    (r.data || []).forEach(function (x) { remotas[x.chave] = { liq: x.liq, isento: !!x.isento }; });
+    // regras que existiam só neste navegador passam a ser gravadas na conta
+    var locais = estado.regras || {};
+    Object.keys(locais).forEach(function (k) {
+      if (!remotas[k]) {
+        var nome = (estado.itens || []).filter(function (it) { return compacto(it.nome) === k; }).map(function (it) { return it.nome; })[0] || k;
+        gravarRegraRemota(k, nome, locais[k]);
+      }
+    });
+    estado.regras = Object.assign({}, locais, remotas);
+    salvar();
+  });
+}
+
 function iniciarClientes() {
   if (!sb) { renderClientes(); return; }
   iniciarSessao().then(function (ok) {
     logado = ok;
     if (!ok) { renderClientes(); return; }
+    carregarRegrasRemotas();
     return carregarClientes().then(function () {
       if (PARAMS && PARAMS.clienteId && clientes.some(function (c) { return c.id === PARAMS.clienteId; })) {
         var c = clientes.filter(function (x) { return x.id === PARAMS.clienteId; })[0];
