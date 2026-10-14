@@ -10467,6 +10467,13 @@ tbody tr:hover td{background:var(--bg-soft);}
 .nome-link:hover{color:var(--orange);}
 .acoes-cel{display:flex;gap:8px;justify-content:flex-end;}
 .vazio{padding:32px;text-align:center;color:var(--ink-soft);font-size:13px;}
+.hist-box{background:var(--bg-soft);padding:14px 18px 18px;}
+.hist-titulo{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:8px;}
+.hist-tab{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+.hist-tab th{background:#fff;color:var(--ink-soft);border-bottom:1px solid var(--line);font-size:10.5px;padding:9px 12px;}
+.hist-tab td{padding:9px 12px;font-size:12.5px;border-bottom:1px solid var(--line);}
+.hist-tab tr:last-child td{border-bottom:none;}
+.hist-tab tbody tr:hover td{background:#fff;}
 </style>
 </head>
 <body>
@@ -10478,7 +10485,7 @@ tbody tr:hover td{background:var(--bg-soft);}
 <div class="container">
   <span class="eyebrow">Área do assessor</span>
   <h1>Meus Clientes</h1>
-  <p class="sub">Cadastre os clientes que você acompanha. Clique no nome de um cliente para definir a diversificação ideal da carteira dele. Cada cliente cadastrado é visível apenas para você.</p>
+  <p class="sub">Cadastre os clientes que você acompanha. Clique no nome de um cliente para definir a diversificação ideal da carteira dele. Em "Histórico" ficam os registros salvos na ferramenta Diversificação de Carteira. Cada cliente cadastrado é visível apenas para você.</p>
 
   <div class="card">
     <div class="form-row">
@@ -10536,12 +10543,18 @@ function renderizarLista() {
     return '<tr>' +
       '<td><button type="button" class="nome-link" data-acao="abrir" data-id="' + c.id + '">' + nomeEscapado + '</button></td>' +
       '<td><div class="acoes-cel">' +
+      '<button type="button" class="btn btn-outline btn-sm" data-acao="historico" data-id="' + c.id + '">Histórico</button>' +
       '<button type="button" class="btn btn-outline btn-sm" data-acao="renomear" data-id="' + c.id + '">Renomear</button>' +
       '<button type="button" class="btn btn-excluir btn-sm" data-acao="excluir" data-id="' + c.id + '">Excluir</button>' +
       '</div></td>' +
-      '</tr>';
+      '</tr>' +
+      '<tr class="hist-linha" id="hist-linha-' + c.id + '" hidden><td colspan="2" style="padding:0;"><div class="hist-box" id="hist-box-' + c.id + '"></div></td></tr>';
   }).join('');
   cont.innerHTML = '<table><thead><tr><th>Cliente</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table>';
+
+  Array.prototype.forEach.call(cont.querySelectorAll('[data-acao="historico"]'), function(btn) {
+    btn.addEventListener('click', function() { alternarHistorico(btn.getAttribute('data-id')); });
+  });
 
   Array.prototype.forEach.call(cont.querySelectorAll('[data-acao="abrir"]'), function(btn) {
     btn.addEventListener('click', function() {
@@ -10574,6 +10587,59 @@ function renderizarLista() {
       });
     });
   });
+}
+
+// Histórico da ferramenta "Diversificação de Carteira" (tabela diversificacao_historico)
+function fmtMoedaH(v) { return v === null || v === undefined ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtPctH(v) { return v === null || v === undefined ? '—' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%'; }
+function alternarHistorico(clienteId) {
+  var linha = document.getElementById('hist-linha-' + clienteId);
+  var box = document.getElementById('hist-box-' + clienteId);
+  if (!linha) return;
+  if (!linha.hidden) { linha.hidden = true; return; }
+  linha.hidden = false;
+  box.innerHTML = '<p class="vazio" style="padding:10px;">Carregando histórico...</p>';
+  sb.from('diversificacao_historico').select('id,criado_em,patrimonio,perfil_nome,realocar_pct,dados').eq('cliente_id', clienteId).order('criado_em', { ascending: false }).then(function(r) {
+    if (r.error) { box.innerHTML = '<p class="vazio" style="padding:10px;">Erro ao carregar o histórico: ' + r.error.message + '</p>'; return; }
+    var regs = r.data || [];
+    var cab = '<div class="hist-titulo">Histórico de diversificação</div>';
+    var abrirNovo = '<div style="margin-top:10px;"><button type="button" class="btn btn-outline btn-sm" data-nova="' + clienteId + '">Abrir Diversificação de Carteira para este cliente</button></div>';
+    if (!regs.length) { box.innerHTML = cab + '<p style="font-size:12.5px;color:var(--ink-soft);">Nenhum registro salvo para este cliente.</p>' + abrirNovo; }
+    else {
+      var h = cab + '<table class="hist-tab"><thead><tr><th>Registrado em</th><th>Patrimônio</th><th>Perfil</th><th>A realocar</th><th>Maiores classes</th><th></th></tr></thead><tbody>';
+      regs.forEach(function(x) {
+        var d = new Date(x.criado_em);
+        var classes = ((x.dados && x.dados.classes) || []).slice().sort(function(a, b) { return (b.atual || 0) - (a.atual || 0); }).slice(0, 3)
+          .map(function(c) { return String(c.nome).replace(/&/g, '&amp;').replace(/</g, '&lt;') + ' ' + fmtPctH(c.atual); }).join(' · ');
+        h += '<tr><td>' + d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '</td><td>' + fmtMoedaH(x.patrimonio) + '</td><td>' + (x.perfil_nome || '—') + '</td><td>' + fmtPctH(x.realocar_pct) + '</td><td>' + classes + '</td>' +
+          '<td style="white-space:nowrap;text-align:right;"><button type="button" class="btn btn-outline btn-sm" data-abrir-reg="' + x.id + '" data-cli="' + clienteId + '">Abrir</button> <button type="button" class="btn btn-excluir btn-sm" data-excluir-reg="' + x.id + '" data-cli="' + clienteId + '">Excluir</button></td></tr>';
+      });
+      box.innerHTML = h + '</tbody></table>' + abrirNovo;
+    }
+    Array.prototype.forEach.call(box.querySelectorAll('[data-abrir-reg]'), function(b) {
+      b.addEventListener('click', function() { abrirCarteira(b.getAttribute('data-cli'), b.getAttribute('data-abrir-reg')); });
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-nova]'), function(b) {
+      b.addEventListener('click', function() { abrirCarteira(b.getAttribute('data-nova'), ''); });
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-excluir-reg]'), function(b) {
+      b.addEventListener('click', function() {
+        if (!confirm('Excluir este registro do histórico?')) return;
+        sb.from('diversificacao_historico').delete().eq('id', b.getAttribute('data-excluir-reg')).then(function(rr) {
+          if (rr.error) { alert('Erro ao excluir: ' + rr.error.message); return; }
+          document.getElementById('hist-linha-' + clienteId).hidden = true;
+          alternarHistorico(clienteId);
+        });
+      });
+    });
+  });
+}
+function abrirCarteira(clienteId, registroId) {
+  if (window.opener && window.opener.abrirDiversificacaoCarteira) {
+    window.opener.abrirDiversificacaoCarteira(clienteId, registroId);
+  } else {
+    alert('Não foi possível abrir a ferramenta (aba original foi fechada). Volte ao site e tente novamente.');
+  }
 }
 
 function carregarClientes() {
@@ -15433,7 +15499,9 @@ montarFormulario();
 </html>`);
   }
 
-  function abrirDiversificacaoCarteira() {
+  function abrirDiversificacaoCarteira(clienteId, snapshotId) {
+    // chamado também pelo menu (recebe o evento de clique) e por "Meus Clientes" (id do cliente e do registro)
+    var parametros = { clienteId: typeof clienteId === 'string' ? clienteId : '', snapshotId: typeof snapshotId === 'string' ? snapshotId : '' };
     var win = window.open('', '_blank');
     if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
     escreverConteudoJanela(win, `<!DOCTYPE html>
@@ -15445,6 +15513,7 @@ montarFormulario();
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/dist/umd/supabase.min.js" referrerpolicy="no-referrer"><\/script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"><\/script>
 <style>
@@ -15518,11 +15587,12 @@ tr.total td{font-weight:700;border-top:2px solid var(--ink);}
 
   <div class="card">
     <div class="controles">
-      <div class="campo"><label for="ctl-cliente">Cliente (opcional)</label><input type="text" id="ctl-cliente" placeholder="Nome do cliente"></div>
+      <div class="campo"><label for="ctl-cliente">Cliente</label><select id="ctl-cliente"><option value="">— sem cliente —</option></select></div>
       <div class="campo"><label for="ctl-patrimonio">Patrimônio total (R$)</label><input type="text" id="ctl-patrimonio" inputmode="decimal" placeholder="Ex.: 1.500.000"></div>
       <div class="campo"><label for="ctl-perfil">Perfil do cliente</label><select id="ctl-perfil"></select></div>
     </div>
-    <div class="barra-acoes" style="margin-top:0;margin-bottom:14px;">
+    <p id="cliente-aviso" class="card-sub" style="margin:12px 0 0;"></p>
+    <div class="barra-acoes" style="margin-top:12px;margin-bottom:14px;">
       <label for="arq-carteira" class="btn btn-primary" style="cursor:pointer;">⬆ Carregar carteira do cliente (PDF ou Excel)</label>
       <input type="file" id="arq-carteira" accept=".pdf,.xlsx,.xls,.csv" hidden>
       <span id="import-status" style="font-size:12.5px;color:var(--ink-soft);align-self:center;">Aceita o relatório XPerformance (PDF) ou a Posição Consolidada (Excel).</span>
@@ -15534,6 +15604,7 @@ tr.total td{font-weight:700;border-top:2px solid var(--ink);}
       <button type="button" class="btn btn-leve" id="btn-exemplo">Restaurar exemplo</button>
       <button type="button" class="btn btn-leve" id="btn-limpar">Limpar valores</button>
       <span style="flex:1"></span>
+      <button type="button" class="btn btn-primary" id="btn-salvar-hist">💾 Salvar no histórico do cliente</button>
       <button type="button" class="btn btn-primary" id="btn-excel">⬇ Exportar Excel</button>
       <button type="button" class="btn" id="btn-imprimir">Imprimir / salvar em PDF</button>
     </div>
@@ -15545,6 +15616,13 @@ tr.total td{font-weight:700;border-top:2px solid var(--ink);}
     <div class="tabela-wrap"><table class="matriz" id="matriz"></table></div>
     <p class="aviso-soma" id="aviso-soma"></p>
     <p class="nota">Patrimônio a realocar = metade da soma das diferenças absolutas entre a alocação atual e a alocação do perfil, em cada classe (parcela do patrimônio que precisa mudar de classe).</p>
+  </div>
+
+  <div class="card" id="card-historico" hidden>
+    <div class="card-titulo" id="titulo-historico">Histórico do cliente</div>
+    <p class="card-sub">Cada registro guarda a alocação atual, os perfis e o patrimônio no momento em que foi salvo. O mesmo histórico aparece em "Meus Clientes".</p>
+    <p id="hist-status" class="card-sub" style="margin-top:-6px;"></p>
+    <div class="tabela-wrap"><table class="matriz" id="tabela-historico"></table></div>
   </div>
 
   <div class="card" id="card-ajuste" hidden>
@@ -15637,7 +15715,6 @@ function render() {
   if (estado.perfilSel >= np) estado.perfilSel = np - 1;
   if (estado.perfilSel < 0) estado.perfilSel = 0;
   sel.value = String(estado.perfilSel);
-  document.getElementById('ctl-cliente').value = estado.cliente || '';
   document.getElementById('ctl-patrimonio').value = estado.patrimonio || '';
   document.getElementById('titulo-matriz').textContent = 'Alocação atual e perfis' + (estado.cliente ? ' — ' + estado.cliente : '');
 
@@ -15752,7 +15829,15 @@ matriz.addEventListener('click', function (ev) {
   }
 });
 
-document.getElementById('ctl-cliente').addEventListener('change', function (e) { estado.cliente = e.target.value.trim(); render(); });
+document.getElementById('ctl-cliente').addEventListener('change', function (e) {
+  var v = e.target.value;
+  if (v === '__novo__') { cadastrarNovoCliente(); return; }
+  var c = clientes.filter(function (x) { return x.id === v; })[0];
+  estado.clienteId = c ? c.id : '';
+  estado.cliente = c ? c.nome : '';
+  render();
+  carregarHistorico();
+});
 document.getElementById('ctl-patrimonio').addEventListener('change', function (e) {
   var n = numBR(e.target.value);
   if (modoValores() && n && n > 0) {
@@ -15783,7 +15868,9 @@ document.getElementById('btn-rm-perfil').addEventListener('click', function () {
 });
 document.getElementById('btn-exemplo').addEventListener('click', function () {
   if (!confirm('Restaurar o exemplo? Os dados atuais serão substituídos.')) return;
+  var cid = estado.clienteId, cnome = estado.cliente;
   estado = clonar(EXEMPLO);
+  estado.clienteId = cid; estado.cliente = cnome;
   render();
 });
 document.getElementById('btn-limpar').addEventListener('click', function () {
@@ -16009,12 +16096,159 @@ document.getElementById('arq-carteira').addEventListener('change', function (ev)
   leitor.readAsArrayBuffer(arquivo);
 });
 
+// ── Clientes e histórico (Supabase) ──
+var SESSAO_INICIAL = ${JSON.stringify(sessaoAtual)};
+var PARAMS = ${JSON.stringify(parametros)};
+var SB_URL = 'https://segeufywrjmstfmfscdi.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZ2V1Znl3cmptc3RmbWZzY2RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzY0OTgsImV4cCI6MjA5ODQxMjQ5OH0.TUrp35SEI2NXdU1ZY7IEcdRm8VLLfLwAVWUtqjafElI';
+var sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+var clientes = [], historico = [], logado = false;
+
+function iniciarSessao() {
+  if (!sb || !SESSAO_INICIAL || !SESSAO_INICIAL.access_token) return Promise.resolve(false);
+  return sb.auth.setSession({ access_token: SESSAO_INICIAL.access_token, refresh_token: SESSAO_INICIAL.refresh_token })
+    .then(function (r) { return !r.error; }).catch(function () { return false; });
+}
+function carregarClientes() {
+  return sb.from('clientes').select('id,nome').order('nome', { ascending: true }).then(function (r) {
+    clientes = r.error ? [] : (r.data || []);
+  });
+}
+function renderClientes() {
+  var sel = document.getElementById('ctl-cliente');
+  var h = '<option value="">— sem cliente —</option>' + clientes.map(function (c) { return '<option value="' + esc(c.id) + '">' + esc(c.nome) + '</option>'; }).join('');
+  if (logado) h += '<option value="__novo__">+ Cadastrar novo cliente...</option>';
+  sel.innerHTML = h;
+  sel.disabled = !logado;
+  if (estado.clienteId && !clientes.some(function (c) { return c.id === estado.clienteId; })) { estado.clienteId = ''; estado.cliente = ''; }
+  sel.value = estado.clienteId || '';
+  var av = document.getElementById('cliente-aviso');
+  av.textContent = logado ? '' : 'Entre no site com a sua conta para vincular a carteira a um cliente e salvar o histórico (esta janela deve ser aberta a partir do site já autenticado).';
+  document.getElementById('btn-salvar-hist').disabled = !logado;
+}
+function cadastrarNovoCliente() {
+  var nome = prompt('Nome do novo cliente:');
+  if (!nome || !nome.trim()) { renderClientes(); return; }
+  sb.auth.getUser().then(function (res) {
+    var u = res && res.data && res.data.user;
+    if (!u) throw new Error('Sessão expirada. Entre novamente no site.');
+    return sb.from('clientes').insert({ nome: nome.trim(), user_id: u.id }).select('id,nome').single();
+  }).then(function (r) {
+    if (r.error) throw r.error;
+    estado.clienteId = r.data.id; estado.cliente = r.data.nome;
+    return carregarClientes();
+  }).then(function () { renderClientes(); render(); carregarHistorico(); })
+    .catch(function (e) { alert('Não foi possível cadastrar o cliente: ' + (e && e.message ? e.message : e)); renderClientes(); });
+}
+
+function fmtDataHora(iso) {
+  var d = new Date(iso);
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+function carregarHistorico() {
+  var card = document.getElementById('card-historico');
+  if (!logado || !estado.clienteId) { card.hidden = true; historico = []; return Promise.resolve(); }
+  card.hidden = false;
+  document.getElementById('titulo-historico').textContent = 'Histórico — ' + estado.cliente;
+  return sb.from('diversificacao_historico').select('id,criado_em,patrimonio,perfil_nome,realocar_pct,dados').eq('cliente_id', estado.clienteId).order('criado_em', { ascending: false }).then(function (r) {
+    if (r.error) { document.getElementById('hist-status').textContent = 'Não foi possível carregar o histórico: ' + r.error.message; historico = []; }
+    else { historico = r.data || []; }
+    renderHistorico();
+  });
+}
+function renderHistorico() {
+  var t = document.getElementById('tabela-historico');
+  if (!historico.length) { t.innerHTML = '<tbody><tr><td class="col-classe" style="text-align:left;color:var(--ink-soft);">Nenhum registro salvo para este cliente.</td></tr></tbody>'; return; }
+  var h = '<thead><tr><th class="col-classe">Registrado em</th><th>Patrimônio</th><th>Perfil</th><th>A realocar</th><th></th></tr></thead><tbody>';
+  historico.forEach(function (x, i) {
+    h += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="col-classe">' + fmtDataHora(x.criado_em) + '</td><td>' + (x.patrimonio ? fmtBRL(Number(x.patrimonio)) : '—') + '</td><td>' + esc(x.perfil_nome || '—') + '</td><td>' + (x.realocar_pct !== null && x.realocar_pct !== undefined ? fmtPct(Number(x.realocar_pct)) : '—') + '</td>' +
+      '<td style="white-space:nowrap;"><button type="button" class="btn btn-leve" data-hist-carregar="' + esc(x.id) + '">Carregar</button> <button type="button" class="btn btn-leve" data-hist-excluir="' + esc(x.id) + '">Excluir</button></td></tr>';
+  });
+  t.innerHTML = h + '</tbody>';
+}
+function carregarSnapshot(id) {
+  var x = historico.filter(function (h) { return h.id === id; })[0];
+  if (!x || !x.dados) return;
+  estado.classes = clonar(x.dados.classes || []);
+  estado.perfis = clonar(x.dados.perfis || []);
+  estado.perfilSel = x.dados.perfilSel || 0;
+  estado.patrimonio = x.dados.patrimonio || '';
+  render();
+  var st = document.getElementById('hist-status');
+  st.style.color = 'var(--ink-soft)';
+  st.textContent = 'Registro de ' + fmtDataHora(x.criado_em) + ' carregado na tabela.';
+  window.scrollTo(0, 0);
+}
+document.getElementById('tabela-historico').addEventListener('click', function (ev) {
+  var b = ev.target.closest ? ev.target.closest('button') : null;
+  if (!b) return;
+  if (b.dataset.histCarregar) carregarSnapshot(b.dataset.histCarregar);
+  else if (b.dataset.histExcluir) {
+    if (!confirm('Excluir este registro do histórico?')) return;
+    sb.from('diversificacao_historico').delete().eq('id', b.dataset.histExcluir).then(function (r) {
+      if (r.error) { alert('Erro ao excluir: ' + r.error.message); return; }
+      carregarHistorico();
+    });
+  }
+});
+document.getElementById('btn-salvar-hist').addEventListener('click', function () {
+  var st = document.getElementById('hist-status');
+  if (!logado || !estado.clienteId) { alert('Selecione um cliente para salvar o histórico.'); return; }
+  if (!modoValores() && !numBR(estado.patrimonio)) {
+    if (!confirm('Nenhum valor em R$ foi informado: será salvo apenas o percentual atual. Continuar?')) return;
+  }
+  var perfil = estado.perfis[estado.perfilSel] || {};
+  var snap = { classes: clonar(estado.classes), perfis: clonar(estado.perfis), perfilSel: estado.perfilSel, patrimonio: estado.patrimonio };
+  var botao = document.getElementById('btn-salvar-hist');
+  botao.disabled = true;
+  sb.auth.getUser().then(function (res) {
+    var u = res && res.data && res.data.user;
+    if (!u) throw new Error('Sessão expirada. Entre novamente no site.');
+    return sb.from('diversificacao_historico').insert({
+      user_id: u.id, cliente_id: estado.clienteId,
+      patrimonio: numBR(estado.patrimonio) || null, perfil_nome: perfil.nome || null,
+      realocar_pct: Math.round(realocar(estado.perfilSel) * 100) / 100, dados: snap
+    });
+  }).then(function (r) {
+    if (r.error) throw r.error;
+    st.style.color = 'var(--green)';
+    st.textContent = '✓ Registro salvo no histórico de ' + estado.cliente + '.';
+    return carregarHistorico();
+  }).catch(function (e) {
+    st.style.color = 'var(--red)';
+    st.textContent = 'Não foi possível salvar: ' + (e && e.message ? e.message : e);
+    document.getElementById('card-historico').hidden = false;
+  }).finally(function () { botao.disabled = !logado; });
+});
+
+function iniciarClientes() {
+  if (!sb) { renderClientes(); return; }
+  iniciarSessao().then(function (ok) {
+    logado = ok;
+    if (!ok) { renderClientes(); return; }
+    return carregarClientes().then(function () {
+      if (PARAMS && PARAMS.clienteId && clientes.some(function (c) { return c.id === PARAMS.clienteId; })) {
+        var c = clientes.filter(function (x) { return x.id === PARAMS.clienteId; })[0];
+        estado.clienteId = c.id; estado.cliente = c.nome;
+      }
+      renderClientes();
+      render();
+      return carregarHistorico().then(function () {
+        if (PARAMS && PARAMS.snapshotId) carregarSnapshot(PARAMS.snapshotId);
+      });
+    });
+  });
+}
+
 estado = carregar();
 render();
+renderClientes();
+iniciarClientes();
 <\/script>
 </body>
 </html>`);
   }
+  window.abrirDiversificacaoCarteira = abrirDiversificacaoCarteira;
 
   function abrirPlanejamentoSucessorio() {
     var win = window.open('', '_blank');
@@ -21387,7 +21621,7 @@ if (btnExportarExcelPesquisa) {
   document.getElementById('btn-nav-consorcio').addEventListener('click', abrirConsorcio);
   document.getElementById('btn-nav-sucessorio').addEventListener('click', abrirPlanejamentoSucessorio);
   document.getElementById('btn-nav-holding').addEventListener('click', abrirViabilidadeHolding);
-  document.getElementById('btn-nav-diversificacao').addEventListener('click', abrirDiversificacaoCarteira);
+  document.getElementById('btn-nav-diversificacao').addEventListener('click', function () { abrirDiversificacaoCarteira(); });
   document.getElementById('btn-nav-nota-corretagem').addEventListener('click', abrirNotaCorretagem);
   document.getElementById('btn-nav-cetipados').addEventListener('click', abrirCetipados);
   document.getElementById('btn-nav-pesquisa').addEventListener('click', abrirPesquisaAtivo);
