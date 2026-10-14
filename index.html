@@ -10704,7 +10704,6 @@ sincronizarSessaoDoOpener().then(function() { carregarClientes(); });
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/dist/umd/supabase.min.js" referrerpolicy="no-referrer"><\/script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>
 <style>
 :root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--line:#E2E2E2;--orange:#111111;--og:#000000;--green:#16A34A;--red:#DC2626;--radius:16px;--shadow:0 10px 28px rgba(0,0,0,.08);}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -10759,21 +10758,7 @@ h1{font-size:24px;font-weight:700;margin-bottom:6px;}
 <div class="container">
   <span class="eyebrow">Diversificação do cliente</span>
   <h1 id="titulo-cliente">Carregando...</h1>
-  <p class="sub">Defina a diversificação ideal da carteira e envie a planilha de posição consolidada da corretora para comparar com a alocação atual.</p>
-
-  <div class="card">
-    <h2>Diversificação ideal</h2>
-    <p class="card-nota">Percentuais alvo de cada classe de ativo para este cliente (o ideal é que a soma chegue a 100%).</p>
-    <div class="metas-grid">
-      <div class="campo"><label>Ações (%)</label><input type="number" id="meta-acoes" min="0" max="100" step="0.1" placeholder="0"></div>
-      <div class="campo"><label>FIIs (%)</label><input type="number" id="meta-fiis" min="0" max="100" step="0.1" placeholder="0"></div>
-      <div class="campo"><label>Renda Fixa (%)</label><input type="number" id="meta-rf" min="0" max="100" step="0.1" placeholder="0"></div>
-      <div class="campo"><label>Fundos Alternativos (%)</label><input type="number" id="meta-fundos-alt" min="0" max="100" step="0.1" placeholder="0"></div>
-    </div>
-    <p class="soma-metas" id="soma-metas"></p>
-    <button type="button" class="btn" id="btn-salvar-metas">Salvar metas</button>
-    <p class="msg" id="metas-msg" hidden></p>
-  </div>
+  <p class="sub">Acompanhe a diversificação atual da carteira do cliente (último registro salvo na ferramenta Diversificação de Carteira) e cadastre os preços-alvo de venda dos ativos dele.</p>
 
   <div class="card">
     <h2>Preços-alvo de venda</h2>
@@ -10788,15 +10773,14 @@ h1{font-size:24px;font-weight:700;margin-bottom:6px;}
   </div>
 
   <div class="card">
-    <h2>Carteira atual</h2>
-    <p class="card-nota">Envie a planilha "Posição Consolidada" exportada da corretora (mesmo arquivo aceito na Análise de Carteira) para comparar com a diversificação ideal acima.</p>
-    <div class="upload-box">
-      <label for="upload-posicao" class="btn btn-ghost" style="cursor:pointer;">Selecionar planilha</label>
-      <input type="file" id="upload-posicao" accept=".xlsx,.xls,.csv" hidden>
-      <span class="upload-nome" id="upload-nome">Nenhum arquivo selecionado.</span>
+    <h2>Diversificação atual</h2>
+    <p class="card-nota" id="div-nota">Carregando o último registro salvo na ferramenta Diversificação de Carteira...</p>
+    <div id="div-seletor" style="display:none;margin-bottom:14px;">
+      <div class="campo" style="max-width:380px;"><label>Registro</label><select id="div-registro" style="padding:9px 11px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:14px;color:var(--ink);background:#fff;"></select></div>
     </div>
-    <p class="msg" id="upload-msg" hidden></p>
-    <div id="comparacao-wrap"></div>
+    <div id="div-resumo" style="font-size:13px;margin-bottom:6px;"></div>
+    <div id="div-tabela-wrap"></div>
+    <div style="margin-top:16px;"><button type="button" class="btn btn-ghost" id="btn-abrir-ferramenta">Abrir na Diversificação de Carteira</button></div>
   </div>
 </div>
 
@@ -10831,179 +10815,91 @@ function formatarNumero(v, casas) {
   return (typeof v === 'number' ? v : 0).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
 }
 
-// Lê os totais de cada classe de ativo diretamente das linhas de subtotal
-// do extrato (ex.: "55,9%|Ações" ... "R$ 4.656.699,60"), o mesmo formato já
-// usado pela Análise de Carteira. Uma linha só conta como "de total" quando
-// tem um valor em R$ na própria linha — sub-cabeçalhos de tabela (como
-// "11,40%|Prefixada", seguido de colunas "Aplicação", "Vencimento" etc.) são
-// ignorados, pois já estão somados no total da classe pai.
-function extrairTotaisPorClasse(linhas) {
-  var totais = { acoes: 0, fiis: 0, rf: 0, fundos_alt: 0 };
-  for (var i = 0; i < linhas.length; i++) {
-    var linha = linhas[i];
-    if (!Array.isArray(linha) || !linha.length) continue;
-    var cel0 = String(linha[0] === undefined || linha[0] === null ? '' : linha[0]).trim();
-    var m = cel0.match(/^[\\d.,]+%\\|(.+)$/);
-    if (!m) continue;
-    var valor = null;
-    for (var c = 1; c < linha.length; c++) {
-      var texto = String(linha[c] === undefined || linha[c] === null ? '' : linha[c]).trim();
-      if (/^R\\$\\s*[\\d.,]+/.test(texto)) { valor = parseNumeroBR(texto); break; }
-    }
-    if (valor === null || isNaN(valor)) continue;
-    var rotulo = normalizar(m[1]);
-    if (rotulo.indexOf('imobili') !== -1) totais.fiis += valor;
-    else if (rotulo.indexOf('acoes') !== -1) totais.acoes += valor;
-    else if (rotulo.indexOf('renda fixa') !== -1) totais.rf += valor;
-    else if (rotulo.indexOf('fundos de investimento') !== -1 || rotulo.indexOf('fundos alternativos') !== -1) totais.fundos_alt += valor;
-  }
-  return totais;
-}
-
-var CATEGORIAS = [
-  { chave: 'acoes', rotulo: 'Ações' },
-  { chave: 'fiis', rotulo: 'FIIs' },
-  { chave: 'rf', rotulo: 'Renda Fixa' },
-  { chave: 'fundos_alt', rotulo: 'Fundos Alternativos' }
-];
-
-function lerMetasInputs() {
-  return {
-    acoes: parseFloat(document.getElementById('meta-acoes').value) || 0,
-    fiis: parseFloat(document.getElementById('meta-fiis').value) || 0,
-    rf: parseFloat(document.getElementById('meta-rf').value) || 0,
-    fundos_alt: parseFloat(document.getElementById('meta-fundos-alt').value) || 0
-  };
-}
-
-function atualizarSomaMetas() {
-  var metas = lerMetasInputs();
-  var soma = metas.acoes + metas.fiis + metas.rf + metas.fundos_alt;
-  var el = document.getElementById('soma-metas');
-  el.textContent = 'Soma atual: ' + formatarNumero(soma, 1) + '%';
-  el.className = 'soma-metas' + (Math.abs(soma - 100) < 0.05 ? ' ok' : (soma > 0 ? ' alerta' : ''));
-  if (Math.abs(soma - 100) >= 0.05 && soma > 0) el.textContent += ' (o ideal é somar 100%)';
-}
-['meta-acoes', 'meta-fiis', 'meta-rf', 'meta-fundos-alt'].forEach(function(id) {
-  document.getElementById(id).addEventListener('input', atualizarSomaMetas);
-});
-
-var metasAtuais = null; // metas salvas, usadas para renderizar a comparação após o upload
-
 function carregarCliente() {
-  sb.from('clientes').select('nome,meta_acoes,meta_fiis,meta_rf,meta_fundos_alt').eq('id', CLIENTE_ID).single().then(function(r) {
+  sb.from('clientes').select('nome').eq('id', CLIENTE_ID).single().then(function(r) {
     if (r.error || !r.data) {
       document.getElementById('titulo-cliente').textContent = 'Cliente não encontrado';
-      var msg = document.getElementById('metas-msg');
-      msg.textContent = 'Não foi possível carregar este cliente (ele pode ter sido excluído, ou você não tem acesso a ele).';
-      msg.className = 'msg msg-erro'; msg.hidden = false;
+      document.getElementById('div-nota').textContent = 'Não foi possível carregar este cliente (ele pode ter sido excluído, ou você não tem acesso a ele).';
       return;
     }
     document.getElementById('titulo-cliente').textContent = r.data.nome;
     document.title = r.data.nome + ' — Diversificação — Clube do Rendimento';
-    metasAtuais = {
-      acoes: r.data.meta_acoes || 0,
-      fiis: r.data.meta_fiis || 0,
-      rf: r.data.meta_rf || 0,
-      fundos_alt: r.data.meta_fundos_alt || 0
-    };
-    if (r.data.meta_acoes !== null) document.getElementById('meta-acoes').value = r.data.meta_acoes;
-    if (r.data.meta_fiis !== null) document.getElementById('meta-fiis').value = r.data.meta_fiis;
-    if (r.data.meta_rf !== null) document.getElementById('meta-rf').value = r.data.meta_rf;
-    if (r.data.meta_fundos_alt !== null) document.getElementById('meta-fundos-alt').value = r.data.meta_fundos_alt;
-    atualizarSomaMetas();
   });
 }
 
-document.getElementById('btn-salvar-metas').addEventListener('click', function() {
-  var botao = document.getElementById('btn-salvar-metas');
-  var msg = document.getElementById('metas-msg');
-  msg.hidden = true;
-  var metas = lerMetasInputs();
-  botao.disabled = true; botao.textContent = 'Salvando...';
-  sb.from('clientes').update({
-    meta_acoes: metas.acoes, meta_fiis: metas.fiis, meta_rf: metas.rf, meta_fundos_alt: metas.fundos_alt
-  }).eq('id', CLIENTE_ID).then(function(r) {
-    if (r.error) throw r.error;
-    metasAtuais = metas;
-    msg.textContent = '✓ Metas salvas com sucesso.';
-    msg.className = 'msg msg-sucesso'; msg.hidden = false;
-    if (ultimosTotais) renderizarComparacao(ultimosTotais);
-  }).catch(function(e) {
-    msg.textContent = 'Erro ao salvar: ' + (e && e.message ? e.message : String(e));
-    msg.className = 'msg msg-erro'; msg.hidden = false;
-  }).finally(function() { botao.disabled = false; botao.textContent = 'Salvar metas'; });
-});
-
-var ultimosTotais = null;
-
-function renderizarComparacao(totais) {
-  var somaTotal = totais.acoes + totais.fiis + totais.rf + totais.fundos_alt;
-  var wrap = document.getElementById('comparacao-wrap');
-  if (somaTotal <= 0) {
-    wrap.innerHTML = '<p class="vazio-comp">Não foi possível identificar Ações, FIIs, Renda Fixa ou Fundos Alternativos nesta planilha.</p>';
+// Diversificação atual = registros salvos na ferramenta "Diversificação de Carteira"
+// (tabela diversificacao_historico); o mais recente é exibido por padrão.
+var registrosDiv = [];
+function pctTxt(v) { return formatarNumero(Number(v) || 0, 1) + '%'; }
+function moedaTxt(v) { return 'R$ ' + formatarNumero(Number(v) || 0, 2); }
+function dataHoraTxt(iso) {
+  var d = new Date(iso);
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+function renderizarRegistroDiv(id) {
+  var x = registrosDiv.filter(function(r) { return r.id === id; })[0];
+  if (!x) return;
+  var dados = x.dados || {};
+  var classes = (dados.classes || []).slice();
+  var perfis = dados.perfis || [];
+  var perfil = perfis[dados.perfilSel || 0] || null;
+  var idxPerfil = dados.perfilSel || 0;
+  var pat = Number(x.patrimonio) || 0;
+  document.getElementById('div-resumo').innerHTML = 'Registrado em <b>' + dataHoraTxt(x.criado_em) + '</b>' +
+    (pat ? ' · Patrimônio <b>' + moedaTxt(pat) + '</b>' : '') +
+    (perfil ? ' · Perfil <b>' + String(perfil.nome).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</b>' : '') +
+    (x.realocar_pct !== null && x.realocar_pct !== undefined ? ' · A realocar <b>' + pctTxt(x.realocar_pct) + '</b>' : '');
+  classes = classes.filter(function(c) { return (c.atual || 0) > 0 || (perfil && (c.alvo && c.alvo[idxPerfil] || 0) > 0); })
+    .sort(function(a, b) { return (b.atual || 0) - (a.atual || 0); });
+  if (!classes.length) {
+    document.getElementById('div-tabela-wrap').innerHTML = '<p class="vazio-comp">Este registro não possui classes com valor.</p>';
     return;
   }
-  var metas = metasAtuais || { acoes: 0, fiis: 0, rf: 0, fundos_alt: 0 };
-  var linhas = CATEGORIAS.map(function(cat) {
-    var valorAtual = totais[cat.chave] || 0;
-    var pctAtual = (valorAtual / somaTotal) * 100;
-    var pctMeta = metas[cat.chave] || 0;
-    var dif = pctAtual - pctMeta;
-    var difTxt = (dif >= 0 ? '+' : '') + formatarNumero(dif, 1) + ' p.p.';
-    var valorMetaRS = (pctMeta / 100) * somaTotal;
-    var faltaRS = valorMetaRS - valorAtual;
-    var faltaTxt = (Math.abs(faltaRS) < 0.005)
-      ? 'Na meta'
-      : (faltaRS > 0
-          ? 'Faltam R$ ' + formatarNumero(faltaRS, 2)
-          : 'Excede em R$ ' + formatarNumero(Math.abs(faltaRS), 2));
+  var linhas = classes.map(function(c) {
+    var atual = c.atual || 0;
+    var alvo = perfil && c.alvo ? (c.alvo[idxPerfil] || 0) : null;
+    var valor = typeof c.valor === 'number' ? c.valor : (pat ? atual / 100 * pat : null);
+    var dif = alvo === null ? null : atual - alvo;
+    var ajuste = (alvo !== null && pat) ? (alvo - atual) / 100 * pat : null;
+    var difCls = dif === null || Math.abs(dif) < 1 ? '' : (dif > 0 ? 'pos' : 'neg');
+    var ajusteTxt = ajuste === null ? '—' : (Math.abs(ajuste) < 0.005 ? 'Na meta' : (ajuste > 0 ? 'Comprar ' + moedaTxt(ajuste) : 'Vender ' + moedaTxt(Math.abs(ajuste))));
     return '<tr>' +
-      '<td>' + cat.rotulo + '</td>' +
-      '<td>' + formatarNumero(pctMeta, 1) + '%</td>' +
-      '<td><div class="barra-wrap">' +
-      '<div class="barra-outer"><div class="barra-atual" style="width:' + Math.min(pctAtual, 100).toFixed(1) + '%;"></div>' +
-      '<div class="barra-meta" style="left:' + Math.min(pctMeta, 100).toFixed(1) + '%;"></div></div>' +
-      '<span style="font-size:12px;color:var(--ink-soft);">' + formatarNumero(pctAtual, 1) + '% · R$ ' + formatarNumero(valorAtual, 2) + '</span>' +
-      '</div></td>' +
-      '<td class="' + (Math.abs(dif) < 1 ? '' : (dif > 0 ? 'pos' : 'neg')) + '">' + difTxt + '</td>' +
-      '<td class="' + (Math.abs(faltaRS) < 0.005 ? '' : (faltaRS > 0 ? 'neg' : 'pos')) + '">' + faltaTxt + '</td>' +
-      '</tr>';
+      '<td>' + String(c.nome).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</td>' +
+      '<td><div class="barra-wrap"><div class="barra-outer"><div class="barra-atual" style="width:' + Math.min(atual, 100).toFixed(1) + '%;"></div>' +
+      (alvo !== null ? '<div class="barra-meta" style="left:' + Math.min(alvo, 100).toFixed(1) + '%;"></div>' : '') + '</div>' +
+      '<span style="font-size:12px;color:var(--ink-soft);">' + pctTxt(atual) + (valor !== null ? ' · ' + moedaTxt(valor) : '') + '</span></div></td>' +
+      '<td>' + (alvo === null ? '—' : pctTxt(alvo)) + '</td>' +
+      '<td class="' + difCls + '">' + (dif === null ? '—' : (dif >= 0 ? '+' : '') + formatarNumero(dif, 1) + ' p.p.') + '</td>' +
+      '<td>' + ajusteTxt + '</td></tr>';
   }).join('');
-  wrap.innerHTML = '<table class="comp-table"><thead><tr><th>Categoria</th><th>Meta</th><th>Atual</th><th>Diferença</th><th>Valor para meta</th></tr></thead><tbody>' + linhas + '</tbody></table>' +
-    '<p class="card-nota" style="margin-top:12px;">Total classificado nas 4 categorias: R$ ' + formatarNumero(somaTotal, 2) + '. A barra escura marca a meta; a barra colorida mostra a posição atual.</p>';
+  document.getElementById('div-tabela-wrap').innerHTML = '<table class="comp-table"><thead><tr><th>Classe</th><th>Atual</th><th>' + (perfil ? String(perfil.nome).replace(/&/g, '&amp;').replace(/</g, '&lt;') : 'Perfil') + '</th><th>Diferença</th><th>Ajuste para o perfil</th></tr></thead><tbody>' + linhas + '</tbody></table>' +
+    '<p class="card-nota" style="margin-top:12px;">A barra escura marca o peso do perfil; a barra colorida, a posição atual do cliente.</p>';
+  document.getElementById('btn-abrir-ferramenta').setAttribute('data-id', x.id);
 }
-
-document.getElementById('upload-posicao').addEventListener('change', function(ev) {
-  var arquivo = ev.target.files[0];
-  var msg = document.getElementById('upload-msg');
-  msg.hidden = true;
-  if (!arquivo) return;
-  document.getElementById('upload-nome').textContent = arquivo.name;
-
-  var leitor = new FileReader();
-  leitor.onload = function(e) {
-    try {
-      var dados = new Uint8Array(e.target.result);
-      var planilha = XLSX.read(dados, { type: 'array' });
-      var aba = planilha.Sheets[planilha.SheetNames[0]];
-      var linhas = XLSX.utils.sheet_to_json(aba, { header: 1, defval: '' });
-      var totais = extrairTotaisPorClasse(linhas);
-      ultimosTotais = totais;
-      renderizarComparacao(totais);
-    } catch (erro) {
-      msg.textContent = 'Erro ao ler o arquivo. Verifique se é uma planilha de posição consolidada válida (.xlsx ou .csv).';
-      msg.className = 'msg msg-erro'; msg.hidden = false;
+function carregarDiversificacaoAtual() {
+  var nota = document.getElementById('div-nota');
+  sb.from('diversificacao_historico').select('id,criado_em,patrimonio,perfil_nome,realocar_pct,dados').eq('cliente_id', CLIENTE_ID).order('criado_em', { ascending: false }).limit(30).then(function(r) {
+    if (r.error) { nota.textContent = 'Não foi possível carregar a diversificação: ' + r.error.message; return; }
+    registrosDiv = r.data || [];
+    if (!registrosDiv.length) {
+      nota.textContent = 'Nenhum registro salvo para este cliente. Na ferramenta Diversificação de Carteira, selecione este cliente, carregue a carteira e clique em "Salvar no histórico do cliente".';
+      return;
     }
-  };
-  leitor.onerror = function() {
-    msg.textContent = 'Não foi possível ler o arquivo selecionado.';
-    msg.className = 'msg msg-erro'; msg.hidden = false;
-  };
-  leitor.readAsArrayBuffer(arquivo);
+    nota.textContent = 'Último registro salvo na ferramenta Diversificação de Carteira.';
+    var sel = document.getElementById('div-registro');
+    sel.innerHTML = registrosDiv.map(function(x) { return '<option value="' + x.id + '">' + dataHoraTxt(x.criado_em) + (x.perfil_nome ? ' — ' + x.perfil_nome : '') + '</option>'; }).join('');
+    document.getElementById('div-seletor').style.display = registrosDiv.length > 1 ? 'block' : 'none';
+    renderizarRegistroDiv(registrosDiv[0].id);
+  });
+}
+document.getElementById('div-registro').addEventListener('change', function(e) { renderizarRegistroDiv(e.target.value); });
+document.getElementById('btn-abrir-ferramenta').addEventListener('click', function() {
+  var id = this.getAttribute('data-id') || '';
+  if (window.opener && window.opener.abrirDiversificacaoCarteira) window.opener.abrirDiversificacaoCarteira(CLIENTE_ID, id);
+  else alert('Não foi possível abrir a ferramenta (aba original foi fechada). Volte ao site e tente novamente.');
 });
 
-sincronizarSessaoDoOpener().then(function() { carregarCliente(); });
+sincronizarSessaoDoOpener().then(function() { carregarCliente(); carregarDiversificacaoAtual(); });
 
 function renderizarPrecosAlvo(lista) {
   var wrap = document.getElementById('pa-lista-wrap');
