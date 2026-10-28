@@ -15523,6 +15523,7 @@ montarFormulario();
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/dist/umd/supabase.min.js" referrerpolicy="no-referrer"><\/script>
 <style>
 :root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--line:#E2E2E2;--green:#16A34A;--red:#DC2626;--radius:16px;--shadow-sm:0 2px 10px rgba(0,0,0,.05);}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -15550,7 +15551,24 @@ h1{font-size:24px;font-weight:700;margin-bottom:4px;}
 .tile{position:absolute;color:#fff;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.15;border:1px solid #0b0b0b;cursor:default;}
 .tile b{font-weight:700;letter-spacing:.01em;}
 .tile span{font-weight:500;opacity:.95;}
+.tile{cursor:pointer;}
+.tile.fav{outline:1.5px solid rgba(255,255,255,.9);outline-offset:-3px;z-index:2;}
 .tile.apagado{opacity:.22;}
+.fav-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:var(--shadow-sm);}
+.fav-topo{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+.fav-topo b{font-size:14px;}
+.fav-topo input{padding:8px 11px;border:1.5px solid var(--line);border-radius:9px;font-family:inherit;font-size:13px;width:190px;text-transform:uppercase;}
+.fav-msg{font-size:12px;color:var(--ink-soft);}
+.fav-msg.erro{color:var(--red);}
+.fav-lista{display:flex;flex-wrap:wrap;gap:8px;}
+.fav-chip{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--line);border-radius:10px;padding:6px 6px 6px 11px;font-size:12.5px;background:#fff;}
+.fav-chip b{font-size:13px;}
+.fav-chip i{font-style:normal;font-weight:700;}
+.fav-chip .pos{color:var(--green);}
+.fav-chip .neg{color:var(--red);}
+.fav-chip button{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:15px;padding:0 6px;border-radius:6px;}
+.fav-chip button:hover{background:#FDECEC;color:var(--red);}
+.fav-vazio{font-size:12.5px;color:var(--ink-soft);}
 .tile.achado{outline:2px solid #fff;outline-offset:-2px;z-index:3;}
 .dica{position:fixed;z-index:200;background:#fff;color:var(--ink);border-radius:10px;padding:10px 12px;font-size:12.5px;box-shadow:0 8px 24px rgba(0,0,0,.35);pointer-events:none;line-height:1.55;max-width:300px;}
 .dica b{font-size:14px;}
@@ -15570,9 +15588,21 @@ h1{font-size:24px;font-weight:700;margin-bottom:4px;}
 <div class="container">
   <span class="eyebrow">Mercado</span>
   <h1>Mapa de Calor — Ações</h1>
-  <p class="sub">Variação das ações no dia, agrupadas por setor. O tamanho de cada quadro representa o volume financeiro negociado (ou o valor de mercado) e a cor, a variação em relação ao fechamento anterior.</p>
+  <p class="sub">Variação das ações no dia, agrupadas por setor. Clique em um quadro para favoritá-lo (ou desfavoritá-lo). O tamanho de cada quadro representa o volume financeiro negociado (ou o valor de mercado) e a cor, a variação em relação ao fechamento anterior.</p>
+
+  <div class="fav-card">
+    <div class="fav-topo">
+      <b>★ Meus favoritos</b>
+      <input type="text" id="fav-input" placeholder="Adicionar ação (ex.: PETR4)" autocomplete="off">
+      <button type="button" class="btn" id="fav-add">Adicionar</button>
+      <span class="fav-msg" id="fav-msg"></span>
+    </div>
+    <div class="fav-lista" id="fav-lista"></div>
+  </div>
 
   <div class="barra">
+    <div class="campo"><label for="f-exibir">Exibir</label>
+      <select id="f-exibir"><option value="todos">Todos os ativos</option><option value="favoritos">Somente favoritos</option></select></div>
     <div class="campo"><label for="f-tamanho">Tamanho do quadro</label>
       <select id="f-tamanho"><option value="volume">Volume financeiro do dia</option><option value="mercado">Valor de mercado</option></select></div>
     <div class="campo"><label for="f-qtd">Quantidade de ativos</label>
@@ -15594,6 +15624,11 @@ h1{font-size:24px;font-weight:700;margin-bottom:4px;}
 var BASE = 'https://segeufywrjmstfmfscdi.supabase.co/functions/v1/brapi-proxy';
 var INTERVALO_MS = 60000;
 var dados = [];            // ativos já filtrados e classificados
+var SESSAO_INICIAL = ${JSON.stringify(sessaoAtual)};
+var SB_URL = 'https://segeufywrjmstfmfscdi.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZ2V1Znl3cmptc3RmbWZzY2RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzY0OTgsImV4cCI6MjA5ODQxMjQ5OH0.TUrp35SEI2NXdU1ZY7IEcdRm8VLLfLwAVWUtqjafElI';
+var sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+var logado = false, favoritos = [], cotFav = {}, CHAVE_FAV = 'cr_favoritos_acoes_v1';
 var ultimaAtualizacao = null, ultimaCotacao = '', timer = null, carregando = false, avisoIncompleto = false;
 
 // Setores da Brapi (inglês) -> rótulos em português
@@ -15663,22 +15698,49 @@ function squarify(valores, x, y, w, h) {
   return out;
 }
 
-function tamanhoDe(a, modo) { return modo === 'mercado' ? a.mercado : a.financeiro; }
+// No modo "somente favoritos" os tamanhos são comprimidos (raiz quadrada) e têm um piso, para que ativos
+// pouco negociados também apareçam com um quadro legível ao lado dos muito negociados.
+var pisoTam = 0, tamanhoComprimido = false;
+function tamanhoDe(a, modo) {
+  var v = modo === 'mercado' ? a.mercado : a.financeiro;
+  if (!(v > 0)) v = a.financeiro;
+  if (tamanhoComprimido) return Math.max(Math.sqrt(v || 0), pisoTam);
+  return v || 0;
+}
 
 function filtrarDados() {
   var modo = document.getElementById('f-tamanho').value;
   var qtd = Number(document.getElementById('f-qtd').value);
   var lista = dados.slice();
-  if (modo === 'mercado') {
+  var soFavoritos = document.getElementById('f-exibir').value === 'favoritos';
+  if (soFavoritos) {
+    // favoritos mesmo fora da lista dos mais negociados (usa a cotação individual)
+    lista = favoritos.map(function (t) {
+      var a = dados.filter(function (x) { return x.ticker === t; })[0];
+      if (a) return a;
+      var c = cotFav[t];
+      if (!c || !(c.preco > 0)) return null;
+      return { ticker: t, nome: c.nome, empresa: c.nome, preco: c.preco, variacao: c.variacao, financeiro: c.preco * (c.volume || 0), mercado: c.mercado, setor: 'Favoritos (sem setor)' };
+    }).filter(Boolean);
+  } else if (modo === 'mercado') {
     // uma classe por empresa (a mais negociada), para não contar duas vezes o mesmo valor de mercado
     var melhorPorEmpresa = {};
     lista.forEach(function (a) { if (!melhorPorEmpresa[a.empresa] || a.financeiro > melhorPorEmpresa[a.empresa].financeiro) melhorPorEmpresa[a.empresa] = a; });
     lista = Object.keys(melhorPorEmpresa).map(function (k) { return melhorPorEmpresa[k]; });
   }
   lista.sort(function (a, b) { return b.financeiro - a.financeiro; });
-  lista = lista.slice(0, qtd);
+  if (!soFavoritos) lista = lista.slice(0, qtd);
   var setor = document.getElementById('f-setor').value;
   if (setor) lista = lista.filter(function (a) { return a.setor === setor; });
+  if (soFavoritos) {
+    var maiorTam = 0;
+    lista.forEach(function (a) { var v = modo === 'mercado' && a.mercado > 0 ? a.mercado : a.financeiro; if (Math.sqrt(v || 0) > maiorTam) maiorTam = Math.sqrt(v || 0); });
+    pisoTam = Math.max(maiorTam * 0.25, 1);
+    tamanhoComprimido = true;
+    return lista;
+  }
+  pisoTam = 0;
+  tamanhoComprimido = false;
   return lista.filter(function (a) { return tamanhoDe(a, modo) > 0; });
 }
 
@@ -15713,9 +15775,9 @@ function renderizar() {
       var area = r.w * r.h, lado = Math.min(r.w, r.h);
       var fonte = Math.max(8, Math.min(30, Math.sqrt(area) / 4.2));
       var mostrarTicker = r.w > 26 && r.h > 16, mostrarVar = r.w > 40 && r.h > 30;
-      var marca = busca ? (a.ticker.indexOf(busca) !== -1 ? ' achado' : ' apagado') : '';
+      var marca = (busca ? (a.ticker.indexOf(busca) !== -1 ? ' achado' : ' apagado') : '') + (ehFavorito(a.ticker) ? ' fav' : '');
       html += '<div class="tile' + marca + '" data-t="' + esc(a.ticker) + '" style="left:' + r.x.toFixed(1) + 'px;top:' + r.y.toFixed(1) + 'px;width:' + r.w.toFixed(1) + 'px;height:' + r.h.toFixed(1) + 'px;background:' + corVariacao(a.variacao) + ';font-size:' + fonte.toFixed(1) + 'px;">' +
-        (mostrarTicker ? '<b>' + esc(a.ticker) + '</b>' : '') + (mostrarVar ? '<span style="font-size:' + Math.max(8, fonte * 0.72).toFixed(1) + 'px;">' + fmtPct(a.variacao) + '</span>' : '') + '</div>';
+        (mostrarTicker ? '<b>' + (ehFavorito(a.ticker) ? '★ ' : '') + esc(a.ticker) + '</b>' : '') + (mostrarVar ? '<span style="font-size:' + Math.max(8, fonte * 0.72).toFixed(1) + 'px;">' + fmtPct(a.variacao) + '</span>' : '') + '</div>';
     });
     html += '</div>';
   });
@@ -15794,11 +15856,107 @@ function carregar() {
     sel.value = setores[atual] ? atual : '';
     atualizarStatus();
     renderizar();
+    carregarCotacoesFavoritos().then(function () { renderFavoritos(); if (document.getElementById('f-exibir').value === 'favoritos') renderizar(); });
   }).catch(function (e) { atualizarStatus(e && e.message ? e.message : 'Falha ao atualizar.'); })
     .finally(function () { carregando = false; btn.disabled = false; });
 }
 
-['f-tamanho', 'f-qtd', 'f-setor'].forEach(function (id) { document.getElementById(id).addEventListener('change', renderizar); });
+// ── Favoritos: gravados na conta (tabela acoes_favoritas) quando há login; sem login, somente neste navegador ──
+function lerFavoritosLocais() { try { var v = JSON.parse(localStorage.getItem(CHAVE_FAV) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+function gravarFavoritosLocais() { try { localStorage.setItem(CHAVE_FAV, JSON.stringify(favoritos)); } catch (e) {} }
+function ehFavorito(t) { return favoritos.indexOf(t) !== -1; }
+function mensagemFav(txt, erro) { var el = document.getElementById('fav-msg'); el.textContent = txt || ''; el.className = 'fav-msg' + (erro ? ' erro' : ''); }
+function atualizarAvisoFav() {
+  mensagemFav(logado ? 'Salvos na sua conta (valem em qualquer navegador).' : 'Sem login: os favoritos ficam salvos somente neste navegador. Abra a ferramenta com o site autenticado para gravá-los na sua conta.', false);
+}
+function gravarFavoritoRemoto(t, incluir) {
+  if (!logado || !sb) return;
+  sb.auth.getUser().then(function (res) {
+    var u = res && res.data && res.data.user;
+    if (!u) return;
+    return incluir ? sb.from('acoes_favoritas').upsert({ user_id: u.id, ticker: t }, { onConflict: 'user_id,ticker' }) : sb.from('acoes_favoritas').delete().eq('ticker', t);
+  }).then(function (r) { if (r && r.error) mensagemFav('Não foi possível gravar na conta: ' + r.error.message, true); });
+}
+function alternarFavorito(t) {
+  if (ehFavorito(t)) { favoritos = favoritos.filter(function (x) { return x !== t; }); gravarFavoritoRemoto(t, false); }
+  else { favoritos.push(t); gravarFavoritoRemoto(t, true); }
+  gravarFavoritosLocais();
+  renderFavoritos();
+  carregarCotacoesFavoritos().then(function () { renderFavoritos(); renderizar(); });
+}
+function carregarCotacoesFavoritos() {
+  if (!favoritos.length) { cotFav = {}; return Promise.resolve(); }
+  var blocos = [];
+  for (var i = 0; i < favoritos.length; i += 20) blocos.push(favoritos.slice(i, i + 20));
+  return Promise.all(blocos.map(function (b) {
+    return fetch(BASE + '/quote/' + b.join(',')).then(function (r) { return r.json(); }).catch(function () { return null; });
+  })).then(function (rs) {
+    var novo = {};
+    rs.forEach(function (j) {
+      ((j && j.results) || []).forEach(function (r) {
+        novo[r.symbol] = { nome: r.longName || r.shortName || r.symbol, preco: r.regularMarketPrice, variacao: r.regularMarketChangePercent, volume: r.regularMarketVolume, mercado: r.marketCap || 0 };
+      });
+    });
+    cotFav = novo;
+  });
+}
+function renderFavoritos() {
+  var el = document.getElementById('fav-lista');
+  if (!favoritos.length) { el.innerHTML = '<span class="fav-vazio">Nenhuma ação favorita ainda. Digite um ticker acima ou clique em um quadro do mapa.</span>'; return; }
+  el.innerHTML = favoritos.map(function (t) {
+    var c = cotFav[t];
+    var info = c && typeof c.preco === 'number' ? ' R$ ' + c.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + ' <i class="' + (c.variacao >= 0 ? 'pos' : 'neg') + '">' + fmtPct(c.variacao || 0) + '</i>' : '';
+    return '<span class="fav-chip"><b>' + esc(t) + '</b>' + info + '<button type="button" data-rm="' + esc(t) + '" title="Remover dos favoritos">×</button></span>';
+  }).join('');
+}
+function adicionarFavoritoDigitado() {
+  var el = document.getElementById('fav-input');
+  var t = el.value.trim().toUpperCase();
+  if (!/^[A-Z0-9]{4,7}$/.test(t)) { mensagemFav('Informe um ticker válido, por exemplo PETR4.', true); return; }
+  if (ehFavorito(t)) { mensagemFav(t + ' já está nos favoritos.', true); return; }
+  mensagemFav('Verificando ' + t + '...', false);
+  fetch(BASE + '/quote/' + t).then(function (r) { return r.json(); }).then(function (j) {
+    if (!(j && j.results && j.results.length)) { mensagemFav('Ticker "' + t + '" não encontrado na B3.', true); return; }
+    el.value = '';
+    atualizarAvisoFav();
+    alternarFavorito(t);
+  }).catch(function () { mensagemFav('Não foi possível verificar o ticker agora. Tente novamente.', true); });
+}
+document.getElementById('fav-add').addEventListener('click', adicionarFavoritoDigitado);
+document.getElementById('fav-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') adicionarFavoritoDigitado(); });
+document.getElementById('fav-lista').addEventListener('click', function (e) {
+  var b = e.target.closest ? e.target.closest('button[data-rm]') : null;
+  if (b) alternarFavorito(b.getAttribute('data-rm'));
+});
+document.getElementById('mapa').addEventListener('click', function (e) {
+  var t = e.target.closest ? e.target.closest('.tile') : null;
+  if (t) alternarFavorito(t.getAttribute('data-t'));
+});
+function iniciarFavoritos() {
+  favoritos = lerFavoritosLocais();
+  renderFavoritos();
+  atualizarAvisoFav();
+  if (!sb || !SESSAO_INICIAL || !SESSAO_INICIAL.access_token) return carregarCotacoesFavoritos().then(renderFavoritos);
+  return sb.auth.setSession({ access_token: SESSAO_INICIAL.access_token, refresh_token: SESSAO_INICIAL.refresh_token }).then(function (r) {
+    if (r.error) throw r.error;
+    logado = true;
+    return sb.from('acoes_favoritas').select('ticker').order('criado_em', { ascending: true });
+  }).then(function (r) {
+    if (r.error) throw r.error;
+    var remotos = (r.data || []).map(function (x) { return x.ticker; });
+    var soLocais = favoritos.filter(function (t) { return remotos.indexOf(t) === -1; });
+    // favoritos que existiam só neste navegador passam a ser gravados na conta
+    soLocais.forEach(function (t) { gravarFavoritoRemoto(t, true); });
+    favoritos = remotos.concat(soLocais);
+    gravarFavoritosLocais();
+  }).catch(function () { logado = false; }).then(function () {
+    atualizarAvisoFav();
+    renderFavoritos();
+    return carregarCotacoesFavoritos().then(function () { renderFavoritos(); if (dados.length) renderizar(); });
+  });
+}
+
+['f-exibir', 'f-tamanho', 'f-qtd', 'f-setor'].forEach(function (id) { document.getElementById(id).addEventListener('change', renderizar); });
 document.getElementById('f-busca').addEventListener('input', renderizar);
 document.getElementById('btn-atualizar').addEventListener('click', carregar);
 window.addEventListener('resize', function () { if (dados.length) renderizar(); });
@@ -15808,6 +15966,7 @@ function agendar() {
   timer = setInterval(function () { if (!document.hidden) carregar(); }, INTERVALO_MS);
 }
 document.addEventListener('visibilitychange', function () { if (!document.hidden && ultimaAtualizacao && Date.now() - ultimaAtualizacao.getTime() > INTERVALO_MS) carregar(); });
+iniciarFavoritos();
 carregar();
 agendar();
 <\/script>
