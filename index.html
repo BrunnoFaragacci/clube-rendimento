@@ -283,6 +283,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       <button type="button" class="btn-nav" id="btn-nav-sucessorio">Planejamento Sucessório ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-holding">Viabilidade de Holding ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-diversificacao">Diversificação de Carteira ↗</button>
+      <button type="button" class="btn-nav" id="btn-nav-mapa-calor">Mapa de Calor ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-nota-corretagem">Nota de Corretagem ↗</button>
       <div class="nav-dropdown-wrap">
         <button type="button" class="btn-nav nav-dropdown-trigger" id="btn-nav-cripto" aria-expanded="false">Cripto <span class="nav-caret">▾</span></button>
@@ -15510,6 +15511,310 @@ montarFormulario();
 </html>`);
   }
 
+  function abrirMapaCalor() {
+    var win = window.open('', '_blank');
+    if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
+    escreverConteudoJanela(win, `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mapa de Calor — Clube do Rendimento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--line:#E2E2E2;--green:#16A34A;--red:#DC2626;--radius:16px;--shadow-sm:0 2px 10px rgba(0,0,0,.05);}
+*{box-sizing:border-box;margin:0;padding:0;}
+[hidden]{display:none!important;}
+body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-soft);color:var(--ink);min-height:100vh;font-size:14px;}
+.nav{background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;}
+.nav-brand{font-weight:700;font-size:15px;text-decoration:none;color:var(--ink);}
+.container{max-width:1760px;margin:0 auto;padding:22px 20px 40px;}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:600;margin-bottom:10px;}
+.eyebrow::before{content:"";width:18px;height:2px;background:var(--ink);display:inline-block;}
+h1{font-size:24px;font-weight:700;margin-bottom:4px;}
+.sub{font-size:13px;color:var(--ink-soft);margin-bottom:16px;line-height:1.5;max-width:900px;}
+.barra{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;}
+.campo{display:flex;flex-direction:column;gap:5px;}
+.campo label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);}
+.campo select,.campo input{padding:8px 11px;border:1.5px solid var(--line);border-radius:9px;font-family:inherit;font-size:13px;background:#fff;color:var(--ink);min-width:150px;}
+.btn{padding:9px 16px;border-radius:8px;font-weight:600;font-size:13px;border:1.5px solid var(--ink);background:#fff;color:var(--ink);cursor:pointer;font-family:inherit;}
+.btn:hover{background:var(--bg-soft);}
+.status{font-size:12.5px;color:var(--ink-soft);margin-left:auto;text-align:right;line-height:1.5;}
+.status b{color:var(--ink);}
+#painel{background:#0b0b0b;border-radius:14px;padding:6px;position:relative;box-shadow:var(--shadow-sm);}
+#mapa{position:relative;width:100%;overflow:hidden;border-radius:10px;background:#0b0b0b;}
+.setor{position:absolute;overflow:hidden;}
+.setor-tit{position:absolute;left:0;top:0;right:0;height:20px;line-height:20px;padding:0 6px;font-size:11.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#0b0b0b;}
+.tile{position:absolute;color:#fff;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.15;border:1px solid #0b0b0b;cursor:default;}
+.tile b{font-weight:700;letter-spacing:.01em;}
+.tile span{font-weight:500;opacity:.95;}
+.tile.apagado{opacity:.22;}
+.tile.achado{outline:2px solid #fff;outline-offset:-2px;z-index:3;}
+.dica{position:fixed;z-index:200;background:#fff;color:var(--ink);border-radius:10px;padding:10px 12px;font-size:12.5px;box-shadow:0 8px 24px rgba(0,0,0,.35);pointer-events:none;line-height:1.55;max-width:300px;}
+.dica b{font-size:14px;}
+.legenda{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:12px;color:var(--ink-soft);}
+.legenda-barra{width:240px;height:12px;border-radius:6px;background:linear-gradient(90deg,#DC2626,#2f2f2f,#16A34A);}
+.vazio{padding:60px 20px;text-align:center;color:#bbb;font-size:14px;}
+.nota{font-size:12px;color:var(--ink-soft);margin-top:10px;line-height:1.55;max-width:1000px;}
+@media print{.nav,.barra,.legenda{display:none!important;}}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <a href="javascript:window.close()" class="nav-brand">← Clube do Rendimento</a>
+</header>
+
+<div class="container">
+  <span class="eyebrow">Mercado</span>
+  <h1>Mapa de Calor — Ações</h1>
+  <p class="sub">Variação das ações no dia, agrupadas por setor. O tamanho de cada quadro representa o volume financeiro negociado (ou o valor de mercado) e a cor, a variação em relação ao fechamento anterior.</p>
+
+  <div class="barra">
+    <div class="campo"><label for="f-tamanho">Tamanho do quadro</label>
+      <select id="f-tamanho"><option value="volume">Volume financeiro do dia</option><option value="mercado">Valor de mercado</option></select></div>
+    <div class="campo"><label for="f-qtd">Quantidade de ativos</label>
+      <select id="f-qtd"><option value="100">100 mais negociados</option><option value="150" selected>150 mais negociados</option><option value="250">250 mais negociados</option><option value="400">Todos (até 400)</option></select></div>
+    <div class="campo"><label for="f-setor">Setor</label><select id="f-setor"><option value="">Todos os setores</option></select></div>
+    <div class="campo"><label for="f-busca">Buscar ativo</label><input type="text" id="f-busca" placeholder="Ex.: PETR4" autocomplete="off"></div>
+    <button type="button" class="btn" id="btn-atualizar">↻ Atualizar agora</button>
+    <div class="status" id="status">Carregando cotações...</div>
+  </div>
+
+  <div id="painel"><div id="mapa"><div class="vazio">Carregando...</div></div></div>
+
+  <div class="legenda"><span>−4% ou menos</span><div class="legenda-barra"></div><span>+4% ou mais</span></div>
+  <p class="nota">Fonte: Brapi. As cotações têm atraso de cerca de 1 a 2 minutos em relação ao mercado e esta página é atualizada automaticamente a cada 60 segundos enquanto estiver aberta. Foram considerados os papéis negociados no mercado à vista (ações ordinárias, preferenciais e units); cotações fracionárias e BDRs ficam de fora. A classificação por setor segue a base da Brapi e pode divergir da classificação oficial da B3.</p>
+</div>
+<div class="dica" id="dica" hidden></div>
+
+<script>
+var BASE = 'https://segeufywrjmstfmfscdi.supabase.co/functions/v1/brapi-proxy';
+var INTERVALO_MS = 60000;
+var dados = [];            // ativos já filtrados e classificados
+var ultimaAtualizacao = null, ultimaCotacao = '', timer = null, carregando = false, avisoIncompleto = false;
+
+// Setores da Brapi (inglês) -> rótulos em português
+var SETOR_PT = {
+  'Energy Minerals': 'Petróleo e Bios', 'Non-Energy Minerals': 'Mat. Básicos', 'Process Industries': 'Mat. Básicos',
+  'Finance': 'Financeiro', 'Utilities': 'Utilities', 'Communications': 'Comunicações',
+  'Health Services': 'Saúde', 'Health Technology': 'Saúde',
+  'Technology Services': 'Tecnologia', 'Electronic Technology': 'Tecnologia',
+  'Retail Trade': 'C. Cíclico', 'Consumer Durables': 'C. Cíclico', 'Consumer Services': 'C. Cíclico',
+  'Commercial Services': 'C. Cíclico', 'Distribution Services': 'C. Cíclico',
+  'Consumer Non-Durables': 'C. Não Cíclico',
+  'Producer Manufacturing': 'Industrials', 'Transportation': 'Industrials', 'Industrial Services': 'Industrials'
+};
+function semAcento(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+function setorDe(a) {
+  var sub = semAcento(a.subsector);
+  if (sub.indexOf('incorpora') !== -1 || sub.indexOf('aluguel de car') !== -1) return 'C. Cíclico';
+  return SETOR_PT[a.sector] || 'Outros';
+}
+function fmtPct(v) { return (v > 0 ? '+' : '') + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%'; }
+function fmtMi(v) {
+  if (v >= 1e9) return 'R$ ' + (v / 1e9).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' bi';
+  if (v >= 1e6) return 'R$ ' + (v / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mi';
+  return 'R$ ' + Math.round(v / 1e3).toLocaleString('pt-BR') + ' mil';
+}
+function esc(t) { return String(t === undefined || t === null ? '' : t).split('&').join('&amp;').split('<').join('&lt;'); }
+
+// Cor da variação: cinza escuro no zero, vermelho/verde saturando em ±4%
+function corVariacao(c) {
+  var t = Math.min(Math.abs(c) / 4, 1);
+  var base = [47, 47, 47], alvo = c >= 0 ? [22, 163, 74] : [220, 38, 38];
+  if (Math.abs(c) < 0.005) return 'rgb(47,47,47)';
+  var m = function (i) { return Math.round(base[i] + (alvo[i] - base[i]) * (0.25 + 0.75 * t)); };
+  return 'rgb(' + m(0) + ',' + m(1) + ',' + m(2) + ')';
+}
+
+// ── Treemap (algoritmo squarified) ──
+function piorRazao(linha, soma, lado) {
+  var mx = Math.max.apply(null, linha), mn = Math.min.apply(null, linha);
+  return Math.max(lado * lado * mx / (soma * soma), soma * soma / (lado * lado * mn));
+}
+function squarify(valores, x, y, w, h) {
+  var out = [], total = 0;
+  valores.forEach(function (v) { total += v; });
+  if (total <= 0 || w <= 0 || h <= 0) return out;
+  var escala = (w * h) / total;
+  var areas = valores.map(function (v) { return v * escala; });
+  var ret = { x: x, y: y, w: w, h: h }, i = 0;
+  while (i < areas.length) {
+    var lado = Math.min(ret.w, ret.h), linha = [], soma = 0, melhor = Infinity, j = i;
+    while (j < areas.length) {
+      var teste = linha.concat([areas[j]]), s2 = soma + areas[j], pior = piorRazao(teste, s2, lado);
+      if (linha.length && pior > melhor) break;
+      linha = teste; soma = s2; melhor = pior; j++;
+    }
+    var espessura = soma / lado, horizontal = ret.w >= ret.h, pos = 0;
+    linha.forEach(function (a, k) {
+      var comp = a / espessura;
+      if (horizontal) out.push({ i: i + k, x: ret.x, y: ret.y + pos, w: espessura, h: comp });
+      else out.push({ i: i + k, x: ret.x + pos, y: ret.y, w: comp, h: espessura });
+      pos += comp;
+    });
+    if (horizontal) ret = { x: ret.x + espessura, y: ret.y, w: ret.w - espessura, h: ret.h };
+    else ret = { x: ret.x, y: ret.y + espessura, w: ret.w, h: ret.h - espessura };
+    i = j;
+  }
+  return out;
+}
+
+function tamanhoDe(a, modo) { return modo === 'mercado' ? a.mercado : a.financeiro; }
+
+function filtrarDados() {
+  var modo = document.getElementById('f-tamanho').value;
+  var qtd = Number(document.getElementById('f-qtd').value);
+  var lista = dados.slice();
+  if (modo === 'mercado') {
+    // uma classe por empresa (a mais negociada), para não contar duas vezes o mesmo valor de mercado
+    var melhorPorEmpresa = {};
+    lista.forEach(function (a) { if (!melhorPorEmpresa[a.empresa] || a.financeiro > melhorPorEmpresa[a.empresa].financeiro) melhorPorEmpresa[a.empresa] = a; });
+    lista = Object.keys(melhorPorEmpresa).map(function (k) { return melhorPorEmpresa[k]; });
+  }
+  lista.sort(function (a, b) { return b.financeiro - a.financeiro; });
+  lista = lista.slice(0, qtd);
+  var setor = document.getElementById('f-setor').value;
+  if (setor) lista = lista.filter(function (a) { return a.setor === setor; });
+  return lista.filter(function (a) { return tamanhoDe(a, modo) > 0; });
+}
+
+function renderizar() {
+  var mapa = document.getElementById('mapa');
+  var modo = document.getElementById('f-tamanho').value;
+  var lista = filtrarDados();
+  var largura = document.getElementById('painel').clientWidth - 12;
+  var altura = Math.max(560, Math.round(window.innerHeight - 330));
+  mapa.style.width = largura + 'px';
+  mapa.style.height = altura + 'px';
+  if (!lista.length) { mapa.innerHTML = '<div class="vazio">Nenhum ativo para exibir.</div>'; return; }
+
+  // agrupa por setor
+  var grupos = {};
+  lista.forEach(function (a) { (grupos[a.setor] = grupos[a.setor] || { nome: a.setor, itens: [], soma: 0, somaVar: 0 }); var g = grupos[a.setor]; var t = tamanhoDe(a, modo); g.itens.push(a); g.soma += t; g.somaVar += a.variacao * t; });
+  var setores = Object.keys(grupos).map(function (k) { return grupos[k]; }).sort(function (a, b) { return b.soma - a.soma; });
+  var busca = document.getElementById('f-busca').value.trim().toUpperCase();
+
+  var html = '';
+  var retSetores = squarify(setores.map(function (g) { return g.soma; }), 0, 0, largura, altura);
+  retSetores.forEach(function (rs) {
+    var g = setores[rs.i];
+    var media = g.somaVar / g.soma;
+    var tituloH = 20;
+    html += '<div class="setor" style="left:' + rs.x.toFixed(1) + 'px;top:' + rs.y.toFixed(1) + 'px;width:' + rs.w.toFixed(1) + 'px;height:' + rs.h.toFixed(1) + 'px;">';
+    html += '<div class="setor-tit" title="' + esc(g.nome) + '">' + esc(g.nome) + ' <span style="color:' + (media >= 0 ? '#4ade80' : '#f87171') + ';">' + fmtPct(media) + '</span></div>';
+    g.itens.sort(function (a, b) { return tamanhoDe(b, modo) - tamanhoDe(a, modo); });
+    var ri = squarify(g.itens.map(function (a) { return tamanhoDe(a, modo); }), 0, tituloH, rs.w, Math.max(rs.h - tituloH, 1));
+    ri.forEach(function (r) {
+      var a = g.itens[r.i];
+      var area = r.w * r.h, lado = Math.min(r.w, r.h);
+      var fonte = Math.max(8, Math.min(30, Math.sqrt(area) / 4.2));
+      var mostrarTicker = r.w > 26 && r.h > 16, mostrarVar = r.w > 40 && r.h > 30;
+      var marca = busca ? (a.ticker.indexOf(busca) !== -1 ? ' achado' : ' apagado') : '';
+      html += '<div class="tile' + marca + '" data-t="' + esc(a.ticker) + '" style="left:' + r.x.toFixed(1) + 'px;top:' + r.y.toFixed(1) + 'px;width:' + r.w.toFixed(1) + 'px;height:' + r.h.toFixed(1) + 'px;background:' + corVariacao(a.variacao) + ';font-size:' + fonte.toFixed(1) + 'px;">' +
+        (mostrarTicker ? '<b>' + esc(a.ticker) + '</b>' : '') + (mostrarVar ? '<span style="font-size:' + Math.max(8, fonte * 0.72).toFixed(1) + 'px;">' + fmtPct(a.variacao) + '</span>' : '') + '</div>';
+    });
+    html += '</div>';
+  });
+  mapa.innerHTML = html;
+}
+
+// dica ao passar o mouse
+var dica = document.getElementById('dica');
+document.getElementById('mapa').addEventListener('mousemove', function (ev) {
+  var t = ev.target.closest ? ev.target.closest('.tile') : null;
+  if (!t) { dica.hidden = true; return; }
+  var a = dados.filter(function (x) { return x.ticker === t.getAttribute('data-t'); })[0];
+  if (!a) { dica.hidden = true; return; }
+  dica.innerHTML = '<b>' + esc(a.ticker) + '</b> <span style="color:' + (a.variacao >= 0 ? '#16A34A' : '#DC2626') + ';font-weight:700;">' + fmtPct(a.variacao) + '</span><br>' + esc(a.nome) +
+    '<br>Cotação: R$ ' + a.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '<br>Volume financeiro: ' + fmtMi(a.financeiro) +
+    '<br>Valor de mercado: ' + fmtMi(a.mercado) + '<br>Setor: ' + esc(a.setor);
+  dica.hidden = false;
+  var x = ev.clientX + 16, y = ev.clientY + 16;
+  if (x + 310 > window.innerWidth) x = ev.clientX - 316;
+  if (y + 150 > window.innerHeight) y = ev.clientY - 150;
+  dica.style.left = x + 'px'; dica.style.top = y + 'px';
+});
+document.getElementById('mapa').addEventListener('mouseleave', function () { dica.hidden = true; });
+
+function atualizarStatus(erro) {
+  var el = document.getElementById('status');
+  if (erro) { el.innerHTML = '<b style="color:#DC2626;">' + esc(erro) + '</b><br>Nova tentativa em instantes.'; return; }
+  var hora = ultimaAtualizacao.toLocaleTimeString('pt-BR');
+  el.innerHTML = 'Atualizado às <b>' + hora + '</b> · ' + dados.length + ' ativos' + (ultimaCotacao ? '<br>Última cotação recebida (PETR4): <b>' + ultimaCotacao + '</b>' : '') +
+    (avisoIncompleto ? '<br><b style="color:#B45309;">Dados incompletos: parte das cotações não pôde ser carregada. Clique em "Atualizar agora".</b>' : '');
+}
+
+// Cada página é tentada até 3 vezes; página que falha devolve null (os dados ficam incompletos e o aviso é exibido)
+function buscarPagina(p, tentativa) {
+  tentativa = tentativa || 1;
+  return fetch(BASE + '/quote/list?type=stock&limit=200&page=' + p + '&sortBy=volume&sortOrder=desc')
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function (j) { if (!j || !Array.isArray(j.stocks)) throw new Error('resposta inválida'); return j; })
+    .catch(function () {
+      if (tentativa >= 3) return null;
+      return new Promise(function (res) { setTimeout(res, 700 * tentativa); }).then(function () { return buscarPagina(p, tentativa + 1); });
+    });
+}
+function carregar() {
+  if (carregando) return Promise.resolve();
+  carregando = true;
+  var btn = document.getElementById('btn-atualizar');
+  btn.disabled = true;
+  var horario = fetch(BASE + '/quote/PETR4').then(function (r) { return r.json(); }).then(function (j) {
+    var t = j && j.results && j.results[0] && j.results[0].regularMarketTime;
+    return t ? new Date(t).toLocaleTimeString('pt-BR') + ' (' + new Date(t).toLocaleDateString('pt-BR') + ')' : '';
+  }).catch(function () { return ''; });
+  return Promise.all([buscarPagina(1), buscarPagina(2), buscarPagina(3), buscarPagina(4), horario]).then(function (rs) {
+    var brutos = [], falhas = 0;
+    rs.slice(0, 4).forEach(function (r) { if (r) brutos = brutos.concat(r.stocks || []); else falhas++; });
+    if (!brutos.length) throw new Error('Não foi possível obter as cotações.');
+    // com páginas ausentes o mapa ficaria incompleto: mantém o último mapa completo e tenta de novo
+    if (falhas && dados.length) throw new Error('Cotações incompletas nesta atualização (' + falhas + ' de 4 blocos falharam); mantido o último mapa.');
+    var vistos = {};
+    dados = brutos.filter(function (a) {
+      if (vistos[a.stock]) return false;
+      vistos[a.stock] = 1;
+      return /^[A-Z0-9]{4}(3|4|5|6|11)$/.test(a.stock) && typeof a.change === 'number' && a.close > 0 && a.volume > 0;
+    }).map(function (a) {
+      return { ticker: a.stock, nome: a.name || a.stock, empresa: a.name || a.stock, preco: a.close, variacao: a.change,
+        financeiro: a.close * a.volume, mercado: Number(a.market_cap) || 0, setor: setorDe(a) };
+    }).filter(function (a) { return a.financeiro >= 100000; });
+    ultimaCotacao = rs[4];
+    avisoIncompleto = falhas > 0;
+    ultimaAtualizacao = new Date();
+    // opções de setor
+    var sel = document.getElementById('f-setor'), atual = sel.value;
+    var setores = {};
+    dados.forEach(function (a) { setores[a.setor] = 1; });
+    sel.innerHTML = '<option value="">Todos os setores</option>' + Object.keys(setores).sort().map(function (s) { return '<option value="' + esc(s) + '">' + esc(s) + '</option>'; }).join('');
+    sel.value = setores[atual] ? atual : '';
+    atualizarStatus();
+    renderizar();
+  }).catch(function (e) { atualizarStatus(e && e.message ? e.message : 'Falha ao atualizar.'); })
+    .finally(function () { carregando = false; btn.disabled = false; });
+}
+
+['f-tamanho', 'f-qtd', 'f-setor'].forEach(function (id) { document.getElementById(id).addEventListener('change', renderizar); });
+document.getElementById('f-busca').addEventListener('input', renderizar);
+document.getElementById('btn-atualizar').addEventListener('click', carregar);
+window.addEventListener('resize', function () { if (dados.length) renderizar(); });
+// atualização automática a cada 60 s (pausa quando a aba não está visível)
+function agendar() {
+  clearInterval(timer);
+  timer = setInterval(function () { if (!document.hidden) carregar(); }, INTERVALO_MS);
+}
+document.addEventListener('visibilitychange', function () { if (!document.hidden && ultimaAtualizacao && Date.now() - ultimaAtualizacao.getTime() > INTERVALO_MS) carregar(); });
+carregar();
+agendar();
+<\/script>
+</body>
+</html>`);
+  }
+
   function abrirDiversificacaoCarteira(clienteId, snapshotId) {
     // chamado também pelo menu (recebe o evento de clique) e por "Meus Clientes" (id do cliente e do registro)
     var parametros = { clienteId: typeof clienteId === 'string' ? clienteId : '', snapshotId: typeof snapshotId === 'string' ? snapshotId : '' };
@@ -21890,6 +22195,7 @@ if (btnExportarExcelPesquisa) {
   document.getElementById('btn-nav-sucessorio').addEventListener('click', abrirPlanejamentoSucessorio);
   document.getElementById('btn-nav-holding').addEventListener('click', abrirViabilidadeHolding);
   document.getElementById('btn-nav-diversificacao').addEventListener('click', function () { abrirDiversificacaoCarteira(); });
+  document.getElementById('btn-nav-mapa-calor').addEventListener('click', abrirMapaCalor);
   document.getElementById('btn-nav-nota-corretagem').addEventListener('click', abrirNotaCorretagem);
   document.getElementById('btn-nav-cetipados').addEventListener('click', abrirCetipados);
   document.getElementById('btn-nav-pesquisa').addEventListener('click', abrirPesquisaAtivo);
