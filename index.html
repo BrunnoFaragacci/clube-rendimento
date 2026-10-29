@@ -15572,6 +15572,11 @@ h1{font-size:24px;font-weight:700;margin-bottom:4px;}
 .tile.achado{outline:2px solid #fff;outline-offset:-2px;z-index:3;}
 .dica{position:fixed;z-index:200;background:#fff;color:var(--ink);border-radius:10px;padding:10px 12px;font-size:12.5px;box-shadow:0 8px 24px rgba(0,0,0,.35);pointer-events:none;line-height:1.55;max-width:300px;}
 .dica b{font-size:14px;}
+.periodos{display:inline-flex;border:1.5px solid var(--ink);border-radius:10px;overflow:hidden;}
+.periodos button{padding:8px 13px;border:none;border-right:1px solid var(--line);background:#fff;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--ink-soft);cursor:pointer;}
+.periodos button:last-child{border-right:none;}
+.periodos button:hover{background:var(--bg-soft);color:var(--ink);}
+.periodos button.ativo{background:var(--ink);color:#fff;}
 .legenda{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:12px;color:var(--ink-soft);}
 .legenda-barra{width:240px;height:12px;border-radius:6px;background:linear-gradient(90deg,#DC2626,#2f2f2f,#16A34A);}
 .vazio{padding:60px 20px;text-align:center;color:#bbb;font-size:14px;}
@@ -15601,6 +15606,10 @@ h1{font-size:24px;font-weight:700;margin-bottom:4px;}
   </div>
 
   <div class="barra">
+    <div class="campo"><label>Período</label>
+      <div class="periodos" id="periodos">
+        <button type="button" data-p="hoje" class="ativo">Hoje</button><button type="button" data-p="5d">5D</button><button type="button" data-p="1m">1M</button><button type="button" data-p="6m">6M</button><button type="button" data-p="ytd">YTD</button><button type="button" data-p="1a">1A</button><button type="button" data-p="5a">5A</button><button type="button" data-p="max">MAX</button>
+      </div></div>
     <div class="campo"><label for="f-exibir">Exibir</label>
       <select id="f-exibir"><option value="todos">Todos os ativos</option><option value="favoritos">Somente favoritos</option></select></div>
     <div class="campo"><label for="f-tamanho">Tamanho do quadro</label>
@@ -15615,8 +15624,8 @@ h1{font-size:24px;font-weight:700;margin-bottom:4px;}
 
   <div id="painel"><div id="mapa"><div class="vazio">Carregando...</div></div></div>
 
-  <div class="legenda"><span>−4% ou menos</span><div class="legenda-barra"></div><span>+4% ou mais</span></div>
-  <p class="nota">Fonte: Brapi. As cotações têm atraso de cerca de 1 a 2 minutos em relação ao mercado e esta página é atualizada automaticamente a cada 60 segundos enquanto estiver aberta. Foram considerados os papéis negociados no mercado à vista (ações ordinárias, preferenciais e units); cotações fracionárias e BDRs ficam de fora. A classificação por setor segue a base da Brapi e pode divergir da classificação oficial da B3.</p>
+  <div class="legenda"><span id="leg-min">−4% ou menos</span><div class="legenda-barra"></div><span id="leg-max">+4% ou mais</span></div>
+  <p class="nota">Cotações: Brapi, com atraso de cerca de 1 a 2 minutos em relação ao mercado; a página é atualizada automaticamente a cada 60 segundos enquanto estiver aberta. Períodos 5D a MAX: variação do preço em relação ao fechamento do início do período (histórico do Yahoo Finance, ajustado por desdobramentos e grupamentos, sem considerar proventos), atualizado após o fechamento de cada pregão; ativos com menos histórico que o período escolhido não aparecem. Foram considerados os papéis negociados no mercado à vista (ações ordinárias, preferenciais e units); cotações fracionárias e BDRs ficam de fora. A classificação por setor segue a base da Brapi e pode divergir da classificação oficial da B3.</p>
 </div>
 <div class="dica" id="dica" hidden></div>
 
@@ -15629,6 +15638,10 @@ var SB_URL = 'https://segeufywrjmstfmfscdi.supabase.co';
 var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZ2V1Znl3cmptc3RmbWZzY2RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzY0OTgsImV4cCI6MjA5ODQxMjQ5OH0.TUrp35SEI2NXdU1ZY7IEcdRm8VLLfLwAVWUtqjafElI';
 var sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
 var logado = false, favoritos = [], cotFav = {}, CHAVE_FAV = 'cr_favoritos_acoes_v1';
+var periodo = 'hoje';
+var ESCALA = { hoje: 4, '5d': 8, '1m': 15, '6m': 30, ytd: 30, '1a': 40, '5a': 100, max: 200 };
+var ROTULO_PERIODO = { hoje: 'Hoje', '5d': '5 dias', '1m': '1 mês', '6m': '6 meses', ytd: 'No ano (YTD)', '1a': '1 ano', '5a': '5 anos', max: 'Máximo' };
+var historico = {}, historicoCarregadoEm = 0, dataCotacao = 0, semHistorico = 0, carregandoHistorico = false, histMsg = '';
 var ultimaAtualizacao = null, ultimaCotacao = '', timer = null, carregando = false, avisoIncompleto = false;
 
 // Setores da Brapi (inglês) -> rótulos em português
@@ -15658,12 +15671,102 @@ function esc(t) { return String(t === undefined || t === null ? '' : t).split('&
 
 // Cor da variação: cinza escuro no zero, vermelho/verde saturando em ±4%
 function corVariacao(c) {
-  var t = Math.min(Math.abs(c) / 4, 1);
+  var t = Math.min(Math.abs(c) / (ESCALA[periodo] || 4), 1);
   var base = [47, 47, 47], alvo = c >= 0 ? [22, 163, 74] : [220, 38, 38];
   if (Math.abs(c) < 0.005) return 'rgb(47,47,47)';
   var m = function (i) { return Math.round(base[i] + (alvo[i] - base[i]) * (0.25 + 0.75 * t)); };
   return 'rgb(' + m(0) + ',' + m(1) + ',' + m(2) + ')';
 }
+
+// ── Variação por período (a partir do histórico gravado na tabela mapa_calor_historico) ──
+function nParaData(n) { return new Date(Math.floor(n / 10000), Math.floor((n % 10000) / 100) - 1, n % 100); }
+function dataParaN(d) { return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); }
+function menosMeses(n, meses) {
+  var d = nParaData(n), dia = d.getDate();
+  d.setDate(1); d.setMonth(d.getMonth() - meses);
+  var ult = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(dia, ult));
+  return dataParaN(d);
+}
+function ultimoAte(serie, alvo) {
+  for (var i = serie.length - 1; i >= 0; i--) { if (serie[i][0] <= alvo) return serie[i]; }
+  return null;
+}
+// Fechamento de referência do período, relativo à data T da cotação atual (só pregões anteriores a T)
+function referenciaPeriodo(h, per, T) {
+  var d = (h.diario || []).filter(function (x) { return x[0] < T; });
+  if (per === '5d') return d.length >= 5 ? d[d.length - 5][1] : null;
+  var alvo;
+  if (per === '1m') alvo = menosMeses(T, 1);
+  else if (per === '6m') alvo = menosMeses(T, 6);
+  else if (per === '1a') alvo = menosMeses(T, 12);
+  else if (per === 'ytd') alvo = (Math.floor(T / 10000) - 1) * 10000 + 1231;
+  if (alvo !== undefined) {
+    if (!d.length || d[0][0] > alvo) return null; // ativo mais novo que o período
+    var pt = ultimoAte(d, alvo);
+    return pt ? pt[1] : null;
+  }
+  if (per === '5a') {
+    var m = h.mensal || [];
+    var alvo5 = menosMeses(T, 60), ym = Math.floor(alvo5 / 100), dia = alvo5 % 100;
+    if (dia <= 15) { // mais perto do fim do mês anterior
+      var ano = Math.floor(ym / 100), mes = ym % 100 - 1;
+      if (mes === 0) { ano--; mes = 12; }
+      ym = ano * 100 + mes;
+    }
+    if (!m.length || m[0][0] > ym) return null;
+    var barra = null;
+    for (var i = m.length - 1; i >= 0; i--) { if (m[i][0] <= ym) { barra = m[i]; break; } }
+    return barra ? barra[1] : null;
+  }
+  if (per === 'max') return h.primeiro ? h.primeiro[1] : null;
+  return null;
+}
+function aplicarPeriodo() {
+  semHistorico = 0;
+  dados.forEach(function (a) {
+    a.varHoje = a.varHoje === undefined ? a.variacao : a.varHoje;
+    if (periodo === 'hoje') { a.variacao = a.varHoje; return; }
+    var h = historico[a.ticker], ref = h ? referenciaPeriodo(h, periodo, dataCotacao) : null;
+    if (ref && ref > 0) a.variacao = (a.preco / ref - 1) * 100;
+    else { a.variacao = null; semHistorico++; }
+  });
+}
+function carregarHistorico() {
+  if (!sb) return Promise.reject(new Error('Histórico indisponível.'));
+  if (carregandoHistorico) return Promise.resolve();
+  if (Object.keys(historico).length && Date.now() - historicoCarregadoEm < 30 * 60 * 1000) return Promise.resolve();
+  carregandoHistorico = true;
+  return sb.from('mapa_calor_historico').select('ticker,diario,mensal,primeiro,ultimo_pregao').range(0, 999).then(function (r) {
+    if (r.error) throw r.error;
+    var novo = {};
+    (r.data || []).forEach(function (x) { if (x.diario && x.diario.length) novo[x.ticker] = x; });
+    historico = novo;
+    historicoCarregadoEm = Date.now();
+    // dispara (sem esperar) a atualização do histórico no servidor; ela só consulta fontes externas se houver ativos vencidos
+    try { fetch(SB_URL + '/functions/v1/mapa-calor-historico').catch(function () {}); } catch (e) {}
+  }).finally(function () { carregandoHistorico = false; });
+}
+function mudarPeriodo(novo) {
+  periodo = novo;
+  Array.prototype.forEach.call(document.querySelectorAll('#periodos button'), function (b) { b.classList.toggle('ativo', b.getAttribute('data-p') === novo); });
+  var esc2 = ESCALA[novo];
+  document.getElementById('leg-min').textContent = '−' + esc2 + '% ou menos';
+  document.getElementById('leg-max').textContent = '+' + esc2 + '% ou mais';
+  histMsg = '';
+  if (novo === 'hoje') { aplicarPeriodo(); atualizarStatus(); renderizar(); return; }
+  histMsg = 'Carregando histórico...';
+  atualizarStatus();
+  carregarHistorico().then(function () {
+    if (!Object.keys(historico).length) { histMsg = 'O histórico está sendo preparado no servidor; tente novamente em alguns minutos.'; }
+    else histMsg = '';
+    aplicarPeriodo(); atualizarStatus(); renderizar();
+  }).catch(function (e) { histMsg = 'Não foi possível carregar o histórico: ' + (e && e.message ? e.message : e); atualizarStatus(); });
+}
+document.getElementById('periodos').addEventListener('click', function (e) {
+  var b = e.target.closest ? e.target.closest('button[data-p]') : null;
+  if (b && b.getAttribute('data-p') !== periodo) mudarPeriodo(b.getAttribute('data-p'));
+});
 
 // ── Treemap (algoritmo squarified) ──
 function piorRazao(linha, soma, lado) {
@@ -15720,7 +15823,7 @@ function filtrarDados() {
       if (a) return a;
       var c = cotFav[t];
       if (!c || !(c.preco > 0)) return null;
-      return { ticker: t, nome: c.nome, empresa: c.nome, preco: c.preco, variacao: c.variacao, financeiro: c.preco * (c.volume || 0), mercado: c.mercado, setor: 'Favoritos (sem setor)' };
+      return { ticker: t, nome: c.nome, empresa: c.nome, preco: c.preco, varHoje: c.variacao, variacao: periodo === 'hoje' ? c.variacao : null, financeiro: c.preco * (c.volume || 0), mercado: c.mercado, setor: 'Favoritos (sem setor)' };
     }).filter(Boolean);
   } else if (modo === 'mercado') {
     // uma classe por empresa (a mais negociada), para não contar duas vezes o mesmo valor de mercado
@@ -15729,6 +15832,7 @@ function filtrarDados() {
     lista = Object.keys(melhorPorEmpresa).map(function (k) { return melhorPorEmpresa[k]; });
   }
   lista.sort(function (a, b) { return b.financeiro - a.financeiro; });
+  lista = lista.filter(function (a) { return typeof a.variacao === 'number' && !isNaN(a.variacao); });
   if (!soFavoritos) lista = lista.slice(0, qtd);
   var setor = document.getElementById('f-setor').value;
   if (setor) lista = lista.filter(function (a) { return a.setor === setor; });
@@ -15791,7 +15895,8 @@ document.getElementById('mapa').addEventListener('mousemove', function (ev) {
   if (!t) { dica.hidden = true; return; }
   var a = dados.filter(function (x) { return x.ticker === t.getAttribute('data-t'); })[0];
   if (!a) { dica.hidden = true; return; }
-  dica.innerHTML = '<b>' + esc(a.ticker) + '</b> <span style="color:' + (a.variacao >= 0 ? '#16A34A' : '#DC2626') + ';font-weight:700;">' + fmtPct(a.variacao) + '</span><br>' + esc(a.nome) +
+  dica.innerHTML = '<b>' + esc(a.ticker) + '</b> <span style="color:' + (a.variacao >= 0 ? '#16A34A' : '#DC2626') + ';font-weight:700;">' + fmtPct(a.variacao) + '</span> <span style="color:#5C5C5C;">(' + ROTULO_PERIODO[periodo] + ')</span>' +
+    (periodo !== 'hoje' && typeof a.varHoje === 'number' ? '<br>Hoje: ' + fmtPct(a.varHoje) : '') + '<br>' + esc(a.nome) +
     '<br>Cotação: R$ ' + a.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '<br>Volume financeiro: ' + fmtMi(a.financeiro) +
     '<br>Valor de mercado: ' + fmtMi(a.mercado) + '<br>Setor: ' + esc(a.setor);
   dica.hidden = false;
@@ -15807,7 +15912,8 @@ function atualizarStatus(erro) {
   if (erro) { el.innerHTML = '<b style="color:#DC2626;">' + esc(erro) + '</b><br>Nova tentativa em instantes.'; return; }
   var hora = ultimaAtualizacao.toLocaleTimeString('pt-BR');
   el.innerHTML = 'Atualizado às <b>' + hora + '</b> · ' + dados.length + ' ativos' + (ultimaCotacao ? '<br>Última cotação recebida (PETR4): <b>' + ultimaCotacao + '</b>' : '') +
-    (avisoIncompleto ? '<br><b style="color:#B45309;">Dados incompletos: parte das cotações não pôde ser carregada. Clique em "Atualizar agora".</b>' : '');
+    (avisoIncompleto ? '<br><b style="color:#B45309;">Dados incompletos: parte das cotações não pôde ser carregada. Clique em "Atualizar agora".</b>' : '') +
+    (periodo !== 'hoje' ? '<br>Período: <b>' + ROTULO_PERIODO[periodo] + '</b>' + (histMsg ? ' · ' + esc(histMsg) : (semHistorico ? ' · ' + semHistorico + ' ativo(s) sem histórico suficiente (não exibidos)' : '')) : '');
 }
 
 // Cada página é tentada até 3 vezes; página que falha devolve null (os dados ficam incompletos e o aviso é exibido)
@@ -15828,6 +15934,10 @@ function carregar() {
   btn.disabled = true;
   var horario = fetch(BASE + '/quote/PETR4').then(function (r) { return r.json(); }).then(function (j) {
     var t = j && j.results && j.results[0] && j.results[0].regularMarketTime;
+    if (t) {
+      var b = new Date(new Date(t).getTime() - 3 * 3600 * 1000); // data em Brasília
+      dataCotacao = b.getUTCFullYear() * 10000 + (b.getUTCMonth() + 1) * 100 + b.getUTCDate();
+    }
     return t ? new Date(t).toLocaleTimeString('pt-BR') + ' (' + new Date(t).toLocaleDateString('pt-BR') + ')' : '';
   }).catch(function () { return ''; });
   return Promise.all([buscarPagina(1), buscarPagina(2), buscarPagina(3), buscarPagina(4), horario]).then(function (rs) {
@@ -15842,7 +15952,7 @@ function carregar() {
       vistos[a.stock] = 1;
       return /^[A-Z0-9]{4}(3|4|5|6|11)$/.test(a.stock) && typeof a.change === 'number' && a.close > 0 && a.volume > 0;
     }).map(function (a) {
-      return { ticker: a.stock, nome: a.name || a.stock, empresa: a.name || a.stock, preco: a.close, variacao: a.change,
+      return { ticker: a.stock, nome: a.name || a.stock, empresa: a.name || a.stock, preco: a.close, variacao: a.change, varHoje: a.change,
         financeiro: a.close * a.volume, mercado: Number(a.market_cap) || 0, setor: setorDe(a) };
     }).filter(function (a) { return a.financeiro >= 100000; });
     ultimaCotacao = rs[4];
@@ -15854,6 +15964,7 @@ function carregar() {
     dados.forEach(function (a) { setores[a.setor] = 1; });
     sel.innerHTML = '<option value="">Todos os setores</option>' + Object.keys(setores).sort().map(function (s) { return '<option value="' + esc(s) + '">' + esc(s) + '</option>'; }).join('');
     sel.value = setores[atual] ? atual : '';
+    aplicarPeriodo();
     atualizarStatus();
     renderizar();
     carregarCotacoesFavoritos().then(function () { renderFavoritos(); if (document.getElementById('f-exibir').value === 'favoritos') renderizar(); });
@@ -15886,19 +15997,19 @@ function alternarFavorito(t) {
 }
 function carregarCotacoesFavoritos() {
   if (!favoritos.length) { cotFav = {}; return Promise.resolve(); }
-  var blocos = [];
-  for (var i = 0; i < favoritos.length; i += 20) blocos.push(favoritos.slice(i, i + 20));
-  return Promise.all(blocos.map(function (b) {
-    return fetch(BASE + '/quote/' + b.join(',')).then(function (r) { return r.json(); }).catch(function () { return null; });
-  })).then(function (rs) {
-    var novo = {};
-    rs.forEach(function (j) {
-      ((j && j.results) || []).forEach(function (r) {
-        novo[r.symbol] = { nome: r.longName || r.shortName || r.symbol, preco: r.regularMarketPrice, variacao: r.regularMarketChangePercent, volume: r.regularMarketVolume, mercado: r.marketCap || 0 };
-      });
-    });
-    cotFav = novo;
+  var novo = {}, faltantes = [];
+  // quem já está na lista de cotações usa esses dados; os demais são consultados um a um (a Brapi aceita 1 ativo por requisição)
+  favoritos.forEach(function (t) {
+    var a = dados.filter(function (x) { return x.ticker === t; })[0];
+    if (a) novo[t] = { nome: a.nome, preco: a.preco, variacao: a.varHoje, volume: a.preco > 0 ? a.financeiro / a.preco : 0, mercado: a.mercado };
+    else faltantes.push(t);
   });
+  return Promise.all(faltantes.map(function (t) {
+    return fetch(BASE + '/quote/' + t).then(function (r) { return r.json(); }).then(function (j) {
+      var r = j && j.results && j.results[0];
+      if (r) novo[r.symbol] = { nome: r.longName || r.shortName || r.symbol, preco: r.regularMarketPrice, variacao: r.regularMarketChangePercent, volume: r.regularMarketVolume, mercado: r.marketCap || 0 };
+    }).catch(function () {});
+  })).then(function () { cotFav = novo; });
 }
 function renderFavoritos() {
   var el = document.getElementById('fav-lista');
