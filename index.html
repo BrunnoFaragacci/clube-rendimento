@@ -15722,12 +15722,20 @@ function referenciaPeriodo(h, per, T) {
   if (per === 'max') return h.primeiro ? h.primeiro[1] : null;
   return null;
 }
+// Data de referência quando a cotação do PETR4 (que informa a data do último pregão) não pôde ser obtida:
+// hoje (Brasília); em fim de semana, a sexta-feira anterior.
+function dataFallbackBRT() {
+  var b = new Date(Date.now() - 3 * 3600 * 1000);
+  while (b.getUTCDay() === 0 || b.getUTCDay() === 6) b.setUTCDate(b.getUTCDate() - 1);
+  return b.getUTCFullYear() * 10000 + (b.getUTCMonth() + 1) * 100 + b.getUTCDate();
+}
 function aplicarPeriodo() {
   semHistorico = 0;
+  var T = dataCotacao || dataFallbackBRT();
   dados.forEach(function (a) {
     a.varHoje = a.varHoje === undefined ? a.variacao : a.varHoje;
     if (periodo === 'hoje') { a.variacao = a.varHoje; return; }
-    var h = historico[a.ticker], ref = h ? referenciaPeriodo(h, periodo, dataCotacao) : null;
+    var h = historico[a.ticker], ref = h ? referenciaPeriodo(h, periodo, T) : null;
     if (ref && ref > 0) a.variacao = (a.preco / ref - 1) * 100;
     else { a.variacao = null; semHistorico++; }
   });
@@ -15932,7 +15940,9 @@ function carregar() {
   carregando = true;
   var btn = document.getElementById('btn-atualizar');
   btn.disabled = true;
-  var horario = fetch(BASE + '/quote/PETR4').then(function (r) { return r.json(); }).then(function (j) {
+  var horario = fetch(BASE + '/quote/PETR4').then(function (r) { return r.json(); }).catch(function () {
+    return new Promise(function (res) { setTimeout(res, 800); }).then(function () { return fetch(BASE + '/quote/PETR4').then(function (r) { return r.json(); }); });
+  }).then(function (j) {
     var t = j && j.results && j.results[0] && j.results[0].regularMarketTime;
     if (t) {
       var b = new Date(new Date(t).getTime() - 3 * 3600 * 1000); // data em Brasília
