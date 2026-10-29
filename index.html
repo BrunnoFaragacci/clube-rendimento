@@ -15598,13 +15598,13 @@ h1{font-size:24px;font-weight:700;margin-bottom:4px;}
 <div class="container">
   <span class="eyebrow">Mercado</span>
   <h1>Mapa de Calor — Ações</h1>
-  <p class="sub">Variação das ações no dia, agrupadas por setor. Clique em um quadro para favoritá-lo (ou desfavoritá-lo) na lista em exibição. O tamanho de cada quadro representa o volume financeiro negociado (ou o valor de mercado) e a cor, a variação em relação ao fechamento anterior.</p>
+  <p class="sub">Variação das ações no dia, agrupadas por setor. Use as abas acima para trocar o mapa (todos os ativos da B3 ou cada lista de favoritos). Clique em um quadro para favoritá-lo (ou desfavoritá-lo) na lista em exibição. O tamanho de cada quadro representa o volume financeiro negociado (ou o valor de mercado) e a cor, a variação em relação ao fechamento anterior.</p>
 
   <div class="fav-card">
     <div class="fav-abas" id="fav-abas">
-      <button type="button" data-l="brasil" class="ativo">★ Favoritos Brasil</button><button type="button" data-l="eua">★ Favoritos EUA</button><button type="button" data-l="etf">★ Favoritos ETF/Moeda</button>
+      <button type="button" data-l="todos" class="ativo">Todos os ativos (B3)</button><button type="button" data-l="brasil">★ Favoritos Brasil</button><button type="button" data-l="eua">★ Favoritos EUA</button><button type="button" data-l="etf">★ Favoritos ETF/Moeda</button>
     </div>
-    <div class="fav-topo">
+    <div class="fav-topo" id="fav-topo">
       <input type="text" id="fav-input" placeholder="Adicionar ação (ex.: PETR4)" autocomplete="off">
       <button type="button" class="btn" id="fav-add">Adicionar</button>
       <span class="fav-msg" id="fav-msg"></span>
@@ -15617,8 +15617,6 @@ h1{font-size:24px;font-weight:700;margin-bottom:4px;}
       <div class="periodos" id="periodos">
         <button type="button" data-p="hoje" class="ativo">Hoje</button><button type="button" data-p="5d">5D</button><button type="button" data-p="1m">1M</button><button type="button" data-p="6m">6M</button><button type="button" data-p="ytd">YTD</button><button type="button" data-p="1a">1A</button><button type="button" data-p="5a">5A</button><button type="button" data-p="max">MAX</button>
       </div></div>
-    <div class="campo"><label for="f-exibir">Exibir</label>
-      <select id="f-exibir"><option value="todos">Todos os ativos</option><option value="favoritos">Somente favoritos Brasil</option><option value="fav-eua">Favoritos EUA</option><option value="fav-etf">Favoritos ETF/Moeda</option></select></div>
     <div class="campo"><label for="f-tamanho">Tamanho do quadro</label>
       <select id="f-tamanho"><option value="volume">Volume financeiro do dia</option><option value="mercado">Valor de mercado</option></select></div>
     <div class="campo"><label for="f-qtd">Quantidade de ativos</label>
@@ -15654,7 +15652,9 @@ var LISTAS = {
   eua: { chaveLocal: 'cr_favoritos_eua_v1', dica: 'Adicionar ação dos EUA (ex.: AAPL, MSFT, BRK-B)', vazio: 'Nenhuma ação dos EUA favorita ainda. Digite um ticker acima.' },
   etf: { chaveLocal: 'cr_favoritos_etf_v1', dica: 'Adicionar ETF ou moeda (ex.: BOVA11, SPY, USDBRL, BTC-USD)', vazio: 'Nenhum ETF ou moeda favorito ainda. Digite um ticker acima (ex.: BOVA11, SPY, USDBRL, EURBRL, BTC-USD).' }
 };
-var listaAtiva = 'brasil';
+var listaAtiva = 'todos';   // aba ativa: 'todos' (mapa completo da B3), 'brasil', 'eua' ou 'etf'
+// Visão do mapa derivada da aba ativa
+function exibirAtual() { return listaAtiva === 'brasil' ? 'favoritos' : (listaAtiva === 'eua' ? 'fav-eua' : (listaAtiva === 'etf' ? 'fav-etf' : 'todos')); }
 var MOEDAS = ['USD','EUR','GBP','BRL','JPY','CHF','CAD','AUD','CNY','ARS','MXN','CLP','COP','UYU','NZD','SEK','NOK','ZAR','TRY','INR','HKD','SGD','KRW'];
 var CRIPTOS = ['BTC','ETH','SOL','XRP','ADA','DOGE','BNB','LTC','DOT'];
 var periodo = 'hoje';
@@ -15842,7 +15842,7 @@ function filtrarDados() {
   var modo = document.getElementById('f-tamanho').value;
   var qtd = Number(document.getElementById('f-qtd').value);
   var lista = dados.slice();
-  var exibir = document.getElementById('f-exibir').value;
+  var exibir = exibirAtual();
   var soFavoritos = exibir === 'favoritos';
   var listaExt = exibir === 'fav-eua' ? 'eua' : (exibir === 'fav-etf' ? 'etf' : null);
   if (listaExt) {
@@ -15895,7 +15895,7 @@ function renderizar() {
   mapa.style.width = largura + 'px';
   mapa.style.height = altura + 'px';
   if (!lista.length) {
-    var exAtual = document.getElementById('f-exibir').value;
+    var exAtual = exibirAtual();
     var msgVazio = (exAtual === 'fav-eua' || exAtual === 'fav-etf') && periodo !== 'hoje'
       ? 'Os períodos de 5D a MAX estão disponíveis apenas para as ações da B3. Selecione "Hoje" para ver este grupo.'
       : ((exAtual === 'fav-eua' || exAtual === 'fav-etf') ? 'Nenhum ativo nesta lista de favoritos ainda.' : 'Nenhum ativo para exibir.');
@@ -16016,7 +16016,7 @@ function carregar() {
     aplicarPeriodo();
     atualizarStatus();
     renderizar();
-    carregarCotacoesFavoritos().then(function () { renderFavoritos(); if (document.getElementById('f-exibir').value !== 'todos') renderizar(); });
+    carregarCotacoesFavoritos().then(function () { renderFavoritos(); if (exibirAtual() !== 'todos') renderizar(); });
   }).catch(function (e) { atualizarStatus(e && e.message ? e.message : 'Falha ao atualizar.'); })
     .finally(function () { carregando = false; btn.disabled = false; });
 }
@@ -16068,7 +16068,7 @@ function alternarFavorito(lista, t) {
   carregarCotacoesFavoritos().then(function () { renderFavoritos(); renderizar(); });
 }
 function listaDoExibir() {
-  var ex = document.getElementById('f-exibir').value;
+  var ex = exibirAtual();
   return ex === 'fav-eua' ? 'eua' : (ex === 'fav-etf' ? 'etf' : 'brasil');
 }
 
@@ -16126,8 +16126,12 @@ function fmtPrecoExt(c) {
 }
 function renderFavoritos() {
   Array.prototype.forEach.call(document.querySelectorAll('#fav-abas button'), function (b) { b.classList.toggle('ativo', b.getAttribute('data-l') === listaAtiva); });
+  var el = document.getElementById('fav-lista');
+  var semLista = listaAtiva === 'todos';
+  document.getElementById('fav-topo').style.display = semLista ? 'none' : '';
+  if (semLista) { el.innerHTML = '<span class="fav-vazio">Mapa de todos os ativos da B3. Clique em um quadro para adicioná-lo (ou removê-lo) dos Favoritos Brasil; use as demais abas para ver e gerenciar cada lista.</span>'; return; }
   document.getElementById('fav-input').placeholder = LISTAS[listaAtiva].dica;
-  var el = document.getElementById('fav-lista'), arr = FAVS[listaAtiva];
+  var arr = FAVS[listaAtiva];
   if (!arr.length) { el.innerHTML = '<span class="fav-vazio">' + LISTAS[listaAtiva].vazio + '</span>'; return; }
   el.innerHTML = arr.map(function (t) {
     var info = '';
@@ -16165,6 +16169,7 @@ document.getElementById('fav-abas').addEventListener('click', function (e) {
   listaAtiva = b.getAttribute('data-l');
   atualizarAvisoFav();
   renderFavoritos();
+  renderizar();
 });
 document.getElementById('fav-lista').addEventListener('click', function (e) {
   var b = e.target.closest ? e.target.closest('button[data-rm]') : null;
@@ -16202,7 +16207,7 @@ function iniciarFavoritos() {
   });
 }
 
-['f-exibir', 'f-tamanho', 'f-qtd', 'f-setor'].forEach(function (id) { document.getElementById(id).addEventListener('change', renderizar); });
+['f-tamanho', 'f-qtd', 'f-setor'].forEach(function (id) { document.getElementById(id).addEventListener('change', renderizar); });
 document.getElementById('f-busca').addEventListener('input', renderizar);
 document.getElementById('btn-atualizar').addEventListener('click', carregar);
 window.addEventListener('resize', function () { if (dados.length) renderizar(); });
