@@ -16269,9 +16269,11 @@ function textoWhatsApp() {
     .slice().sort(function (a, b) { return b.variacao - a.variacao; });
   if (!lista.length) return '';
   var agora = new Date();
-  var linhas = ['*Mapa de Calor - ' + ROTULO_ABA[listaAtiva] + '*',
-    'Período: ' + ROTULO_PERIODO[periodo] + ' | ' + agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), ''];
-  lista.forEach(function (a) { linhas.push('• ' + a.ticker + ': ' + fmtPct(a.variacao)); });
+  var linhas = ['Período: ' + ROTULO_PERIODO[periodo] + ' | ' + agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), ''];
+  lista.forEach(function (a) {
+    var sinal = a.variacao > 0.005 ? '🟢' : (a.variacao < -0.005 ? '🔴' : '⚪'); // verde (alta), vermelho (queda), branco (estável)
+    linhas.push('• ' + sinal + ' ' + a.ticker + ': ' + fmtPct(a.variacao));
+  });
   return linhas.join('\\n');
 }
 function copiarTexto(txt) {
