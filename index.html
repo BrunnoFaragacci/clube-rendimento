@@ -15555,9 +15555,14 @@ h1{font-size:24px;font-weight:700;margin-bottom:4px;}
 .tile.fav{outline:1.5px solid rgba(255,255,255,.9);outline-offset:-3px;z-index:2;}
 .tile.apagado{opacity:.22;}
 .fav-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:var(--shadow-sm);}
+.fav-abas{display:inline-flex;border:1.5px solid var(--ink);border-radius:10px;overflow:hidden;margin-bottom:12px;}
+.fav-abas button{padding:8px 14px;border:none;border-right:1px solid var(--line);background:#fff;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--ink-soft);cursor:pointer;}
+.fav-abas button:last-child{border-right:none;}
+.fav-abas button:hover{background:var(--bg-soft);color:var(--ink);}
+.fav-abas button.ativo{background:var(--ink);color:#fff;}
 .fav-topo{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
 .fav-topo b{font-size:14px;}
-.fav-topo input{padding:8px 11px;border:1.5px solid var(--line);border-radius:9px;font-family:inherit;font-size:13px;width:190px;text-transform:uppercase;}
+.fav-topo input{padding:8px 11px;border:1.5px solid var(--line);border-radius:9px;font-family:inherit;font-size:13px;width:300px;max-width:100%;text-transform:uppercase;}
 .fav-msg{font-size:12px;color:var(--ink-soft);}
 .fav-msg.erro{color:var(--red);}
 .fav-lista{display:flex;flex-wrap:wrap;gap:8px;}
@@ -15593,11 +15598,13 @@ h1{font-size:24px;font-weight:700;margin-bottom:4px;}
 <div class="container">
   <span class="eyebrow">Mercado</span>
   <h1>Mapa de Calor — Ações</h1>
-  <p class="sub">Variação das ações no dia, agrupadas por setor. Clique em um quadro para favoritá-lo (ou desfavoritá-lo). O tamanho de cada quadro representa o volume financeiro negociado (ou o valor de mercado) e a cor, a variação em relação ao fechamento anterior.</p>
+  <p class="sub">Variação das ações no dia, agrupadas por setor. Clique em um quadro para favoritá-lo (ou desfavoritá-lo) na lista em exibição. O tamanho de cada quadro representa o volume financeiro negociado (ou o valor de mercado) e a cor, a variação em relação ao fechamento anterior.</p>
 
   <div class="fav-card">
+    <div class="fav-abas" id="fav-abas">
+      <button type="button" data-l="brasil" class="ativo">★ Favoritos Brasil</button><button type="button" data-l="eua">★ Favoritos EUA</button><button type="button" data-l="etf">★ Favoritos ETF/Moeda</button>
+    </div>
     <div class="fav-topo">
-      <b>★ Meus favoritos</b>
       <input type="text" id="fav-input" placeholder="Adicionar ação (ex.: PETR4)" autocomplete="off">
       <button type="button" class="btn" id="fav-add">Adicionar</button>
       <span class="fav-msg" id="fav-msg"></span>
@@ -15611,7 +15618,7 @@ h1{font-size:24px;font-weight:700;margin-bottom:4px;}
         <button type="button" data-p="hoje" class="ativo">Hoje</button><button type="button" data-p="5d">5D</button><button type="button" data-p="1m">1M</button><button type="button" data-p="6m">6M</button><button type="button" data-p="ytd">YTD</button><button type="button" data-p="1a">1A</button><button type="button" data-p="5a">5A</button><button type="button" data-p="max">MAX</button>
       </div></div>
     <div class="campo"><label for="f-exibir">Exibir</label>
-      <select id="f-exibir"><option value="todos">Todos os ativos</option><option value="favoritos">Somente favoritos</option></select></div>
+      <select id="f-exibir"><option value="todos">Todos os ativos</option><option value="favoritos">Somente favoritos Brasil</option><option value="fav-eua">Favoritos EUA</option><option value="fav-etf">Favoritos ETF/Moeda</option></select></div>
     <div class="campo"><label for="f-tamanho">Tamanho do quadro</label>
       <select id="f-tamanho"><option value="volume">Volume financeiro do dia</option><option value="mercado">Valor de mercado</option></select></div>
     <div class="campo"><label for="f-qtd">Quantidade de ativos</label>
@@ -15637,7 +15644,19 @@ var SESSAO_INICIAL = ${JSON.stringify(sessaoAtual)};
 var SB_URL = 'https://segeufywrjmstfmfscdi.supabase.co';
 var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZ2V1Znl3cmptc3RmbWZzY2RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzY0OTgsImV4cCI6MjA5ODQxMjQ5OH0.TUrp35SEI2NXdU1ZY7IEcdRm8VLLfLwAVWUtqjafElI';
 var sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
-var logado = false, favoritos = [], cotFav = {}, CHAVE_FAV = 'cr_favoritos_acoes_v1';
+var logado = false, cotFav = {}, cotExt = {};
+// Três listas de favoritos: Brasil (ações da B3), EUA (ações americanas) e ETF/Moeda (ETFs, moedas e criptomoedas).
+// "favoritos" é sempre a MESMA lista de FAVS.brasil (alterada no lugar, nunca substituída).
+var FAVS = { brasil: [], eua: [], etf: [] };
+var favoritos = FAVS.brasil;
+var LISTAS = {
+  brasil: { chaveLocal: 'cr_favoritos_acoes_v1', dica: 'Adicionar ação da B3 (ex.: PETR4)', vazio: 'Nenhuma ação favorita ainda. Digite um ticker acima ou clique em um quadro do mapa.' },
+  eua: { chaveLocal: 'cr_favoritos_eua_v1', dica: 'Adicionar ação dos EUA (ex.: AAPL, MSFT, BRK-B)', vazio: 'Nenhuma ação dos EUA favorita ainda. Digite um ticker acima.' },
+  etf: { chaveLocal: 'cr_favoritos_etf_v1', dica: 'Adicionar ETF ou moeda (ex.: BOVA11, SPY, USDBRL, BTC-USD)', vazio: 'Nenhum ETF ou moeda favorito ainda. Digite um ticker acima (ex.: BOVA11, SPY, USDBRL, EURBRL, BTC-USD).' }
+};
+var listaAtiva = 'brasil';
+var MOEDAS = ['USD','EUR','GBP','BRL','JPY','CHF','CAD','AUD','CNY','ARS','MXN','CLP','COP','UYU','NZD','SEK','NOK','ZAR','TRY','INR','HKD','SGD','KRW'];
+var CRIPTOS = ['BTC','ETH','SOL','XRP','ADA','DOGE','BNB','LTC','DOT'];
 var periodo = 'hoje';
 var ESCALA = { hoje: 4, '5d': 8, '1m': 15, '6m': 30, ytd: 30, '1a': 40, '5a': 100, max: 200 };
 var ROTULO_PERIODO = { hoje: 'Hoje', '5d': '5 dias', '1m': '1 mês', '6m': '6 meses', ytd: 'No ano (YTD)', '1a': '1 ano', '5a': '5 anos', max: 'Máximo' };
@@ -15823,8 +15842,18 @@ function filtrarDados() {
   var modo = document.getElementById('f-tamanho').value;
   var qtd = Number(document.getElementById('f-qtd').value);
   var lista = dados.slice();
-  var soFavoritos = document.getElementById('f-exibir').value === 'favoritos';
-  if (soFavoritos) {
+  var exibir = document.getElementById('f-exibir').value;
+  var soFavoritos = exibir === 'favoritos';
+  var listaExt = exibir === 'fav-eua' ? 'eua' : (exibir === 'fav-etf' ? 'etf' : null);
+  if (listaExt) {
+    // favoritos fora da B3: quadros de tamanho igual (não há volume comparável), agrupados por tipo
+    lista = FAVS[listaExt].map(function (t) {
+      var c = cotExt[listaExt + ':' + t];
+      if (!c || !(c.preco > 0)) return null;
+      var setorExt = listaExt === 'eua' ? 'Estados Unidos' : (c.tipo === 'CURRENCY' ? 'Moedas' : (c.tipo === 'CRYPTOCURRENCY' ? 'Criptomoedas' : 'ETFs'));
+      return { ticker: t, nome: c.nome, empresa: c.nome, preco: c.preco, varHoje: c.variacao, variacao: periodo === 'hoje' ? c.variacao : null, financeiro: 1, mercado: 1, setor: setorExt, moeda: c.moeda };
+    }).filter(Boolean);
+  } else if (soFavoritos) {
     // favoritos mesmo fora da lista dos mais negociados (usa a cotação individual)
     lista = favoritos.map(function (t) {
       var a = dados.filter(function (x) { return x.ticker === t; })[0];
@@ -15841,9 +15870,10 @@ function filtrarDados() {
   }
   lista.sort(function (a, b) { return b.financeiro - a.financeiro; });
   lista = lista.filter(function (a) { return typeof a.variacao === 'number' && !isNaN(a.variacao); });
-  if (!soFavoritos) lista = lista.slice(0, qtd);
+  if (!soFavoritos && !listaExt) lista = lista.slice(0, qtd);
   var setor = document.getElementById('f-setor').value;
-  if (setor) lista = lista.filter(function (a) { return a.setor === setor; });
+  if (setor && !listaExt) lista = lista.filter(function (a) { return a.setor === setor; });
+  if (listaExt) { pisoTam = 1; tamanhoComprimido = true; return lista; }
   if (soFavoritos) {
     var maiorTam = 0;
     lista.forEach(function (a) { var v = modo === 'mercado' && a.mercado > 0 ? a.mercado : a.financeiro; if (Math.sqrt(v || 0) > maiorTam) maiorTam = Math.sqrt(v || 0); });
@@ -15864,7 +15894,14 @@ function renderizar() {
   var altura = Math.max(560, Math.round(window.innerHeight - 330));
   mapa.style.width = largura + 'px';
   mapa.style.height = altura + 'px';
-  if (!lista.length) { mapa.innerHTML = '<div class="vazio">Nenhum ativo para exibir.</div>'; return; }
+  if (!lista.length) {
+    var exAtual = document.getElementById('f-exibir').value;
+    var msgVazio = (exAtual === 'fav-eua' || exAtual === 'fav-etf') && periodo !== 'hoje'
+      ? 'Os períodos de 5D a MAX estão disponíveis apenas para as ações da B3. Selecione "Hoje" para ver este grupo.'
+      : ((exAtual === 'fav-eua' || exAtual === 'fav-etf') ? 'Nenhum ativo nesta lista de favoritos ainda.' : 'Nenhum ativo para exibir.');
+    mapa.innerHTML = '<div class="vazio">' + msgVazio + '</div>';
+    return;
+  }
 
   // agrupa por setor
   var grupos = {};
@@ -15905,8 +15942,10 @@ document.getElementById('mapa').addEventListener('mousemove', function (ev) {
   if (!a) { dica.hidden = true; return; }
   dica.innerHTML = '<b>' + esc(a.ticker) + '</b> <span style="color:' + (a.variacao >= 0 ? '#16A34A' : '#DC2626') + ';font-weight:700;">' + fmtPct(a.variacao) + '</span> <span style="color:#5C5C5C;">(' + ROTULO_PERIODO[periodo] + ')</span>' +
     (periodo !== 'hoje' && typeof a.varHoje === 'number' ? '<br>Hoje: ' + fmtPct(a.varHoje) : '') + '<br>' + esc(a.nome) +
-    '<br>Cotação: R$ ' + a.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '<br>Volume financeiro: ' + fmtMi(a.financeiro) +
-    '<br>Valor de mercado: ' + fmtMi(a.mercado) + '<br>Setor: ' + esc(a.setor);
+    (a.moeda !== undefined
+      ? '<br>Cotação: ' + fmtPrecoExt({ moeda: a.moeda, preco: a.preco, tipo: a.setor === 'Moedas' ? 'CURRENCY' : '' }) + '<br>Grupo: ' + esc(a.setor)
+      : '<br>Cotação: R$ ' + a.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '<br>Volume financeiro: ' + fmtMi(a.financeiro) +
+        '<br>Valor de mercado: ' + fmtMi(a.mercado) + '<br>Setor: ' + esc(a.setor));
   dica.hidden = false;
   var x = ev.clientX + 16, y = ev.clientY + 16;
   if (x + 310 > window.innerWidth) x = ev.clientX - 316;
@@ -15977,39 +16016,68 @@ function carregar() {
     aplicarPeriodo();
     atualizarStatus();
     renderizar();
-    carregarCotacoesFavoritos().then(function () { renderFavoritos(); if (document.getElementById('f-exibir').value === 'favoritos') renderizar(); });
+    carregarCotacoesFavoritos().then(function () { renderFavoritos(); if (document.getElementById('f-exibir').value !== 'todos') renderizar(); });
   }).catch(function (e) { atualizarStatus(e && e.message ? e.message : 'Falha ao atualizar.'); })
     .finally(function () { carregando = false; btn.disabled = false; });
 }
 
-// ── Favoritos: gravados na conta (tabela acoes_favoritas) quando há login; sem login, somente neste navegador ──
-function lerFavoritosLocais() { try { var v = JSON.parse(localStorage.getItem(CHAVE_FAV) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
-function gravarFavoritosLocais() { try { localStorage.setItem(CHAVE_FAV, JSON.stringify(favoritos)); } catch (e) {} }
-function ehFavorito(t) { return favoritos.indexOf(t) !== -1; }
+// ── Favoritos: gravados na conta (tabela acoes_favoritas, coluna "lista") quando há login; sem login, somente neste navegador ──
+function lerFavoritosLocais(lista) { try { var v = JSON.parse(localStorage.getItem(LISTAS[lista].chaveLocal) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+function gravarFavoritosLocais(lista) { try { localStorage.setItem(LISTAS[lista].chaveLocal, JSON.stringify(FAVS[lista])); } catch (e) {} }
+function ehFavorito(t) { return FAVS.brasil.indexOf(t) !== -1; }
 function mensagemFav(txt, erro) { var el = document.getElementById('fav-msg'); el.textContent = txt || ''; el.className = 'fav-msg' + (erro ? ' erro' : ''); }
 function atualizarAvisoFav() {
   mensagemFav(logado ? 'Salvos na sua conta (valem em qualquer navegador).' : 'Sem login: os favoritos ficam salvos somente neste navegador. Abra a ferramenta com o site autenticado para gravá-los na sua conta.', false);
 }
-function gravarFavoritoRemoto(t, incluir) {
+
+// Normaliza o que o usuário digitou para a chave da lista e o símbolo usado na consulta (Yahoo, para EUA e ETF/Moeda)
+function normalizarTicker(lista, texto) {
+  var t = String(texto || '').trim().toUpperCase().replace(/\\s+/g, '');
+  if (!t) return null;
+  if (lista === 'brasil') return /^[A-Z0-9]{4,7}$/.test(t) ? { chave: t, simbolo: t } : null;
+  if (lista === 'eua') {
+    t = t.replace('.', '-');
+    return /^[A-Z]{1,5}(-[A-Z])?$/.test(t) ? { chave: t, simbolo: t } : null;
+  }
+  var base = t.replace('/', '');
+  var mc = /^([A-Z]{3,4})-?USD$/.exec(base) || /^([A-Z]{3,4})$/.exec(base);
+  if (mc && CRIPTOS.indexOf(mc[1]) !== -1) return { chave: mc[1] + '-USD', simbolo: mc[1] + '-USD' };
+  var mm = /^([A-Z]{3})-?([A-Z]{3})$/.exec(base);
+  if (mm && MOEDAS.indexOf(mm[1]) !== -1 && MOEDAS.indexOf(mm[2]) !== -1) return { chave: mm[1] + mm[2], simbolo: mm[1] + mm[2] + '=X' };
+  if (/^[A-Z]{4}\\d{1,2}$/.test(base)) return { chave: base, simbolo: base + '.SA' };
+  if (/^[A-Z]{2,5}$/.test(base)) return { chave: base, simbolo: base };
+  return null;
+}
+
+function gravarFavoritoRemoto(lista, t, incluir) {
   if (!logado || !sb) return;
   sb.auth.getUser().then(function (res) {
     var u = res && res.data && res.data.user;
     if (!u) return;
-    return incluir ? sb.from('acoes_favoritas').upsert({ user_id: u.id, ticker: t }, { onConflict: 'user_id,ticker' }) : sb.from('acoes_favoritas').delete().eq('ticker', t);
+    return incluir
+      ? sb.from('acoes_favoritas').upsert({ user_id: u.id, lista: lista, ticker: t }, { onConflict: 'user_id,lista,ticker' })
+      : sb.from('acoes_favoritas').delete().eq('lista', lista).eq('ticker', t);
   }).then(function (r) { if (r && r.error) mensagemFav('Não foi possível gravar na conta: ' + r.error.message, true); });
 }
-function alternarFavorito(t) {
-  if (ehFavorito(t)) { favoritos = favoritos.filter(function (x) { return x !== t; }); gravarFavoritoRemoto(t, false); }
-  else { favoritos.push(t); gravarFavoritoRemoto(t, true); }
-  gravarFavoritosLocais();
+function alternarFavorito(lista, t) {
+  var arr = FAVS[lista], idx = arr.indexOf(t);
+  if (idx !== -1) { arr.splice(idx, 1); gravarFavoritoRemoto(lista, t, false); }
+  else { arr.push(t); gravarFavoritoRemoto(lista, t, true); }
+  gravarFavoritosLocais(lista);
   renderFavoritos();
   carregarCotacoesFavoritos().then(function () { renderFavoritos(); renderizar(); });
 }
-function carregarCotacoesFavoritos() {
-  if (!favoritos.length) { cotFav = {}; return Promise.resolve(); }
+function listaDoExibir() {
+  var ex = document.getElementById('f-exibir').value;
+  return ex === 'fav-eua' ? 'eua' : (ex === 'fav-etf' ? 'etf' : 'brasil');
+}
+
+// Cotações dos favoritos: Brasil usa a lista da Brapi (ou 1 requisição por ativo fora dela, limite do plano);
+// EUA e ETF/Moeda usam a função cotacoes-yahoo (vários símbolos por chamada)
+function carregarCotacoesBrasil() {
+  if (!FAVS.brasil.length) { cotFav = {}; return Promise.resolve(); }
   var novo = {}, faltantes = [];
-  // quem já está na lista de cotações usa esses dados; os demais são consultados um a um (a Brapi aceita 1 ativo por requisição)
-  favoritos.forEach(function (t) {
+  FAVS.brasil.forEach(function (t) {
     var a = dados.filter(function (x) { return x.ticker === t; })[0];
     if (a) novo[t] = { nome: a.nome, preco: a.preco, variacao: a.varHoje, volume: a.preco > 0 ? a.financeiro / a.preco : 0, mercado: a.mercado };
     else faltantes.push(t);
@@ -16021,59 +16089,116 @@ function carregarCotacoesFavoritos() {
     }).catch(function () {});
   })).then(function () { cotFav = novo; });
 }
+function consultarYahoo(simbolos) {
+  if (!simbolos.length) return Promise.resolve({});
+  return fetch(SB_URL + '/functions/v1/cotacoes-yahoo?s=' + encodeURIComponent(simbolos.join(',')))
+    .then(function (r) { return r.json(); })
+    .then(function (j) { return j || {}; });
+}
+function carregarCotacoesExternas() {
+  var porSimbolo = {}, simbolos = [];
+  ['eua', 'etf'].forEach(function (l) {
+    FAVS[l].forEach(function (t) {
+      var n = normalizarTicker(l, t);
+      if (!n) return;
+      if (!porSimbolo[n.simbolo]) { porSimbolo[n.simbolo] = []; simbolos.push(n.simbolo); }
+      porSimbolo[n.simbolo].push(l + ':' + t);
+    });
+  });
+  if (!simbolos.length) { cotExt = {}; return Promise.resolve(); }
+  var blocos = [];
+  for (var i = 0; i < simbolos.length; i += 30) blocos.push(simbolos.slice(i, i + 30));
+  return Promise.all(blocos.map(function (b) { return consultarYahoo(b).catch(function () { return {}; }); })).then(function (rs) {
+    var novo = {};
+    rs.forEach(function (r) {
+      var cot = (r && r.cotacoes) || {};
+      Object.keys(cot).forEach(function (sim) { (porSimbolo[sim] || []).forEach(function (chave) { novo[chave] = cot[sim]; }); });
+    });
+    cotExt = novo;
+  });
+}
+function carregarCotacoesFavoritos() { return Promise.all([carregarCotacoesBrasil(), carregarCotacoesExternas()]); }
+
+function fmtPrecoExt(c) {
+  var pref = c.moeda === 'BRL' ? 'R$ ' : (c.moeda === 'USD' ? 'US$ ' : (c.moeda ? c.moeda + ' ' : ''));
+  var casas = c.tipo === 'CURRENCY' || c.preco < 10 ? 4 : 2;
+  return pref + c.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: casas });
+}
 function renderFavoritos() {
-  var el = document.getElementById('fav-lista');
-  if (!favoritos.length) { el.innerHTML = '<span class="fav-vazio">Nenhuma ação favorita ainda. Digite um ticker acima ou clique em um quadro do mapa.</span>'; return; }
-  el.innerHTML = favoritos.map(function (t) {
-    var c = cotFav[t];
-    var info = c && typeof c.preco === 'number' ? ' R$ ' + c.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + ' <i class="' + (c.variacao >= 0 ? 'pos' : 'neg') + '">' + fmtPct(c.variacao || 0) + '</i>' : '';
-    return '<span class="fav-chip"><b>' + esc(t) + '</b>' + info + '<button type="button" data-rm="' + esc(t) + '" title="Remover dos favoritos">×</button></span>';
+  Array.prototype.forEach.call(document.querySelectorAll('#fav-abas button'), function (b) { b.classList.toggle('ativo', b.getAttribute('data-l') === listaAtiva); });
+  document.getElementById('fav-input').placeholder = LISTAS[listaAtiva].dica;
+  var el = document.getElementById('fav-lista'), arr = FAVS[listaAtiva];
+  if (!arr.length) { el.innerHTML = '<span class="fav-vazio">' + LISTAS[listaAtiva].vazio + '</span>'; return; }
+  el.innerHTML = arr.map(function (t) {
+    var info = '';
+    if (listaAtiva === 'brasil') {
+      var c = cotFav[t];
+      if (c && typeof c.preco === 'number') info = ' R$ ' + c.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + ' <i class="' + (c.variacao >= 0 ? 'pos' : 'neg') + '">' + fmtPct(c.variacao || 0) + '</i>';
+    } else {
+      var x = cotExt[listaAtiva + ':' + t];
+      if (x && typeof x.preco === 'number') info = ' ' + fmtPrecoExt(x) + (typeof x.variacao === 'number' ? ' <i class="' + (x.variacao >= 0 ? 'pos' : 'neg') + '">' + fmtPct(x.variacao) + '</i>' : '');
+    }
+    return '<span class="fav-chip" title="' + esc(listaAtiva === 'brasil' ? t : ((cotExt[listaAtiva + ':' + t] || {}).nome || t)) + '"><b>' + esc(t) + '</b>' + info + '<button type="button" data-rm="' + esc(t) + '" title="Remover dos favoritos">×</button></span>';
   }).join('');
 }
 function adicionarFavoritoDigitado() {
-  var el = document.getElementById('fav-input');
-  var t = el.value.trim().toUpperCase();
-  if (!/^[A-Z0-9]{4,7}$/.test(t)) { mensagemFav('Informe um ticker válido, por exemplo PETR4.', true); return; }
-  if (ehFavorito(t)) { mensagemFav(t + ' já está nos favoritos.', true); return; }
-  mensagemFav('Verificando ' + t + '...', false);
-  fetch(BASE + '/quote/' + t).then(function (r) { return r.json(); }).then(function (j) {
-    if (!(j && j.results && j.results.length)) { mensagemFav('Ticker "' + t + '" não encontrado na B3.', true); return; }
+  var lista = listaAtiva, el = document.getElementById('fav-input');
+  var n = normalizarTicker(lista, el.value);
+  if (!n) { mensagemFav(lista === 'brasil' ? 'Informe um ticker válido, por exemplo PETR4.' : (lista === 'eua' ? 'Informe um ticker americano válido, por exemplo AAPL.' : 'Informe um ETF, moeda ou criptomoeda válido, por exemplo BOVA11, SPY, USDBRL ou BTC-USD.'), true); return; }
+  if (FAVS[lista].indexOf(n.chave) !== -1) { mensagemFav(n.chave + ' já está nos favoritos.', true); return; }
+  mensagemFav('Verificando ' + n.chave + '...', false);
+  var verificacao = lista === 'brasil'
+    ? fetch(BASE + '/quote/' + n.chave).then(function (r) { return r.json(); }).then(function (j) { return !!(j && j.results && j.results.length); })
+    : consultarYahoo([n.simbolo]).then(function (j) { return !!(j && j.cotacoes && j.cotacoes[n.simbolo]); });
+  verificacao.then(function (ok) {
+    if (!ok) { mensagemFav('Ativo "' + n.chave + '" não encontrado.', true); return; }
     el.value = '';
     atualizarAvisoFav();
-    alternarFavorito(t);
-  }).catch(function () { mensagemFav('Não foi possível verificar o ticker agora. Tente novamente.', true); });
+    alternarFavorito(lista, n.chave);
+  }).catch(function () { mensagemFav('Não foi possível verificar o ativo agora. Tente novamente.', true); });
 }
 document.getElementById('fav-add').addEventListener('click', adicionarFavoritoDigitado);
 document.getElementById('fav-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') adicionarFavoritoDigitado(); });
+document.getElementById('fav-abas').addEventListener('click', function (e) {
+  var b = e.target.closest ? e.target.closest('button[data-l]') : null;
+  if (!b) return;
+  listaAtiva = b.getAttribute('data-l');
+  atualizarAvisoFav();
+  renderFavoritos();
+});
 document.getElementById('fav-lista').addEventListener('click', function (e) {
   var b = e.target.closest ? e.target.closest('button[data-rm]') : null;
-  if (b) alternarFavorito(b.getAttribute('data-rm'));
+  if (b) alternarFavorito(listaAtiva, b.getAttribute('data-rm'));
 });
 document.getElementById('mapa').addEventListener('click', function (e) {
   var t = e.target.closest ? e.target.closest('.tile') : null;
-  if (t) alternarFavorito(t.getAttribute('data-t'));
+  if (t) alternarFavorito(listaDoExibir(), t.getAttribute('data-t'));
 });
 function iniciarFavoritos() {
-  favoritos = lerFavoritosLocais();
+  Object.keys(FAVS).forEach(function (l) { FAVS[l].length = 0; lerFavoritosLocais(l).forEach(function (t) { FAVS[l].push(t); }); });
   renderFavoritos();
   atualizarAvisoFav();
-  if (!sb || !SESSAO_INICIAL || !SESSAO_INICIAL.access_token) return carregarCotacoesFavoritos().then(renderFavoritos);
+  var depois = function () { return carregarCotacoesFavoritos().then(function () { renderFavoritos(); if (dados.length) renderizar(); }); };
+  if (!sb || !SESSAO_INICIAL || !SESSAO_INICIAL.access_token) return depois();
   return sb.auth.setSession({ access_token: SESSAO_INICIAL.access_token, refresh_token: SESSAO_INICIAL.refresh_token }).then(function (r) {
     if (r.error) throw r.error;
     logado = true;
-    return sb.from('acoes_favoritas').select('ticker').order('criado_em', { ascending: true });
+    return sb.from('acoes_favoritas').select('ticker,lista').order('criado_em', { ascending: true });
   }).then(function (r) {
     if (r.error) throw r.error;
-    var remotos = (r.data || []).map(function (x) { return x.ticker; });
-    var soLocais = favoritos.filter(function (t) { return remotos.indexOf(t) === -1; });
-    // favoritos que existiam só neste navegador passam a ser gravados na conta
-    soLocais.forEach(function (t) { gravarFavoritoRemoto(t, true); });
-    favoritos = remotos.concat(soLocais);
-    gravarFavoritosLocais();
+    Object.keys(FAVS).forEach(function (l) {
+      var remotos = (r.data || []).filter(function (x) { return (x.lista || 'brasil') === l; }).map(function (x) { return x.ticker; });
+      var soLocais = FAVS[l].filter(function (t) { return remotos.indexOf(t) === -1; });
+      // favoritos que existiam só neste navegador passam a ser gravados na conta
+      soLocais.forEach(function (t) { gravarFavoritoRemoto(l, t, true); });
+      FAVS[l].length = 0;
+      remotos.concat(soLocais).forEach(function (t) { FAVS[l].push(t); });
+      gravarFavoritosLocais(l);
+    });
   }).catch(function () { logado = false; }).then(function () {
     atualizarAvisoFav();
     renderFavoritos();
-    return carregarCotacoesFavoritos().then(function () { renderFavoritos(); if (dados.length) renderizar(); });
+    return depois();
   });
 }
 
