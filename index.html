@@ -15626,6 +15626,7 @@ h1{font-size:24px;font-weight:700;margin-bottom:4px;}
     <div class="campo"><label for="f-busca">Buscar ativo</label><input type="text" id="f-busca" placeholder="Ex.: PETR4" autocomplete="off"></div>
     <button type="button" class="btn" id="btn-atualizar">↻ Atualizar agora</button>
     <button type="button" class="btn" id="btn-copiar" title="Copia as oscilações do mapa exibido em texto com marcadores, pronto para colar no WhatsApp">Copiar para WhatsApp</button>
+    <button type="button" class="btn" id="btn-imagem" title="Copia o mapa exibido como imagem; se o navegador não permitir, baixa o arquivo PNG">Copiar imagem</button>
     <div class="status" id="status">Carregando cotações...</div>
   </div>
 
@@ -16293,6 +16294,111 @@ function copiarTextoAlternativo(txt) {
     if (ok) res(); else rej(new Error('cópia não permitida'));
   });
 }
+// ── Cópia do mapa como imagem: o layout exibido é redesenhado em um canvas (sem html2canvas, para não depender de CORS dos logotipos) ──
+function carregarImagemLogo(src) {
+  return new Promise(function (res) {
+    var im = new Image();
+    im.crossOrigin = 'anonymous';
+    im.onload = function () { res(im); };
+    im.onerror = function () { res(null); };
+    setTimeout(function () { res(null); }, 6000);
+    // logotipos do Parqet não liberam CORS: o canvas os recebe pela função cotacoes-yahoo
+    var pq = /assets\\.parqet\\.com\\/logos\\/symbol\\/([^?]+)/.exec(src);
+    im.src = pq ? SB_URL + '/functions/v1/cotacoes-yahoo?logo=' + pq[1] : src;
+  });
+}
+function gerarImagemMapa() {
+  var mapa = document.getElementById('mapa');
+  var base = mapa.getBoundingClientRect();
+  var W = Math.round(base.width), H = Math.round(base.height);
+  if (!W || !H || !mapa.querySelector('.tile')) return Promise.reject(new Error('sem mapa'));
+  var esc2 = 2, topo = 28;
+  var tiles = Array.prototype.slice.call(mapa.querySelectorAll('.tile'));
+  var logos = {};
+  return Promise.all(tiles.map(function (t) {
+    var im = t.querySelector('img.logo');
+    if (!im || im.style.display === 'none') return null;
+    return carregarImagemLogo(im.src).then(function (o) { if (o) logos[t.getAttribute('data-t')] = o; });
+  })).then(function () {
+    var cv = document.createElement('canvas');
+    cv.width = W * esc2; cv.height = (H + topo) * esc2;
+    var g = cv.getContext('2d');
+    g.scale(esc2, esc2);
+    var fam = 'Inter, Arial, sans-serif';
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H + topo);
+    g.textBaseline = 'middle'; g.textAlign = 'left';
+    var agora = new Date();
+    g.fillStyle = '#0B0B0B'; g.font = '600 13px ' + fam;
+    g.fillText('Período: ' + ROTULO_PERIODO[periodo] + ' | ' + agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), 4, 14);
+    g.save(); g.translate(0, topo);
+    g.fillStyle = '#0b0b0b'; g.fillRect(0, 0, W, H);
+    Array.prototype.forEach.call(mapa.querySelectorAll('.setor'), function (s) {
+      var rs = s.getBoundingClientRect(), sx = rs.left - base.left, sy = rs.top - base.top;
+      g.save();
+      g.beginPath(); g.rect(sx, sy, rs.width, rs.height); g.clip();
+      var tit = s.querySelector('.setor-tit');
+      if (tit) {
+        var sp = tit.querySelector('span');
+        var nome = tit.firstChild ? tit.firstChild.textContent : '';
+        g.textAlign = 'left'; g.textBaseline = 'middle'; g.font = '700 11.5px ' + fam; g.fillStyle = '#ffffff';
+        g.fillText(nome, sx + 6, sy + 10);
+        if (sp) {
+          g.fillStyle = sp.style.color || '#ffffff'; g.font = '700 11.5px ' + fam;
+          g.fillText(sp.textContent, sx + 6 + g.measureText(nome).width, sy + 10);
+        }
+      }
+      Array.prototype.forEach.call(s.querySelectorAll('.tile'), function (t) {
+        var r = t.getBoundingClientRect(), x = r.left - base.left, y = r.top - base.top;
+        var apagado = t.classList.contains('apagado');
+        g.save();
+        if (apagado) g.globalAlpha = 0.22;
+        g.fillStyle = t.style.background || '#2f2f2f'; g.fillRect(x, y, r.width, r.height);
+        g.strokeStyle = '#0b0b0b'; g.lineWidth = 1; g.strokeRect(x + 0.5, y + 0.5, r.width - 1, r.height - 1);
+        if (t.classList.contains('fav') || t.classList.contains('achado')) {
+          g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 1.5; g.strokeRect(x + 3, y + 3, r.width - 6, r.height - 6);
+        }
+        var b = t.querySelector('b'), v = t.querySelector('span');
+        var fonte = parseFloat(t.style.fontSize) || 12, fv = v ? (parseFloat(v.style.fontSize) || fonte * 0.72) : 0;
+        var lg = logos[t.getAttribute('data-t')], ti = lg ? parseFloat(t.querySelector('img.logo').style.width) || 20 : 0;
+        var alt = (lg ? ti + 3 : 0) + (b ? fonte * 1.15 : 0) + (v ? fv * 1.15 : 0);
+        var cy = y + (r.height - alt) / 2, cx = x + r.width / 2;
+        if (lg) {
+          g.fillStyle = '#ffffff'; g.beginPath(); g.arc(cx, cy + ti / 2, ti / 2, 0, Math.PI * 2); g.fill();
+          g.save(); g.beginPath(); g.arc(cx, cy + ti / 2, ti / 2 - 2, 0, Math.PI * 2); g.clip();
+          g.drawImage(lg, cx - ti / 2 + 2, cy + 2, ti - 4, ti - 4); g.restore();
+          cy += ti + 3;
+        }
+        g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        if (b) { g.font = '700 ' + fonte + 'px ' + fam; g.fillText(b.textContent, cx, cy + fonte * 0.575); cy += fonte * 1.15; }
+        if (v) { g.font = '500 ' + fv + 'px ' + fam; g.fillText(v.textContent, cx, cy + fv * 0.575); }
+        g.restore();
+      });
+      g.restore();
+    });
+    g.restore();
+    return new Promise(function (res, rej) { cv.toBlob(function (bl) { if (bl) res(bl); else rej(new Error('canvas')); }, 'image/png'); });
+  });
+}
+document.getElementById('btn-imagem').addEventListener('click', function () {
+  var btn = this, rotulo = 'Copiar imagem';
+  var aviso = function (m) { btn.textContent = m; clearTimeout(timerImg); timerImg = setTimeout(function () { btn.textContent = rotulo; btn.disabled = false; }, 2800); };
+  btn.disabled = true; btn.textContent = 'Gerando imagem...';
+  gerarImagemMapa().then(function (blob) {
+    var baixar = function () {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'mapa-de-calor-' + listaAtiva + '-' + periodo + '.png';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+      aviso('Imagem baixada (cópia não permitida)');
+    };
+    if (navigator.clipboard && window.ClipboardItem) {
+      return navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(function () { aviso('Imagem copiada'); }).catch(baixar);
+    }
+    baixar();
+  }).catch(function () { aviso('Nenhum mapa para copiar'); });
+});
+var timerImg = null;
 var timerCopia = null;
 document.getElementById('btn-copiar').addEventListener('click', function () {
   var btn = this, rotulo = 'Copiar para WhatsApp';
