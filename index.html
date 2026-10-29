@@ -15550,6 +15550,7 @@ h1{font-size:24px;font-weight:700;margin-bottom:4px;}
 .setor-tit{position:absolute;left:0;top:0;right:0;height:20px;line-height:20px;padding:0 6px;font-size:11.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#0b0b0b;}
 .tile{position:absolute;color:#fff;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.15;border:1px solid #0b0b0b;cursor:default;}
 .tile b{font-weight:700;letter-spacing:.01em;}
+.tile img.logo{background:#fff;border-radius:50%;padding:2px;object-fit:contain;flex:none;margin-bottom:3px;box-sizing:border-box;}
 .tile span{font-weight:500;opacity:.95;}
 .tile{cursor:pointer;}
 .tile.fav{outline:1.5px solid rgba(255,255,255,.9);outline-offset:-3px;z-index:2;}
@@ -15624,6 +15625,7 @@ h1{font-size:24px;font-weight:700;margin-bottom:4px;}
     <div class="campo"><label for="f-setor">Setor</label><select id="f-setor"><option value="">Todos os setores</option></select></div>
     <div class="campo"><label for="f-busca">Buscar ativo</label><input type="text" id="f-busca" placeholder="Ex.: PETR4" autocomplete="off"></div>
     <button type="button" class="btn" id="btn-atualizar">↻ Atualizar agora</button>
+    <button type="button" class="btn" id="btn-copiar" title="Copia as oscilações do mapa exibido em texto com marcadores, pronto para colar no WhatsApp">Copiar para WhatsApp</button>
     <div class="status" id="status">Carregando cotações...</div>
   </div>
 
@@ -15661,6 +15663,9 @@ var periodo = 'hoje';
 var ESCALA = { hoje: 4, '5d': 8, '1m': 15, '6m': 30, ytd: 30, '1a': 40, '5a': 100, max: 200 };
 var ROTULO_PERIODO = { hoje: 'Hoje', '5d': '5 dias', '1m': '1 mês', '6m': '6 meses', ytd: 'No ano (YTD)', '1a': '1 ano', '5a': '5 anos', max: 'Máximo' };
 var historico = {}, historicoCarregadoEm = 0, dataCotacao = 0, semHistorico = 0, carregandoHistorico = false, histMsg = '';
+var histExt = {};            // histórico dos favoritos EUA e ETF/Moeda: 'lista:chave' -> { diario, mensal, primeiro, ultimo }
+var histExtEm = {};          // 'lista:chave' -> instante da última tentativa de carga
+var listaRenderizada = [];   // ativos exibidos no mapa atual (usado na dica e na cópia para WhatsApp)
 var ultimaAtualizacao = null, ultimaCotacao = '', timer = null, carregando = false, avisoIncompleto = false;
 
 // Setores da Brapi (inglês) -> rótulos em português
@@ -15685,6 +15690,12 @@ function fmtMi(v) {
   if (v >= 1e9) return 'R$ ' + (v / 1e9).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' bi';
   if (v >= 1e6) return 'R$ ' + (v / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mi';
   return 'R$ ' + Math.round(v / 1e3).toLocaleString('pt-BR') + ' mil';
+}
+// Logotipo do ativo: B3 (e ETFs da B3) pela Brapi; ações e ETFs dos EUA pelo Parqet; moedas e criptomoedas ficam sem logotipo
+function urlLogo(a) {
+  if (a.setor === 'Moedas' || a.setor === 'Criptomoedas') return '';
+  if (a.moeda === undefined || /^[A-Z0-9]{4}(3|4|5|6|11)$/.test(a.ticker)) return 'https://icons.brapi.dev/icons/' + encodeURIComponent(a.ticker) + '.svg';
+  return 'https://assets.parqet.com/logos/symbol/' + encodeURIComponent(a.ticker) + '?format=png';
 }
 function esc(t) { return String(t === undefined || t === null ? '' : t).split('&').join('&amp;').split('<').join('&lt;'); }
 
@@ -15774,6 +15785,33 @@ function carregarHistorico() {
     try { fetch(SB_URL + '/functions/v1/mapa-calor-historico').catch(function () {}); } catch (e) {}
   }).finally(function () { carregandoHistorico = false; });
 }
+// Histórico dos favoritos fora da B3 (EUA e ETF/Moeda), obtido pela função cotacoes-yahoo (até 12 símbolos por chamada)
+function carregarHistoricoExterno() {
+  var porSimbolo = {}, simbolos = [];
+  ['eua', 'etf'].forEach(function (l) {
+    FAVS[l].forEach(function (t) {
+      var chave = l + ':' + t;
+      if (histExt[chave] || (histExtEm[chave] && Date.now() - histExtEm[chave] < 5 * 60 * 1000)) return;
+      var n = normalizarTicker(l, t);
+      if (!n) return;
+      if (!porSimbolo[n.simbolo]) { porSimbolo[n.simbolo] = []; simbolos.push(n.simbolo); }
+      porSimbolo[n.simbolo].push(chave);
+      histExtEm[chave] = Date.now();
+    });
+  });
+  if (!simbolos.length) return Promise.resolve();
+  var blocos = [];
+  for (var i = 0; i < simbolos.length; i += 12) blocos.push(simbolos.slice(i, i + 12));
+  return Promise.all(blocos.map(function (b) {
+    return fetch(SB_URL + '/functions/v1/cotacoes-yahoo?historico=1&s=' + encodeURIComponent(b.join(',')))
+      .then(function (r) { return r.json(); }).catch(function () { return {}; });
+  })).then(function (rs) {
+    rs.forEach(function (r) {
+      var h = (r && r.historico) || {};
+      Object.keys(h).forEach(function (sim) { (porSimbolo[sim] || []).forEach(function (chave) { histExt[chave] = h[sim]; }); });
+    });
+  });
+}
 function mudarPeriodo(novo) {
   periodo = novo;
   Array.prototype.forEach.call(document.querySelectorAll('#periodos button'), function (b) { b.classList.toggle('ativo', b.getAttribute('data-p') === novo); });
@@ -15784,7 +15822,7 @@ function mudarPeriodo(novo) {
   if (novo === 'hoje') { aplicarPeriodo(); atualizarStatus(); renderizar(); return; }
   histMsg = 'Carregando histórico...';
   atualizarStatus();
-  carregarHistorico().then(function () {
+  Promise.all([carregarHistorico(), carregarHistoricoExterno().catch(function () {})]).then(function () {
     if (!Object.keys(historico).length) { histMsg = 'O histórico está sendo preparado no servidor; tente novamente em alguns minutos.'; }
     else histMsg = '';
     aplicarPeriodo(); atualizarStatus(); renderizar();
@@ -15851,7 +15889,12 @@ function filtrarDados() {
       var c = cotExt[listaExt + ':' + t];
       if (!c || !(c.preco > 0)) return null;
       var setorExt = listaExt === 'eua' ? 'Estados Unidos' : (c.tipo === 'CURRENCY' ? 'Moedas' : (c.tipo === 'CRYPTOCURRENCY' ? 'Criptomoedas' : 'ETFs'));
-      return { ticker: t, nome: c.nome, empresa: c.nome, preco: c.preco, varHoje: c.variacao, variacao: periodo === 'hoje' ? c.variacao : null, financeiro: 1, mercado: 1, setor: setorExt, moeda: c.moeda };
+      var varPer = c.variacao;
+      if (periodo !== 'hoje') {
+        var he = histExt[listaExt + ':' + t], refe = he ? referenciaPeriodo(he, periodo, he.ultimo) : null;
+        varPer = refe && refe > 0 ? (c.preco / refe - 1) * 100 : null;
+      }
+      return { ticker: t, nome: c.nome, empresa: c.nome, preco: c.preco, varHoje: c.variacao, variacao: varPer, financeiro: 1, mercado: 1, setor: setorExt, moeda: c.moeda };
     }).filter(Boolean);
   } else if (soFavoritos) {
     // favoritos mesmo fora da lista dos mais negociados (usa a cotação individual)
@@ -15890,15 +15933,17 @@ function renderizar() {
   var mapa = document.getElementById('mapa');
   var modo = document.getElementById('f-tamanho').value;
   var lista = filtrarDados();
+  listaRenderizada = lista;
   var largura = document.getElementById('painel').clientWidth - 12;
   var altura = Math.max(560, Math.round(window.innerHeight - 330));
   mapa.style.width = largura + 'px';
   mapa.style.height = altura + 'px';
   if (!lista.length) {
     var exAtual = exibirAtual();
-    var msgVazio = (exAtual === 'fav-eua' || exAtual === 'fav-etf') && periodo !== 'hoje'
-      ? 'Os períodos de 5D a MAX estão disponíveis apenas para as ações da B3. Selecione "Hoje" para ver este grupo.'
-      : ((exAtual === 'fav-eua' || exAtual === 'fav-etf') ? 'Nenhum ativo nesta lista de favoritos ainda.' : 'Nenhum ativo para exibir.');
+    var extVazio = exAtual === 'fav-eua' || exAtual === 'fav-etf';
+    var msgVazio = extVazio && periodo !== 'hoje' && FAVS[exAtual === 'fav-eua' ? 'eua' : 'etf'].length
+      ? (histMsg || 'Histórico indisponível para os ativos desta lista no período selecionado.')
+      : (extVazio ? 'Nenhum ativo nesta lista de favoritos ainda.' : 'Nenhum ativo para exibir.');
     mapa.innerHTML = '<div class="vazio">' + msgVazio + '</div>';
     return;
   }
@@ -15924,9 +15969,12 @@ function renderizar() {
       var area = r.w * r.h, lado = Math.min(r.w, r.h);
       var fonte = Math.max(8, Math.min(30, Math.sqrt(area) / 4.2));
       var mostrarTicker = r.w > 26 && r.h > 16, mostrarVar = r.w > 40 && r.h > 30;
+      var urlLg = urlLogo(a), tamLogo = Math.round(Math.max(14, Math.min(44, lado * 0.3)));
+      var mostrarLogo = !!urlLg && r.w > 34 && r.h > 52;
+      var imgLogo = mostrarLogo ? '<img class="logo" src="' + urlLg + '" alt="" loading="lazy" style="width:' + tamLogo + 'px;height:' + tamLogo + 'px;" onerror="this.style.display=\\'none\\'">' : '';
       var marca = (busca ? (a.ticker.indexOf(busca) !== -1 ? ' achado' : ' apagado') : '') + (ehFavorito(a.ticker) ? ' fav' : '');
       html += '<div class="tile' + marca + '" data-t="' + esc(a.ticker) + '" style="left:' + r.x.toFixed(1) + 'px;top:' + r.y.toFixed(1) + 'px;width:' + r.w.toFixed(1) + 'px;height:' + r.h.toFixed(1) + 'px;background:' + corVariacao(a.variacao) + ';font-size:' + fonte.toFixed(1) + 'px;">' +
-        (mostrarTicker ? '<b>' + (ehFavorito(a.ticker) ? '★ ' : '') + esc(a.ticker) + '</b>' : '') + (mostrarVar ? '<span style="font-size:' + Math.max(8, fonte * 0.72).toFixed(1) + 'px;">' + fmtPct(a.variacao) + '</span>' : '') + '</div>';
+        imgLogo + (mostrarTicker ? '<b>' + (ehFavorito(a.ticker) ? '★ ' : '') + esc(a.ticker) + '</b>' : '') + (mostrarVar ? '<span style="font-size:' + Math.max(8, fonte * 0.72).toFixed(1) + 'px;">' + fmtPct(a.variacao) + '</span>' : '') + '</div>';
     });
     html += '</div>';
   });
@@ -15938,7 +15986,7 @@ var dica = document.getElementById('dica');
 document.getElementById('mapa').addEventListener('mousemove', function (ev) {
   var t = ev.target.closest ? ev.target.closest('.tile') : null;
   if (!t) { dica.hidden = true; return; }
-  var a = dados.filter(function (x) { return x.ticker === t.getAttribute('data-t'); })[0];
+  var a = listaRenderizada.filter(function (x) { return x.ticker === t.getAttribute('data-t'); })[0];
   if (!a) { dica.hidden = true; return; }
   dica.innerHTML = '<b>' + esc(a.ticker) + '</b> <span style="color:' + (a.variacao >= 0 ? '#16A34A' : '#DC2626') + ';font-weight:700;">' + fmtPct(a.variacao) + '</span> <span style="color:#5C5C5C;">(' + ROTULO_PERIODO[periodo] + ')</span>' +
     (periodo !== 'hoje' && typeof a.varHoje === 'number' ? '<br>Hoje: ' + fmtPct(a.varHoje) : '') + '<br>' + esc(a.nome) +
@@ -16065,7 +16113,10 @@ function alternarFavorito(lista, t) {
   else { arr.push(t); gravarFavoritoRemoto(lista, t, true); }
   gravarFavoritosLocais(lista);
   renderFavoritos();
-  carregarCotacoesFavoritos().then(function () { renderFavoritos(); renderizar(); });
+  carregarCotacoesFavoritos().then(function () {
+    renderFavoritos(); renderizar();
+    if (periodo !== 'hoje') carregarHistoricoExterno().catch(function () {}).then(renderizar);
+  });
 }
 function listaDoExibir() {
   var ex = exibirAtual();
@@ -16210,6 +16261,45 @@ function iniciarFavoritos() {
 ['f-tamanho', 'f-qtd', 'f-setor'].forEach(function (id) { document.getElementById(id).addEventListener('change', renderizar); });
 document.getElementById('f-busca').addEventListener('input', renderizar);
 document.getElementById('btn-atualizar').addEventListener('click', carregar);
+
+// ── Cópia das oscilações em texto com marcadores (formatação do WhatsApp: *negrito*) ──
+var ROTULO_ABA = { todos: 'Todos os ativos (B3)', brasil: 'Favoritos Brasil', eua: 'Favoritos EUA', etf: 'Favoritos ETF/Moeda' };
+function textoWhatsApp() {
+  var lista = listaRenderizada.filter(function (a) { return typeof a.variacao === 'number' && !isNaN(a.variacao); })
+    .slice().sort(function (a, b) { return b.variacao - a.variacao; });
+  if (!lista.length) return '';
+  var agora = new Date();
+  var linhas = ['*Mapa de Calor - ' + ROTULO_ABA[listaAtiva] + '*',
+    'Período: ' + ROTULO_PERIODO[periodo] + ' | ' + agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), ''];
+  lista.forEach(function (a) { linhas.push('• ' + a.ticker + ': ' + fmtPct(a.variacao)); });
+  return linhas.join('\\n');
+}
+function copiarTexto(txt) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(txt).catch(function () { return copiarTextoAlternativo(txt); });
+  }
+  return copiarTextoAlternativo(txt);
+}
+function copiarTextoAlternativo(txt) {
+  return new Promise(function (res, rej) {
+    var ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    if (ok) res(); else rej(new Error('cópia não permitida'));
+  });
+}
+var timerCopia = null;
+document.getElementById('btn-copiar').addEventListener('click', function () {
+  var btn = this, rotulo = 'Copiar para WhatsApp';
+  var txt = textoWhatsApp();
+  var aviso = function (m) { btn.textContent = m; clearTimeout(timerCopia); timerCopia = setTimeout(function () { btn.textContent = rotulo; }, 2500); };
+  if (!txt) { aviso('Nenhum ativo para copiar'); return; }
+  copiarTexto(txt).then(function () { aviso('Copiado (' + listaRenderizada.length + ' ativos)'); })
+    .catch(function () { aviso('Não foi possível copiar'); });
+});
 window.addEventListener('resize', function () { if (dados.length) renderizar(); });
 // atualização automática a cada 60 s (pausa quando a aba não está visível)
 function agendar() {
