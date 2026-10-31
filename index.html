@@ -283,6 +283,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
       <button type="button" class="btn-nav" id="btn-nav-sucessorio">Planejamento Sucessório ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-holding">Viabilidade de Holding ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-diversificacao">Diversificação de Carteira ↗</button>
+      <button type="button" class="btn-nav" id="btn-nav-consolidacao">Consolidação de Carteira ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-mapa-calor">Mapa de Calor ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-nota-corretagem">Nota de Corretagem ↗</button>
       <div class="nav-dropdown-wrap">
@@ -15511,6 +15512,836 @@ montarFormulario();
 </html>`);
   }
 
+  function abrirConsolidacaoCarteira() {
+    var win = window.open('', '_blank');
+    if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
+    escreverConteudoJanela(win, `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Consolidação de Carteira — Clube do Rendimento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"><\/script>
+<style>
+:root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--ink-mute:#9A9A9A;--line:#E2E2E2;--green:#16A34A;--red:#DC2626;--radius:16px;--radius-lg:24px;--shadow-sm:0 2px 10px rgba(0,0,0,.05);}
+*{box-sizing:border-box;margin:0;padding:0;}
+[hidden]{display:none!important;}
+body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-soft);color:var(--ink);min-height:100vh;font-size:14px;}
+.nav{background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;}
+.nav-brand{font-weight:700;font-size:15px;text-decoration:none;color:var(--ink);}
+.container{max-width:1280px;margin:0 auto;padding:30px 20px 80px;}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:600;margin-bottom:14px;}
+.eyebrow::before{content:"";width:18px;height:2px;background:var(--ink);display:inline-block;}
+h1{font-size:24px;font-weight:700;margin-bottom:6px;}
+.sub{font-size:13px;color:var(--ink-soft);margin-bottom:22px;line-height:1.55;max-width:820px;}
+.card{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);padding:22px 24px;box-shadow:var(--shadow-sm);margin-bottom:20px;page-break-inside:avoid;}
+.card-titulo{font-size:15px;font-weight:700;margin-bottom:4px;}
+.card-sub{font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;line-height:1.5;}
+.controles{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;}
+.campo{display:flex;flex-direction:column;gap:6px;}
+.campo label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);}
+.campo input,.campo select{padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:13.5px;color:var(--ink);background:#fff;min-width:220px;}
+.campo input:focus,.campo select:focus{outline:none;border-color:var(--ink);}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:9px 16px;border-radius:8px;font-weight:600;font-size:13px;border:1.5px solid var(--ink);background:#fff;color:var(--ink);cursor:pointer;font-family:inherit;}
+.btn:hover{background:var(--bg-soft);}
+.btn-primary{background:var(--ink);color:#fff;}
+.btn-primary:hover{background:#000;}
+.barra-acoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center;}
+.pos{color:var(--green);font-weight:600;}
+.neg{color:var(--red);font-weight:600;}
+.nota{font-size:12px;color:var(--ink-soft);margin-top:12px;line-height:1.55;}
+.vazio{font-size:13px;color:var(--ink-soft);}
+/* painel */
+.cab-rel{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;margin-bottom:16px;}
+.cab-rel h2{font-size:20px;font-weight:700;}
+.cab-rel small{display:block;font-size:12.5px;color:var(--ink-soft);margin-top:4px;}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:16px 0 4px;}
+.kpi{border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;background:#fff;}
+.kpi-rot{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-mute);margin-bottom:8px;}
+.kpi-val{font-size:21px;font-weight:700;line-height:1.1;white-space:nowrap;}
+.kpi-sub{font-size:11.5px;color:var(--ink-soft);margin-top:6px;line-height:1.4;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:28px;}
+.tit-sec{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px;padding-left:10px;border-left:4px solid #111;}
+.tabela-wrap{overflow:auto;}
+table.tb{width:100%;border-collapse:collapse;}
+table.tb th{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-mute);text-align:right;padding:9px 10px;border-bottom:2px solid var(--ink);white-space:nowrap;vertical-align:bottom;}
+table.tb th.e,table.tb td.e{text-align:left;}
+table.tb td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:right;font-size:13px;white-space:nowrap;}
+table.tb td.e{white-space:normal;}
+table.tb tr.zebra td{background:#FAFAF8;}
+table.tb tr.total td{font-weight:700;border-top:2px solid var(--ink);}
+table.tb tr.grupo td{font-weight:700;background:#F1F1F1;}
+.barra-linha{display:grid;grid-template-columns:minmax(120px,250px) 1fr 104px;align-items:center;gap:12px;margin:10px 0;}
+.barra-rot{font-size:12.5px;line-height:1.3;}
+.trilho{height:20px;background:#F1F1F1;border-radius:999px;overflow:hidden;}
+.fill{height:100%;background:#111;border-radius:999px;}
+.fill.cinza{background:#9A9A9A;}
+.barra-val{text-align:right;display:flex;flex-direction:column;font-size:12.5px;}
+.barra-val small{color:var(--ink-soft);font-size:11px;}
+.leg{display:flex;justify-content:space-between;font-size:12.5px;margin:6px 4px;gap:10px;}
+.leg i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:8px;}
+.rosca{width:210px;height:210px;}
+.rosca text.r{font-size:11px;fill:#5C5C5C;}
+.rosca text.t{font-size:16px;font-weight:700;fill:#111;}
+.centro{display:flex;justify-content:center;}
+.alertas{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px;}
+.alerta{border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;background:#fff;border-left:5px solid #111;}
+.alerta.medio{border-left-color:#8A8A8A;}
+.alerta.baixo{border-left-color:#D4D4D4;}
+.alerta h4{font-size:13.5px;margin-bottom:6px;}
+.alerta p{font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+.alerta .nv{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-mute);display:block;margin-top:8px;}
+.chip{white-space:nowrap;display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid var(--ink);margin-left:6px;}
+.chip.sel{background:var(--ink);color:#fff;}
+svg text{font-family:'Inter','Segoe UI',sans-serif;}
+@media(max-width:860px){.grid2{grid-template-columns:1fr;}}
+@media print{.nav,.controles,.barra-acoes,#area-envio{display:none!important;}body{background:#fff;}.card{box-shadow:none;border-color:#ccc;}.tabela-wrap{overflow:visible;}.container{padding:10px;}}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <a href="javascript:window.close()" class="nav-brand">← Clube do Rendimento</a>
+</header>
+
+<div class="container">
+  <span class="eyebrow">Análise de carteira</span>
+  <h1>Consolidação de Carteira</h1>
+  <p class="sub">Carregue o relatório XPerformance do cliente (PDF). O painel consolida patrimônio, rentabilidade, alocação por estratégia, aderência aos perfis, concentração, vencimentos da renda fixa, liquidez, tributação e movimentações, com pontos de atenção. O arquivo é lido apenas neste navegador e não é enviado a nenhum servidor.</p>
+
+  <div class="card" id="area-envio">
+    <div class="controles">
+      <div class="campo"><label for="in-cliente">Nome do cliente (opcional, aparece no painel)</label><input type="text" id="in-cliente" placeholder="Ex.: Maria da Silva" autocomplete="off"></div>
+    </div>
+    <div class="barra-acoes">
+      <label for="arq-carteira" class="btn btn-primary" style="cursor:pointer;">⬆ Carregar relatório XPerformance (PDF)</label>
+      <input type="file" id="arq-carteira" accept=".pdf" hidden>
+      <span id="status" style="font-size:12.5px;color:var(--ink-soft);">Nenhum arquivo carregado.</span>
+    </div>
+  </div>
+
+  <div id="painel" hidden>
+    <div class="barra-acoes" style="margin:0 0 16px;">
+      <button type="button" class="btn btn-primary" id="btn-excel">⬇ Exportar Excel</button>
+      <button type="button" class="btn" id="btn-imprimir">Imprimir / salvar em PDF</button>
+    </div>
+    <div id="conteudo"></div>
+  </div>
+</div>
+
+<script>
+var D = null, R = null, perfilSel = null;
+
+// ── Utilitários ──
+function esc(t) { return String(t === undefined || t === null ? '' : t).split('&').join('&amp;').split('"').join('&quot;').split('<').join('&lt;'); }
+function pNum(t) {
+  var s = String(t === undefined || t === null ? '' : t).replace('%', '').replace('R$', '').replace(/\\s/g, '').replace('−', '-');
+  if (!s || s === '-') return null;
+  var neg = s.charAt(0) === '-';
+  s = s.replace('-', '');
+  var n = Number(s.split('.').join('').replace(',', '.'));
+  return isNaN(n) ? null : (neg ? -n : n);
+}
+function compacto(t) { return String(t === undefined || t === null ? '' : t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+function fmtBRL(v) { return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtRS(v) { return 'R$ ' + Math.round(v).toLocaleString('pt-BR'); }
+function fmtP(v, d) { if (v === null || v === undefined || isNaN(v)) return '—'; d = d === undefined ? 2 : d; return v.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }) + '%'; }
+function fmtPs(v, d) { if (v === null || v === undefined || isNaN(v)) return '—'; return (v > 0 ? '+' : '') + fmtP(v, d); }
+function clsv(v) { return v > 0 ? 'pos' : (v < 0 ? 'neg' : ''); }
+function fmtCompacto(v) {
+  var a = Math.abs(v), s = v < 0 ? '-' : '';
+  if (a >= 1e6) return s + 'R$ ' + (a / 1e6).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' mi';
+  if (a >= 1e3) return s + 'R$ ' + Math.round(a / 1e3).toLocaleString('pt-BR') + ' mil';
+  return s + fmtRS(a);
+}
+function fmtQtd(v) { return v === null || v === undefined ? '' : v.toLocaleString('pt-BR', { maximumFractionDigits: 2 }); }
+function soma(arr, f) { var t = 0; arr.forEach(function (x) { var v = f(x); if (typeof v === 'number' && !isNaN(v)) t += v; }); return t; }
+
+var ROTULOS_CLASSE = {
+  pos: 'RF Pós-fixado', infl: 'RF Inflação', pre: 'RF Prefixado', multi: 'Multimercados',
+  rvb: 'Renda Variável Brasil', grv: 'Global Renda Variável', listados: 'Fundos Listados',
+  alt: 'Alternativos', grf: 'Global Renda Fixa', caixa: 'Caixa e proventos', outros: 'Outros'
+};
+function chaveClasse(texto) {
+  var n = compacto(texto);
+  if (!n) return null;
+  if (n.indexOf('caixa') !== -1 || n.indexOf('provento') !== -1 || n.indexOf('saldo') !== -1) return 'caixa';
+  if (n.indexOf('global') !== -1 || n.indexOf('internacional') !== -1 || n.indexOf('exterior') !== -1) return n.indexOf('fixa') !== -1 ? 'grf' : 'grv';
+  if (n.indexOf('posfix') !== -1) return 'pos';
+  if (n.indexOf('infla') !== -1) return 'infl';
+  if (n.indexOf('prefix') !== -1) return 'pre';
+  if (n.indexOf('multimercado') !== -1) return 'multi';
+  if (n.indexOf('listado') !== -1 || n.indexOf('imobiliario') !== -1) return 'listados';
+  if (n.indexOf('alternativ') !== -1) return 'alt';
+  if (n.indexOf('variavel') !== -1 || n.indexOf('acoes') !== -1) return 'rvb';
+  return null;
+}
+
+// ── Leitura do PDF (XPerformance) ──
+function fixLig(s) { return s.replace(/([A-Za-zÀ-ÿ])\\s(fi|fl)\\s(?=[A-Za-zÀ-ÿ])/g, '$1$2'); }
+var MESES_ABREV = { jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12 };
+
+function extrairLinhasPDF(pdf) {
+  var paginas = [];
+  for (var i = 1; i <= pdf.numPages; i++) {
+    paginas.push(pdf.getPage(i).then(function (page) {
+      return page.getTextContent().then(function (content) {
+        var itens = content.items.map(function (it) { return { x: it.transform[4], y: it.transform[5], t: it.str }; })
+          .sort(function (a, b) { return b.y - a.y || a.x - b.x; });
+        var grupos = [];
+        itens.forEach(function (it) {
+          var g = grupos[grupos.length - 1];
+          if (g && Math.abs(g.y - it.y) <= 2.5) g.itens.push(it); else grupos.push({ y: it.y, itens: [it] });
+        });
+        return grupos.map(function (g) {
+          return g.itens.sort(function (a, b) { return a.x - b.x; }).map(function (o) { return o.t; }).join(' ').replace(/\\s+/g, ' ').trim();
+        });
+      });
+    }));
+  }
+  return Promise.all(paginas).then(function (ps) { return [].concat.apply([], ps); });
+}
+
+function detalharAtivo(p) {
+  var up = p.nome.toUpperCase();
+  if (/^(LCA|LCI|LCD|CRA|CRI|CDB|LC|LF|LIG|DEB|RDB)\\b/.test(up)) {
+    p.tipo = 'rf';
+    p.papel = up.split(' ')[0];
+    var m = /^[A-Z]+\\s+(.*?)\\s*-\\s*([A-Z]{3})\\/(\\d{4})\\s*(?:-\\s*(.*))?$/i.exec(p.nome);
+    if (m) {
+      p.emissor = m[1].trim();
+      var mes = MESES_ABREV[m[2].toLowerCase()];
+      if (mes) p.venc = { m: mes, a: Number(m[3]) };
+      p.taxa = (m[4] || '').replace(/^-\\s*/, '').trim();
+    }
+  } else if (/^[A-Z]{4}\\d{1,2}$/.test(up)) {
+    p.tipo = p.chave === 'listados' ? 'fii' : (p.chave === 'rvb' ? 'acao' : 'etf');
+  } else if (/\\bFII\\b|FIAGRO|IMOBILI/.test(up)) {
+    p.tipo = 'fii_nl';
+  } else {
+    p.tipo = 'fundo';
+  }
+}
+
+function lerRelatorio(brutas) {
+  var L = brutas.map(function (l) { return fixLig(l).replace(/−/g, '-'); });
+  var r = { cab: {}, kpi: { per: {} }, bench: {}, anos: {}, evol: [], estrategias: [], posicoes: [], movs: [] };
+  var i, m, emResumo = false, intPares = [], pctPares = [];
+  var BENCH = { 'portfolio': 'port', 'portfólio': 'port', 'cdi': 'cdi', 'ibovespa': 'ibov', 'ipca': 'ipca', 'dolar': 'dolar', 'dólar': 'dolar' };
+  for (i = 0; i < L.length; i++) {
+    var l = L[i];
+    if (!r.cab.conta && (m = /^(\\d{5,})\\s+(.+?)\\s+(\\d{2}\\/\\d{2}\\/\\d{4})$/.exec(l))) { r.cab = { conta: m[1], assessor: m[2], data: m[3] }; continue; }
+    if (r.kpi.patrimonio === undefined && (m = /^R\\$\\s*([\\d.]+,\\d{2})\\s+(-?[\\d.]+,\\d+)%\\s+(-?R\\$\\s*[\\d.]+,\\d{2})\\s+(-?[\\d.]+,\\d+)%\\s+(-?R\\$\\s*[\\d.]+,\\d{2})$/.exec(l))) {
+      r.kpi.patrimonio = pNum(m[1]); r.kpi.rentMes = pNum(m[2]); r.kpi.ganhoMes = pNum(m[3]); r.kpi.rent24 = pNum(m[4]); r.kpi.ganho24 = pNum(m[5]);
+      continue;
+    }
+    if ((m = /^(?:-?[\\d.]+,\\d+\\s*%\\s+)?(Portf[óo]lio|CDI|Ibovespa|IPCA|D[óo]lar)\\s+(-?[\\d.]+,\\d+)%\\s+(-?[\\d.]+,\\d+)%\\s+(-?[\\d.]+,\\d+)%\\s+(-?[\\d.]+,\\d+)%$/.exec(l))) {
+      var chv = BENCH[m[1].toLowerCase()];
+      if (chv && !r.bench[chv]) r.bench[chv] = [pNum(m[2]), pNum(m[3]), pNum(m[4]), pNum(m[5])];
+      continue;
+    }
+    if ((m = /^(M[ÊE]S|ANO|12M|24M)\\s+(-?R\\$\\s*[\\d.]+,\\d{2})\\s+(-?[\\d.]+,\\d+)%\\s+(-?[\\d.]+,\\d+)%\\s+(-?R\\$\\s*[\\d.]+,\\d{2})$/.exec(l))) {
+      var pk = { 'MES': 'mes', 'MÊS': 'mes', 'ANO': 'ano', '12M': 'm12', '24M': 'm24' }[m[1].toUpperCase()];
+      if (pk && !r.kpi.per[pk]) r.kpi.per[pk] = { ganho: pNum(m[2]), rent: pNum(m[3]), pcdi: pNum(m[4]), mov: pNum(m[5]) };
+      continue;
+    }
+    if (compacto(l).indexOf('estatisticahistorica') !== -1 && compacto(l).indexOf('resumo') !== -1) { emResumo = true; continue; }
+    if (emResumo) {
+      if (/^XPerformance - Relat/i.test(l)) { emResumo = false; continue; }
+      if ((m = /^(\\d+)\\s+(\\d+)$/.exec(l))) { intPares.push([Number(m[1]), Number(m[2])]); continue; }
+      if ((m = /^(-?[\\d.]+,\\d+)%\\s+(-?[\\d.]+,\\d+)%$/.exec(l))) { pctPares.push([pNum(m[1]), pNum(m[2])]); continue; }
+    }
+    if ((m = /^Portf[óo]lio\\s+(.+)$/.exec(l))) {
+      var tk = m[1].split(/\\s+/);
+      var ok = tk.length >= 13 && tk.every(function (t) { return /^(-|-?[\\d.]+,\\d+%?)$/.test(t); });
+      if (ok) {
+        var ym = /^(\\d{4})$/.exec(L[i + 1] || ''), cm = /^%\\s*CDI\\s+(.+)$/.exec(L[i + 2] || '');
+        if (ym) {
+          var ct = cm ? cm[1].split(/\\s+/) : [];
+          r.anos[ym[1]] = {
+            port: tk.slice(0, 12).map(pNum), pcdi: ct.slice(0, 12).map(pNum),
+            ano: pNum(tk[12]), acum: tk.length > 13 ? pNum(tk[13]) : null, anoPcdi: ct.length > 12 ? pNum(ct[12]) : null
+          };
+        }
+      }
+      continue;
+    }
+    if ((m = /^([a-zç]{3})\\.\\/(\\d{2})\\s+(-?R\\$\\s*[\\d.]+,\\d{2})\\s+(-?R\\$\\s*[\\d.]+,\\d{2})\\s+(-?R\\$\\s*[\\d.]+,\\d{2})\\s+(-?R\\$\\s*[\\d.]+,\\d{2})\\s+(-?R\\$\\s*[\\d.]+,\\d{2})\\s+(-?R\\$\\s*[\\d.]+,\\d{2})\\s+(-?[\\d.]+,\\d+)%\\s+(-?[\\d.]+,\\d+)%$/.exec(l))) {
+      r.evol.push({ mes: MESES_ABREV[m[1]] || 0, ano: 2000 + Number(m[2]), rot: m[1] + '/' + m[2], ini: pNum(m[3]), mov: pNum(m[4]), ir: pNum(m[5]), iof: pNum(m[6]), fin: pNum(m[7]), ganho: pNum(m[8]), rent: pNum(m[9]), pcdi: pNum(m[10]) });
+      continue;
+    }
+    if ((m = /^(.+?)\\s*\\(\\s*([\\d.]+,\\d+)\\s*%\\s*\\)\\s*R\\$\\s*([\\d.]+,\\d{2})\\s*(.*)$/.exec(l))) {
+      var rest = m[4].split(/\\s+/).filter(Boolean);
+      r.estrategias.push({ nome: m[1].trim(), chave: chaveClasse(m[1]) || 'outros', aloc: pNum(m[2]), saldo: pNum(m[3]),
+        mes: pNum(rest[0]), ano: pNum(rest[1]), m12: pNum(rest[2]), m24: pNum(rest[3]) });
+      continue;
+    }
+    if ((m = /^(\\d{2}\\/\\d{2}\\/\\d{4})\\s+(\\d{2}\\/\\d{2}\\/\\d{4})\\s+(.+?)\\s+(-?R\\$\\s*[\\d.]+,\\d{2})\\s+(-?R\\$\\s*[\\d.]+,\\d{2})$/.exec(l))) {
+      r.movs.push({ data: m[1], liq: m[2], hist: m[3], valor: pNum(m[4]), saldo: pNum(m[5]) });
+    }
+  }
+  if (intPares.length >= 1) { r.kpi.pos = intPares[0][0]; r.kpi.neg = intPares[0][1]; }
+  if (intPares.length >= 2) { r.kpi.acima = intPares[1][0]; r.kpi.abaixo = intPares[1][1]; }
+  if (pctPares.length >= 1) { r.kpi.max = pctPares[0][0]; r.kpi.min = pctPares[0][1]; }
+  if (pctPares.length >= 2) { r.kpi.vol12 = pctPares[1][0]; r.kpi.vol24 = pctPares[1][1]; }
+
+  // posição detalhada
+  var estr = null, emDet = false, pendente = '', ultimo = null;
+  var IGNORA = /XPerformance|Estrat|PRECIFICA|POSI[ÇC]|Legenda|M[ÊE]S ATUAL|^Rent\\.|^¹|Os dados dos ativos|^(?:\\S\\s){5,}/i;
+  for (i = 0; i < L.length; i++) {
+    var ln = L[i];
+    if (/Estrat[ée]gias\\s+Saldo Bruto\\s+Qtd/i.test(ln)) { emDet = true; pendente = ''; continue; }
+    if (!emDet) continue;
+    if (/^M\\s*O\\s*V\\s*I\\s*M\\s*E\\s*N\\s*T|^MOV\\s+LIQ/i.test(ln)) { emDet = false; continue; }
+    m = /^(.*?)\\s*R\\$\\s*(-?[\\d.]+,\\d{2})\\s+(-|[\\d.,]+)\\s+(.+)$/.exec(ln);
+    var pcts = m ? (m[4].match(/-?[\\d.]+,\\d+%/g) || []) : [];
+    if (m && pcts.length === 7) {
+      var nome = m[1].trim() || pendente;
+      pendente = '';
+      if (m[3] === '-') {
+        estr = { nome: nome, chave: chaveClasse(nome) || 'outros' };
+        ultimo = null;
+        continue;
+      }
+      if (!nome) continue;
+      var qt = /^\\d+\\.\\d{1,2}$/.test(m[3]) ? Number(m[3]) : pNum(m[3]);
+      var p = { nome: nome.replace(/\\s*-\\s*$/, ''), estrategia: estr ? estr.nome : '', chave: estr ? estr.chave : 'outros', saldo: pNum(m[2]), qtd: qt,
+        aloc: pNum(pcts[0]), mes: pNum(pcts[1]), mcdi: pNum(pcts[2]), ano: pNum(pcts[3]), acdi: pNum(pcts[4]), m24: pNum(pcts[5]), c24: pNum(pcts[6]) };
+      p.semCont = /-\\s*$/.test(nome);
+      r.posicoes.push(p);
+      ultimo = p;
+      continue;
+    }
+    // continuação da taxa do título (ex.: "108,60% CDI" ou "- 80,50% CDI") na linha seguinte ao valor
+    if (ultimo && /^-?\\s*[\\d.,]+\\s*%\\s*(CDI|IPCA|DI)\\b/i.test(ln) && !/R\\$/.test(ln)) {
+      ultimo.nome = (ultimo.nome + ' ' + (/^-/.test(ln) ? ln : '- ' + ln)).replace(/\\s*-\\s*-\\s*/g, ' - ').replace(/\\s+/g, ' ').trim();
+      ultimo = null;
+      continue;
+    }
+    if (IGNORA.test(ln) || /^\\d{2}$/.test(ln)) continue;
+    if (ln.length > 3) { pendente = ln; ultimo = null; }
+  }
+  r.posicoes.forEach(function (p) { detalharAtivo(p); });
+  r.posicoes.forEach(function (p) { if (/\\s-\\s*$/.test(p.nome)) p.nome = p.nome.replace(/\\s*-\\s*$/, ''); });
+
+  if (!r.bench.port && r.kpi.per.ano && r.kpi.per.m12 && r.kpi.per.m24 && r.kpi.rentMes !== undefined) r.bench.port = [r.kpi.rentMes, r.kpi.per.ano.rent, r.kpi.per.m12.rent, r.kpi.per.m24.rent];
+  if (!r.estrategias.length || r.kpi.patrimonio === undefined) return null;
+  return r;
+}
+
+// ── Análise ──
+var LIQ = [
+  { k: 'd0', r: 'D+0 (liquidez imediata)' }, { k: 'bolsa', r: 'D+2 (bolsa)' }, { k: 'fundo', r: 'Fundos abertos (D+1 a D+30)' },
+  { k: 'venc', r: 'No vencimento (renda fixa)' }, { k: 'sem', r: 'Sem liquidez diária' }
+];
+var TRIB = [
+  { k: 'fii', r: 'Fundos imobiliários e listados' }, { k: 'isento', r: 'Isento (LCA, LCI, CRA, CRI)' }, { k: 'trib', r: 'Tributado' }
+];
+var CINZAS = ['#111111', '#3D3D3D', '#6B6B6B', '#939393', '#B8B8B8', '#D6D6D6', '#EAEAEA'];
+var MATRIZ_PADRAO = {
+  perfis: [{ nome: 'Perfil 1' }, { nome: 'Perfil 2' }, { nome: 'Perfil 3' }, { nome: 'Perfil 4' }, { nome: 'Perfil 5' }],
+  classes: [
+    { nome: 'RF Pós-fixado', alvo: [70.5, 65, 35, 27.5, 13.5] }, { nome: 'RF Inflação', alvo: [17, 17.5, 27, 27, 30] },
+    { nome: 'RF Prefixado', alvo: [6, 6, 11, 8.5, 8] }, { nome: 'Multimercados', alvo: [1.5, 2, 10.5, 11.5, 7.5] },
+    { nome: 'Renda Variável Brasil', alvo: [0, 2, 3.5, 5.5, 15] }, { nome: 'Global Renda Variável', alvo: [2.5, 2.5, 4.5, 5, 7] },
+    { nome: 'Fundos Listados', alvo: [0, 2.5, 3, 5, 7] }, { nome: 'Alternativos', alvo: [0, 0, 3, 5, 7] },
+    { nome: 'Global Renda Fixa', alvo: [2.5, 2.5, 2.5, 5, 5] }
+  ]
+};
+function carregarMatriz() {
+  // a matriz de perfis da ferramenta "Diversificação de Carteira" (salva neste navegador) é reutilizada quando existe
+  try {
+    var b = localStorage.getItem('cr_diversificacao_carteira_v1');
+    if (b) {
+      var e = JSON.parse(b);
+      if (e && e.classes && e.perfis && e.perfis.length) {
+        return { perfis: e.perfis.map(function (p) { return { nome: p.nome, dd: p.drawdown }; }), classes: e.classes.map(function (c) { return { nome: c.nome, alvo: c.alvo || [] }; }), origem: 'Diversificação de Carteira' };
+      }
+    }
+  } catch (err) {}
+  return { perfis: MATRIZ_PADRAO.perfis, classes: MATRIZ_PADRAO.classes, origem: 'padrão' };
+}
+function rotuloInstrumento(p) {
+  if (p.tipo === 'caixa') return 'Saldo e proventos';
+  if (p.tipo === 'acao') return 'Ações';
+  if (p.tipo === 'fii') return 'Fundo imobiliário listado';
+  if (p.tipo === 'fii_nl') return 'Fundo imobiliário não listado';
+  if (p.tipo === 'etf') return 'ETF';
+  if (p.tipo === 'rf') return (/^(CRA|CRI|DEB)/.test(p.papel || '') ? 'Crédito privado (' : 'Crédito bancário (') + (p.papel || 'RF') + ')';
+  return 'Fundo de investimento';
+}
+function classificar(p) {
+  var up = p.nome.toUpperCase(), liq = 'sem', trib = 'trib';
+  if (p.tipo === 'caixa') liq = 'd0';
+  else if (p.tipo === 'acao' || p.tipo === 'etf' || p.tipo === 'fii') liq = 'bolsa';
+  else if (p.tipo === 'fii_nl') liq = 'sem';
+  else if (p.tipo === 'rf') liq = 'venc';
+  else liq = /\\bDI\\b|SIMPLES|REFERENCIADO|SOBERANO|CASH|LIQUIDEZ/.test(up) ? 'd0' : 'fundo';
+  if (p.tipo === 'fii' || p.tipo === 'fii_nl') trib = 'fii';
+  else if (p.tipo === 'rf' && /^(LCA|LCI|LCD|CRA|CRI)/.test(p.papel || '')) trib = 'isento';
+  return { liq: liq, trib: trib };
+}
+
+function analisar(d) {
+  var A = { total: 0, itens: [] };
+  A.total = soma(d.estrategias, function (e) { return e.saldo; });
+  // itens: posição detalhada + caixa e proventos (que não constam da posição detalhada)
+  d.posicoes.forEach(function (p) { A.itens.push(p); });
+  d.estrategias.forEach(function (e) {
+    if (e.chave === 'caixa') A.itens.push({ nome: /provento/i.test(e.nome) ? 'Proventos a receber' : 'Saldo em conta', estrategia: e.nome, chave: 'caixa', saldo: e.saldo, aloc: e.aloc, tipo: 'caixa' });
+  });
+  A.itens.forEach(function (p) { p.pct = A.total > 0 ? p.saldo / A.total * 100 : 0; var c = classificar(p); p.liq = c.liq; p.trib = c.trib; });
+  A.itens.sort(function (a, b) { return b.saldo - a.saldo; });
+
+  // alocação por classe (caixa e proventos entram no pós-fixado, como no relatório de diagnóstico)
+  A.porChave = {};
+  d.estrategias.forEach(function (e) { var k = e.chave === 'caixa' ? 'pos' : e.chave; A.porChave[k] = (A.porChave[k] || 0) + e.saldo; });
+
+  // matriz de perfis e aderência
+  A.matriz = carregarMatriz();
+  var linhas = [], usadas = {};
+  A.matriz.classes.forEach(function (c) {
+    var k = chaveClasse(c.nome) || compacto(c.nome);
+    usadas[k] = true;
+    linhas.push({ nome: c.nome, chave: k, valor: A.porChave[k] || 0, alvo: c.alvo });
+  });
+  Object.keys(A.porChave).forEach(function (k) {
+    if (usadas[k]) return;
+    linhas.push({ nome: ROTULOS_CLASSE[k] || k, chave: k, valor: A.porChave[k], alvo: A.matriz.perfis.map(function () { return 0; }) });
+  });
+  linhas.forEach(function (l) { l.atual = A.total > 0 ? l.valor / A.total * 100 : 0; });
+  A.linhas = linhas;
+  A.realocar = A.matriz.perfis.map(function (p, pi) {
+    var s = 0; linhas.forEach(function (l) { s += Math.abs(l.atual - (l.alvo[pi] || 0)); });
+    return s / 2;
+  });
+  A.maisProximo = 0;
+  A.realocar.forEach(function (v, i) { if (v < A.realocar[A.maisProximo]) A.maisProximo = i; });
+
+  // liquidez e tributação
+  A.liq = {}; A.trib = {}; A.instr = {};
+  A.itens.forEach(function (p) {
+    A.liq[p.liq] = (A.liq[p.liq] || 0) + p.saldo;
+    A.trib[p.trib] = (A.trib[p.trib] || 0) + p.saldo;
+    var ri = rotuloInstrumento(p);
+    A.instr[ri] = (A.instr[ri] || 0) + p.saldo;
+  });
+  A.totItens = soma(A.itens, function (p) { return p.saldo; });
+
+  // referência de datas
+  var mr = /^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/.exec(d.cab.data || '');
+  A.ref = mr ? { d: Number(mr[1]), m: Number(mr[2]), a: Number(mr[3]) } : { d: 1, m: new Date().getMonth() + 1, a: new Date().getFullYear() };
+
+  // renda fixa e vencimentos
+  A.rf = A.itens.filter(function (p) { return p.tipo === 'rf'; });
+  A.rf.forEach(function (p) { p.meses = p.venc ? (p.venc.a - A.ref.a) * 12 + (p.venc.m - A.ref.m) : null; });
+  A.rf.sort(function (a, b) { return (a.venc ? a.venc.a * 12 + a.venc.m : 1e9) - (b.venc ? b.venc.a * 12 + b.venc.m : 1e9); });
+  A.emissores = {};
+  A.rf.forEach(function (p) {
+    var k = p.emissor || p.nome;
+    var e = A.emissores[k] || (A.emissores[k] = { nome: k, valor: 0, fgc: 0, sem: 0, papeis: {} });
+    e.valor += p.saldo; e.papeis[p.papel] = true;
+    if (/^(LCA|LCI|LCD|CDB|LC|LF|RDB|LIG)$/.test(p.papel || '')) e.fgc += p.saldo; else e.sem += p.saldo;
+  });
+  A.ativos10 = A.itens.filter(function (p) { return p.tipo !== 'caixa' && p.pct > 10; });
+  A.alertas = montarAlertas(A, d);
+  return A;
+}
+
+function montarAlertas(A, d) {
+  var out = [];
+  function add(n, t, x) { out.push({ n: n, t: t, x: x }); }
+  var pi = perfilSel === null ? A.maisProximo : perfilSel;
+  var nomePerfil = A.matriz.perfis[pi] ? A.matriz.perfis[pi].nome : 'perfil';
+  var desvio = A.realocar[pi] || 0;
+  var acima = [], ausentes = [];
+  A.linhas.forEach(function (l) {
+    var alvo = l.alvo[pi] || 0;
+    if (l.atual - alvo >= 10) acima.push(l.nome + ' acima em ' + fmtP(l.atual - alvo, 1).replace('%', ' p.p'));
+    if (l.atual < 0.005 && alvo > 0) ausentes.push(l.nome);
+  });
+  add(desvio > 30 ? 'alto' : (desvio > 15 ? 'medio' : 'baixo'), 'Diversificar por classe',
+    'Desvio de ' + fmtP(desvio, 1) + ' em relação ao ' + nomePerfil + (perfilSel === null ? ', o mais próximo' : '') + '.' + (acima.length ? ' ' + acima.join('; ') + '.' : '') + (ausentes.length ? ' Classes ausentes: ' + ausentes.join(', ') + '.' : ''));
+
+  var fii = soma(A.itens.filter(function (p) { return p.tipo === 'fii' || p.tipo === 'fii_nl'; }), function (p) { return p.saldo; });
+  var pf = A.total > 0 ? fii / A.total * 100 : 0;
+  add(pf > 30 ? 'alto' : (pf > 15 ? 'medio' : 'baixo'), 'Fundos imobiliários', fmtP(pf, 1) + ' do patrimônio em fundos imobiliários (' + fmtRS(fii) + '), expostos ao mesmo setor ainda que distribuídos entre diferentes classes no relatório.');
+
+  var d0 = A.total > 0 ? (A.liq.d0 || 0) / A.total * 100 : 0, sem = A.total > 0 ? (A.liq.sem || 0) / A.total * 100 : 0;
+  add(d0 < 5 ? 'alto' : (d0 < 10 ? 'medio' : 'baixo'), 'Liquidez', 'Apenas ' + fmtP(d0, 1) + ' com liquidez imediata (' + fmtRS(A.liq.d0 || 0) + ') e ' + fmtP(sem, 1) + ' em ativos sem liquidez diária.');
+
+  var n10 = A.ativos10.length, soma10 = soma(A.ativos10, function (p) { return p.pct; });
+  var maior = A.itens.filter(function (p) { return p.tipo !== 'caixa'; })[0];
+  add(n10 >= 3 || (maior && maior.pct > 20) ? 'alto' : (n10 >= 1 ? 'medio' : 'baixo'), 'Concentração por ativo',
+    n10 ? n10 + ' ativo(s) acima de 10% do patrimônio, somando ' + fmtP(soma10, 1) + '. O maior é ' + maior.nome + ', com ' + fmtP(maior.pct, 1) + '.' : 'Nenhum ativo acima de 10% do patrimônio.');
+
+  var acoes = soma(A.itens.filter(function (p) { return p.tipo === 'acao'; }), function (p) { return p.saldo; });
+  var pa = A.total > 0 ? acoes / A.total * 100 : 0;
+  var linhaRv = A.linhas.filter(function (l) { return l.chave === 'rvb'; })[0];
+  var alvoRv = linhaRv ? (linhaRv.alvo[pi] || 0) : 0;
+  var acoesOrd = A.itens.filter(function (p) { return p.tipo === 'acao'; });
+  var topAcao = acoesOrd[0];
+  add(Math.abs(pa - alvoRv) > 3 ? 'medio' : 'baixo', 'Renda variável Brasil',
+    'Ações em ' + fmtP(pa, 1) + ' contra alvo de ' + fmtP(alvoRv, 1) + ' no ' + nomePerfil + '.' + (topAcao && acoes > 0 ? ' ' + topAcao.nome + ' responde por ' + fmtP(topAcao.saldo / acoes * 100, 1) + ' dessa parcela' + (topAcao.ano !== null && topAcao.ano !== undefined ? ', com variação de ' + fmtP(topAcao.ano) + ' no ano' : '') + '.' : ''));
+
+  var prox = A.rf.filter(function (p) { return p.meses !== null && p.meses >= 0 && p.meses <= 12; });
+  var vProx = soma(prox, function (p) { return p.saldo; });
+  var pProx = A.total > 0 ? vProx / A.total * 100 : 0;
+  var maiorProx = prox.slice().sort(function (a, b) { return b.saldo - a.saldo; })[0];
+  add(pProx > 25 ? 'alto' : (pProx >= 5 ? 'medio' : 'baixo'), 'Renda fixa e vencimentos',
+    vProx > 0 ? fmtP(pProx, 1) + ' do patrimônio (' + fmtRS(vProx) + ') vence nos próximos 12 meses; o maior vencimento é ' + maiorProx.nome.split(' - ')[0] + (maiorProx.venc ? ' em ' + String(maiorProx.venc.m).padStart(2, '0') + '/' + maiorProx.venc.a : '') + '.' : 'Nenhum título de renda fixa vence nos próximos 12 meses.');
+
+  var intl = (A.porChave.grv || 0) + (A.porChave.grf || 0);
+  var alvoIntl = 0;
+  A.linhas.forEach(function (l) { if (l.chave === 'grv' || l.chave === 'grf') alvoIntl += (l.alvo[pi] || 0); });
+  add(intl <= 0 && alvoIntl > 0 ? 'medio' : 'baixo', 'Exposição internacional',
+    intl <= 0 ? 'Nenhuma posição no exterior' + (alvoIntl > 0 ? ', contra alvo de ' + fmtP(alvoIntl, 1) + ' no ' + nomePerfil + ' (Global Renda Variável e Global Renda Fixa).' : '.') : fmtP(intl / A.total * 100, 1) + ' em ativos globais.');
+
+  var isen = A.total > 0 ? (A.trib.isento || 0) / A.total * 100 : 0;
+  add('baixo', 'Ativos isentos', fmtP(isen, 1) + ' em títulos isentos de Imposto de Renda (LCA, LCI, CRA, CRI). Os rendimentos de fundos imobiliários podem ser isentos para pessoa física, desde que atendidos os requisitos legais.');
+
+  var perAno = d.kpi.per.ano;
+  if (perAno) {
+    var abaixo = d.estrategias.filter(function (e) { return e.ano !== null && e.ano !== undefined && d.bench.cdi && e.ano < d.bench.cdi[1] && e.chave !== 'caixa'; });
+    var pc = perAno.pcdi;
+    add(pc < 80 ? 'alto' : (pc < 100 ? 'medio' : 'baixo'), 'Desempenho',
+      'Rentabilidade de ' + fmtP(perAno.rent) + ' no ano (' + fmtP(pc) + ' do CDI).' + (abaixo.length ? ' Abaixo do CDI no período: ' + abaixo.map(function (e) { return e.nome + ' (' + fmtP(e.ano) + ')'; }).join(', ') + '.' : ''));
+  }
+
+  var estourou = Object.keys(A.emissores).map(function (k) { return A.emissores[k]; }).filter(function (e) { return e.fgc > 250000; });
+  var semFgc = soma(Object.keys(A.emissores).map(function (k) { return A.emissores[k]; }), function (e) { return e.sem; });
+  add(estourou.length ? 'alto' : 'baixo', 'Garantia do FGC',
+    estourou.length ? 'Exposição acima do teto de R$ 250.000 por conglomerado em: ' + estourou.map(function (e) { return e.nome; }).join(', ') + '.' : 'Exposições bancárias dentro do teto do FGC (R$ 250.000 por CPF e por conglomerado financeiro)' + (semFgc > 0 ? '; ' + fmtRS(semFgc) + ' em crédito privado sem garantia do FGC.' : '.'));
+
+  var ordem = { alto: 0, medio: 1, baixo: 2 };
+  out.sort(function (a, b) { return ordem[a.n] - ordem[b.n]; });
+  return out;
+}
+
+// ── Gráficos (SVG) ──
+function svgBarrasMensais(serie) {
+  var W = 760, H = 250, mE = 40, mD = 10, mT = 16, mB = 30;
+  var vals = [];
+  serie.forEach(function (s) { vals.push(s.a); vals.push(s.b); });
+  var mx = Math.max.apply(null, vals.concat([0.5])), mn = Math.min.apply(null, vals.concat([0]));
+  var esc2 = (H - mT - mB) / (mx - mn), y0 = mT + mx * esc2;
+  var larg = (W - mE - mD) / serie.length, bw = Math.min(18, larg / 2.6);
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;max-height:290px;">';
+  s += '<line x1="' + mE + '" y1="' + y0.toFixed(1) + '" x2="' + (W - mD) + '" y2="' + y0.toFixed(1) + '" stroke="#9A9A9A" stroke-width="1"/>';
+  [mx, mn].forEach(function (v) { if (Math.abs(v) > 0.01) s += '<text x="' + (mE - 6) + '" y="' + (y0 - v * esc2 + 3).toFixed(1) + '" font-size="9" text-anchor="end" fill="#5C5C5C">' + v.toFixed(1).replace('.', ',') + '%</text>'; });
+  serie.forEach(function (it, i) {
+    var cx = mE + larg * i + larg / 2;
+    [[it.a, '#111111', -bw - 1], [it.b, '#B8B8B8', 1]].forEach(function (b) {
+      var h = Math.abs(b[0]) * esc2, y = b[0] >= 0 ? y0 - h : y0;
+      s += '<rect x="' + (cx + b[2]).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw + '" height="' + Math.max(h, 0.6).toFixed(1) + '" fill="' + b[1] + '"/>';
+    });
+    var yTxt = it.a >= 0 ? y0 - it.a * esc2 - 3 : y0 + Math.abs(it.a) * esc2 + 10;
+    s += '<text x="' + (cx - bw / 2 - 1).toFixed(1) + '" y="' + yTxt.toFixed(1) + '" font-size="9" text-anchor="middle" fill="#111" font-weight="600">' + it.a.toFixed(2).replace('.', ',') + '</text>';
+    s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 10) + '" font-size="9.5" text-anchor="middle" fill="#5C5C5C">' + esc(it.rot) + '</text>';
+  });
+  return s + '</svg>';
+}
+function svgBarrasPatrimonio(serie) {
+  var W = 760, H = 220, mE = 10, mD = 10, mT = 22, mB = 28;
+  var mx = Math.max.apply(null, serie.map(function (s) { return s.v; }).concat([1]));
+  var larg = (W - mE - mD) / serie.length, bw = Math.min(40, larg * 0.62);
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;max-height:260px;">';
+  s += '<line x1="' + mE + '" y1="' + (H - mB) + '" x2="' + (W - mD) + '" y2="' + (H - mB) + '" stroke="#9A9A9A"/>';
+  serie.forEach(function (it, i) {
+    var cx = mE + larg * i + larg / 2, h = it.v / mx * (H - mT - mB);
+    s += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + (H - mB - h).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(h, 0.6).toFixed(1) + '" fill="#111"/>';
+    s += '<text x="' + cx.toFixed(1) + '" y="' + (H - mB - h - 5).toFixed(1) + '" font-size="9" text-anchor="middle" fill="#111" font-weight="600">' + Math.round(it.v / 1000).toLocaleString('pt-BR') + ' mil</text>';
+    s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 10) + '" font-size="9.5" text-anchor="middle" fill="#5C5C5C">' + esc(it.rot) + '</text>';
+  });
+  return s + '</svg>';
+}
+function svgRosca(partes, rotCentro, valCentro) {
+  var raio = 76, circ = 2 * Math.PI * raio, acc = 0, tot = soma(partes, function (p) { return p.v; });
+  var s = '<svg viewBox="0 0 200 200" class="rosca">';
+  partes.forEach(function (p, i) {
+    var f = tot > 0 ? p.v / tot : 0;
+    if (f <= 0) return;
+    s += '<circle cx="100" cy="100" r="' + raio + '" fill="none" stroke="' + CINZAS[i % CINZAS.length] + '" stroke-width="36" stroke-dasharray="' + (f * circ).toFixed(2) + ' ' + circ.toFixed(2) + '" stroke-dashoffset="' + (-acc * circ).toFixed(2) + '" transform="rotate(-90 100 100)"/>';
+    acc += f;
+  });
+  s += '<text x="100" y="96" text-anchor="middle" class="r">' + esc(rotCentro) + '</text><text x="100" y="116" text-anchor="middle" class="t">' + esc(valCentro) + '</text></svg>';
+  return s;
+}
+function legendaRosca(partes) {
+  var tot = soma(partes, function (p) { return p.v; });
+  return partes.map(function (p, i) {
+    return '<div class="leg"><span><i style="background:' + CINZAS[i % CINZAS.length] + '"></i>' + esc(p.r) + '</span><b>' + fmtP(tot > 0 ? p.v / tot * 100 : 0, 1) + '</b></div>';
+  }).join('');
+}
+function barrasH(itens, total, cinza) {
+  return itens.map(function (it) {
+    var p = total > 0 ? it.v / total * 100 : 0;
+    return '<div class="barra-linha"><span class="barra-rot">' + esc(it.r) + '</span><div class="trilho"><div class="fill' + (cinza ? ' cinza' : '') + '" style="width:' + Math.max(p, it.v > 0 ? 1.2 : 0).toFixed(2) + '%"></div></div>' +
+      '<span class="barra-val"><b>' + fmtP(p, 2) + '</b><small>' + fmtRS(it.v) + '</small></span></div>';
+  }).join('');
+}
+
+// ── Seções do painel ──
+function card(titulo, sub, corpo) { return '<div class="card"><div class="card-titulo">' + titulo + '</div>' + (sub ? '<p class="card-sub">' + sub + '</p>' : '') + corpo + '</div>'; }
+function kpi(rot, val, sub) { return '<div class="kpi"><div class="kpi-rot">' + rot + '</div><div class="kpi-val">' + val + '</div><div class="kpi-sub">' + sub + '</div></div>'; }
+
+function secResumo() {
+  var k = D.kpi, pa = k.per.ano || {}, p12 = k.per.m12 || {};
+  var ev12 = D.evol.slice(0, 12);
+  var acima12 = ev12.filter(function (e) { return e.pcdi > 100; }).length;
+  var qtdAtivos = R.itens.filter(function (p) { return p.tipo !== 'caixa'; }).length;
+  var pi = perfilSel === null ? R.maisProximo : perfilSel;
+  var resumo = fmtBRL(k.patrimonio) + ' de patrimônio bruto, distribuídos em ' + qtdAtivos + ' ativos. A carteira rendeu ' + fmtP(pa.rent) + ' no ano (' + fmtP(pa.pcdi) + ' do CDI) e ' + fmtP(p12.rent) + ' em 12 meses (' + fmtP(p12.pcdi) + ' do CDI). A alocação é mais aderente ao ' + R.matriz.perfis[R.maisProximo].nome + ' (' + fmtP(100 - R.realocar[R.maisProximo], 1) + ').';
+  var h = '<div class="kpis">' +
+    kpi('Patrimônio bruto', fmtBRL(k.patrimonio), qtdAtivos + ' ativos · ref. ' + esc(D.cab.data)) +
+    kpi('Rentabilidade no ano', '<span class="' + clsv(pa.rent) + '">' + fmtP(pa.rent) + '</span>', fmtP(pa.pcdi) + ' do CDI') +
+    kpi('Rentabilidade em 12 meses', '<span class="' + clsv(p12.rent) + '">' + fmtP(p12.rent) + '</span>', fmtP(p12.pcdi) + ' do CDI') +
+    kpi('Ganho em 12 meses', fmtRS(p12.ganho || 0), 'Ganho no ano: ' + fmtRS(pa.ganho || 0)) +
+    kpi('Volatilidade 12M', fmtP(k.vol12), 'Retorno mensal máximo ' + fmtP(k.max) + ' · mínimo ' + fmtP(k.min)) +
+    kpi('Meses acima do CDI', acima12 + ' de ' + ev12.length, 'Meses positivos (24M): ' + (k.pos === undefined ? '—' : k.pos + ' de ' + (k.pos + k.neg))) +
+    kpi('Aderência ao ' + esc(R.matriz.perfis[R.maisProximo].nome), fmtP(100 - R.realocar[R.maisProximo], 1), 'Realocar ' + fmtP(R.realocar[R.maisProximo], 1) + ' · ' + fmtRS(R.realocar[R.maisProximo] / 100 * R.total)) +
+    '</div>';
+  return card('Resumo da carteira', esc(resumo), h);
+}
+function secAlertas() {
+  var nomes = { alto: 'Nível de atenção · alto', medio: 'Nível de atenção · médio', baixo: 'Nível de atenção · baixo' };
+  var h = '<div class="alertas">' + R.alertas.map(function (a) {
+    return '<div class="alerta ' + a.n + '"><h4>' + esc(a.t) + '</h4><p>' + esc(a.x) + '</p><span class="nv">' + nomes[a.n] + '</span></div>';
+  }).join('') + '</div>';
+  var alto = R.alertas.filter(function (a) { return a.n === 'alto'; }).length, medio = R.alertas.filter(function (a) { return a.n === 'medio'; }).length;
+  return card('Pontos de atenção', alto + ' ponto(s) em nível alto e ' + medio + ' em nível médio, sobre ' + R.alertas.length + ' temas avaliados. Critérios automáticos e ilustrativos; a avaliação final cabe ao assessor.', h);
+}
+function secRentabilidade() {
+  var B = D.bench, k = D.kpi;
+  var nomes = [['port', 'Carteira'], ['cdi', 'CDI'], ['ibov', 'Ibovespa'], ['ipca', 'IPCA'], ['dolar', 'Dólar']];
+  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Referência</th><th>Mês</th><th>Ano</th><th>12 meses</th><th>24 meses</th></tr></thead><tbody>';
+  nomes.forEach(function (n, i) {
+    var v = B[n[0]]; if (!v) return;
+    t += '<tr class="' + (i === 0 ? 'grupo' : (i % 2 ? 'zebra' : '')) + '"><td class="e">' + n[1] + '</td>' + v.map(function (x) { return '<td class="' + (i === 0 ? '' : '') + clsv(x) + '">' + fmtP(x) + '</td>'; }).join('') + '</tr>';
+  });
+  var pc = k.per;
+  if (pc.mes && pc.ano && pc.m12 && pc.m24) t += '<tr class="total"><td class="e">Carteira (% do CDI)</td><td>' + fmtP(pc.mes.pcdi) + '</td><td>' + fmtP(pc.ano.pcdi) + '</td><td>' + fmtP(pc.m12.pcdi) + '</td><td>' + fmtP(pc.m24.pcdi) + '</td></tr>';
+  t += '</tbody></table></div>';
+  var ev = D.evol.slice(0, 12).reverse();
+  var serie = ev.map(function (e) { return { rot: e.rot.replace('.', ''), a: e.rent, b: e.pcdi ? e.rent / (e.pcdi / 100) : 0 }; });
+  var graf = serie.length ? '<div class="tit-sec" style="margin-top:22px;">Rentabilidade mensal · carteira x CDI</div><div style="font-size:11.5px;color:#5C5C5C;margin-bottom:4px;"><i style="display:inline-block;width:10px;height:10px;background:#111;margin-right:5px;"></i>Carteira <i style="display:inline-block;width:10px;height:10px;background:#B8B8B8;margin:0 5px 0 14px;"></i>CDI</div>' + svgBarrasMensais(serie) : '';
+  var hist = '';
+  var anos = Object.keys(D.anos).sort().reverse();
+  if (anos.length) {
+    var MES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    hist = '<div class="tit-sec" style="margin-top:22px;">Rentabilidade histórica por ano</div><div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Ano</th>' + MES.map(function (m) { return '<th>' + m + '</th>'; }).join('') + '<th>No ano</th><th>% CDI</th></tr></thead><tbody>';
+    anos.forEach(function (a, i) {
+      var y = D.anos[a];
+      hist += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e"><b>' + a + '</b></td>' + y.port.map(function (v) { return '<td class="' + clsv(v) + '">' + (v === null ? '—' : fmtP(v)) + '</td>'; }).join('') + '<td class="' + clsv(y.ano) + '"><b>' + fmtP(y.ano) + '</b></td><td>' + fmtP(y.anoPcdi) + '</td></tr>';
+    });
+    hist += '</tbody></table></div>';
+  }
+  return card('Rentabilidade', 'Rentabilidade com gross up para ativos isentos de renda fixa, conforme o relatório XPerformance. Meses anteriores à entrada dos recursos podem constar com valor zerado.', t + graf + hist);
+}
+function secEvolucao() {
+  var ev = D.evol.slice(0, 12);
+  if (!ev.length) return '';
+  var serie = ev.slice().reverse().map(function (e) { return { rot: e.rot.replace('.', ''), v: e.fin }; });
+  var t = '<div class="tabela-wrap" style="margin-top:14px;"><table class="tb"><thead><tr><th class="e">Mês</th><th>Patrimônio inicial</th><th>Movimentações</th><th>IR / IOF</th><th>Patrimônio final</th><th>Ganho financeiro</th><th>Rentab.</th><th>% CDI</th></tr></thead><tbody>';
+  ev.forEach(function (e, i) {
+    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(e.rot) + '</td><td>' + fmtBRL(e.ini) + '</td><td class="' + clsv(e.mov) + '">' + fmtBRL(e.mov) + '</td><td>' + fmtBRL(e.ir + e.iof) + '</td><td><b>' + fmtBRL(e.fin) + '</b></td><td class="' + clsv(e.ganho) + '">' + fmtBRL(e.ganho) + '</td><td class="' + clsv(e.rent) + '">' + fmtP(e.rent) + '</td><td>' + fmtP(e.pcdi) + '</td></tr>';
+  });
+  t += '</tbody></table></div>';
+  return card('Evolução patrimonial', 'Patrimônio ao final de cada mês, com as movimentações (aportes e resgates) e o ganho financeiro do período.', svgBarrasPatrimonio(serie) + t);
+}
+function secAlocacao() {
+  var es = D.estrategias.slice().sort(function (a, b) { return b.saldo - a.saldo; });
+  var partes = es.map(function (e) { return { r: e.nome, v: e.saldo }; });
+  var rosca = '<div class="centro">' + svgRosca(partes, 'total', fmtCompacto(R.total)) + '</div>' + legendaRosca(partes);
+  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Estratégia</th><th>Saldo bruto</th><th>% carteira</th><th>Mês</th><th>Ano</th><th>12 meses</th><th>24 meses</th></tr></thead><tbody>';
+  es.forEach(function (e, i) {
+    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(e.nome) + '</td><td>' + fmtBRL(e.saldo) + '</td><td>' + fmtP(e.aloc) + '</td><td class="' + clsv(e.mes) + '">' + fmtP(e.mes) + '</td><td class="' + clsv(e.ano) + '">' + fmtP(e.ano) + '</td><td class="' + clsv(e.m12) + '">' + fmtP(e.m12) + '</td><td class="' + clsv(e.m24) + '">' + fmtP(e.m24) + '</td></tr>';
+  });
+  t += '<tr class="total"><td class="e">Total</td><td>' + fmtBRL(R.total) + '</td><td>100,00%</td><td></td><td></td><td></td><td></td></tr></tbody></table></div>';
+  var ins = Object.keys(R.instr).map(function (k) { return { r: k, v: R.instr[k] }; }).sort(function (a, b) { return b.v - a.v; });
+  return card('Alocação por estratégia', 'Classificação por estratégia conforme o relatório XPerformance.',
+    '<div class="grid2"><div>' + '<div class="tit-sec">Distribuição por estratégia</div>' + rosca + '</div><div><div class="tit-sec">Por instrumento</div>' + barrasH(ins, R.totItens, true) + '</div></div>' +
+    '<div class="tit-sec" style="margin-top:22px;">Rentabilidade por estratégia</div>' + t);
+}
+function secPerfis() {
+  var pi = perfilSel === null ? R.maisProximo : perfilSel;
+  var perfis = R.matriz.perfis;
+  var reg = perfis.map(function (p, i) {
+    var ad = 100 - R.realocar[i];
+    return '<div class="barra-linha"><span class="barra-rot">' + esc(p.nome) + (i === R.maisProximo ? '<span class="chip sel">mais próximo</span>' : '') + (i === pi ? '<span class="chip">comparado</span>' : '') + '</span>' +
+      '<div class="trilho"><div class="fill' + (i === R.maisProximo ? '' : ' cinza') + '" style="width:' + Math.max(ad, 0).toFixed(1) + '%"></div></div>' +
+      '<span class="barra-val"><b>' + fmtP(ad, 1) + '</b><small>realocar ' + fmtP(R.realocar[i], 1) + '</small></span></div>';
+  }).join('');
+  var opts = '<option value="">Mais próximo (' + esc(perfis[R.maisProximo].nome) + ')</option>' + perfis.map(function (p, i) { return '<option value="' + i + '"' + (perfilSel === i ? ' selected' : '') + '>' + esc(p.nome) + '</option>'; }).join('');
+  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Classe</th><th>Atual (%)</th><th>Atual (R$)</th><th>' + esc(perfis[pi].nome) + ' (%)</th><th>Diferença (p.p.)</th><th>Ajuste (R$)</th></tr></thead><tbody>';
+  var ausentes = [];
+  R.linhas.forEach(function (l, i) {
+    var alvo = l.alvo[pi] || 0, dif = l.atual - alvo, aj = -dif / 100 * R.total;
+    if (l.atual < 0.005 && alvo > 0) ausentes.push({ nome: l.nome, alvo: alvo });
+    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(l.nome) + '</td><td>' + fmtP(l.atual) + '</td><td>' + fmtBRL(l.valor) + '</td><td>' + fmtP(alvo) + '</td><td class="' + (Math.abs(dif) < 0.005 ? '' : (dif > 0 ? 'neg' : 'pos')) + '">' + (dif > 0 ? '+' : '') + fmtP(dif) + '</td><td class="' + (aj > 0 ? 'pos' : (aj < 0 ? 'neg' : '')) + '">' + (aj > 0 ? '+' : '') + fmtBRL(aj) + '</td></tr>';
+  });
+  t += '</tbody></table></div><p class="nota">Ajuste positivo indica compra e negativo indica venda para atingir a alocação-alvo do perfil. Caixa e proventos estão incluídos em RF Pós-fixado. Pesos dos perfis: ' + (R.matriz.origem === 'padrão' ? 'matriz padrão (podem ser editados na ferramenta Diversificação de Carteira, neste navegador).' : 'matriz salva na ferramenta Diversificação de Carteira, neste navegador.') + '</p>';
+  var aus = ausentes.length ? '<p class="nota" style="margin-top:8px;"><b>Classes ausentes na carteira:</b> ' + ausentes.map(function (a) { return esc(a.nome) + ' (alvo de ' + fmtP(a.alvo, 1) + ', ' + fmtRS(a.alvo / 100 * R.total) + ')'; }).join('; ') + '.</p>' : '';
+  return card('Aderência aos perfis', 'O perfil de investimento do cliente não consta do relatório XPerformance; a comparação considera todos os perfis. Selecione o perfil do cliente para a comparação classe a classe.',
+    '<div class="controles" style="margin-bottom:14px;"><div class="campo"><label for="sel-perfil">Perfil comparado</label><select id="sel-perfil">' + opts + '</select></div></div>' +
+    '<div class="tit-sec">Régua de perfis</div>' + reg + '<div class="tit-sec" style="margin-top:22px;">Carteira comparada ao ' + esc(perfis[pi].nome) + '</div>' + t + aus);
+}
+function secPosicoes() {
+  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Ativo</th><th class="e">Estratégia</th><th class="e">Instrumento</th><th>Quantidade</th><th>Saldo bruto</th><th>% carteira</th><th>Mês</th><th>Ano</th><th>% CDI (ano)</th><th>24 meses</th></tr></thead><tbody>';
+  R.itens.forEach(function (p, i) {
+    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(p.nome) + '</td><td class="e">' + esc(p.estrategia) + '</td><td class="e">' + esc(rotuloInstrumento(p)) + '</td><td>' + (p.qtd !== undefined ? fmtQtd(p.qtd) : '') + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td>' +
+      '<td class="' + clsv(p.mes) + '">' + (p.mes === undefined ? '—' : fmtP(p.mes)) + '</td><td class="' + clsv(p.ano) + '">' + (p.ano === undefined ? '—' : fmtP(p.ano)) + '</td><td>' + (p.acdi === undefined ? '—' : fmtP(p.acdi)) + '</td><td class="' + clsv(p.m24) + '">' + (p.m24 === undefined ? '—' : fmtP(p.m24)) + '</td></tr>';
+  });
+  t += '<tr class="total"><td class="e">Total</td><td></td><td></td><td></td><td>' + fmtBRL(R.totItens) + '</td><td>100,00%</td><td></td><td></td><td></td><td></td></tr></tbody></table></div>';
+  return card('Posição detalhada', 'Ativos ordenados pelo saldo bruto. A rentabilidade do ano considera o período desde a aquisição, quando posterior a janeiro (conforme o relatório).', t);
+}
+function secConcentracao() {
+  var ativos = R.itens.filter(function (p) { return p.tipo !== 'caixa'; });
+  var top = ativos.slice(0, 10).map(function (p) { return { r: p.nome, v: p.saldo }; });
+  var resto = soma(ativos.slice(10), function (p) { return p.saldo; });
+  if (resto > 0) top.push({ r: '+ ' + (ativos.length - 10) + ' outros', v: resto });
+  var e10 = R.ativos10.length ? '<p class="nota"><b>' + R.ativos10.length + ' ativo(s) acima de 10% do patrimônio</b>, somando ' + fmtP(soma(R.ativos10, function (p) { return p.pct; }), 1) + ': ' + R.ativos10.map(function (p) { return esc(p.nome) + ' (' + fmtP(p.pct, 1) + ')'; }).join('; ') + '.</p>' : '<p class="nota">Nenhum ativo acima de 10% do patrimônio.</p>';
+  var em = Object.keys(R.emissores).map(function (k) { return R.emissores[k]; }).sort(function (a, b) { return b.valor - a.valor; });
+  var t = '';
+  if (em.length) {
+    t = '<div class="tit-sec" style="margin-top:22px;">Emissores da renda fixa</div><div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Emissor</th><th class="e">Papéis</th><th>Exposição</th><th>% carteira</th><th class="e">Garantia</th></tr></thead><tbody>';
+    em.forEach(function (e, i) {
+      var g = e.fgc > 0 ? (e.fgc > 250000 ? 'Acima do teto do FGC (R$ 250.000)' : 'Dentro do teto do FGC') : '';
+      if (e.sem > 0) g += (g ? ' · ' : '') + 'Sem garantia do FGC';
+      t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(e.nome) + '</td><td class="e">' + esc(Object.keys(e.papeis).join(', ')) + '</td><td>' + fmtBRL(e.valor) + '</td><td>' + fmtP(R.total > 0 ? e.valor / R.total * 100 : 0) + '</td><td class="e">' + esc(g) + '</td></tr>';
+    });
+    t += '</tbody></table></div><p class="nota">Teto do FGC: R$ 250.000 por CPF e por conglomerado financeiro, limitado a R$ 1 milhão a cada quatro anos. CRA, CRI e debêntures não contam com a garantia do FGC.</p>';
+  }
+  return card('Concentração por ativo e emissor', 'Maiores posições em relação ao patrimônio total.', '<div class="tit-sec">Maiores posições</div>' + barrasH(top, R.total) + e10 + t);
+}
+function secVencimentos() {
+  if (!R.rf.length) return '';
+  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Título</th><th class="e">Emissor</th><th class="e">Taxa</th><th class="e">Vencimento</th><th>Prazo</th><th>Saldo bruto</th><th>% carteira</th><th>Rent. ano</th><th>% CDI (ano)</th></tr></thead><tbody>';
+  R.rf.forEach(function (p, i) {
+    var prazo = p.meses === null ? '' : (p.meses < 0 ? 'vencido' : (p.meses === 0 ? 'este mês' : p.meses + ' m'));
+    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(p.papel || '') + '</td><td class="e">' + esc(p.emissor || p.nome) + '</td><td class="e">' + esc(p.taxa || '') + '</td><td class="e">' + (p.venc ? String(p.venc.m).padStart(2, '0') + '/' + p.venc.a : '') + '</td><td>' + prazo + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td><td class="' + clsv(p.ano) + '">' + fmtP(p.ano) + '</td><td>' + fmtP(p.acdi) + '</td></tr>';
+  });
+  t += '</tbody></table></div>';
+  var porAno = {};
+  R.rf.forEach(function (p) { var k = p.venc ? p.venc.a : 'Sem data'; porAno[k] = (porAno[k] || 0) + p.saldo; });
+  var barras = barrasH(Object.keys(porAno).sort().map(function (k) { return { r: 'Vencimento em ' + k, v: porAno[k] }; }), soma(R.rf, function (p) { return p.saldo; }));
+  var prox = R.rf.filter(function (p) { return p.meses !== null && p.meses >= 0 && p.meses <= 12; });
+  var vProx = soma(prox, function (p) { return p.saldo; });
+  var aviso = vProx > 0 ? '<p class="nota"><b>Vencimentos nos próximos 12 meses:</b> ' + fmtRS(vProx) + ' (' + fmtP(vProx / R.total * 100, 1) + ' do patrimônio) a reinvestir.</p>' : '';
+  return card('Renda fixa e vencimentos', 'Títulos de renda fixa direta, ordenados por vencimento. Taxa e vencimento extraídos do nome do título no relatório.', '<div class="grid2"><div><div class="tit-sec">Vencimentos por ano</div>' + barras + aviso + '</div><div></div></div><div class="tit-sec" style="margin-top:16px;">Títulos</div>' + t);
+}
+function secLiquidez() {
+  var liq = LIQ.map(function (l) { return { r: l.r, v: R.liq[l.k] || 0 }; }).filter(function (x) { return x.v > 0; });
+  var trib = TRIB.map(function (l) { return { r: l.r, v: R.trib[l.k] || 0 }; });
+  var d0 = R.total > 0 ? (R.liq.d0 || 0) / R.total * 100 : 0, sem = R.total > 0 ? (R.liq.sem || 0) / R.total * 100 : 0;
+  var txt = fmtP(d0, 1) + ' do patrimônio tem liquidez imediata e ' + fmtP(sem, 1) + ' está em ativos sem liquidez diária.';
+  return card('Liquidez e tributação', txt + ' Classificação automática por tipo de ativo, sujeita a confirmação com as condições de cada produto.',
+    '<div class="grid2"><div><div class="tit-sec">Por disponibilidade</div>' + barrasH(liq, R.totItens) + '</div><div><div class="tit-sec">Por tributação</div><div class="centro">' + svgRosca(trib, 'total', fmtCompacto(R.totItens)) + '</div>' + legendaRosca(trib) +
+    '<p class="nota">Os rendimentos distribuídos por fundos imobiliários podem ser isentos de Imposto de Renda para pessoa física, desde que atendidos os requisitos legais; o ganho de capital na venda de cotas é tributado.</p></div></div>');
+}
+function tipoMov(m) {
+  var h = m.hist.toUpperCase();
+  if (/RENDIMENTO|JUROS S\\/ CAPITAL|DIVIDENDO|PROVENTO|AMORTIZA|CUPOM|JCP/.test(h)) return 'Proventos';
+  if (/^TED|\\bTED\\b|\\bPIX\\b|TRANSFER/.test(h)) return m.valor >= 0 ? 'Aporte' : 'Resgate';
+  if (/OPERA[ÇC][ÕO]ES EM BOLSA|NOTA N/.test(h)) return m.valor < 0 ? 'Compra' : 'Venda';
+  return 'Outros';
+}
+function secMovs() {
+  if (!D.movs.length) return '';
+  var tot = { Proventos: 0, Aporte: 0, Resgate: 0, Compra: 0, Venda: 0, Outros: 0 };
+  D.movs.forEach(function (m) { m.tipo = tipoMov(m); tot[m.tipo] += m.valor; });
+  var cards = '<div class="kpis">' +
+    kpi('Proventos recebidos', fmtBRL(tot.Proventos), 'Rendimentos, JCP e dividendos') +
+    kpi('Aportes', fmtBRL(tot.Aporte), 'Entradas por TED') +
+    kpi('Resgates', fmtBRL(tot.Resgate), 'Saídas por TED') +
+    kpi('Compras e vendas', fmtBRL(tot.Compra + tot.Venda), 'Saldo líquido das operações em bolsa') + '</div>';
+  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Data</th><th class="e">Liquidação</th><th class="e">Tipo</th><th class="e">Histórico</th><th>Valor</th><th>Saldo</th></tr></thead><tbody>';
+  D.movs.forEach(function (m, i) {
+    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + m.data + '</td><td class="e">' + m.liq + '</td><td class="e">' + m.tipo + '</td><td class="e">' + esc(m.hist) + '</td><td class="' + clsv(m.valor) + '">' + fmtBRL(m.valor) + '</td><td>' + fmtBRL(m.saldo) + '</td></tr>';
+  });
+  t += '</tbody></table></div>';
+  return card('Movimentações do mês', 'Lançamentos listados no relatório, classificados automaticamente pelo histórico.', cards + t);
+}
+
+function render() {
+  var cliente = (document.getElementById('in-cliente').value || '').trim();
+  var cab = '<div class="cab-rel"><div><h2 id="tit-cliente">' + esc(cliente ? 'Carteira de ' + cliente : 'Carteira do cliente') + '</h2><small>Conta ' + esc(D.cab.conta || '') + (D.cab.assessor ? ' · Assessor ' + esc(D.cab.assessor) : '') + ' · Posições em ' + esc(D.cab.data || '') + ' · Fonte: XPerformance</small></div></div>';
+  document.getElementById('conteudo').innerHTML = cab + secResumo() + secAlertas() + secRentabilidade() + secEvolucao() + secAlocacao() + secPerfis() + secPosicoes() + secConcentracao() + secVencimentos() + secLiquidez() + secMovs() +
+    '<p class="nota">Material de caráter meramente informativo, elaborado com base no relatório XPerformance. Não constitui oferta, solicitação ou recomendação de compra ou venda de qualquer ativo. Rentabilidade passada não representa garantia de rentabilidade futura.</p>';
+  var sp = document.getElementById('sel-perfil');
+  if (sp) sp.addEventListener('change', function () { perfilSel = sp.value === '' ? null : Number(sp.value); R.alertas = montarAlertas(R, D); render(); });
+}
+
+document.getElementById('in-cliente').addEventListener('input', function () {
+  var t = document.getElementById('tit-cliente');
+  var c = this.value.trim();
+  if (t) t.textContent = c ? 'Carteira de ' + c : 'Carteira do cliente';
+});
+
+document.getElementById('arq-carteira').addEventListener('change', function (ev) {
+  var arquivo = ev.target.files && ev.target.files[0];
+  ev.target.value = '';
+  if (!arquivo) return;
+  var st = document.getElementById('status');
+  st.style.color = 'var(--ink-soft)';
+  st.textContent = 'Lendo ' + arquivo.name + '...';
+  function erro(msg) { st.style.color = 'var(--red)'; st.textContent = msg; }
+  var leitor = new FileReader();
+  leitor.onerror = function () { erro('Não foi possível ler o arquivo.'); };
+  leitor.onload = function (e) {
+    try {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      pdfjsLib.getDocument({ data: new Uint8Array(e.target.result) }).promise
+        .then(extrairLinhasPDF)
+        .then(function (linhas) {
+          var rel = lerRelatorio(linhas);
+          if (!rel) { erro('Não foi possível reconhecer o relatório XPerformance neste PDF (evolução patrimonial e composição por estratégia).'); return; }
+          D = rel; perfilSel = null;
+          R = analisar(D);
+          document.getElementById('painel').hidden = false;
+          render();
+          st.style.color = 'var(--green)';
+          st.textContent = '✓ ' + arquivo.name + ': ' + R.itens.filter(function (p) { return p.tipo !== 'caixa'; }).length + ' ativos e ' + D.estrategias.length + ' estratégias lidos.';
+        })
+        .catch(function (err) { erro('Erro ao ler o PDF: ' + (err && err.message ? err.message : err)); });
+    } catch (err) { erro('Erro ao processar o arquivo: ' + err.message); }
+  };
+  leitor.readAsArrayBuffer(arquivo);
+});
+
+document.getElementById('btn-imprimir').addEventListener('click', function () { window.print(); });
+document.getElementById('btn-excel').addEventListener('click', function () {
+  if (!D) return;
+  var wb = XLSX.utils.book_new();
+  var resumo = [['Conta', D.cab.conta], ['Assessor', D.cab.assessor], ['Data de referência', D.cab.data], ['Patrimônio bruto (R$)', D.kpi.patrimonio], [],
+    ['Referência', 'Mês (%)', 'Ano (%)', '12 meses (%)', '24 meses (%)']];
+  [['port', 'Carteira'], ['cdi', 'CDI'], ['ibov', 'Ibovespa'], ['ipca', 'IPCA'], ['dolar', 'Dólar']].forEach(function (n) { if (D.bench[n[0]]) resumo.push([n[1]].concat(D.bench[n[0]])); });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumo), 'Resumo');
+  var est = [['Estratégia', 'Saldo bruto (R$)', '% carteira', 'Mês (%)', 'Ano (%)', '12 meses (%)', '24 meses (%)']];
+  D.estrategias.forEach(function (e) { est.push([e.nome, e.saldo, e.aloc, e.mes, e.ano, e.m12, e.m24]); });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(est), 'Estratégias');
+  var pos = [['Ativo', 'Estratégia', 'Instrumento', 'Quantidade', 'Saldo bruto (R$)', '% carteira', 'Mês (%)', 'Ano (%)', '% CDI (ano)', '24 meses (%)', 'Liquidez', 'Tributação']];
+  var rl = {}, rt = {};
+  LIQ.forEach(function (l) { rl[l.k] = l.r; }); TRIB.forEach(function (l) { rt[l.k] = l.r; });
+  R.itens.forEach(function (p) { pos.push([p.nome, p.estrategia, rotuloInstrumento(p), p.qtd, p.saldo, Math.round(p.pct * 100) / 100, p.mes, p.ano, p.acdi, p.m24, rl[p.liq], rt[p.trib]]); });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pos), 'Posições');
+  var ev = [['Mês', 'Patrimônio inicial', 'Movimentações', 'IR', 'IOF', 'Patrimônio final', 'Ganho financeiro', 'Rentab. (%)', '% CDI']];
+  D.evol.forEach(function (e) { ev.push([e.rot, e.ini, e.mov, e.ir, e.iof, e.fin, e.ganho, e.rent, e.pcdi]); });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ev), 'Evolução');
+  var mv = [['Data', 'Liquidação', 'Tipo', 'Histórico', 'Valor', 'Saldo']];
+  D.movs.forEach(function (m) { mv.push([m.data, m.liq, m.tipo || tipoMov(m), m.hist, m.valor, m.saldo]); });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(mv), 'Movimentações');
+  XLSX.writeFile(wb, 'consolidacao-carteira-' + (D.cab.conta || 'cliente') + '.xlsx');
+});
+<\/script>
+</body>
+</html>`);
+  }
+
   function abrirMapaCalor() {
     var win = window.open('', '_blank');
     if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
@@ -22803,6 +23634,7 @@ if (btnExportarExcelPesquisa) {
   document.getElementById('btn-nav-sucessorio').addEventListener('click', abrirPlanejamentoSucessorio);
   document.getElementById('btn-nav-holding').addEventListener('click', abrirViabilidadeHolding);
   document.getElementById('btn-nav-diversificacao').addEventListener('click', function () { abrirDiversificacaoCarteira(); });
+  document.getElementById('btn-nav-consolidacao').addEventListener('click', abrirConsolidacaoCarteira);
   document.getElementById('btn-nav-mapa-calor').addEventListener('click', abrirMapaCalor);
   document.getElementById('btn-nav-nota-corretagem').addEventListener('click', abrirNotaCorretagem);
   document.getElementById('btn-nav-cetipados').addEventListener('click', abrirCetipados);
