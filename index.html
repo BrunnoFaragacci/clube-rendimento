@@ -15524,6 +15524,7 @@ montarFormulario();
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/dist/umd/supabase.min.js" referrerpolicy="no-referrer"><\/script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"><\/script>
 <style>
@@ -15600,6 +15601,23 @@ table.tb tr.grupo td{font-weight:700;background:#F1F1F1;}
 svg text{font-family:'Inter','Segoe UI',sans-serif;}
 @media(max-width:860px){.grid2{grid-template-columns:1fr;}}
 @media print{.nav,.controles,.barra-acoes,#area-envio{display:none!important;}body{background:#fff;}.card{box-shadow:none;border-color:#ccc;}.tabela-wrap{overflow:visible;}.container{padding:10px;}}
+.seg-chips{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px;}
+.seg-chip{min-width:56px;padding:9px 16px;border-radius:10px;border:1.5px solid var(--ink);background:#fff;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;}
+.seg-chip.on{background:var(--ink);color:#fff;}
+.seg-chip:disabled{cursor:not-allowed;opacity:.6;}
+.form-crit{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0 4px;}
+.in-crit{padding:8px 11px;border:1.5px solid var(--line);border-radius:9px;font-family:inherit;font-size:13px;min-width:200px;background:#fff;}
+.in-crit:focus{outline:none;border-color:var(--ink);}
+.form-crit select,table.tb select{padding:7px 9px;border:1.5px solid var(--line);border-radius:9px;font-family:inherit;font-size:12.5px;background:#fff;}
+table.tb input.in-crit{width:100%;min-width:160px;}
+.rm{background:none;border:none;color:var(--ink-mute);cursor:pointer;font-size:16px;padding:2px 8px;border-radius:6px;}
+.rm:hover{background:#FDECEC;color:var(--red);}
+.res{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11.5px;font-weight:700;border:1.5px solid var(--ink);white-space:nowrap;cursor:pointer;}
+.res-ok{background:var(--ink);color:#fff;}
+.res-nao{background:#fff;color:var(--ink);border-style:dashed;}
+.res-pend{background:#E4E4E4;border-color:#8A8A8A;color:var(--ink);}
+.btn:disabled,.in-crit:disabled,select:disabled{opacity:.6;cursor:not-allowed;}
+@media print{#area-criterios,#btn-criterios{display:none!important;}}
 
 /* painel interativo */
 .abas{display:flex;gap:6px;flex-wrap:wrap;border-bottom:2px solid var(--ink);margin-bottom:14px;}
@@ -15678,7 +15696,17 @@ th.ord:hover{color:var(--ink);}
       <label for="arq-carteira" class="btn btn-primary" style="cursor:pointer;">⬆ Carregar relatório XPerformance (PDF)</label>
       <input type="file" id="arq-carteira" accept=".pdf" hidden>
       <span id="status" style="font-size:12.5px;color:var(--ink-soft);">Nenhum arquivo carregado.</span>
+      <span style="flex:1"></span>
+      <button type="button" class="btn" id="btn-criterios">Critérios de crédito</button>
     </div>
+  </div>
+
+  <div class="card" id="area-criterios" hidden>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+      <div><div class="card-titulo">Critérios de análise de crédito</div><p class="card-sub">Define quais bancos (por segmento) e quais emissores de crédito privado passam na análise. Os critérios são únicos para todos os usuários.</p></div>
+      <button type="button" class="btn btn-peq" id="btn-fechar-crit">Fechar</button>
+    </div>
+    <div id="crit-corpo"></div>
   </div>
 
   <div id="painel" hidden>
@@ -16097,10 +16125,244 @@ function montarAlertas(A, d) {
   return out;
 }
 
+// ── Critérios de crédito (tabela criterios_credito: leitura para autenticados, escrita somente pelo usuário master) ──
+var SESSAO_INICIAL = ${JSON.stringify(sessaoAtual)};
+var SB_URL = 'https://segeufywrjmstfmfscdi.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZ2V1Znl3cmptc3RmbWZzY2RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzY0OTgsImV4cCI6MjA5ODQxMjQ5OH0.TUrp35SEI2NXdU1ZY7IEcdRm8VLLfLwAVWUtqjafElI';
+var sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+var logado = false, ehMaster = false, msgCrit = '';
+var CRIT = { seg: ['S1', 'S2', 'S3'], limite: null, bancos: {}, privado: {} };
+var SEGMENTOS = [
+  ['S1', 'Maior porte: ativos totais a partir de 10% do PIB ou atividade internacional relevante'],
+  ['S2', 'Ativos totais de 1% a menos de 10% do PIB'],
+  ['S3', 'Ativos totais de 0,1% a menos de 1% do PIB'],
+  ['S4', 'Ativos totais abaixo de 0,1% do PIB'],
+  ['S5', 'Ativos totais abaixo de 0,1% do PIB e perfil de risco simplificado']
+];
+var PAPEIS_BANCO = /^(LCA|LCI|LCD|CDB|LC|LF|RDB|LIG)$/;
+var CREDLAB = { ok: '✓ Passa nos critérios', nao: '✕ Não passa', pend: '? Sem classificação' };
+
+function emissorChave(p) { return compacto(p.emissor || p.nome); }
+// o nome cadastrado pode ser parte do nome do emissor no relatório (e vice-versa)
+function acharEmissor(mapa, ch) {
+  if (mapa[ch]) return mapa[ch];
+  var ks = Object.keys(mapa);
+  for (var i = 0; i < ks.length; i++) {
+    var k = ks[i];
+    if (k.length >= 4 && ch.length >= 4 && (ch.indexOf(k) !== -1 || k.indexOf(ch) !== -1)) return mapa[k];
+  }
+  return null;
+}
+function avaliarCredito(p, expo) {
+  if (p.tipo !== 'rf') return null;
+  var ch = emissorChave(p), res;
+  if (PAPEIS_BANCO.test(p.papel || '')) {
+    var b = acharEmissor(CRIT.bancos, ch);
+    if (!b || (!b.segmento && (b.aprovado === null || b.aprovado === undefined))) res = { st: 'pend', tipo: 'Banco', seg: b ? b.segmento : '', motivo: 'Emissor sem segmento cadastrado' };
+    else if (b.aprovado === true || b.aprovado === false) res = { st: b.aprovado ? 'ok' : 'nao', tipo: 'Banco', seg: b.segmento, motivo: 'Exceção cadastrada' + (b.obs ? ': ' + b.obs : '') };
+    else {
+      var aceito = CRIT.seg.indexOf(b.segmento) !== -1;
+      res = { st: aceito ? 'ok' : 'nao', tipo: 'Banco', seg: b.segmento, motivo: aceito ? 'Segmento ' + b.segmento + ' aceito' : 'Segmento ' + b.segmento + ' fora dos segmentos aceitos (' + (CRIT.seg.join(', ') || 'nenhum') + ')' };
+    }
+  } else {
+    var c = acharEmissor(CRIT.privado, ch);
+    if (!c || c.aprovado === null || c.aprovado === undefined) res = { st: 'pend', tipo: 'Crédito privado', seg: '', motivo: 'Sem análise de crédito cadastrada' };
+    else res = { st: c.aprovado ? 'ok' : 'nao', tipo: 'Crédito privado', seg: '', motivo: (c.aprovado ? 'Aprovado' : 'Reprovado') + ' na análise de crédito' + (c.obs ? ': ' + c.obs : '') };
+  }
+  if (CRIT.limite && res.st === 'ok' && R.total > 0) {
+    var pe = (expo[ch] || 0) / R.total * 100;
+    if (pe > CRIT.limite) { res.st = 'nao'; res.motivo = 'Exposição de ' + fmtP(pe, 1) + ' ao emissor, acima do limite de ' + fmtP(CRIT.limite, 1) + ' do patrimônio'; }
+  }
+  return res;
+}
+function recalcularCredito() {
+  if (!R) return;
+  var expo = {};
+  R.itens.forEach(function (p) { if (p.tipo === 'rf') { var k = emissorChave(p); expo[k] = (expo[k] || 0) + p.saldo; } });
+  R.itens.forEach(function (p) { p.cred = avaliarCredito(p, expo); p.credRot = p.cred ? CREDLAB[p.cred.st] : ''; });
+  if (R.base) delete R.base.cred;
+}
+
+// persistência
+function persistir(cat, nome, ch, campos) {
+  if (!logado || !sb || !ehMaster) return Promise.resolve();
+  return sb.auth.getUser().then(function (res) {
+    var u = res && res.data && res.data.user;
+    var linha = { categoria: cat, chave: ch, nome: nome, atualizado_por: u ? u.id : null, atualizado_em: new Date().toISOString() };
+    Object.keys(campos).forEach(function (k) { linha[k] = campos[k]; });
+    return sb.from('criterios_credito').upsert(linha, { onConflict: 'categoria,chave' });
+  }).then(function (r) {
+    if (r && r.error) { msgCrit = 'Não foi possível gravar: ' + r.error.message; renderCriterios(); }
+  });
+}
+function remover(cat, ch) {
+  if (!logado || !sb || !ehMaster) return;
+  sb.from('criterios_credito').delete().eq('categoria', cat).eq('chave', ch).then(function (r) {
+    if (r && r.error) { msgCrit = 'Não foi possível remover: ' + r.error.message; renderCriterios(); }
+  });
+}
+function setBanco(nome, parc) {
+  var ch = compacto(nome);
+  if (!ch) return;
+  var b = CRIT.bancos[ch] || (CRIT.bancos[ch] = { nome: nome, segmento: '', aprovado: null, obs: '' });
+  Object.keys(parc).forEach(function (k) { b[k] = parc[k]; });
+  persistir('banco', b.nome, ch, { segmento: b.segmento || null, aprovado: b.aprovado === undefined ? null : b.aprovado, observacao: b.obs || null });
+}
+function setPrivado(nome, parc) {
+  var ch = compacto(nome);
+  if (!ch) return;
+  var c = CRIT.privado[ch] || (CRIT.privado[ch] = { nome: nome, aprovado: null, obs: '' });
+  Object.keys(parc).forEach(function (k) { c[k] = parc[k]; });
+  persistir('credito_privado', c.nome, ch, { aprovado: c.aprovado === undefined ? null : c.aprovado, observacao: c.obs || null });
+}
+function salvarSegmentos() { persistir('parametro', 'Segmentos bancários aceitos', 'segmentos_aceitos', { valor: CRIT.seg }); }
+function salvarLimite() { persistir('parametro', 'Limite máximo por emissor (% do patrimônio)', 'limite_emissor_pct', { valor: CRIT.limite }); }
+function aposAlterarCriterios() { recalcularCredito(); renderCriterios(); if (D && R) render(); }
+
+function carregarCriterios() {
+  if (!sb || !logado) return Promise.resolve();
+  return sb.from('criterios_credito').select('categoria,chave,nome,segmento,aprovado,valor,observacao').then(function (r) {
+    if (r.error) { msgCrit = 'Não foi possível carregar os critérios: ' + r.error.message; return; }
+    var novo = { seg: CRIT.seg, limite: null, bancos: {}, privado: {} };
+    (r.data || []).forEach(function (x) {
+      if (x.categoria === 'banco') novo.bancos[x.chave] = { nome: x.nome, segmento: x.segmento || '', aprovado: x.aprovado, obs: x.observacao || '' };
+      else if (x.categoria === 'credito_privado') novo.privado[x.chave] = { nome: x.nome, aprovado: x.aprovado, obs: x.observacao || '' };
+      else if (x.chave === 'segmentos_aceitos' && Array.isArray(x.valor)) novo.seg = x.valor;
+      else if (x.chave === 'limite_emissor_pct' && typeof x.valor === 'number') novo.limite = x.valor;
+    });
+    CRIT = novo;
+  });
+}
+function iniciarCriterios() {
+  if (!sb || !SESSAO_INICIAL || !SESSAO_INICIAL.access_token) { renderCriterios(); return Promise.resolve(); }
+  return sb.auth.setSession({ access_token: SESSAO_INICIAL.access_token, refresh_token: SESSAO_INICIAL.refresh_token }).then(function (r) {
+    if (r.error) throw r.error;
+    logado = true;
+    return sb.auth.getUser();
+  }).then(function (res) {
+    var u = res && res.data && res.data.user;
+    if (!u) return false;
+    return sb.from('profiles').select('role').eq('id', u.id).single().then(function (x) { return !!(x.data && x.data.role === 'master'); });
+  }).then(function (m) { ehMaster = !!m; return carregarCriterios(); })
+    .catch(function () { logado = false; })
+    .then(function () { aposAlterarCriterios(); });
+}
+
+// editor de critérios (cartão independente do painel; pode ser aberto sem carregar uma carteira)
+function renderCriterios() {
+  var el = document.getElementById('crit-corpo');
+  if (!el) return;
+  var dis = ehMaster ? '' : ' disabled';
+  var perm = !logado ? 'Entre no site com a sua conta para consultar e atualizar os critérios (esta janela deve ser aberta a partir do site autenticado).'
+    : (ehMaster ? 'Você é master: as alterações são gravadas na hora e valem para todos os usuários.' : 'Somente o usuário master altera os critérios; você pode consultá-los.');
+  var segs = SEGMENTOS.map(function (s) {
+    var on = CRIT.seg.indexOf(s[0]) !== -1;
+    return '<button type="button" class="seg-chip' + (on ? ' on' : '') + '" data-cseg="' + s[0] + '"' + dis + ' title="' + esc(s[1]) + '">' + s[0] + '</button>';
+  }).join('');
+  var segDesc = SEGMENTOS.map(function (s) { return '<b>' + s[0] + '</b>: ' + esc(s[1]); }).join(' · ');
+  var opSeg = function (v) { return '<option value="">—</option>' + SEGMENTOS.map(function (s) { return '<option value="' + s[0] + '"' + (v === s[0] ? ' selected' : '') + '>' + s[0] + '</option>'; }).join(''); };
+  var opExc = function (v) { return '<option value=""' + (v === null || v === undefined ? ' selected' : '') + '>Seguir a regra do segmento</option><option value="1"' + (v === true ? ' selected' : '') + '>Aprovar (exceção)</option><option value="0"' + (v === false ? ' selected' : '') + '>Reprovar (exceção)</option>'; };
+  var opDec = function (v) { return '<option value=""' + (v === null || v === undefined ? ' selected' : '') + '>Sem análise</option><option value="1"' + (v === true ? ' selected' : '') + '>Aprovado</option><option value="0"' + (v === false ? ' selected' : '') + '>Reprovado</option>'; };
+  var bancos = Object.keys(CRIT.bancos).map(function (k) { return CRIT.bancos[k]; }).sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
+  var tb = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Banco / emissor</th><th class="e">Segmento</th><th class="e">Exceção</th><th class="e">Observação</th><th></th></tr></thead><tbody>';
+  bancos.forEach(function (b, i) {
+    var ch = compacto(b.nome);
+    tb += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e"><b>' + esc(b.nome) + '</b></td><td class="e"><select data-cbk="' + esc(ch) + '|segmento"' + dis + '>' + opSeg(b.segmento) + '</select></td><td class="e"><select data-cbk="' + esc(ch) + '|exc"' + dis + '>' + opExc(b.aprovado) + '</select></td><td class="e"><input type="text" class="in-crit" data-cbk="' + esc(ch) + '|obs" value="' + esc(b.obs) + '"' + dis + '></td><td><button type="button" class="rm" data-cdel="banco|' + esc(ch) + '" title="Remover"' + dis + '>×</button></td></tr>';
+  });
+  if (!bancos.length) tb += '<tr><td class="e" colspan="5"><span class="vazio">Nenhum banco cadastrado.</span></td></tr>';
+  tb += '</tbody></table></div>';
+  var addB = '<div class="form-crit"><input type="text" id="nb-nome" class="in-crit" placeholder="Nome do banco (como no relatório, ex.: BNDES)"' + dis + '><select id="nb-seg"' + dis + '>' + opSeg('') + '</select><input type="text" id="nb-obs" class="in-crit" placeholder="Observação (opcional)"' + dis + '><button type="button" class="btn btn-peq" data-cadd="banco"' + dis + '>+ Adicionar banco</button></div>';
+  var priv = Object.keys(CRIT.privado).map(function (k) { return CRIT.privado[k]; }).sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
+  var tp = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Emissor de crédito privado</th><th class="e">Análise de crédito</th><th class="e">Observação</th><th></th></tr></thead><tbody>';
+  priv.forEach(function (c, i) {
+    var ch = compacto(c.nome);
+    tp += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e"><b>' + esc(c.nome) + '</b></td><td class="e"><select data-cpv="' + esc(ch) + '|dec"' + dis + '>' + opDec(c.aprovado) + '</select></td><td class="e"><input type="text" class="in-crit" data-cpv="' + esc(ch) + '|obs" value="' + esc(c.obs) + '"' + dis + '></td><td><button type="button" class="rm" data-cdel="credito_privado|' + esc(ch) + '" title="Remover"' + dis + '>×</button></td></tr>';
+  });
+  if (!priv.length) tp += '<tr><td class="e" colspan="4"><span class="vazio">Nenhum emissor cadastrado.</span></td></tr>';
+  tp += '</tbody></table></div>';
+  var addP = '<div class="form-crit"><input type="text" id="np-nome" class="in-crit" placeholder="Emissor (como no relatório, ex.: LAR COOPERATIVA)"' + dis + '><select id="np-dec"' + dis + '>' + opDec(true) + '</select><input type="text" id="np-obs" class="in-crit" placeholder="Observação (opcional)"' + dis + '><button type="button" class="btn btn-peq" data-cadd="credito_privado"' + dis + '>+ Adicionar emissor</button></div>';
+  el.innerHTML = '<p class="card-sub">' + esc(perm) + '</p>' + (msgCrit ? '<p class="card-sub" style="color:var(--red);">' + esc(msgCrit) + '</p>' : '') +
+    '<div class="tit-sec">Bancos: segmentos aceitos</div><div class="seg-chips">' + segs + '</div><p class="nota">Segmentação do Banco Central (Resolução CMN nº 4.553). ' + segDesc + '. Títulos bancários (LCA, LCI, CDB, LC, LF, RDB, LIG) de emissores nos segmentos marcados passam nos critérios.</p>' +
+    '<div class="tit-sec" style="margin-top:20px;">Limite por emissor</div><div class="form-crit"><label for="in-limite" style="font-size:12.5px;">Exposição máxima a um mesmo emissor (% do patrimônio, vazio para não aplicar)</label><input type="text" id="in-limite" class="in-crit" style="max-width:110px;" value="' + (CRIT.limite === null ? '' : String(CRIT.limite).replace('.', ',')) + '"' + dis + '></div>' +
+    '<div class="tit-sec" style="margin-top:20px;">Cadastro de bancos</div>' + tb + addB +
+    '<div class="tit-sec" style="margin-top:20px;">Cadastro de crédito privado (CRA, CRI, debêntures)</div>' + tp + addP +
+    '<p class="nota">O nome é comparado com o emissor do relatório sem considerar acentos, espaços e pontuação; um nome contido no outro também é reconhecido. Títulos sem cadastro aparecem como "Sem classificação".</p>';
+}
+function abrirCriterios(abrir) {
+  var c = document.getElementById('area-criterios');
+  c.hidden = abrir === false ? true : !c.hidden && abrir === undefined;
+  if (!c.hidden) { renderCriterios(); c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+}
+function aplicarAcaoCriterio(t) {
+  function ach(sel) { return t && t.closest ? t.closest(sel) : null; }
+  var el;
+  if ((el = ach('[data-cseg]'))) {
+    var s = el.getAttribute('data-cseg'), i = CRIT.seg.indexOf(s);
+    if (i === -1) CRIT.seg.push(s); else CRIT.seg.splice(i, 1);
+    CRIT.seg.sort(); salvarSegmentos(); aposAlterarCriterios(); return true;
+  }
+  if ((el = ach('[data-cdel]'))) {
+    var d = el.getAttribute('data-cdel'), ix = d.indexOf('|'), cat = d.slice(0, ix), ch = d.slice(ix + 1);
+    if (!confirm('Remover este cadastro dos critérios?')) return true;
+    if (cat === 'banco') delete CRIT.bancos[ch]; else delete CRIT.privado[ch];
+    remover(cat, ch); aposAlterarCriterios(); return true;
+  }
+  if ((el = ach('[data-cadd]'))) {
+    var cat2 = el.getAttribute('data-cadd');
+    if (cat2 === 'banco') {
+      var nb = document.getElementById('nb-nome').value.trim();
+      if (!nb) { msgCrit = 'Informe o nome do banco.'; renderCriterios(); return true; }
+      msgCrit = '';
+      setBanco(nb, { segmento: document.getElementById('nb-seg').value, obs: document.getElementById('nb-obs').value.trim() });
+    } else {
+      var np = document.getElementById('np-nome').value.trim();
+      if (!np) { msgCrit = 'Informe o nome do emissor.'; renderCriterios(); return true; }
+      msgCrit = '';
+      var dv = document.getElementById('np-dec').value;
+      setPrivado(np, { aprovado: dv === '' ? null : dv === '1', obs: document.getElementById('np-obs').value.trim() });
+    }
+    aposAlterarCriterios(); return true;
+  }
+  if ((el = ach('[data-priv]'))) {
+    var v = el.getAttribute('data-priv'), k = v.lastIndexOf('|'), nome = v.slice(0, k), val = v.slice(k + 1) === '1';
+    var atual = acharEmissor(CRIT.privado, compacto(nome));
+    setPrivado(nome, { aprovado: atual && atual.aprovado === val ? null : val });
+    aposAlterarCriterios(); return true;
+  }
+  if (ach('[data-abrir-crit]')) { abrirCriterios(true); return true; }
+  if (ach('[data-fechar-crit]')) { abrirCriterios(false); return true; }
+  return false;
+}
+document.addEventListener('change', function (ev) {
+  var t = ev.target;
+  if (!t || !t.getAttribute) return;
+  var a;
+  if ((a = t.getAttribute('data-cbk'))) {
+    var p = a.split('|'), b = CRIT.bancos[p[0]];
+    if (!b) return;
+    if (p[1] === 'segmento') setBanco(b.nome, { segmento: t.value });
+    else if (p[1] === 'exc') setBanco(b.nome, { aprovado: t.value === '' ? null : t.value === '1' });
+    else setBanco(b.nome, { obs: t.value.trim() });
+    aposAlterarCriterios(); return;
+  }
+  if ((a = t.getAttribute('data-cpv'))) {
+    var q = a.split('|'), c = CRIT.privado[q[0]];
+    if (!c) return;
+    if (q[1] === 'dec') setPrivado(c.nome, { aprovado: t.value === '' ? null : t.value === '1' }); else setPrivado(c.nome, { obs: t.value.trim() });
+    aposAlterarCriterios(); return;
+  }
+  if ((a = t.getAttribute('data-ibanco'))) { setBanco(a, { segmento: t.value }); aposAlterarCriterios(); return; }
+  if (t.id === 'in-limite') {
+    var n = pNum(t.value);
+    CRIT.limite = (n !== null && n > 0) ? n : null;
+    salvarLimite(); aposAlterarCriterios();
+  }
+});
+
 // ── Estado, filtros cruzados e dimensões ──
 // Cada dimensão pode ter vários valores selecionados (união dentro da dimensão, interseção entre dimensões).
 // Os gráficos de uma dimensão mostram o cruzamento das DEMAIS dimensões e destacam os valores selecionados.
-var ABAS = [['geral', 'Visão geral'], ['alertas', 'Pontos de atenção'], ['rentab', 'Rentabilidade'], ['alocacao', 'Alocação e perfis'], ['posicoes', 'Posições'], ['rf', 'Renda fixa'], ['movs', 'Movimentações']];
+var ABAS = [['geral', 'Visão geral'], ['alertas', 'Pontos de atenção'], ['rentab', 'Rentabilidade'], ['alocacao', 'Alocação e perfis'], ['posicoes', 'Posições'], ['rf', 'Renda fixa'], ['credito', 'Análise de crédito'], ['movs', 'Movimentações']];
 var ST = { aba: 'geral', f: {}, periodo: 12, mesSel: null, busca: '', ordem: { col: 'saldo', dir: -1 }, movTipo: '', imprimir: false };
 var rotLiq = {}, rotTrib = {};
 LIQ.forEach(function (l) { rotLiq[l.k] = l.r; });
@@ -16112,7 +16374,8 @@ var DIMS = {
   trib: { rot: 'Tributação', get: function (p) { return rotTrib[p.trib]; } },
   emi: { rot: 'Emissor', get: function (p) { return p.tipo === 'rf' ? (p.emissor || p.nome) : ''; } },
   ano: { rot: 'Vencimento', get: function (p) { return p.tipo === 'rf' && p.venc ? String(p.venc.a) : ''; } },
-  ativo: { rot: 'Ativo', get: function (p) { return p.nome; } }
+  ativo: { rot: 'Ativo', get: function (p) { return p.nome; } },
+  cred: { rot: 'Análise de crédito', get: function (p) { return p.credRot || ''; } }
 };
 function filtroAtivo() { return Object.keys(DIMS).some(function (d) { return (ST.f[d] || []).length > 0; }); }
 function passa(p, exc) {
@@ -16138,7 +16401,9 @@ function baseDim(dim) {
   }
   return R.base[dim];
 }
-function corDe(dim, v) { var i = baseDim(dim).indexOf(v); return CINZAS[(i < 0 ? 0 : i) % CINZAS.length]; }
+function corDe(dim, v) {
+  if (dim === 'cred') return v === CREDLAB.ok ? '#111111' : (v === CREDLAB.nao ? '#D0D0D0' : '#8A8A8A');
+  var i = baseDim(dim).indexOf(v); return CINZAS[(i < 0 ? 0 : i) % CINZAS.length]; }
 function agrupar(dim) {
   var m = {}, ord = [];
   filtrados(dim).forEach(function (p) {
@@ -16440,6 +16705,38 @@ function tipoMov(m) {
   if (/OPERA[ÇC][ÕO]ES EM BOLSA|NOTA N/.test(h)) return m.valor < 0 ? 'Compra' : 'Venda';
   return 'Outros';
 }
+PAGINAS.credito = function () {
+  var rf = filtrados(null).filter(function (p) { return p.tipo === 'rf' && p.cred; });
+  var G = { ok: [], nao: [], pend: [] };
+  rf.forEach(function (p) { G[p.cred.st].push(p); });
+  var tot = soma(rf, function (p) { return p.saldo; });
+  function k(rot, st) {
+    var v = soma(G[st], function (p) { return p.saldo; });
+    return kpi(rot, fmtRS(v), G[st].length + ' título(s) · ' + fmtP(tot > 0 ? v / tot * 100 : 0, 1) + ' da renda fixa direta');
+  }
+  var h = '<p class="resumo">Títulos de renda fixa direta avaliados pelos critérios cadastrados: bancos pelo segmento (' + esc(CRIT.seg.join(', ') || 'nenhum segmento aceito') + ')' + (CRIT.limite ? ', com limite de ' + fmtP(CRIT.limite, 1) + ' do patrimônio por emissor' : '') + ' e crédito privado pela análise de crédito do emissor. ' +
+    '<button type="button" class="btn btn-peq" data-abrir-crit="1">Atualizar critérios</button></p>';
+  h += '<div class="kpis">' + k('Passam nos critérios', 'ok') + k('Não passam', 'nao') + k('Sem classificação', 'pend') + kpi('Renda fixa direta', fmtRS(tot), rf.length + ' título(s) avaliado(s)') + '</div><div class="tiles">';
+  h += tile('t4', 'Resultado da análise', donutDim('cred', 'renda fixa'), 'clique para filtrar');
+  h += tile('t8', 'Por emissor', barrasDim('emi'), 'clique para filtrar');
+  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Título</th><th class="e">Emissor</th><th class="e">Tipo</th><th>Saldo bruto</th><th>% carteira</th><th class="e">Classificação</th><th class="e">Resultado</th><th class="e">Motivo</th></tr></thead><tbody>';
+  var ord = { nao: 0, pend: 1, ok: 2 };
+  rf.slice().sort(function (a, b) { return ord[a.cred.st] - ord[b.cred.st] || b.saldo - a.saldo; }).forEach(function (p, i) {
+    var c = p.cred, ctl;
+    var nome = p.emissor || p.nome;
+    if (c.tipo === 'Banco') {
+      ctl = ehMaster ? '<select data-ibanco="' + esc(nome) + '"><option value="">Segmento…</option>' + SEGMENTOS.map(function (s) { return '<option value="' + s[0] + '"' + (c.seg === s[0] ? ' selected' : '') + '>' + s[0] + '</option>'; }).join('') + '</select>' : esc(c.seg || '—');
+    } else {
+      var at = acharEmissor(CRIT.privado, compacto(nome));
+      var ap = at ? at.aprovado : null;
+      ctl = ehMaster ? '<span class="seg-btns"><button type="button" class="' + (ap === true ? 'on' : '') + '" data-priv="' + esc(nome) + '|1">Aprovar</button><button type="button" class="' + (ap === false ? 'on' : '') + '" data-priv="' + esc(nome) + '|0">Reprovar</button></span>' : (ap === null || ap === undefined ? '—' : (ap ? 'Aprovado' : 'Reprovado'));
+    }
+    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(p.papel + ' ' + (p.venc ? String(p.venc.m).padStart(2, '0') + '/' + p.venc.a : '')) + '</td><td class="e">' + esc(nome) + '</td><td class="e">' + c.tipo + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td><td class="e">' + ctl + '</td><td class="e"><span class="res res-' + c.st + '"' + dF('cred', CREDLAB[c.st]) + '>' + CREDLAB[c.st] + '</span></td><td class="e">' + esc(c.motivo) + '</td></tr>';
+  });
+  t += '</tbody></table></div>';
+  h += tile('t12', 'Títulos avaliados', rf.length ? t : '<p class="vazio">Nenhum título de renda fixa direta para os filtros selecionados.</p>', ehMaster ? 'classifique direto na tabela; a alteração vale para todos' : 'somente o usuário master altera a classificação');
+  return h + '</div>';
+};
 PAGINAS.movs = function () {
   if (!D.movs.length) return '<p class="vazio">Nenhuma movimentação listada no relatório.</p>';
   var tot = { Proventos: 0, Aporte: 0, Resgate: 0, Compra: 0, Venda: 0, Outros: 0 }, qtd = {};
@@ -16474,7 +16771,7 @@ function render() {
   var cliente = (document.getElementById('in-cliente').value || '').trim();
   document.getElementById('cab').innerHTML = '<div><h2 id="tit-cliente">' + esc(cliente ? 'Carteira de ' + cliente : 'Carteira do cliente') + '</h2><small>Conta ' + esc(D.cab.conta || '') + (D.cab.assessor ? ' · Assessor ' + esc(D.cab.assessor) : '') + ' · Posições em ' + esc(D.cab.data || '') + ' · Fonte: XPerformance</small></div>';
   document.getElementById('abas').innerHTML = ABAS.map(function (a) { return '<button type="button" class="aba' + (ST.aba === a[0] ? ' on' : '') + '" data-aba="' + a[0] + '">' + a[1] + (a[0] === 'alertas' ? ' <span class="badge">' + R.alertas.filter(function (x) { return x.n === 'alto'; }).length + '</span>' : '') + '</button>'; }).join('');
-  document.getElementById('filtros').innerHTML = (ST.imprimir || ['geral', 'alocacao', 'posicoes', 'rf'].indexOf(ST.aba) !== -1) ? htmlFiltros() : '';
+  document.getElementById('filtros').innerHTML = (ST.imprimir || ['geral', 'alocacao', 'posicoes', 'rf', 'credito'].indexOf(ST.aba) !== -1) ? htmlFiltros() : '';
   var paginas = ST.imprimir ? ABAS.map(function (a) { return a[0]; }) : [ST.aba];
   document.getElementById('conteudo').innerHTML = paginas.map(function (p) { return (ST.imprimir ? '<h3 class="tit-pagina">' + ABAS.filter(function (a) { return a[0] === p; })[0][1] + '</h3>' : '') + PAGINAS[p](); }).join('') +
     '<p class="nota">Material de caráter meramente informativo, elaborado com base no relatório XPerformance. Não constitui oferta, solicitação ou recomendação de compra ou venda de qualquer ativo. Rentabilidade passada não representa garantia de rentabilidade futura.</p>';
@@ -16486,6 +16783,7 @@ document.addEventListener('click', function (ev) {
   var t = ev.target;
   function ach(sel) { return t && t.closest ? t.closest(sel) : null; }
   var el;
+  if (aplicarAcaoCriterio(t)) return;
   if ((el = ach('[data-rm]'))) { var pr = el.getAttribute('data-rm'), ix = pr.indexOf('|'); alternar(pr.slice(0, ix), pr.slice(ix + 1)); render(); return; }
   if ((el = ach('[data-limpar]'))) { ST.f = {}; render(); return; }
   if ((el = ach('[data-aba]'))) { ST.aba = el.getAttribute('data-aba'); render(); return; }
@@ -16542,6 +16840,7 @@ document.getElementById('arq-carteira').addEventListener('change', function (ev)
           if (!rel) { erro('Não foi possível reconhecer o relatório XPerformance neste PDF (evolução patrimonial e composição por estratégia).'); return; }
           D = rel; perfilSel = null;
           R = analisar(D);
+          recalcularCredito();
           ST.f = {}; ST.aba = 'geral'; ST.mesSel = null; ST.busca = ''; ST.periodo = 12; ST.movTipo = '';
           document.getElementById('painel').hidden = false;
           render();
@@ -16558,6 +16857,9 @@ document.getElementById('arq-carteira').addEventListener('change', function (ev)
 window.addEventListener('beforeprint', function () { if (D && R) { ST.imprimir = true; render(); } });
 window.addEventListener('afterprint', function () { if (D && R) { ST.imprimir = false; render(); } });
 document.getElementById('btn-imprimir').addEventListener('click', function () { window.print(); });
+document.getElementById('btn-criterios').addEventListener('click', function () { abrirCriterios(); });
+document.getElementById('btn-fechar-crit').addEventListener('click', function () { abrirCriterios(false); });
+iniciarCriterios();
 document.getElementById('btn-excel').addEventListener('click', function () {
   if (!D) return;
   var wb = XLSX.utils.book_new();
@@ -16577,6 +16879,9 @@ document.getElementById('btn-excel').addEventListener('click', function () {
   if (filtroAtivo()) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(linhasPos(filtrados(null))), 'Posições (filtro atual)');
   var ev = [['Mês', 'Patrimônio inicial', 'Movimentações', 'IR', 'IOF', 'Patrimônio final', 'Ganho financeiro', 'Rentab. (%)', '% CDI']];
   D.evol.forEach(function (e) { ev.push([e.rot, e.ini, e.mov, e.ir, e.iof, e.fin, e.ganho, e.rent, e.pcdi]); });
+  var cr = [['Título', 'Emissor', 'Tipo', 'Saldo bruto (R$)', '% carteira', 'Segmento', 'Resultado', 'Motivo']];
+  R.itens.forEach(function (p) { if (p.cred) cr.push([p.papel + ' ' + (p.venc ? String(p.venc.m).padStart(2, '0') + '/' + p.venc.a : ''), p.emissor || p.nome, p.cred.tipo, p.saldo, Math.round(p.pct * 100) / 100, p.cred.seg, CREDLAB[p.cred.st], p.cred.motivo]); });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cr), 'Análise de crédito');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ev), 'Evolução');
   var mv = [['Data', 'Liquidação', 'Tipo', 'Histórico', 'Valor', 'Saldo']];
   D.movs.forEach(function (m) { mv.push([m.data, m.liq, m.tipo || tipoMov(m), m.hist, m.valor, m.saldo]); });
