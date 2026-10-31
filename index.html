@@ -272,19 +272,29 @@ h2{font-size:32px;letter-spacing:-.02em;}
   <polygon points="84,20 70,24 80,34" fill="url(#crMarkGrad)"/>
 </svg>Clube do Rendimento</a>
     <nav class="nav-links" aria-label="Navegação principal">
-      <button type="button" class="btn-nav" id="btn-nav-calculadoras">Calculadoras ↗</button>
+      <div class="nav-dropdown-wrap">
+        <button type="button" class="btn-nav nav-dropdown-trigger" id="btn-nav-simuladores" aria-expanded="false">Simuladores <span class="nav-caret">▾</span></button>
+        <div class="nav-dropdown" id="dropdown-simuladores" hidden>
+          <button type="button" class="nav-dropdown-item" id="btn-nav-calculadoras">Calculadoras ↗</button>
+          <button type="button" class="nav-dropdown-item" id="btn-nav-sucessorio">Planejamento Sucessório ↗</button>
+          <button type="button" class="nav-dropdown-item" id="btn-nav-holding">Viabilidade de Holding ↗</button>
+          <button type="button" class="nav-dropdown-item" id="btn-nav-seguros">Seguros e Previdência ↗</button>
+          <button type="button" class="nav-dropdown-item" id="btn-nav-consorcio">Consórcio ↗</button>
+        </div>
+      </div>
       <button type="button" class="btn-nav" id="btn-nav-cetipados">Fundos Fechados ↗</button>
       <!-- "Pesquisar ativo" ocultado do menu; a ferramenta permanece no código. Para reativar, remova o atributo hidden do botão abaixo. -->
       <button type="button" class="btn-nav" id="btn-nav-pesquisa" hidden>Pesquisar ativo ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-carteira-rec">Carteira Recomendada ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-cartoes">Comparar Cartões ↗</button>
-      <button type="button" class="btn-nav" id="btn-nav-seguros">Seguros e Previdência ↗</button>
-      <button type="button" class="btn-nav" id="btn-nav-consorcio">Consórcio ↗</button>
-      <button type="button" class="btn-nav" id="btn-nav-sucessorio">Planejamento Sucessório ↗</button>
-      <button type="button" class="btn-nav" id="btn-nav-holding">Viabilidade de Holding ↗</button>
       <button type="button" class="btn-nav" id="btn-nav-consolidacao">Consolidação de Carteira ↗</button>
-      <button type="button" class="btn-nav" id="btn-nav-mapa-calor">Mapa de Calor ↗</button>
-      <button type="button" class="btn-nav" id="btn-nav-nota-corretagem">Nota de Corretagem ↗</button>
+      <div class="nav-dropdown-wrap">
+        <button type="button" class="btn-nav nav-dropdown-trigger" id="btn-nav-renda-variavel" aria-expanded="false">Renda Variável <span class="nav-caret">▾</span></button>
+        <div class="nav-dropdown" id="dropdown-renda-variavel" hidden>
+          <button type="button" class="nav-dropdown-item" id="btn-nav-nota-corretagem">Nota de Corretagem ↗</button>
+          <button type="button" class="nav-dropdown-item" id="btn-nav-mapa-calor">Mapa de Calor ↗</button>
+        </div>
+      </div>
       <div class="nav-dropdown-wrap">
         <button type="button" class="btn-nav nav-dropdown-trigger" id="btn-nav-cripto" aria-expanded="false">Cripto <span class="nav-caret">▾</span></button>
         <div class="nav-dropdown" id="dropdown-cripto" hidden>
@@ -22850,23 +22860,30 @@ if (btnExportarExcelPesquisa) {
     abrirGerenciarUsuarios();
   });
 
-  // Menus dropdown do cabeçalho (Cripto / Renda Fixa) — mesmo padrão do
+  // Menus dropdown do cabeçalho (Simuladores / Renda Variável / Cripto / Renda Fixa) — mesmo padrão do
   // menu do usuário: clique no botão abre/fecha, clique fora fecha, clique
-  // num item fecha o menu antes de rolar suavemente até a seção (âncora).
-  [
+  // num item fecha o menu antes de abrir a ferramenta.
+  var MENUS_NAV = [
+    { botao: 'btn-nav-simuladores', painel: 'dropdown-simuladores' },
+    { botao: 'btn-nav-renda-variavel', painel: 'dropdown-renda-variavel' },
     { botao: 'btn-nav-cripto', painel: 'dropdown-cripto' },
     { botao: 'btn-nav-renda-fixa', painel: 'dropdown-renda-fixa' }
-  ].forEach(function(par) {
+  ];
+  function fecharMenusNav() {
+    MENUS_NAV.forEach(function(par) {
+      esconderId(par.painel);
+      var b = document.getElementById(par.botao);
+      if (b) b.setAttribute('aria-expanded', 'false');
+    });
+  }
+  MENUS_NAV.forEach(function(par) {
     var btn = document.getElementById(par.botao);
     var dd = document.getElementById(par.painel);
     if (!btn || !dd) return;
     btn.addEventListener('click', function(ev) {
       ev.stopPropagation();
       var abrir = dd.hidden;
-      esconderId('dropdown-cripto');
-      esconderId('dropdown-renda-fixa');
-      document.getElementById('btn-nav-cripto').setAttribute('aria-expanded', 'false');
-      document.getElementById('btn-nav-renda-fixa').setAttribute('aria-expanded', 'false');
+      fecharMenusNav();
       if (abrir) { mostrar(dd); btn.setAttribute('aria-expanded', 'true'); }
     });
     dd.querySelectorAll('.nav-dropdown-item').forEach(function(item) {
@@ -22877,9 +22894,9 @@ if (btnExportarExcelPesquisa) {
     });
   });
   document.addEventListener('click', function(ev) {
-    ['dropdown-cripto', 'dropdown-renda-fixa'].forEach(function(id) {
-      var dd = document.getElementById(id);
-      var btn = document.getElementById(id === 'dropdown-cripto' ? 'btn-nav-cripto' : 'btn-nav-renda-fixa');
+    MENUS_NAV.forEach(function(par) {
+      var dd = document.getElementById(par.painel);
+      var btn = document.getElementById(par.botao);
       if (dd && !dd.hidden && !dd.contains(ev.target) && ev.target !== btn) {
         esconder(dd);
         if (btn) btn.setAttribute('aria-expanded', 'false');
