@@ -15559,7 +15559,7 @@ h1{font-size:24px;font-weight:700;margin-bottom:6px;}
 .cab-rel{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;margin-bottom:16px;}
 .cab-rel h2{font-size:20px;font-weight:700;}
 .cab-rel small{display:block;font-size:12.5px;color:var(--ink-soft);margin-top:4px;}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:16px 0 4px;}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:14px;margin:16px 0 4px;}
 .kpi{border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;background:#fff;}
 .kpi-rot{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-mute);margin-bottom:8px;}
 .kpi-val{font-size:21px;font-weight:700;line-height:1.1;white-space:nowrap;}
@@ -15575,7 +15575,7 @@ table.tb td.e{white-space:normal;}
 table.tb tr.zebra td{background:#FAFAF8;}
 table.tb tr.total td{font-weight:700;border-top:2px solid var(--ink);}
 table.tb tr.grupo td{font-weight:700;background:#F1F1F1;}
-.barra-linha{display:grid;grid-template-columns:minmax(120px,250px) 1fr 104px;align-items:center;gap:12px;margin:10px 0;}
+.barra-linha{display:grid;grid-template-columns:minmax(100px,38%) 1fr 96px;align-items:center;gap:12px;margin:10px 0;}
 .barra-rot{font-size:12.5px;line-height:1.3;}
 .trilho{height:20px;background:#F1F1F1;border-radius:999px;overflow:hidden;}
 .fill{height:100%;background:#111;border-radius:999px;}
@@ -15600,6 +15600,63 @@ table.tb tr.grupo td{font-weight:700;background:#F1F1F1;}
 svg text{font-family:'Inter','Segoe UI',sans-serif;}
 @media(max-width:860px){.grid2{grid-template-columns:1fr;}}
 @media print{.nav,.controles,.barra-acoes,#area-envio{display:none!important;}body{background:#fff;}.card{box-shadow:none;border-color:#ccc;}.tabela-wrap{overflow:visible;}.container{padding:10px;}}
+
+/* painel interativo */
+.abas{display:flex;gap:6px;flex-wrap:wrap;border-bottom:2px solid var(--ink);margin-bottom:14px;}
+.aba{background:none;border:none;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;border-radius:8px 8px 0 0;}
+.aba:hover{background:#ECECEC;color:var(--ink);}
+.aba.on{background:var(--ink);color:#fff;}
+.badge{display:inline-block;min-width:18px;padding:1px 6px;border-radius:999px;background:#fff;color:var(--ink);font-size:10.5px;margin-left:4px;text-align:center;}
+.aba:not(.on) .badge{background:var(--ink);color:#fff;}
+.filtros{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px;margin-bottom:14px;background:#fff;border:1px solid var(--ink);border-radius:12px;font-size:12.5px;}
+.filtros-n{color:var(--ink-soft);margin-left:auto;}
+.chip-f{display:inline-flex;align-items:center;gap:6px;background:var(--ink);color:#fff;border-radius:999px;padding:3px 6px 3px 12px;font-size:12px;}
+.chip-f small{opacity:.7;font-size:11px;}
+.chip-f button{background:#fff;color:var(--ink);border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:13px;line-height:1;}
+.btn-peq{padding:5px 12px;font-size:12px;}
+.resumo{font-size:13.5px;line-height:1.55;color:var(--ink-soft);margin-bottom:6px;max-width:980px;}
+.tiles{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;margin-top:16px;}
+.tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow-sm);min-width:0;page-break-inside:avoid;}
+.tile-tit{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;padding-left:10px;border-left:4px solid #111;display:flex;justify-content:space-between;gap:10px;align-items:baseline;}
+.tile-dica{font-size:10.5px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink-mute);}
+.t4{grid-column:span 4;}.t5{grid-column:span 5;}.t6{grid-column:span 6;}.t7{grid-column:span 7;}.t8{grid-column:span 8;}.t12{grid-column:span 12;}
+.clic{cursor:pointer;transition:opacity .15s,background .15s;}
+.clic:hover{background:#F4F4F4;}
+.barra-linha.clic{padding:3px 6px;margin:4px -6px;border-radius:8px;}
+.barra-linha.sel,.leg.sel{background:#ECECEC;outline:1.5px solid var(--ink);}
+.fraco{opacity:.35;}
+.fraco:hover{opacity:.8;}
+.leg.clic{padding:3px 6px;border-radius:6px;margin:2px -2px;}
+circle.seg{cursor:pointer;transition:opacity .15s;}
+circle.seg:hover{opacity:.8;}
+circle.seg.sel{stroke-opacity:1;filter:drop-shadow(0 0 2px rgba(0,0,0,.55));}
+g.col{cursor:pointer;}
+g.col.fraco{opacity:.4;}
+tr.selrow td{background:#E6E6E6!important;font-weight:600;}
+table.tb tr.clic:hover td{background:#F1F1F1;}
+th.ord{cursor:pointer;user-select:none;}
+th.ord:hover{color:var(--ink);}
+.barra-sl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px;}
+.rot-sl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);}
+.seg-btns{display:inline-flex;border:1.5px solid var(--ink);border-radius:8px;overflow:hidden;flex-wrap:wrap;}
+.seg-btns button{background:#fff;border:none;border-right:1px solid var(--line);padding:7px 14px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink);}
+.seg-btns button:last-child{border-right:none;}
+.seg-btns button.on{background:var(--ink);color:#fff;}
+.busca{padding:8px 12px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:13px;min-width:260px;}
+.busca:focus{outline:none;border-color:var(--ink);}
+.detalhe-mes{margin-top:14px;padding:12px 16px;background:#fff;border:1.5px solid var(--ink);border-radius:12px;font-size:13px;line-height:1.7;}
+.leg-graf{font-size:11.5px;color:#5C5C5C;margin-bottom:4px;}
+.leg-graf i{display:inline-block;width:10px;height:10px;margin-right:5px;}
+.alerta .btn{margin-top:10px;display:flex;}
+.cmp{margin:10px 0;}
+.cmp-rot{font-size:12.5px;font-weight:600;margin-bottom:3px;}
+.cmp-b{display:grid;grid-template-columns:1fr 84px;gap:10px;align-items:center;margin:2px 0;}
+.cmp-b span{font-size:11px;color:var(--ink-soft);text-align:right;}
+.cmp-b .trilho{height:12px;}
+#dica{position:fixed;z-index:200;max-width:320px;background:#111;color:#fff;font-size:12px;line-height:1.45;padding:8px 11px;border-radius:8px;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.25);}
+.tit-pagina{font-size:16px;margin:26px 0 4px;padding-top:14px;border-top:2px solid var(--ink);}
+@media(max-width:960px){.t4,.t5,.t6,.t7,.t8{grid-column:span 12;}}
+@media print{.abas,.filtros .btn,.chip-f button,.barra-sl,#dica{display:none!important;}.tile{box-shadow:none;border-color:#ccc;}.clic{cursor:default;}}
 </style>
 </head>
 <body>
@@ -15625,12 +15682,16 @@ svg text{font-family:'Inter','Segoe UI',sans-serif;}
   </div>
 
   <div id="painel" hidden>
-    <div class="barra-acoes" style="margin:0 0 16px;">
+    <div class="barra-acoes" style="margin:0 0 14px;">
       <button type="button" class="btn btn-primary" id="btn-excel">⬇ Exportar Excel</button>
       <button type="button" class="btn" id="btn-imprimir">Imprimir / salvar em PDF</button>
     </div>
+    <div class="cab-rel" id="cab"></div>
+    <nav class="abas" id="abas"></nav>
+    <div id="filtros"></div>
     <div id="conteudo"></div>
   </div>
+  <div id="dica" hidden></div>
 </div>
 
 <script>
@@ -15894,7 +15955,7 @@ function analisar(d) {
   d.estrategias.forEach(function (e) {
     if (e.chave === 'caixa') A.itens.push({ nome: /provento/i.test(e.nome) ? 'Proventos a receber' : 'Saldo em conta', estrategia: e.nome, chave: 'caixa', saldo: e.saldo, aloc: e.aloc, tipo: 'caixa' });
   });
-  A.itens.forEach(function (p) { p.pct = A.total > 0 ? p.saldo / A.total * 100 : 0; var c = classificar(p); p.liq = c.liq; p.trib = c.trib; });
+  A.itens.forEach(function (p) { p.pct = A.total > 0 ? p.saldo / A.total * 100 : 0; var c = classificar(p); p.liq = c.liq; p.trib = c.trib; p.instr = rotuloInstrumento(p); });
   A.itens.sort(function (a, b) { return b.saldo - a.saldo; });
 
   // alocação por classe (caixa e proventos entram no pós-fixado, como no relatório de diagnóstico)
@@ -15954,7 +16015,7 @@ function analisar(d) {
 
 function montarAlertas(A, d) {
   var out = [];
-  function add(n, t, x) { out.push({ n: n, t: t, x: x }); }
+  function add(n, t, x) { out.push({ n: n, t: t, x: x, ver: null }); }
   var pi = perfilSel === null ? A.maisProximo : perfilSel;
   var nomePerfil = A.matriz.perfis[pi] ? A.matriz.perfis[pi].nome : 'perfil';
   var desvio = A.realocar[pi] || 0;
@@ -16017,13 +16078,127 @@ function montarAlertas(A, d) {
   add(estourou.length ? 'alto' : 'baixo', 'Garantia do FGC',
     estourou.length ? 'Exposição acima do teto de R$ 250.000 por conglomerado em: ' + estourou.map(function (e) { return e.nome; }).join(', ') + '.' : 'Exposições bancárias dentro do teto do FGC (R$ 250.000 por CPF e por conglomerado financeiro)' + (semFgc > 0 ? '; ' + fmtRS(semFgc) + ' em crédito privado sem garantia do FGC.' : '.'));
 
+  var nomesProx = prox.map(function (p) { return p.nome; });
+  var VER = {
+    'Diversificar por classe': { aba: 'alocacao' },
+    'Fundos imobiliários': { aba: 'posicoes', f: { instr: ['Fundo imobiliário listado', 'Fundo imobiliário não listado'] } },
+    'Liquidez': { aba: 'posicoes', f: { liq: [rotLiq.sem] } },
+    'Concentração por ativo': { aba: 'posicoes', f: { ativo: A.ativos10.map(function (p) { return p.nome; }) } },
+    'Renda variável Brasil': { aba: 'posicoes', f: { instr: ['Ações'] } },
+    'Renda fixa e vencimentos': nomesProx.length ? { aba: 'rf', f: { ativo: nomesProx } } : { aba: 'rf' },
+    'Exposição internacional': { aba: 'alocacao' },
+    'Ativos isentos': { aba: 'posicoes', f: { trib: [rotTrib.isento] } },
+    'Desempenho': { aba: 'rentab' },
+    'Garantia do FGC': { aba: 'rf' }
+  };
+  out.forEach(function (a) { a.ver = VER[a.t] || null; });
   var ordem = { alto: 0, medio: 1, baixo: 2 };
   out.sort(function (a, b) { return ordem[a.n] - ordem[b.n]; });
   return out;
 }
 
-// ── Gráficos (SVG) ──
-function svgBarrasMensais(serie) {
+// ── Estado, filtros cruzados e dimensões ──
+// Cada dimensão pode ter vários valores selecionados (união dentro da dimensão, interseção entre dimensões).
+// Os gráficos de uma dimensão mostram o cruzamento das DEMAIS dimensões e destacam os valores selecionados.
+var ABAS = [['geral', 'Visão geral'], ['alertas', 'Pontos de atenção'], ['rentab', 'Rentabilidade'], ['alocacao', 'Alocação e perfis'], ['posicoes', 'Posições'], ['rf', 'Renda fixa'], ['movs', 'Movimentações']];
+var ST = { aba: 'geral', f: {}, periodo: 12, mesSel: null, busca: '', ordem: { col: 'saldo', dir: -1 }, movTipo: '', imprimir: false };
+var rotLiq = {}, rotTrib = {};
+LIQ.forEach(function (l) { rotLiq[l.k] = l.r; });
+TRIB.forEach(function (l) { rotTrib[l.k] = l.r; });
+var DIMS = {
+  est: { rot: 'Estratégia', get: function (p) { return p.estrategia; } },
+  instr: { rot: 'Instrumento', get: function (p) { return p.instr; } },
+  liq: { rot: 'Disponibilidade', get: function (p) { return rotLiq[p.liq]; } },
+  trib: { rot: 'Tributação', get: function (p) { return rotTrib[p.trib]; } },
+  emi: { rot: 'Emissor', get: function (p) { return p.tipo === 'rf' ? (p.emissor || p.nome) : ''; } },
+  ano: { rot: 'Vencimento', get: function (p) { return p.tipo === 'rf' && p.venc ? String(p.venc.a) : ''; } },
+  ativo: { rot: 'Ativo', get: function (p) { return p.nome; } }
+};
+function filtroAtivo() { return Object.keys(DIMS).some(function (d) { return (ST.f[d] || []).length > 0; }); }
+function passa(p, exc) {
+  return Object.keys(DIMS).every(function (d) {
+    if (d === exc) return true;
+    var sel = ST.f[d];
+    return !sel || !sel.length || sel.indexOf(DIMS[d].get(p)) !== -1;
+  });
+}
+function filtrados(exc) { return R.itens.filter(function (p) { return passa(p, exc); }); }
+function selecionado(dim, v) { return (ST.f[dim] || []).indexOf(v) !== -1; }
+function fraco(dim, v) { var s = ST.f[dim]; return !!(s && s.length && s.indexOf(v) === -1); }
+function alternar(dim, v) {
+  var s = ST.f[dim] || (ST.f[dim] = []), i = s.indexOf(v);
+  if (i === -1) s.push(v); else s.splice(i, 1);
+}
+function baseDim(dim) {
+  if (!R.base) R.base = {};
+  if (!R.base[dim]) {
+    var m = {};
+    R.itens.forEach(function (p) { var k = DIMS[dim].get(p); if (k !== '') m[k] = (m[k] || 0) + p.saldo; });
+    R.base[dim] = Object.keys(m).sort(function (a, b) { return m[b] - m[a]; });
+  }
+  return R.base[dim];
+}
+function corDe(dim, v) { var i = baseDim(dim).indexOf(v); return CINZAS[(i < 0 ? 0 : i) % CINZAS.length]; }
+function agrupar(dim) {
+  var m = {}, ord = [];
+  filtrados(dim).forEach(function (p) {
+    var k = DIMS[dim].get(p);
+    if (k === '') return;
+    if (!m[k]) { m[k] = { r: k, v: 0, n: 0 }; ord.push(k); }
+    m[k].v += p.saldo; m[k].n++;
+  });
+  (ST.f[dim] || []).forEach(function (k) { if (!m[k]) { m[k] = { r: k, v: 0, n: 0 }; ord.push(k); } });
+  var arr = ord.map(function (k) { return m[k]; });
+  if (dim === 'liq') { var ol = LIQ.map(function (l) { return l.r; }); arr.sort(function (a, b) { return ol.indexOf(a.r) - ol.indexOf(b.r); }); }
+  else if (dim === 'ano') arr.sort(function (a, b) { return a.r < b.r ? -1 : 1; });
+  else arr.sort(function (a, b) { return b.v - a.v; });
+  return arr;
+}
+function dF(dim, v) { return ' data-f="' + esc(dim + '|' + v) + '"'; }
+
+// ── Visuais ──
+function donutDim(dim, rotCentro) {
+  var partes = agrupar(dim), tot = soma(partes, function (x) { return x.v; });
+  var raio = 76, circ = 2 * Math.PI * raio, acc = 0;
+  var s = '<svg viewBox="0 0 200 200" class="rosca">';
+  partes.forEach(function (p) {
+    var f = tot > 0 ? p.v / tot : 0;
+    if (f <= 0) return;
+    s += '<circle class="seg' + (selecionado(dim, p.r) ? ' sel' : '') + (fraco(dim, p.r) ? ' fraco' : '') + '"' + dF(dim, p.r) + ' data-tip="' + esc(p.r + ': ' + fmtBRL(p.v) + ' (' + fmtP(f * 100, 1) + ') · ' + p.n + ' ativo(s)') + '" cx="100" cy="100" r="' + raio + '" fill="none" stroke="' + corDe(dim, p.r) + '" stroke-width="36" stroke-dasharray="' + (f * circ).toFixed(2) + ' ' + circ.toFixed(2) + '" stroke-dashoffset="' + (-acc * circ).toFixed(2) + '" transform="rotate(-90 100 100)"/>';
+    acc += f;
+  });
+  s += '<text x="100" y="96" text-anchor="middle" class="r">' + esc(rotCentro) + '</text><text x="100" y="116" text-anchor="middle" class="t">' + esc(fmtCompacto(tot)) + '</text></svg>';
+  var leg = partes.map(function (p) {
+    return '<div class="leg clic' + (selecionado(dim, p.r) ? ' sel' : '') + (fraco(dim, p.r) ? ' fraco' : '') + '"' + dF(dim, p.r) + '><span><i style="background:' + corDe(dim, p.r) + '"></i>' + esc(p.r) + '</span><b>' + fmtP(tot > 0 ? p.v / tot * 100 : 0, 1) + '</b></div>';
+  }).join('');
+  return '<div class="centro">' + s + '</div>' + leg;
+}
+function barrasDim(dim, limite) {
+  var partes = agrupar(dim), tot = soma(partes, function (x) { return x.v; });
+  var maxV = Math.max.apply(null, partes.map(function (x) { return x.v; }).concat([1]));
+  if (limite && partes.length > limite) partes = partes.slice(0, limite);
+  if (!partes.length) return '<p class="vazio">Sem ativos para os filtros selecionados.</p>';
+  return partes.map(function (p) {
+    var pct = tot > 0 ? p.v / tot * 100 : 0;
+    return '<div class="barra-linha clic' + (selecionado(dim, p.r) ? ' sel' : '') + (fraco(dim, p.r) ? ' fraco' : '') + '"' + dF(dim, p.r) + ' data-tip="' + esc(p.r + ': ' + fmtBRL(p.v) + ' · ' + p.n + ' ativo(s)') + '"><span class="barra-rot">' + esc(p.r) + '</span><div class="trilho"><div class="fill" style="width:' + Math.max(p.v / maxV * 100, p.v > 0 ? 1.2 : 0).toFixed(2) + '%;background:' + (dim === 'ativo' || dim === 'ano' || dim === 'emi' ? '#111' : corDe(dim, p.r)) + '"></div></div><span class="barra-val"><b>' + fmtP(pct, 2) + '</b><small>' + fmtRS(p.v) + '</small></span></div>';
+  }).join('');
+}
+function barrasPlanas(itens, total) {
+  return itens.map(function (it) {
+    var p = total > 0 ? it.v / total * 100 : 0;
+    return '<div class="barra-linha"><span class="barra-rot">' + esc(it.r) + '</span><div class="trilho"><div class="fill" style="width:' + Math.max(p, it.v > 0 ? 1.2 : 0).toFixed(2) + '%"></div></div><span class="barra-val"><b>' + fmtP(p, 2) + '</b><small>' + fmtRS(it.v) + '</small></span></div>';
+  }).join('');
+}
+function serieMeses() {
+  var s = D.evol.slice().reverse();
+  if (!s.length) return [];
+  if (ST.periodo === 'ano') { var ano = s[s.length - 1].ano; s = s.filter(function (e) { return e.ano === ano; }); }
+  else s = s.slice(-ST.periodo);
+  return s.map(function (e) { return { e: e, rot: e.rot.replace('.', ''), a: e.rent, b: e.pcdi ? e.rent / (e.pcdi / 100) : 0 }; });
+}
+function acumulado(arr) { var a = 1; arr.forEach(function (x) { a *= 1 + x / 100; }); return (a - 1) * 100; }
+
+function svgMensal(serie) {
   var W = 760, H = 250, mE = 40, mD = 10, mT = 16, mB = 30;
   var vals = [];
   serie.forEach(function (s) { vals.push(s.a); vals.push(s.b); });
@@ -16033,150 +16208,178 @@ function svgBarrasMensais(serie) {
   var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;max-height:290px;">';
   s += '<line x1="' + mE + '" y1="' + y0.toFixed(1) + '" x2="' + (W - mD) + '" y2="' + y0.toFixed(1) + '" stroke="#9A9A9A" stroke-width="1"/>';
   [mx, mn].forEach(function (v) { if (Math.abs(v) > 0.01) s += '<text x="' + (mE - 6) + '" y="' + (y0 - v * esc2 + 3).toFixed(1) + '" font-size="9" text-anchor="end" fill="#5C5C5C">' + v.toFixed(1).replace('.', ',') + '%</text>'; });
-  serie.forEach(function (it, i) {
-    var cx = mE + larg * i + larg / 2;
+  serie.forEach(function (it) {
+    var i = serie.indexOf(it), cx = mE + larg * i + larg / 2;
+    var sel = ST.mesSel === it.rot, apag = ST.mesSel && !sel;
+    var tip = it.rot + ': carteira ' + fmtP(it.a) + ' · CDI ' + fmtP(it.b) + ' · ' + fmtP(it.e.pcdi, 0) + ' do CDI';
+    s += '<g class="col' + (sel ? ' sel' : '') + (apag ? ' fraco' : '') + '" data-mes="' + esc(it.rot) + '" data-tip="' + esc(tip) + '"><rect x="' + (cx - larg / 2).toFixed(1) + '" y="0" width="' + larg.toFixed(1) + '" height="' + H + '" fill="' + (sel ? '#EFEFEF' : 'transparent') + '"/>';
     [[it.a, '#111111', -bw - 1], [it.b, '#B8B8B8', 1]].forEach(function (b) {
       var h = Math.abs(b[0]) * esc2, y = b[0] >= 0 ? y0 - h : y0;
       s += '<rect x="' + (cx + b[2]).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw + '" height="' + Math.max(h, 0.6).toFixed(1) + '" fill="' + b[1] + '"/>';
     });
     var yTxt = it.a >= 0 ? y0 - it.a * esc2 - 3 : y0 + Math.abs(it.a) * esc2 + 10;
     s += '<text x="' + (cx - bw / 2 - 1).toFixed(1) + '" y="' + yTxt.toFixed(1) + '" font-size="9" text-anchor="middle" fill="#111" font-weight="600">' + it.a.toFixed(2).replace('.', ',') + '</text>';
-    s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 10) + '" font-size="9.5" text-anchor="middle" fill="#5C5C5C">' + esc(it.rot) + '</text>';
+    s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 10) + '" font-size="9.5" text-anchor="middle" fill="#5C5C5C">' + esc(it.rot) + '</text></g>';
   });
   return s + '</svg>';
 }
-function svgBarrasPatrimonio(serie) {
+function svgPatrimonio(serie) {
   var W = 760, H = 220, mE = 10, mD = 10, mT = 22, mB = 28;
-  var mx = Math.max.apply(null, serie.map(function (s) { return s.v; }).concat([1]));
+  var mx = Math.max.apply(null, serie.map(function (s) { return s.e.fin; }).concat([1]));
   var larg = (W - mE - mD) / serie.length, bw = Math.min(40, larg * 0.62);
   var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;max-height:260px;">';
   s += '<line x1="' + mE + '" y1="' + (H - mB) + '" x2="' + (W - mD) + '" y2="' + (H - mB) + '" stroke="#9A9A9A"/>';
   serie.forEach(function (it, i) {
-    var cx = mE + larg * i + larg / 2, h = it.v / mx * (H - mT - mB);
+    var cx = mE + larg * i + larg / 2, h = it.e.fin / mx * (H - mT - mB);
+    var sel = ST.mesSel === it.rot, apag = ST.mesSel && !sel;
+    s += '<g class="col' + (sel ? ' sel' : '') + (apag ? ' fraco' : '') + '" data-mes="' + esc(it.rot) + '" data-tip="' + esc(it.rot + ': patrimônio ' + fmtBRL(it.e.fin) + ' · movimentações ' + fmtBRL(it.e.mov)) + '"><rect x="' + (cx - larg / 2).toFixed(1) + '" y="0" width="' + larg.toFixed(1) + '" height="' + H + '" fill="' + (sel ? '#EFEFEF' : 'transparent') + '"/>';
     s += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + (H - mB - h).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(h, 0.6).toFixed(1) + '" fill="#111"/>';
-    s += '<text x="' + cx.toFixed(1) + '" y="' + (H - mB - h - 5).toFixed(1) + '" font-size="9" text-anchor="middle" fill="#111" font-weight="600">' + Math.round(it.v / 1000).toLocaleString('pt-BR') + ' mil</text>';
-    s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 10) + '" font-size="9.5" text-anchor="middle" fill="#5C5C5C">' + esc(it.rot) + '</text>';
+    s += '<text x="' + cx.toFixed(1) + '" y="' + (H - mB - h - 5).toFixed(1) + '" font-size="9" text-anchor="middle" fill="#111" font-weight="600">' + Math.round(it.e.fin / 1000).toLocaleString('pt-BR') + ' mil</text>';
+    s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 10) + '" font-size="9.5" text-anchor="middle" fill="#5C5C5C">' + esc(it.rot) + '</text></g>';
   });
   return s + '</svg>';
 }
-function svgRosca(partes, rotCentro, valCentro) {
-  var raio = 76, circ = 2 * Math.PI * raio, acc = 0, tot = soma(partes, function (p) { return p.v; });
-  var s = '<svg viewBox="0 0 200 200" class="rosca">';
-  partes.forEach(function (p, i) {
-    var f = tot > 0 ? p.v / tot : 0;
-    if (f <= 0) return;
-    s += '<circle cx="100" cy="100" r="' + raio + '" fill="none" stroke="' + CINZAS[i % CINZAS.length] + '" stroke-width="36" stroke-dasharray="' + (f * circ).toFixed(2) + ' ' + circ.toFixed(2) + '" stroke-dashoffset="' + (-acc * circ).toFixed(2) + '" transform="rotate(-90 100 100)"/>';
-    acc += f;
-  });
-  s += '<text x="100" y="96" text-anchor="middle" class="r">' + esc(rotCentro) + '</text><text x="100" y="116" text-anchor="middle" class="t">' + esc(valCentro) + '</text></svg>';
-  return s;
-}
-function legendaRosca(partes) {
-  var tot = soma(partes, function (p) { return p.v; });
-  return partes.map(function (p, i) {
-    return '<div class="leg"><span><i style="background:' + CINZAS[i % CINZAS.length] + '"></i>' + esc(p.r) + '</span><b>' + fmtP(tot > 0 ? p.v / tot * 100 : 0, 1) + '</b></div>';
-  }).join('');
-}
-function barrasH(itens, total, cinza) {
-  return itens.map(function (it) {
-    var p = total > 0 ? it.v / total * 100 : 0;
-    return '<div class="barra-linha"><span class="barra-rot">' + esc(it.r) + '</span><div class="trilho"><div class="fill' + (cinza ? ' cinza' : '') + '" style="width:' + Math.max(p, it.v > 0 ? 1.2 : 0).toFixed(2) + '%"></div></div>' +
-      '<span class="barra-val"><b>' + fmtP(p, 2) + '</b><small>' + fmtRS(it.v) + '</small></span></div>';
-  }).join('');
-}
 
-// ── Seções do painel ──
-function card(titulo, sub, corpo) { return '<div class="card"><div class="card-titulo">' + titulo + '</div>' + (sub ? '<p class="card-sub">' + sub + '</p>' : '') + corpo + '</div>'; }
+// ── Blocos de página ──
+function tile(cls, titulo, corpo, dica) {
+  return '<div class="tile ' + cls + '"><div class="tile-tit">' + titulo + (dica ? '<span class="tile-dica">' + dica + '</span>' : '') + '</div>' + corpo + '</div>';
+}
 function kpi(rot, val, sub) { return '<div class="kpi"><div class="kpi-rot">' + rot + '</div><div class="kpi-val">' + val + '</div><div class="kpi-sub">' + sub + '</div></div>'; }
 
-function secResumo() {
+function mediaPond(lista, campo) {
+  var num = 0, den = 0;
+  lista.forEach(function (p) { if (typeof p[campo] === 'number' && !isNaN(p[campo])) { num += p[campo] * p.saldo; den += p.saldo; } });
+  return den > 0 ? num / den : null;
+}
+function kpisGeral() {
+  var F = filtrados(null), ativos = F.filter(function (p) { return p.tipo !== 'caixa'; });
+  var saldo = soma(F, function (p) { return p.saldo; });
+  var ativo = filtroAtivo();
+  var ano = ativo ? mediaPond(F, 'ano') : (D.kpi.per.ano || {}).rent;
+  var pcdi = ativo ? (ano !== null && D.bench.cdi && D.bench.cdi[1] ? ano / D.bench.cdi[1] * 100 : null) : (D.kpi.per.ano || {}).pcdi;
+  var mes = ativo ? mediaPond(F, 'mes') : D.kpi.rentMes;
+  var maior = F.slice().sort(function (a, b) { return b.saldo - a.saldo; })[0];
+  var d0 = soma(F.filter(function (p) { return p.liq === 'd0'; }), function (p) { return p.saldo; });
+  return '<div class="kpis">' +
+    kpi(ativo ? 'Patrimônio filtrado' : 'Patrimônio bruto', fmtBRL(ativo ? saldo : D.kpi.patrimonio), ativo ? fmtP(R.total > 0 ? saldo / R.total * 100 : 0, 1) + ' do patrimônio · ref. ' + esc(D.cab.data) : 'Ref. ' + esc(D.cab.data)) +
+    kpi('Ativos', String(ativos.length), ativo ? 'de ' + R.itens.filter(function (p) { return p.tipo !== 'caixa'; }).length + ' na carteira' : 'Posições distintas') +
+    kpi('Rentabilidade no ano', '<span class="' + clsv(ano) + '">' + fmtP(ano) + '</span>', (ativo ? 'Média ponderada · ' : '') + fmtP(pcdi) + ' do CDI') +
+    kpi('Rentabilidade no mês', '<span class="' + clsv(mes) + '">' + fmtP(mes) + '</span>', ativo ? 'Média ponderada pelo saldo' : 'Mês até ' + esc(D.cab.data)) +
+    kpi('Liquidez imediata', fmtRS(d0), fmtP(saldo > 0 ? d0 / saldo * 100 : 0, 1) + ' do filtrado') +
+    kpi('Maior posição', maior ? fmtP(maior.saldo / (saldo || 1) * 100, 1) : '—', maior ? esc(maior.nome) : '') + '</div>';
+}
+function tabelaPosicoes(lista, opc) {
+  opc = opc || {};
+  var COLS = [['nome', 'Ativo', 1], ['estrategia', 'Estratégia', 1], ['instr', 'Instrumento', 1], ['qtd', 'Quantidade', 0], ['saldo', 'Saldo bruto', 0], ['pct', '% carteira', 0], ['mes', 'Mês', 0], ['ano', 'Ano', 0], ['acdi', '% CDI (ano)', 0], ['m24', '24 meses', 0]];
+  var col = ST.ordem.col, dir = ST.ordem.dir;
+  var arr = lista.slice().sort(function (a, b) {
+    var x = a[col], y = b[col];
+    if (x === undefined || x === null) return 1;
+    if (y === undefined || y === null) return -1;
+    if (typeof x === 'string') return dir * x.localeCompare(y, 'pt-BR');
+    return dir * (x - y);
+  });
+  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr>' + COLS.map(function (c) {
+    return '<th class="' + (c[2] ? 'e ' : '') + 'ord" data-ord="' + c[0] + '">' + c[1] + (col === c[0] ? (dir > 0 ? ' ▲' : ' ▼') : '') + '</th>';
+  }).join('') + '</tr></thead><tbody>';
+  arr.forEach(function (p, i) {
+    t += '<tr class="clic ' + (i % 2 ? 'zebra' : '') + (selecionado('ativo', p.nome) ? ' selrow' : '') + '"' + dF('ativo', p.nome) + '><td class="e">' + esc(p.nome) + '</td><td class="e">' + esc(p.estrategia) + '</td><td class="e">' + esc(p.instr) + '</td><td>' + (p.qtd !== undefined ? fmtQtd(p.qtd) : '') + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td>' +
+      '<td class="' + clsv(p.mes) + '">' + (p.mes === undefined ? '—' : fmtP(p.mes)) + '</td><td class="' + clsv(p.ano) + '">' + (p.ano === undefined ? '—' : fmtP(p.ano)) + '</td><td>' + (p.acdi === undefined ? '—' : fmtP(p.acdi)) + '</td><td class="' + clsv(p.m24) + '">' + (p.m24 === undefined ? '—' : fmtP(p.m24)) + '</td></tr>';
+  });
+  var tot = soma(arr, function (p) { return p.saldo; });
+  t += '<tr class="total"><td class="e">Total (' + arr.length + ')</td><td></td><td></td><td></td><td>' + fmtBRL(tot) + '</td><td>' + fmtP(R.total > 0 ? tot / R.total * 100 : 0) + '</td><td></td><td></td><td></td><td></td></tr></tbody></table></div>';
+  return t;
+}
+
+// ── Páginas ──
+var PAGINAS = {};
+PAGINAS.geral = function () {
   var k = D.kpi, pa = k.per.ano || {}, p12 = k.per.m12 || {};
-  var ev12 = D.evol.slice(0, 12);
-  var acima12 = ev12.filter(function (e) { return e.pcdi > 100; }).length;
-  var qtdAtivos = R.itens.filter(function (p) { return p.tipo !== 'caixa'; }).length;
-  var pi = perfilSel === null ? R.maisProximo : perfilSel;
-  var resumo = fmtBRL(k.patrimonio) + ' de patrimônio bruto, distribuídos em ' + qtdAtivos + ' ativos. A carteira rendeu ' + fmtP(pa.rent) + ' no ano (' + fmtP(pa.pcdi) + ' do CDI) e ' + fmtP(p12.rent) + ' em 12 meses (' + fmtP(p12.pcdi) + ' do CDI). A alocação é mais aderente ao ' + R.matriz.perfis[R.maisProximo].nome + ' (' + fmtP(100 - R.realocar[R.maisProximo], 1) + ').';
-  var h = '<div class="kpis">' +
-    kpi('Patrimônio bruto', fmtBRL(k.patrimonio), qtdAtivos + ' ativos · ref. ' + esc(D.cab.data)) +
-    kpi('Rentabilidade no ano', '<span class="' + clsv(pa.rent) + '">' + fmtP(pa.rent) + '</span>', fmtP(pa.pcdi) + ' do CDI') +
-    kpi('Rentabilidade em 12 meses', '<span class="' + clsv(p12.rent) + '">' + fmtP(p12.rent) + '</span>', fmtP(p12.pcdi) + ' do CDI') +
-    kpi('Ganho em 12 meses', fmtRS(p12.ganho || 0), 'Ganho no ano: ' + fmtRS(pa.ganho || 0)) +
-    kpi('Volatilidade 12M', fmtP(k.vol12), 'Retorno mensal máximo ' + fmtP(k.max) + ' · mínimo ' + fmtP(k.min)) +
-    kpi('Meses acima do CDI', acima12 + ' de ' + ev12.length, 'Meses positivos (24M): ' + (k.pos === undefined ? '—' : k.pos + ' de ' + (k.pos + k.neg))) +
-    kpi('Aderência ao ' + esc(R.matriz.perfis[R.maisProximo].nome), fmtP(100 - R.realocar[R.maisProximo], 1), 'Realocar ' + fmtP(R.realocar[R.maisProximo], 1) + ' · ' + fmtRS(R.realocar[R.maisProximo] / 100 * R.total)) +
-    '</div>';
-  return card('Resumo da carteira', esc(resumo), h);
-}
-function secAlertas() {
+  var qtd = R.itens.filter(function (p) { return p.tipo !== 'caixa'; }).length;
+  var resumo = fmtBRL(k.patrimonio) + ' de patrimônio bruto em ' + qtd + ' ativos. A carteira rendeu ' + fmtP(pa.rent) + ' no ano (' + fmtP(pa.pcdi) + ' do CDI) e ' + fmtP(p12.rent) + ' em 12 meses (' + fmtP(p12.pcdi) + ' do CDI). A alocação é mais aderente ao ' + R.matriz.perfis[R.maisProximo].nome + ' (' + fmtP(100 - R.realocar[R.maisProximo], 1) + ').';
+  var top = agrupar('ativo');
+  var h = '<p class="resumo">' + esc(resumo) + '</p>' + kpisGeral() + '<div class="tiles">';
+  h += tile('t4', 'Por estratégia', donutDim('est', 'total'), 'clique para filtrar');
+  h += tile('t4', 'Por instrumento', barrasDim('instr'), 'clique para filtrar');
+  h += tile('t4', 'Por tributação', donutDim('trib', 'total'), 'clique para filtrar');
+  h += tile('t4', 'Por disponibilidade', barrasDim('liq'), 'clique para filtrar');
+  h += tile('t8', 'Maiores posições', barrasDim('ativo', 10), top.length > 10 ? '+ ' + (top.length - 10) + ' outros' : 'clique para filtrar');
+  h += tile('t12', 'Posições', tabelaPosicoes(filtrados(null)), 'clique em uma linha para filtrar o ativo');
+  return h + '</div>';
+};
+PAGINAS.alertas = function () {
   var nomes = { alto: 'Nível de atenção · alto', medio: 'Nível de atenção · médio', baixo: 'Nível de atenção · baixo' };
-  var h = '<div class="alertas">' + R.alertas.map(function (a) {
-    return '<div class="alerta ' + a.n + '"><h4>' + esc(a.t) + '</h4><p>' + esc(a.x) + '</p><span class="nv">' + nomes[a.n] + '</span></div>';
-  }).join('') + '</div>';
   var alto = R.alertas.filter(function (a) { return a.n === 'alto'; }).length, medio = R.alertas.filter(function (a) { return a.n === 'medio'; }).length;
-  return card('Pontos de atenção', alto + ' ponto(s) em nível alto e ' + medio + ' em nível médio, sobre ' + R.alertas.length + ' temas avaliados. Critérios automáticos e ilustrativos; a avaliação final cabe ao assessor.', h);
-}
-function secRentabilidade() {
-  var B = D.bench, k = D.kpi;
+  var h = '<p class="resumo">' + alto + ' ponto(s) em nível alto e ' + medio + ' em nível médio, sobre ' + R.alertas.length + ' temas avaliados. Critérios automáticos e ilustrativos; a avaliação final cabe ao assessor. Use "Ver ativos" para aplicar o filtro correspondente.</p><div class="alertas">';
+  R.alertas.forEach(function (a, i) {
+    h += '<div class="alerta ' + a.n + '"><h4>' + esc(a.t) + '</h4><p>' + esc(a.x) + '</p><span class="nv">' + nomes[a.n] + '</span>' + (a.ver ? '<button type="button" class="btn btn-peq" data-ver="' + i + '">' + (a.ver.f ? 'Ver ativos' : 'Abrir análise') + ' →</button>' : '') + '</div>';
+  });
+  return h + '</div>';
+};
+PAGINAS.rentab = function () {
+  var serie = serieMeses();
+  var pers = [['3', '3 meses'], ['6', '6 meses'], ['12', '12 meses'], ['ano', 'No ano']];
+  var botoes = '<div class="seg-btns">' + pers.map(function (p) { return '<button type="button" class="' + (String(ST.periodo) === p[0] ? 'on' : '') + '" data-per="' + p[0] + '">' + p[1] + '</button>'; }).join('') + '</div>';
+  var ac = acumulado(serie.map(function (s) { return s.a; })), acc = acumulado(serie.map(function (s) { return s.b; }));
+  var ganho = soma(serie, function (s) { return s.e.ganho; }), mov = soma(serie, function (s) { return s.e.mov; });
+  var acima = serie.filter(function (s) { return s.e.pcdi > 100; }).length;
+  var k = '<div class="kpis">' +
+    kpi('Carteira no período', '<span class="' + clsv(ac) + '">' + fmtP(ac) + '</span>', serie.length + ' meses · ' + esc(serie.length ? serie[0].rot : '') + ' a ' + esc(serie.length ? serie[serie.length - 1].rot : '')) +
+    kpi('CDI no período', fmtP(acc), acc > 0 ? fmtP(ac / acc * 100, 0) + ' do CDI' : '') +
+    kpi('Ganho financeiro', fmtRS(ganho), 'Soma dos meses do período') +
+    kpi('Aportes líquidos', fmtRS(mov), 'Movimentações do período') +
+    kpi('Meses acima do CDI', acima + ' de ' + serie.length, 'Volatilidade 12M: ' + fmtP(D.kpi.vol12)) + '</div>';
+  var detalhe = '';
+  if (ST.mesSel) {
+    var e = D.evol.filter(function (x) { return x.rot.replace('.', '') === ST.mesSel; })[0];
+    if (e) detalhe = '<div class="detalhe-mes"><b>' + esc(ST.mesSel) + '</b> · patrimônio inicial ' + fmtBRL(e.ini) + ' · movimentações ' + fmtBRL(e.mov) + ' · IR/IOF ' + fmtBRL(e.ir + e.iof) + ' · patrimônio final <b>' + fmtBRL(e.fin) + '</b> · ganho <span class="' + clsv(e.ganho) + '">' + fmtBRL(e.ganho) + '</span> · rentabilidade <span class="' + clsv(e.rent) + '">' + fmtP(e.rent) + '</span> (' + fmtP(e.pcdi) + ' do CDI) <button type="button" class="btn btn-peq" data-mes="">Limpar mês</button></div>';
+  }
+  var B = D.bench;
   var nomes = [['port', 'Carteira'], ['cdi', 'CDI'], ['ibov', 'Ibovespa'], ['ipca', 'IPCA'], ['dolar', 'Dólar']];
-  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Referência</th><th>Mês</th><th>Ano</th><th>12 meses</th><th>24 meses</th></tr></thead><tbody>';
+  var tb = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Referência</th><th>Mês</th><th>Ano</th><th>12 meses</th><th>24 meses</th></tr></thead><tbody>';
   nomes.forEach(function (n, i) {
     var v = B[n[0]]; if (!v) return;
-    t += '<tr class="' + (i === 0 ? 'grupo' : (i % 2 ? 'zebra' : '')) + '"><td class="e">' + n[1] + '</td>' + v.map(function (x) { return '<td class="' + (i === 0 ? '' : '') + clsv(x) + '">' + fmtP(x) + '</td>'; }).join('') + '</tr>';
+    tb += '<tr class="' + (i === 0 ? 'grupo' : (i % 2 ? 'zebra' : '')) + '"><td class="e">' + n[1] + '</td>' + v.map(function (x) { return '<td class="' + clsv(x) + '">' + fmtP(x) + '</td>'; }).join('') + '</tr>';
   });
-  var pc = k.per;
-  if (pc.mes && pc.ano && pc.m12 && pc.m24) t += '<tr class="total"><td class="e">Carteira (% do CDI)</td><td>' + fmtP(pc.mes.pcdi) + '</td><td>' + fmtP(pc.ano.pcdi) + '</td><td>' + fmtP(pc.m12.pcdi) + '</td><td>' + fmtP(pc.m24.pcdi) + '</td></tr>';
-  t += '</tbody></table></div>';
-  var ev = D.evol.slice(0, 12).reverse();
-  var serie = ev.map(function (e) { return { rot: e.rot.replace('.', ''), a: e.rent, b: e.pcdi ? e.rent / (e.pcdi / 100) : 0 }; });
-  var graf = serie.length ? '<div class="tit-sec" style="margin-top:22px;">Rentabilidade mensal · carteira x CDI</div><div style="font-size:11.5px;color:#5C5C5C;margin-bottom:4px;"><i style="display:inline-block;width:10px;height:10px;background:#111;margin-right:5px;"></i>Carteira <i style="display:inline-block;width:10px;height:10px;background:#B8B8B8;margin:0 5px 0 14px;"></i>CDI</div>' + svgBarrasMensais(serie) : '';
-  var hist = '';
-  var anos = Object.keys(D.anos).sort().reverse();
+  var pc = D.kpi.per;
+  if (pc.mes && pc.ano && pc.m12 && pc.m24) tb += '<tr class="total"><td class="e">Carteira (% do CDI)</td><td>' + fmtP(pc.mes.pcdi) + '</td><td>' + fmtP(pc.ano.pcdi) + '</td><td>' + fmtP(pc.m12.pcdi) + '</td><td>' + fmtP(pc.m24.pcdi) + '</td></tr>';
+  tb += '</tbody></table></div>';
+  var anos = Object.keys(D.anos).sort().reverse(), hist = '';
   if (anos.length) {
     var MES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    hist = '<div class="tit-sec" style="margin-top:22px;">Rentabilidade histórica por ano</div><div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Ano</th>' + MES.map(function (m) { return '<th>' + m + '</th>'; }).join('') + '<th>No ano</th><th>% CDI</th></tr></thead><tbody>';
+    hist = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Ano</th>' + MES.map(function (m) { return '<th>' + m + '</th>'; }).join('') + '<th>No ano</th><th>% CDI</th></tr></thead><tbody>';
     anos.forEach(function (a, i) {
       var y = D.anos[a];
       hist += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e"><b>' + a + '</b></td>' + y.port.map(function (v) { return '<td class="' + clsv(v) + '">' + (v === null ? '—' : fmtP(v)) + '</td>'; }).join('') + '<td class="' + clsv(y.ano) + '"><b>' + fmtP(y.ano) + '</b></td><td>' + fmtP(y.anoPcdi) + '</td></tr>';
     });
     hist += '</tbody></table></div>';
   }
-  return card('Rentabilidade', 'Rentabilidade com gross up para ativos isentos de renda fixa, conforme o relatório XPerformance. Meses anteriores à entrada dos recursos podem constar com valor zerado.', t + graf + hist);
-}
-function secEvolucao() {
-  var ev = D.evol.slice(0, 12);
-  if (!ev.length) return '';
-  var serie = ev.slice().reverse().map(function (e) { return { rot: e.rot.replace('.', ''), v: e.fin }; });
-  var t = '<div class="tabela-wrap" style="margin-top:14px;"><table class="tb"><thead><tr><th class="e">Mês</th><th>Patrimônio inicial</th><th>Movimentações</th><th>IR / IOF</th><th>Patrimônio final</th><th>Ganho financeiro</th><th>Rentab.</th><th>% CDI</th></tr></thead><tbody>';
-  ev.forEach(function (e, i) {
-    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(e.rot) + '</td><td>' + fmtBRL(e.ini) + '</td><td class="' + clsv(e.mov) + '">' + fmtBRL(e.mov) + '</td><td>' + fmtBRL(e.ir + e.iof) + '</td><td><b>' + fmtBRL(e.fin) + '</b></td><td class="' + clsv(e.ganho) + '">' + fmtBRL(e.ganho) + '</td><td class="' + clsv(e.rent) + '">' + fmtP(e.rent) + '</td><td>' + fmtP(e.pcdi) + '</td></tr>';
+  var leg = '<div class="leg-graf"><i style="background:#111"></i>Carteira <i style="background:#B8B8B8;margin-left:14px;"></i>CDI</div>';
+  var ev = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Mês</th><th>Patrimônio inicial</th><th>Movimentações</th><th>IR / IOF</th><th>Patrimônio final</th><th>Ganho financeiro</th><th>Rentab.</th><th>% CDI</th></tr></thead><tbody>';
+  serie.slice().reverse().forEach(function (s, i) {
+    var e = s.e;
+    ev += '<tr class="clic ' + (i % 2 ? 'zebra' : '') + (ST.mesSel === s.rot ? ' selrow' : '') + '" data-mes="' + esc(s.rot) + '"><td class="e">' + esc(s.rot) + '</td><td>' + fmtBRL(e.ini) + '</td><td class="' + clsv(e.mov) + '">' + fmtBRL(e.mov) + '</td><td>' + fmtBRL(e.ir + e.iof) + '</td><td><b>' + fmtBRL(e.fin) + '</b></td><td class="' + clsv(e.ganho) + '">' + fmtBRL(e.ganho) + '</td><td class="' + clsv(e.rent) + '">' + fmtP(e.rent) + '</td><td>' + fmtP(e.pcdi) + '</td></tr>';
   });
-  t += '</tbody></table></div>';
-  return card('Evolução patrimonial', 'Patrimônio ao final de cada mês, com as movimentações (aportes e resgates) e o ganho financeiro do período.', svgBarrasPatrimonio(serie) + t);
-}
-function secAlocacao() {
-  var es = D.estrategias.slice().sort(function (a, b) { return b.saldo - a.saldo; });
-  var partes = es.map(function (e) { return { r: e.nome, v: e.saldo }; });
-  var rosca = '<div class="centro">' + svgRosca(partes, 'total', fmtCompacto(R.total)) + '</div>' + legendaRosca(partes);
-  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Estratégia</th><th>Saldo bruto</th><th>% carteira</th><th>Mês</th><th>Ano</th><th>12 meses</th><th>24 meses</th></tr></thead><tbody>';
-  es.forEach(function (e, i) {
-    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(e.nome) + '</td><td>' + fmtBRL(e.saldo) + '</td><td>' + fmtP(e.aloc) + '</td><td class="' + clsv(e.mes) + '">' + fmtP(e.mes) + '</td><td class="' + clsv(e.ano) + '">' + fmtP(e.ano) + '</td><td class="' + clsv(e.m12) + '">' + fmtP(e.m12) + '</td><td class="' + clsv(e.m24) + '">' + fmtP(e.m24) + '</td></tr>';
-  });
-  t += '<tr class="total"><td class="e">Total</td><td>' + fmtBRL(R.total) + '</td><td>100,00%</td><td></td><td></td><td></td><td></td></tr></tbody></table></div>';
-  var ins = Object.keys(R.instr).map(function (k) { return { r: k, v: R.instr[k] }; }).sort(function (a, b) { return b.v - a.v; });
-  return card('Alocação por estratégia', 'Classificação por estratégia conforme o relatório XPerformance.',
-    '<div class="grid2"><div>' + '<div class="tit-sec">Distribuição por estratégia</div>' + rosca + '</div><div><div class="tit-sec">Por instrumento</div>' + barrasH(ins, R.totItens, true) + '</div></div>' +
-    '<div class="tit-sec" style="margin-top:22px;">Rentabilidade por estratégia</div>' + t);
-}
-function secPerfis() {
-  var pi = perfilSel === null ? R.maisProximo : perfilSel;
-  var perfis = R.matriz.perfis;
+  ev += '</tbody></table></div>';
+  var h = '<div class="barra-sl"><span class="rot-sl">Período</span>' + botoes + '</div>' + k + detalhe + '<div class="tiles">';
+  h += tile('t12', 'Rentabilidade mensal · carteira x CDI', leg + svgMensal(serie), 'clique em um mês para detalhar');
+  h += tile('t12', 'Evolução patrimonial', svgPatrimonio(serie), 'clique em um mês para detalhar');
+  h += tile('t6', 'Carteira x referências', tb);
+  h += tile('t6', 'Rentabilidade histórica por ano', hist);
+  h += tile('t12', 'Patrimônio, movimentações e ganho por mês', ev, 'clique em uma linha para detalhar');
+  return h + '</div>';
+};
+PAGINAS.alocacao = function () {
+  var perfis = R.matriz.perfis, pi = perfilSel === null ? R.maisProximo : perfilSel;
   var reg = perfis.map(function (p, i) {
     var ad = 100 - R.realocar[i];
-    return '<div class="barra-linha"><span class="barra-rot">' + esc(p.nome) + (i === R.maisProximo ? '<span class="chip sel">mais próximo</span>' : '') + (i === pi ? '<span class="chip">comparado</span>' : '') + '</span>' +
-      '<div class="trilho"><div class="fill' + (i === R.maisProximo ? '' : ' cinza') + '" style="width:' + Math.max(ad, 0).toFixed(1) + '%"></div></div>' +
-      '<span class="barra-val"><b>' + fmtP(ad, 1) + '</b><small>realocar ' + fmtP(R.realocar[i], 1) + '</small></span></div>';
+    return '<div class="barra-linha clic' + (i === pi ? ' sel' : ' fraco') + '" data-perfil="' + i + '" data-tip="' + esc(p.nome + ': aderência ' + fmtP(ad, 1) + ' · realocar ' + fmtRS(R.realocar[i] / 100 * R.total)) + '"><span class="barra-rot">' + esc(p.nome) + (i === R.maisProximo ? '<span class="chip sel">mais próximo</span>' : '') + '</span><div class="trilho"><div class="fill' + (i === R.maisProximo ? '' : ' cinza') + '" style="width:' + Math.max(ad, 0).toFixed(1) + '%"></div></div><span class="barra-val"><b>' + fmtP(ad, 1) + '</b><small>realocar ' + fmtP(R.realocar[i], 1) + '</small></span></div>';
   }).join('');
-  var opts = '<option value="">Mais próximo (' + esc(perfis[R.maisProximo].nome) + ')</option>' + perfis.map(function (p, i) { return '<option value="' + i + '"' + (perfilSel === i ? ' selected' : '') + '>' + esc(p.nome) + '</option>'; }).join('');
+  var maxP = Math.max.apply(null, R.linhas.map(function (l) { return Math.max(l.atual, l.alvo[pi] || 0); }).concat([1]));
+  var cmp = R.linhas.map(function (l) {
+    var alvo = l.alvo[pi] || 0;
+    return '<div class="cmp"><div class="cmp-rot">' + esc(l.nome) + '</div><div class="cmp-b"><div class="trilho"><div class="fill" style="width:' + (l.atual / maxP * 100).toFixed(1) + '%"></div></div><span>' + fmtP(l.atual, 1) + ' atual</span></div><div class="cmp-b"><div class="trilho"><div class="fill cinza" style="width:' + (alvo / maxP * 100).toFixed(1) + '%"></div></div><span>' + fmtP(alvo, 1) + ' alvo</span></div></div>';
+  }).join('');
   var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Classe</th><th>Atual (%)</th><th>Atual (R$)</th><th>' + esc(perfis[pi].nome) + ' (%)</th><th>Diferença (p.p.)</th><th>Ajuste (R$)</th></tr></thead><tbody>';
   var ausentes = [];
   R.linhas.forEach(function (l, i) {
@@ -16184,65 +16387,52 @@ function secPerfis() {
     if (l.atual < 0.005 && alvo > 0) ausentes.push({ nome: l.nome, alvo: alvo });
     t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(l.nome) + '</td><td>' + fmtP(l.atual) + '</td><td>' + fmtBRL(l.valor) + '</td><td>' + fmtP(alvo) + '</td><td class="' + (Math.abs(dif) < 0.005 ? '' : (dif > 0 ? 'neg' : 'pos')) + '">' + (dif > 0 ? '+' : '') + fmtP(dif) + '</td><td class="' + (aj > 0 ? 'pos' : (aj < 0 ? 'neg' : '')) + '">' + (aj > 0 ? '+' : '') + fmtBRL(aj) + '</td></tr>';
   });
-  t += '</tbody></table></div><p class="nota">Ajuste positivo indica compra e negativo indica venda para atingir a alocação-alvo do perfil. Caixa e proventos estão incluídos em RF Pós-fixado. Pesos dos perfis: ' + (R.matriz.origem === 'padrão' ? 'matriz padrão (podem ser editados na ferramenta Diversificação de Carteira, neste navegador).' : 'matriz salva na ferramenta Diversificação de Carteira, neste navegador.') + '</p>';
-  var aus = ausentes.length ? '<p class="nota" style="margin-top:8px;"><b>Classes ausentes na carteira:</b> ' + ausentes.map(function (a) { return esc(a.nome) + ' (alvo de ' + fmtP(a.alvo, 1) + ', ' + fmtRS(a.alvo / 100 * R.total) + ')'; }).join('; ') + '.</p>' : '';
-  return card('Aderência aos perfis', 'O perfil de investimento do cliente não consta do relatório XPerformance; a comparação considera todos os perfis. Selecione o perfil do cliente para a comparação classe a classe.',
-    '<div class="controles" style="margin-bottom:14px;"><div class="campo"><label for="sel-perfil">Perfil comparado</label><select id="sel-perfil">' + opts + '</select></div></div>' +
-    '<div class="tit-sec">Régua de perfis</div>' + reg + '<div class="tit-sec" style="margin-top:22px;">Carteira comparada ao ' + esc(perfis[pi].nome) + '</div>' + t + aus);
-}
-function secPosicoes() {
-  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Ativo</th><th class="e">Estratégia</th><th class="e">Instrumento</th><th>Quantidade</th><th>Saldo bruto</th><th>% carteira</th><th>Mês</th><th>Ano</th><th>% CDI (ano)</th><th>24 meses</th></tr></thead><tbody>';
-  R.itens.forEach(function (p, i) {
-    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(p.nome) + '</td><td class="e">' + esc(p.estrategia) + '</td><td class="e">' + esc(rotuloInstrumento(p)) + '</td><td>' + (p.qtd !== undefined ? fmtQtd(p.qtd) : '') + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td>' +
-      '<td class="' + clsv(p.mes) + '">' + (p.mes === undefined ? '—' : fmtP(p.mes)) + '</td><td class="' + clsv(p.ano) + '">' + (p.ano === undefined ? '—' : fmtP(p.ano)) + '</td><td>' + (p.acdi === undefined ? '—' : fmtP(p.acdi)) + '</td><td class="' + clsv(p.m24) + '">' + (p.m24 === undefined ? '—' : fmtP(p.m24)) + '</td></tr>';
-  });
-  t += '<tr class="total"><td class="e">Total</td><td></td><td></td><td></td><td>' + fmtBRL(R.totItens) + '</td><td>100,00%</td><td></td><td></td><td></td><td></td></tr></tbody></table></div>';
-  return card('Posição detalhada', 'Ativos ordenados pelo saldo bruto. A rentabilidade do ano considera o período desde a aquisição, quando posterior a janeiro (conforme o relatório).', t);
-}
-function secConcentracao() {
-  var ativos = R.itens.filter(function (p) { return p.tipo !== 'caixa'; });
-  var top = ativos.slice(0, 10).map(function (p) { return { r: p.nome, v: p.saldo }; });
-  var resto = soma(ativos.slice(10), function (p) { return p.saldo; });
-  if (resto > 0) top.push({ r: '+ ' + (ativos.length - 10) + ' outros', v: resto });
-  var e10 = R.ativos10.length ? '<p class="nota"><b>' + R.ativos10.length + ' ativo(s) acima de 10% do patrimônio</b>, somando ' + fmtP(soma(R.ativos10, function (p) { return p.pct; }), 1) + ': ' + R.ativos10.map(function (p) { return esc(p.nome) + ' (' + fmtP(p.pct, 1) + ')'; }).join('; ') + '.</p>' : '<p class="nota">Nenhum ativo acima de 10% do patrimônio.</p>';
-  var em = Object.keys(R.emissores).map(function (k) { return R.emissores[k]; }).sort(function (a, b) { return b.valor - a.valor; });
-  var t = '';
-  if (em.length) {
-    t = '<div class="tit-sec" style="margin-top:22px;">Emissores da renda fixa</div><div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Emissor</th><th class="e">Papéis</th><th>Exposição</th><th>% carteira</th><th class="e">Garantia</th></tr></thead><tbody>';
-    em.forEach(function (e, i) {
-      var g = e.fgc > 0 ? (e.fgc > 250000 ? 'Acima do teto do FGC (R$ 250.000)' : 'Dentro do teto do FGC') : '';
-      if (e.sem > 0) g += (g ? ' · ' : '') + 'Sem garantia do FGC';
-      t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(e.nome) + '</td><td class="e">' + esc(Object.keys(e.papeis).join(', ')) + '</td><td>' + fmtBRL(e.valor) + '</td><td>' + fmtP(R.total > 0 ? e.valor / R.total * 100 : 0) + '</td><td class="e">' + esc(g) + '</td></tr>';
-    });
-    t += '</tbody></table></div><p class="nota">Teto do FGC: R$ 250.000 por CPF e por conglomerado financeiro, limitado a R$ 1 milhão a cada quatro anos. CRA, CRI e debêntures não contam com a garantia do FGC.</p>';
-  }
-  return card('Concentração por ativo e emissor', 'Maiores posições em relação ao patrimônio total.', '<div class="tit-sec">Maiores posições</div>' + barrasH(top, R.total) + e10 + t);
-}
-function secVencimentos() {
-  if (!R.rf.length) return '';
+  t += '</tbody></table></div><p class="nota">Ajuste positivo indica compra e negativo indica venda para atingir a alocação-alvo do perfil. Caixa e proventos estão incluídos em RF Pós-fixado. Pesos dos perfis: ' + (R.matriz.origem === 'padrão' ? 'matriz padrão (editável na ferramenta Diversificação de Carteira, neste navegador).' : 'matriz salva na ferramenta Diversificação de Carteira, neste navegador.') + '</p>';
+  var aus = ausentes.length ? '<p class="nota"><b>Classes ausentes na carteira:</b> ' + ausentes.map(function (a) { return esc(a.nome) + ' (alvo de ' + fmtP(a.alvo, 1) + ', ' + fmtRS(a.alvo / 100 * R.total) + ')'; }).join('; ') + '.</p>' : '';
+  var h = '<p class="resumo">O perfil do cliente não consta do relatório XPerformance. Clique em um perfil da régua para compará-lo classe a classe.</p><div class="tiles">';
+  h += tile('t5', 'Régua de perfis', reg, 'clique para comparar');
+  h += tile('t7', 'Atual x alvo do ' + esc(perfis[pi].nome), cmp);
+  h += tile('t12', 'Carteira comparada ao ' + esc(perfis[pi].nome), t + aus);
+  h += tile('t6', 'Por estratégia', donutDim('est', 'total'), 'clique para filtrar');
+  h += tile('t6', 'Por instrumento', barrasDim('instr'), 'clique para filtrar');
+  return h + '</div>';
+};
+PAGINAS.posicoes = function () {
+  var lista = filtrados(null);
+  var q = compacto(ST.busca);
+  if (q) lista = lista.filter(function (p) { return compacto(p.nome).indexOf(q) !== -1 || compacto(p.estrategia).indexOf(q) !== -1; });
+  var h = '<div class="barra-sl"><span class="rot-sl">Buscar</span><input type="text" id="in-busca" class="busca" placeholder="Ativo ou estratégia" value="' + esc(ST.busca) + '" autocomplete="off"></div>';
+  h += kpisGeral() + '<div class="tiles">';
+  h += tile('t4', 'Por estratégia', donutDim('est', 'total'), 'clique para filtrar');
+  h += tile('t4', 'Por instrumento', barrasDim('instr'), 'clique para filtrar');
+  h += tile('t4', 'Por disponibilidade', barrasDim('liq'), 'clique para filtrar');
+  h += tile('t12', 'Posição detalhada', tabelaPosicoes(lista), 'clique no título da coluna para ordenar');
+  return h + '</div>';
+};
+PAGINAS.rf = function () {
+  var F = filtrados(null).filter(function (p) { return p.tipo === 'rf'; });
+  F.sort(function (a, b) { return (a.venc ? a.venc.a * 12 + a.venc.m : 1e9) - (b.venc ? b.venc.a * 12 + b.venc.m : 1e9); });
+  var tot = soma(F, function (p) { return p.saldo; });
+  var prox = F.filter(function (p) { return p.meses !== null && p.meses >= 0 && p.meses <= 12; });
+  var vProx = soma(prox, function (p) { return p.saldo; });
+  var k = '<div class="kpis">' + kpi('Renda fixa direta', fmtBRL(tot), F.length + ' título(s) · ' + fmtP(R.total > 0 ? tot / R.total * 100 : 0, 1) + ' do patrimônio') +
+    kpi('Vencem em 12 meses', fmtRS(vProx), fmtP(tot > 0 ? vProx / tot * 100 : 0, 1) + ' da renda fixa · a reinvestir') +
+    kpi('Rentabilidade no ano', fmtP(mediaPond(F, 'ano')), 'Média ponderada · ' + fmtP(mediaPond(F, 'acdi'), 0) + ' do CDI') + '</div>';
+  var emiF = {};
+  F.forEach(function (p) { var k2 = p.emissor || p.nome; var e = emiF[k2] || (emiF[k2] = { fgc: 0, sem: 0 }); if (/^(LCA|LCI|LCD|CDB|LC|LF|RDB|LIG)$/.test(p.papel || '')) e.fgc += p.saldo; else e.sem += p.saldo; });
+  var fgcNota = Object.keys(emiF).map(function (k2) { var e = emiF[k2]; return '<span class="chip' + (e.fgc > 250000 ? ' sel' : '') + '">' + esc(k2) + ': ' + (e.fgc > 0 ? (e.fgc > 250000 ? 'acima do teto do FGC' : 'dentro do teto do FGC') : '') + (e.sem > 0 ? (e.fgc > 0 ? ' · ' : '') + 'sem garantia do FGC' : '') + '</span>'; }).join(' ');
   var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Título</th><th class="e">Emissor</th><th class="e">Taxa</th><th class="e">Vencimento</th><th>Prazo</th><th>Saldo bruto</th><th>% carteira</th><th>Rent. ano</th><th>% CDI (ano)</th></tr></thead><tbody>';
-  R.rf.forEach(function (p, i) {
+  F.forEach(function (p, i) {
     var prazo = p.meses === null ? '' : (p.meses < 0 ? 'vencido' : (p.meses === 0 ? 'este mês' : p.meses + ' m'));
-    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(p.papel || '') + '</td><td class="e">' + esc(p.emissor || p.nome) + '</td><td class="e">' + esc(p.taxa || '') + '</td><td class="e">' + (p.venc ? String(p.venc.m).padStart(2, '0') + '/' + p.venc.a : '') + '</td><td>' + prazo + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td><td class="' + clsv(p.ano) + '">' + fmtP(p.ano) + '</td><td>' + fmtP(p.acdi) + '</td></tr>';
+    t += '<tr class="clic ' + (i % 2 ? 'zebra' : '') + (selecionado('ativo', p.nome) ? ' selrow' : '') + '"' + dF('ativo', p.nome) + '><td class="e">' + esc(p.papel || '') + '</td><td class="e">' + esc(p.emissor || p.nome) + '</td><td class="e">' + esc(p.taxa || '') + '</td><td class="e">' + (p.venc ? String(p.venc.m).padStart(2, '0') + '/' + p.venc.a : '') + '</td><td>' + prazo + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td><td class="' + clsv(p.ano) + '">' + fmtP(p.ano) + '</td><td>' + fmtP(p.acdi) + '</td></tr>';
   });
   t += '</tbody></table></div>';
-  var porAno = {};
-  R.rf.forEach(function (p) { var k = p.venc ? p.venc.a : 'Sem data'; porAno[k] = (porAno[k] || 0) + p.saldo; });
-  var barras = barrasH(Object.keys(porAno).sort().map(function (k) { return { r: 'Vencimento em ' + k, v: porAno[k] }; }), soma(R.rf, function (p) { return p.saldo; }));
-  var prox = R.rf.filter(function (p) { return p.meses !== null && p.meses >= 0 && p.meses <= 12; });
-  var vProx = soma(prox, function (p) { return p.saldo; });
-  var aviso = vProx > 0 ? '<p class="nota"><b>Vencimentos nos próximos 12 meses:</b> ' + fmtRS(vProx) + ' (' + fmtP(vProx / R.total * 100, 1) + ' do patrimônio) a reinvestir.</p>' : '';
-  return card('Renda fixa e vencimentos', 'Títulos de renda fixa direta, ordenados por vencimento. Taxa e vencimento extraídos do nome do título no relatório.', '<div class="grid2"><div><div class="tit-sec">Vencimentos por ano</div>' + barras + aviso + '</div><div></div></div><div class="tit-sec" style="margin-top:16px;">Títulos</div>' + t);
-}
-function secLiquidez() {
-  var liq = LIQ.map(function (l) { return { r: l.r, v: R.liq[l.k] || 0 }; }).filter(function (x) { return x.v > 0; });
-  var trib = TRIB.map(function (l) { return { r: l.r, v: R.trib[l.k] || 0 }; });
-  var d0 = R.total > 0 ? (R.liq.d0 || 0) / R.total * 100 : 0, sem = R.total > 0 ? (R.liq.sem || 0) / R.total * 100 : 0;
-  var txt = fmtP(d0, 1) + ' do patrimônio tem liquidez imediata e ' + fmtP(sem, 1) + ' está em ativos sem liquidez diária.';
-  return card('Liquidez e tributação', txt + ' Classificação automática por tipo de ativo, sujeita a confirmação com as condições de cada produto.',
-    '<div class="grid2"><div><div class="tit-sec">Por disponibilidade</div>' + barrasH(liq, R.totItens) + '</div><div><div class="tit-sec">Por tributação</div><div class="centro">' + svgRosca(trib, 'total', fmtCompacto(R.totItens)) + '</div>' + legendaRosca(trib) +
-    '<p class="nota">Os rendimentos distribuídos por fundos imobiliários podem ser isentos de Imposto de Renda para pessoa física, desde que atendidos os requisitos legais; o ganho de capital na venda de cotas é tributado.</p></div></div>');
-}
+  var h = k + '<div class="tiles">';
+  h += tile('t6', 'Vencimentos por ano', barrasDim('ano'), 'clique para filtrar');
+  h += tile('t6', 'Emissores', barrasDim('emi') + '<div style="margin-top:10px;">' + fgcNota + '</div><p class="nota">Teto do FGC: R$ 250.000 por CPF e por conglomerado financeiro, limitado a R$ 1 milhão a cada quatro anos. CRA, CRI e debêntures não contam com a garantia do FGC.</p>', 'clique para filtrar');
+  h += tile('t12', 'Títulos', F.length ? t : '<p class="vazio">Nenhum título de renda fixa para os filtros selecionados.</p>');
+  return h + '</div>';
+};
 function tipoMov(m) {
   var h = m.hist.toUpperCase();
   if (/RENDIMENTO|JUROS S\\/ CAPITAL|DIVIDENDO|PROVENTO|AMORTIZA|CUPOM|JCP/.test(h)) return 'Proventos';
@@ -16250,31 +16440,81 @@ function tipoMov(m) {
   if (/OPERA[ÇC][ÕO]ES EM BOLSA|NOTA N/.test(h)) return m.valor < 0 ? 'Compra' : 'Venda';
   return 'Outros';
 }
-function secMovs() {
-  if (!D.movs.length) return '';
-  var tot = { Proventos: 0, Aporte: 0, Resgate: 0, Compra: 0, Venda: 0, Outros: 0 };
-  D.movs.forEach(function (m) { m.tipo = tipoMov(m); tot[m.tipo] += m.valor; });
+PAGINAS.movs = function () {
+  if (!D.movs.length) return '<p class="vazio">Nenhuma movimentação listada no relatório.</p>';
+  var tot = { Proventos: 0, Aporte: 0, Resgate: 0, Compra: 0, Venda: 0, Outros: 0 }, qtd = {};
+  D.movs.forEach(function (m) { m.tipo = tipoMov(m); tot[m.tipo] += m.valor; qtd[m.tipo] = (qtd[m.tipo] || 0) + 1; });
+  var tipos = ['Proventos', 'Aporte', 'Resgate', 'Compra', 'Venda', 'Outros'].filter(function (t2) { return qtd[t2]; });
+  var botoes = '<div class="seg-btns"><button type="button" class="' + (ST.movTipo === '' ? 'on' : '') + '" data-mt="">Todos</button>' + tipos.map(function (t2) { return '<button type="button" class="' + (ST.movTipo === t2 ? 'on' : '') + '" data-mt="' + t2 + '">' + t2 + ' (' + qtd[t2] + ')</button>'; }).join('') + '</div>';
   var cards = '<div class="kpis">' +
-    kpi('Proventos recebidos', fmtBRL(tot.Proventos), 'Rendimentos, JCP e dividendos') +
-    kpi('Aportes', fmtBRL(tot.Aporte), 'Entradas por TED') +
-    kpi('Resgates', fmtBRL(tot.Resgate), 'Saídas por TED') +
-    kpi('Compras e vendas', fmtBRL(tot.Compra + tot.Venda), 'Saldo líquido das operações em bolsa') + '</div>';
+    kpi('Proventos recebidos', fmtBRL(tot.Proventos), 'Rendimentos, JCP e dividendos') + kpi('Aportes', fmtBRL(tot.Aporte), 'Entradas por TED') +
+    kpi('Resgates', fmtBRL(tot.Resgate), 'Saídas por TED') + kpi('Compras e vendas', fmtBRL(tot.Compra + tot.Venda), 'Saldo líquido das operações em bolsa') + '</div>';
+  var lista = D.movs.filter(function (m) { return !ST.movTipo || m.tipo === ST.movTipo; });
   var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Data</th><th class="e">Liquidação</th><th class="e">Tipo</th><th class="e">Histórico</th><th>Valor</th><th>Saldo</th></tr></thead><tbody>';
-  D.movs.forEach(function (m, i) {
+  lista.forEach(function (m, i) {
     t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + m.data + '</td><td class="e">' + m.liq + '</td><td class="e">' + m.tipo + '</td><td class="e">' + esc(m.hist) + '</td><td class="' + clsv(m.valor) + '">' + fmtBRL(m.valor) + '</td><td>' + fmtBRL(m.saldo) + '</td></tr>';
   });
   t += '</tbody></table></div>';
-  return card('Movimentações do mês', 'Lançamentos listados no relatório, classificados automaticamente pelo histórico.', cards + t);
-}
+  return '<div class="barra-sl"><span class="rot-sl">Tipo</span>' + botoes + '</div>' + cards + '<div class="tiles">' + tile('t12', 'Movimentações do mês', t, 'lançamentos do relatório, classificados pelo histórico') + '</div>';
+};
 
-function render() {
-  var cliente = (document.getElementById('in-cliente').value || '').trim();
-  var cab = '<div class="cab-rel"><div><h2 id="tit-cliente">' + esc(cliente ? 'Carteira de ' + cliente : 'Carteira do cliente') + '</h2><small>Conta ' + esc(D.cab.conta || '') + (D.cab.assessor ? ' · Assessor ' + esc(D.cab.assessor) : '') + ' · Posições em ' + esc(D.cab.data || '') + ' · Fonte: XPerformance</small></div></div>';
-  document.getElementById('conteudo').innerHTML = cab + secResumo() + secAlertas() + secRentabilidade() + secEvolucao() + secAlocacao() + secPerfis() + secPosicoes() + secConcentracao() + secVencimentos() + secLiquidez() + secMovs() +
-    '<p class="nota">Material de caráter meramente informativo, elaborado com base no relatório XPerformance. Não constitui oferta, solicitação ou recomendação de compra ou venda de qualquer ativo. Rentabilidade passada não representa garantia de rentabilidade futura.</p>';
-  var sp = document.getElementById('sel-perfil');
-  if (sp) sp.addEventListener('change', function () { perfilSel = sp.value === '' ? null : Number(sp.value); R.alertas = montarAlertas(R, D); render(); });
+// ── Renderização e interações ──
+function htmlFiltros() {
+  if (!filtroAtivo()) return '';
+  var chips = '';
+  Object.keys(DIMS).forEach(function (d) {
+    (ST.f[d] || []).forEach(function (v) { chips += '<span class="chip-f"><small>' + DIMS[d].rot + ':</small> ' + esc(v) + '<button type="button" data-rm="' + esc(d + '|' + v) + '" title="Remover filtro">×</button></span>'; });
+  });
+  var n = filtrados(null).length;
+  return '<div class="filtros"><b>Filtros ativos</b>' + chips + '<span class="filtros-n">' + n + ' de ' + R.itens.length + ' posições</span><button type="button" class="btn btn-peq" data-limpar="1">Limpar filtros</button></div>';
 }
+function render() {
+  if (!D || !R) return;
+  var foco = document.activeElement && document.activeElement.id === 'in-busca' ? document.activeElement.selectionStart : null;
+  var cliente = (document.getElementById('in-cliente').value || '').trim();
+  document.getElementById('cab').innerHTML = '<div><h2 id="tit-cliente">' + esc(cliente ? 'Carteira de ' + cliente : 'Carteira do cliente') + '</h2><small>Conta ' + esc(D.cab.conta || '') + (D.cab.assessor ? ' · Assessor ' + esc(D.cab.assessor) : '') + ' · Posições em ' + esc(D.cab.data || '') + ' · Fonte: XPerformance</small></div>';
+  document.getElementById('abas').innerHTML = ABAS.map(function (a) { return '<button type="button" class="aba' + (ST.aba === a[0] ? ' on' : '') + '" data-aba="' + a[0] + '">' + a[1] + (a[0] === 'alertas' ? ' <span class="badge">' + R.alertas.filter(function (x) { return x.n === 'alto'; }).length + '</span>' : '') + '</button>'; }).join('');
+  document.getElementById('filtros').innerHTML = (ST.imprimir || ['geral', 'alocacao', 'posicoes', 'rf'].indexOf(ST.aba) !== -1) ? htmlFiltros() : '';
+  var paginas = ST.imprimir ? ABAS.map(function (a) { return a[0]; }) : [ST.aba];
+  document.getElementById('conteudo').innerHTML = paginas.map(function (p) { return (ST.imprimir ? '<h3 class="tit-pagina">' + ABAS.filter(function (a) { return a[0] === p; })[0][1] + '</h3>' : '') + PAGINAS[p](); }).join('') +
+    '<p class="nota">Material de caráter meramente informativo, elaborado com base no relatório XPerformance. Não constitui oferta, solicitação ou recomendação de compra ou venda de qualquer ativo. Rentabilidade passada não representa garantia de rentabilidade futura.</p>';
+  if (foco !== null) { var b = document.getElementById('in-busca'); if (b) { b.focus(); try { b.setSelectionRange(foco, foco); } catch (e) {} } }
+}
+function recalcularAlertas() { R.alertas = montarAlertas(R, D); }
+
+document.addEventListener('click', function (ev) {
+  var t = ev.target;
+  function ach(sel) { return t && t.closest ? t.closest(sel) : null; }
+  var el;
+  if ((el = ach('[data-rm]'))) { var pr = el.getAttribute('data-rm'), ix = pr.indexOf('|'); alternar(pr.slice(0, ix), pr.slice(ix + 1)); render(); return; }
+  if ((el = ach('[data-limpar]'))) { ST.f = {}; render(); return; }
+  if ((el = ach('[data-aba]'))) { ST.aba = el.getAttribute('data-aba'); render(); return; }
+  if ((el = ach('[data-ver]'))) {
+    var a = R.alertas[Number(el.getAttribute('data-ver'))];
+    if (a && a.ver) { ST.f = {}; Object.keys(a.ver.f || {}).forEach(function (d) { ST.f[d] = a.ver.f[d].slice(); }); ST.aba = a.ver.aba; render(); }
+    return;
+  }
+  if ((el = ach('[data-ord]'))) { var c = el.getAttribute('data-ord'); ST.ordem = { col: c, dir: ST.ordem.col === c ? -ST.ordem.dir : (c === 'nome' || c === 'estrategia' || c === 'instr' ? 1 : -1) }; render(); return; }
+  if ((el = ach('[data-per]'))) { var pv = el.getAttribute('data-per'); ST.periodo = pv === 'ano' ? 'ano' : Number(pv); ST.mesSel = null; render(); return; }
+  if ((el = ach('[data-mes]'))) { var mv = el.getAttribute('data-mes'); ST.mesSel = (!mv || ST.mesSel === mv) ? null : mv; render(); return; }
+  if ((el = ach('[data-mt]'))) { ST.movTipo = el.getAttribute('data-mt'); render(); return; }
+  if ((el = ach('[data-perfil]'))) { var pf = Number(el.getAttribute('data-perfil')); perfilSel = (perfilSel === pf || (perfilSel === null && pf === R.maisProximo)) ? null : pf; recalcularAlertas(); render(); return; }
+  if ((el = ach('[data-f]'))) { var f = el.getAttribute('data-f'), i2 = f.indexOf('|'); alternar(f.slice(0, i2), f.slice(i2 + 1)); render(); return; }
+});
+document.addEventListener('input', function (ev) {
+  if (ev.target && ev.target.id === 'in-busca') { ST.busca = ev.target.value; render(); }
+});
+var dica = document.getElementById('dica');
+document.addEventListener('mousemove', function (ev) {
+  var t = ev.target && ev.target.closest ? ev.target.closest('[data-tip]') : null;
+  if (!t) { dica.hidden = true; return; }
+  dica.textContent = t.getAttribute('data-tip');
+  dica.hidden = false;
+  var x = ev.clientX + 14, y = ev.clientY + 16;
+  if (x + 330 > window.innerWidth) x = ev.clientX - 330;
+  dica.style.left = x + 'px'; dica.style.top = y + 'px';
+});
+document.addEventListener('mouseleave', function () { dica.hidden = true; });
 
 document.getElementById('in-cliente').addEventListener('input', function () {
   var t = document.getElementById('tit-cliente');
@@ -16302,6 +16542,7 @@ document.getElementById('arq-carteira').addEventListener('change', function (ev)
           if (!rel) { erro('Não foi possível reconhecer o relatório XPerformance neste PDF (evolução patrimonial e composição por estratégia).'); return; }
           D = rel; perfilSel = null;
           R = analisar(D);
+          ST.f = {}; ST.aba = 'geral'; ST.mesSel = null; ST.busca = ''; ST.periodo = 12; ST.movTipo = '';
           document.getElementById('painel').hidden = false;
           render();
           st.style.color = 'var(--green)';
@@ -16313,6 +16554,9 @@ document.getElementById('arq-carteira').addEventListener('change', function (ev)
   leitor.readAsArrayBuffer(arquivo);
 });
 
+// impressão: todas as páginas do painel, em sequência
+window.addEventListener('beforeprint', function () { if (D && R) { ST.imprimir = true; render(); } });
+window.addEventListener('afterprint', function () { if (D && R) { ST.imprimir = false; render(); } });
 document.getElementById('btn-imprimir').addEventListener('click', function () { window.print(); });
 document.getElementById('btn-excel').addEventListener('click', function () {
   if (!D) return;
@@ -16324,11 +16568,13 @@ document.getElementById('btn-excel').addEventListener('click', function () {
   var est = [['Estratégia', 'Saldo bruto (R$)', '% carteira', 'Mês (%)', 'Ano (%)', '12 meses (%)', '24 meses (%)']];
   D.estrategias.forEach(function (e) { est.push([e.nome, e.saldo, e.aloc, e.mes, e.ano, e.m12, e.m24]); });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(est), 'Estratégias');
-  var pos = [['Ativo', 'Estratégia', 'Instrumento', 'Quantidade', 'Saldo bruto (R$)', '% carteira', 'Mês (%)', 'Ano (%)', '% CDI (ano)', '24 meses (%)', 'Liquidez', 'Tributação']];
-  var rl = {}, rt = {};
-  LIQ.forEach(function (l) { rl[l.k] = l.r; }); TRIB.forEach(function (l) { rt[l.k] = l.r; });
-  R.itens.forEach(function (p) { pos.push([p.nome, p.estrategia, rotuloInstrumento(p), p.qtd, p.saldo, Math.round(p.pct * 100) / 100, p.mes, p.ano, p.acdi, p.m24, rl[p.liq], rt[p.trib]]); });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pos), 'Posições');
+  function linhasPos(lista) {
+    var pos = [['Ativo', 'Estratégia', 'Instrumento', 'Quantidade', 'Saldo bruto (R$)', '% carteira', 'Mês (%)', 'Ano (%)', '% CDI (ano)', '24 meses (%)', 'Disponibilidade', 'Tributação']];
+    lista.forEach(function (p) { pos.push([p.nome, p.estrategia, p.instr, p.qtd, p.saldo, Math.round(p.pct * 100) / 100, p.mes, p.ano, p.acdi, p.m24, rotLiq[p.liq], rotTrib[p.trib]]); });
+    return pos;
+  }
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(linhasPos(R.itens)), 'Posições');
+  if (filtroAtivo()) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(linhasPos(filtrados(null))), 'Posições (filtro atual)');
   var ev = [['Mês', 'Patrimônio inicial', 'Movimentações', 'IR', 'IOF', 'Patrimônio final', 'Ganho financeiro', 'Rentab. (%)', '% CDI']];
   D.evol.forEach(function (e) { ev.push([e.rot, e.ini, e.mov, e.ir, e.iof, e.fin, e.ganho, e.rent, e.pcdi]); });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ev), 'Evolução');
