@@ -15563,25 +15563,48 @@ function extrairLinhasPDF(pdf) {
   return Promise.all(paginas).then(function (ps) { return [].concat.apply([], ps); });
 }
 
+function pNumPrimeiro(t) { var m = /-?[\\d.]+,\\d+/.exec(String(t)); return m ? pNum(m[0]) : null; }
 function detalharAtivo(p) {
   var up = p.nome.toUpperCase();
-  if (/^(LCA|LCI|LCD|CRA|CRI|CDB|LC|LF|LIG|DEB|RDB)\\b/.test(up)) {
+  var mt = /^([A-Z][A-Z0-9]{3}\\d{1,2})(?:\\s+-\\s+|$)/.exec(up);
+  if (/^(LCA|LCI|LCD|CRA|CRI|CDB|LC|LF|LIG|DEB|RDB|NTN-?[A-Z]?|LTN|LFT|TESOURO)(\\s|$)/.test(up)) {
     p.tipo = 'rf';
-    p.papel = up.split(' ')[0];
-    var m = /^[A-Z]+\\s+(.*?)\\s*-\\s*([A-Z]{3})\\/(\\d{4})\\s*(?:-\\s*(.*))?$/i.exec(p.nome);
-    if (m) {
-      p.emissor = m[1].trim();
-      var mes = MESES_ABREV[m[2].toLowerCase()];
-      if (mes) p.venc = { m: mes, a: Number(m[3]) };
-      p.taxa = (m[4] || '').replace(/^-\\s*/, '').trim();
+    var mp = /^(\\S+)\\s*(.*?)\\s*-\\s*([A-Z]{3})\\/(\\d{4})\\s*(?:-\\s*(.*))?$/i.exec(p.nome);
+    p.papel = up.split(/\\s/)[0];
+    if (mp) {
+      p.emissor = mp[2].trim();
+      var mes = MESES_ABREV[mp[3].toLowerCase()];
+      if (mes) p.venc = { m: mes, a: Number(mp[4]) };
+      p.taxa = (mp[5] || '').replace(/^-\\s*/, '').trim();
     }
-  } else if (/^[A-Z]{4}\\d{1,2}$/.test(up)) {
-    p.tipo = p.chave === 'listados' ? 'fii' : (p.chave === 'rvb' ? 'acao' : 'etf');
+    if (/^(NTN|LTN|LFT|TESOURO)/.test(p.papel)) {
+      p.publico = true; p.emissor = 'Tesouro Nacional';
+      var ma = /(?:^|\\s)(20\\d{2})(?:\\s|$)/.exec(p.nome);
+      if (!p.venc && ma) p.venc = { m: 12, a: Number(ma[1]), aprox: true };
+    }
+  } else if (/\\b\\d{1,2}Y(\\d{1,2}M)?\\b/.test(up) && /\\s-\\s/.test(up) && !mt) {
+    p.tipo = 'coe';   // nota estruturada (COE): nome com prazo "- 5y", "- 2y06m"
+  } else if (mt) {
+    p.ticker = mt[1];
+    p.tipo = p.chave === 'listados' ? 'fii' : (p.chave === 'rvb' ? 'acao' : (/^[A-Z0-9]{4}(32|33|34|35|39)$/.test(mt[1]) ? 'acao' : 'etf'));
   } else if (/\\bFII\\b|FIAGRO|IMOBILI/.test(up)) {
     p.tipo = 'fii_nl';
   } else {
     p.tipo = 'fundo';
   }
+}
+
+// Colunas da linha de valores da posição detalhada: "[nome] R$ saldo qtd %aloc rent %cdi rent %cdi rent %cdi".
+// A quantidade pode vir colada ao percentual seguinte ("264548.1898,12%") ou ser um texto ("Calculando").
+function lerColunasPos(ln) {
+  var m = /^(.*?)\\s*R\\$\\s*(-?[\\d.]+,\\d{2})\\s*(.*)$/.exec(ln);
+  if (!m) return null;
+  var resto = m[3].trim().split(/\\s+/).filter(Boolean);
+  if (resto.length < 2) return null;
+  var qty = resto[0], toks = resto.slice(1);
+  var mm = /^(\\d+\\.\\d{1,2}|[A-Za-zÀ-ÿ]+)(-?[\\d.]*\\d,\\d+%)$/.exec(qty);
+  if (mm) { qty = mm[1]; toks = [mm[2]].concat(toks); }
+  return { nome: m[1].trim(), valor: m[2], qty: qty, toks: toks };
 }
 
 function lerRelatorio(brutas) {
@@ -15596,12 +15619,12 @@ function lerRelatorio(brutas) {
       r.kpi.patrimonio = pNum(m[1]); r.kpi.rentMes = pNum(m[2]); r.kpi.ganhoMes = pNum(m[3]); r.kpi.rent24 = pNum(m[4]); r.kpi.ganho24 = pNum(m[5]);
       continue;
     }
-    if ((m = /^(?:-?[\\d.]+,\\d+\\s*%\\s+)?(Portf[óo]lio|CDI|Ibovespa|IPCA|D[óo]lar)\\s+(-?[\\d.]+,\\d+)%\\s+(-?[\\d.]+,\\d+)%\\s+(-?[\\d.]+,\\d+)%\\s+(-?[\\d.]+,\\d+)%$/.exec(l))) {
+    if ((m = /^(?:-?[\\d.]+,\\d+\\s*%\\s+)?(Portf[óo]lio|CDI|Ibovespa|IPCA|D[óo]lar)\\s+(-|-?[\\d.]+,\\d+%)\\s+(-|-?[\\d.]+,\\d+%)\\s+(-|-?[\\d.]+,\\d+%)\\s+(-|-?[\\d.]+,\\d+%)$/.exec(l))) {
       var chv = BENCH[m[1].toLowerCase()];
       if (chv && !r.bench[chv]) r.bench[chv] = [pNum(m[2]), pNum(m[3]), pNum(m[4]), pNum(m[5])];
       continue;
     }
-    if ((m = /^(M[ÊE]S|ANO|12M|24M)\\s+(-?R\\$\\s*[\\d.]+,\\d{2})\\s+(-?[\\d.]+,\\d+)%\\s+(-?[\\d.]+,\\d+)%\\s+(-?R\\$\\s*[\\d.]+,\\d{2})$/.exec(l))) {
+    if ((m = /^(M[ÊE]S|ANO|12M|24M)\\s+(-|-?R\\$\\s*[\\d.]+,\\d{2})\\s+(-|-?[\\d.]+,\\d+%)\\s+(-|-?[\\d.]+,\\d+%)\\s+(-|-?R\\$\\s*[\\d.]+,\\d{2})(?:\\s+Volatilidade.*)?$/.exec(l))) {
       var pk = { 'MES': 'mes', 'MÊS': 'mes', 'ANO': 'ano', '12M': 'm12', '24M': 'm24' }[m[1].toUpperCase()];
       if (pk && !r.kpi.per[pk]) r.kpi.per[pk] = { ganho: pNum(m[2]), rent: pNum(m[3]), pcdi: pNum(m[4]), mov: pNum(m[5]) };
       continue;
@@ -15610,7 +15633,7 @@ function lerRelatorio(brutas) {
     if (emResumo) {
       if (/^XPerformance - Relat/i.test(l)) { emResumo = false; continue; }
       if ((m = /^(\\d+)\\s+(\\d+)$/.exec(l))) { intPares.push([Number(m[1]), Number(m[2])]); continue; }
-      if ((m = /^(-?[\\d.]+,\\d+)%\\s+(-?[\\d.]+,\\d+)%$/.exec(l))) { pctPares.push([pNum(m[1]), pNum(m[2])]); continue; }
+      if ((m = /^(-|-?[\\d.]+,\\d+%)\\s+(-|-?[\\d.]+,\\d+%)$/.exec(l))) { pctPares.push([pNum(m[1]), pNum(m[2])]); continue; }
     }
     if ((m = /^Portf[óo]lio\\s+(.+)$/.exec(l))) {
       var tk = m[1].split(/\\s+/);
@@ -15621,13 +15644,16 @@ function lerRelatorio(brutas) {
           var ct = cm ? cm[1].split(/\\s+/) : [];
           r.anos[ym[1]] = {
             port: tk.slice(0, 12).map(pNum), pcdi: ct.slice(0, 12).map(pNum),
-            ano: pNum(tk[12]), acum: tk.length > 13 ? pNum(tk[13]) : null, anoPcdi: ct.length > 12 ? pNum(ct[12]) : null
+            ano: pNum(tk[12]), acum: tk.length > 13 ? pNum(tk[13]) : null, anoPcdi: ct.length > 12 ? pNumPrimeiro(ct[12]) : null
           };
+          // meses anteriores à entrada dos recursos (0,00% sem % do CDI) ficam vazios
+          r.anos[ym[1]].port = r.anos[ym[1]].port.map(function (v, k) { return (v === 0 && !r.anos[ym[1]].pcdi[k]) ? null : v; });
         }
       }
       continue;
     }
     if ((m = /^([a-zç]{3})\\.\\/(\\d{2})\\s+(-?R\\$\\s*[\\d.]+,\\d{2})\\s+(-?R\\$\\s*[\\d.]+,\\d{2})\\s+(-?R\\$\\s*[\\d.]+,\\d{2})\\s+(-?R\\$\\s*[\\d.]+,\\d{2})\\s+(-?R\\$\\s*[\\d.]+,\\d{2})\\s+(-?R\\$\\s*[\\d.]+,\\d{2})\\s+(-?[\\d.]+,\\d+)%\\s+(-?[\\d.]+,\\d+)%$/.exec(l))) {
+      if (pNum(m[3]) === 0 && pNum(m[4]) === 0 && pNum(m[7]) === 0) continue;   // mês anterior à conta
       r.evol.push({ mes: MESES_ABREV[m[1]] || 0, ano: 2000 + Number(m[2]), rot: m[1] + '/' + m[2], ini: pNum(m[3]), mov: pNum(m[4]), ir: pNum(m[5]), iof: pNum(m[6]), fin: pNum(m[7]), ganho: pNum(m[8]), rent: pNum(m[9]), pcdi: pNum(m[10]) });
       continue;
     }
@@ -15647,41 +15673,57 @@ function lerRelatorio(brutas) {
   if (pctPares.length >= 2) { r.kpi.vol12 = pctPares[1][0]; r.kpi.vol24 = pctPares[1][1]; }
 
   // posição detalhada
-  var estr = null, emDet = false, pendente = '', ultimo = null;
-  var IGNORA = /XPerformance|Estrat|PRECIFICA|POSI[ÇC]|Legenda|M[ÊE]S ATUAL|^Rent\\.|^¹|Os dados dos ativos|^(?:\\S\\s){5,}/i;
+  // O nome do ativo pode ocupar até três linhas: uma acima da linha de valores, a própria linha de valores
+  // (nome na mesma linha) e uma continuação abaixo (taxa, prazo, data). Linhas de texto entre dois ativos
+  // são repartidas: no caso de o próximo ativo ter o nome acima do valor, a última linha é o nome dele e as
+  // anteriores continuam o ativo anterior.
+  var estr = null, emDet = false, buf = [], ult = null;
+  var IGNORA = /^XPerformance - Relat|^Estrat[ée]gias\\s+Saldo|^PRECIFICA|^Legenda|^M[ÊE]S ATUAL|^Rent\\.\\s|^[¹²³⁴-⁹]|^Os (dados|Fundos) |^Última cota|^(?:\\S\\s){5,}|^\\d{1,2}$|^(?!\\d{1,3},\\d{1,2}%$|20\\d{2}$)[\\d.,%\\s]+$/i;
+  function soltar() { if (ult && buf.length) ult.cont = ult.cont.concat(buf); buf = []; }
   for (i = 0; i < L.length; i++) {
     var ln = L[i];
-    if (/Estrat[ée]gias\\s+Saldo Bruto\\s+Qtd/i.test(ln)) { emDet = true; pendente = ''; continue; }
+    if (/Estrat[ée]gias\\s+Saldo Bruto\\s+Qtd/i.test(ln)) { soltar(); emDet = true; ult = null; continue; }
     if (!emDet) continue;
-    if (/^M\\s*O\\s*V\\s*I\\s*M\\s*E\\s*N\\s*T|^MOV\\s+LIQ/i.test(ln)) { emDet = false; continue; }
-    m = /^(.*?)\\s*R\\$\\s*(-?[\\d.]+,\\d{2})\\s+(-|[\\d.,]+)\\s+(.+)$/.exec(ln);
-    var pcts = m ? (m[4].match(/-?[\\d.]+,\\d+%/g) || []) : [];
-    if (m && pcts.length === 7) {
-      var nome = m[1].trim() || pendente;
-      pendente = '';
-      if (m[3] === '-') {
-        estr = { nome: nome, chave: chaveClasse(nome) || 'outros' };
-        ultimo = null;
+    if (/^M\\s*O\\s*V\\s*I\\s*M\\s*E\\s*N\\s*T|^MOV\\s+LIQ|^Legenda|^Relat[óo]rio de$|^Conta Assessor Data/i.test(ln)) { soltar(); emDet = false; continue; }
+    if (ln.length > 200) continue;
+    var col = lerColunasPos(ln);
+    var toks = col ? col.toks : [];
+    var PCTR = /^(-|-?[\\d.]*\\d,\\d+%)$/;
+    var completa = !!col && toks.length >= 7 && toks.slice(0, 7).every(function (t) { return PCTR.test(t); });
+    // linhas incompletas (ex.: direito de subscrição, com um só percentual repetido) mantêm saldo, quantidade e % da carteira
+    var valida = completa || (!!col && toks.length >= 1 && /%$/.test(toks[0]) && toks.every(function (t) { return PCTR.test(t); }));
+    if (valida) {
+      var pcts = completa ? toks.slice(0, 7).map(function (t) { return t === '-' ? null : pNum(t); }) : [pNum(toks[0]), null, null, null, null, null, null];
+      var inline = col.nome;
+      if (col.qty === '-') { // linha de estratégia
+        soltar();
+        var nomeE = inline || (buf.length ? buf[buf.length - 1] : '');
+        estr = { nome: nomeE, chave: chaveClasse(nomeE) || 'outros' };
+        ult = null; buf = [];
         continue;
       }
-      if (!nome) continue;
-      var qt = /^\\d+\\.\\d{1,2}$/.test(m[3]) ? Number(m[3]) : pNum(m[3]);
-      var p = { nome: nome.replace(/\\s*-\\s*$/, ''), estrategia: estr ? estr.nome : '', chave: estr ? estr.chave : 'outros', saldo: pNum(m[2]), qtd: qt,
-        aloc: pNum(pcts[0]), mes: pNum(pcts[1]), mcdi: pNum(pcts[2]), ano: pNum(pcts[3]), acdi: pNum(pcts[4]), m24: pNum(pcts[5]), c24: pNum(pcts[6]) };
-      p.semCont = /-\\s*$/.test(nome);
+      var antes;
+      if (inline) { soltar(); antes = inline; }
+      else if (ult) { ult.cont = ult.cont.concat(buf.slice(0, -1)); antes = buf.length ? buf[buf.length - 1] : ''; }
+      else antes = buf.join(' ');
+      buf = [];
+      var qt = /^\\d+\\.\\d{1,2}$/.test(col.qty) ? Number(col.qty) : (/^[\\d.,]+$/.test(col.qty) ? pNum(col.qty) : null);
+      var p = { antes: antes, cont: [], estrategia: estr ? estr.nome : '', chave: estr ? estr.chave : 'outros', saldo: pNum(col.valor), qtd: qt,
+        aloc: pcts[0], mes: pcts[1], mcdi: pcts[2], ano: pcts[3], acdi: pcts[4], m24: pcts[5], c24: pcts[6] };
       r.posicoes.push(p);
-      ultimo = p;
+      ult = p;
       continue;
     }
-    // continuação da taxa do título (ex.: "108,60% CDI" ou "- 80,50% CDI") na linha seguinte ao valor
-    if (ultimo && /^-?\\s*[\\d.,]+\\s*%\\s*(CDI|IPCA|DI)\\b/i.test(ln) && !/R\\$/.test(ln)) {
-      ultimo.nome = (ultimo.nome + ' ' + (/^-/.test(ln) ? ln : '- ' + ln)).replace(/\\s*-\\s*-\\s*/g, ' - ').replace(/\\s+/g, ' ').trim();
-      ultimo = null;
-      continue;
-    }
-    if (IGNORA.test(ln) || /^\\d{2}$/.test(ln)) continue;
-    if (ln.length > 3) { pendente = ln; ultimo = null; }
+    if (IGNORA.test(ln)) continue;
+    if (ln.length > 0) buf.push(ln);
   }
+  soltar();
+  r.posicoes.forEach(function (p) {
+    var nome = (p.antes + ' ' + p.cont.join(' ')).replace(/\\s+/g, ' ').trim();
+    nome = nome.replace(/ - - /g, ' - ').replace(/\\s*-\\s*$/, '').trim();
+    p.nome = nome || 'Ativo sem nome';
+    delete p.antes; delete p.cont;
+  });
   r.posicoes.forEach(function (p) { detalharAtivo(p); });
   r.posicoes.forEach(function (p) { if (/\\s-\\s*$/.test(p.nome)) p.nome = p.nome.replace(/\\s*-\\s*$/, ''); });
 
@@ -15712,14 +15754,16 @@ var MATRIZ_PADRAO = {
 function carregarMatriz() {
   return { perfis: MATRIZ_PADRAO.perfis, classes: MATRIZ_PADRAO.classes, origem: 'padrão' };
 }
+function fmtVenc(p) { return p.venc ? (p.venc.aprox ? String(p.venc.a) : String(p.venc.m).padStart(2, '0') + '/' + p.venc.a) : ''; }
 function rotuloInstrumento(p) {
   if (p.tipo === 'outro') return p.instr;
   if (p.tipo === 'caixa') return 'Saldo e proventos';
+  if (p.tipo === 'coe') return 'COE (nota estruturada)';
   if (p.tipo === 'acao') return 'Ações';
   if (p.tipo === 'fii') return 'Fundo imobiliário listado';
   if (p.tipo === 'fii_nl') return 'Fundo imobiliário não listado';
   if (p.tipo === 'etf') return 'ETF';
-  if (p.tipo === 'rf') return (/^(CRA|CRI|DEB)/.test(p.papel || '') ? 'Crédito privado (' : 'Crédito bancário (') + (p.papel || 'RF') + ')';
+  if (p.tipo === 'rf') return p.publico ? 'Título público (' + (p.papel || 'Tesouro') + ')' : (/^(CRA|CRI|DEB)/.test(p.papel || '') ? 'Crédito privado (' : 'Crédito bancário (') + (p.papel || 'RF') + ')';
   return 'Fundo de investimento';
 }
 function classificar(p) {
@@ -15727,7 +15771,7 @@ function classificar(p) {
   var up = p.nome.toUpperCase(), liq = 'sem', trib = 'trib';
   if (p.tipo === 'caixa') liq = 'd0';
   else if (p.tipo === 'acao' || p.tipo === 'etf' || p.tipo === 'fii') liq = 'bolsa';
-  else if (p.tipo === 'fii_nl') liq = 'sem';
+  else if (p.tipo === 'fii_nl' || p.tipo === 'coe') liq = 'sem';
   else if (p.tipo === 'rf') liq = 'venc';
   else liq = /\\bDI\\b|SIMPLES|REFERENCIADO|SOBERANO|CASH|LIQUIDEZ/.test(up) ? 'd0' : 'fundo';
   if (p.tipo === 'fii' || p.tipo === 'fii_nl') trib = 'fii';
@@ -15803,6 +15847,7 @@ function analisar(d) {
   A.rf.sort(function (a, b) { return (a.venc ? a.venc.a * 12 + a.venc.m : 1e9) - (b.venc ? b.venc.a * 12 + b.venc.m : 1e9); });
   A.emissores = {};
   A.rf.forEach(function (p) {
+    if (p.publico) return;
     var k = p.emissor || p.nome;
     var e = A.emissores[k] || (A.emissores[k] = { nome: k, valor: 0, fgc: 0, sem: 0, papeis: {} });
     e.valor += p.saldo; e.papeis[p.papel] = true;
@@ -15854,7 +15899,7 @@ function montarAlertas(A, d) {
   var pProx = A.total > 0 ? vProx / A.total * 100 : 0;
   var maiorProx = prox.slice().sort(function (a, b) { return b.saldo - a.saldo; })[0];
   add(pProx > 25 ? 'alto' : (pProx >= 5 ? 'medio' : 'baixo'), 'Renda fixa e vencimentos',
-    vProx > 0 ? fmtP(pProx, 1) + ' do patrimônio (' + fmtRS(vProx) + ') vence nos próximos 12 meses; o maior vencimento é ' + maiorProx.nome.split(' - ')[0] + (maiorProx.venc ? ' em ' + String(maiorProx.venc.m).padStart(2, '0') + '/' + maiorProx.venc.a : '') + '.' : 'Nenhum título de renda fixa vence nos próximos 12 meses.');
+    vProx > 0 ? fmtP(pProx, 1) + ' do patrimônio (' + fmtRS(vProx) + ') vence nos próximos 12 meses; o maior vencimento é ' + maiorProx.nome.split(' - ')[0] + (maiorProx.venc ? ' em ' + fmtVenc(maiorProx) : '') + '.' : 'Nenhum título de renda fixa vence nos próximos 12 meses.');
 
   var intl = (A.porChave.grv || 0) + (A.porChave.grf || 0);
   var alvoIntl = 0;
@@ -15932,6 +15977,7 @@ function acharEmissor(mapa, ch) {
 }
 function avaliarCredito(p, expo) {
   if (p.tipo !== 'rf') return null;
+  if (p.publico) return { st: 'ok', tipo: 'Título público', seg: '', motivo: 'Título público federal' };
   var ch = emissorChave(p), res;
   if (PAPEIS_BANCO.test(p.papel || '')) {
     var b = acharEmissor(CRIT.bancos, ch);
@@ -16664,7 +16710,8 @@ var PAGINAS = {};
 PAGINAS.geral = function () {
   var k = D.kpi, pa = k.per.ano || {}, p12 = k.per.m12 || {};
   var qtd = R.itens.filter(function (p) { return p.tipo !== 'caixa'; }).length;
-  var resumo = fmtBRL(OUTRAS.length ? R.total : k.patrimonio) + (OUTRAS.length ? ' de patrimônio consolidado' : ' de patrimônio bruto') + ' em ' + qtd + ' ativos. A carteira rendeu ' + fmtP(pa.rent) + ' no ano (' + fmtP(pa.pcdi) + ' do CDI) e ' + fmtP(p12.rent) + ' em 12 meses (' + fmtP(p12.pcdi) + ' do CDI). A alocação é mais aderente ao ' + R.matriz.perfis[R.maisProximo].nome + ' (' + fmtP(100 - R.realocar[R.maisProximo], 1) + ').';
+  var difBruto = k.patrimonio - soma(D.estrategias, function (e) { return e.saldo; });
+  var resumo = fmtBRL(OUTRAS.length ? R.total : k.patrimonio) + (OUTRAS.length ? ' de patrimônio consolidado' : ' de patrimônio bruto') + ' em ' + qtd + ' ativos. A carteira rendeu ' + fmtP(pa.rent) + ' no ano (' + fmtP(pa.pcdi) + ' do CDI)' + (typeof p12.rent === 'number' ? ' e ' + fmtP(p12.rent) + ' em 12 meses (' + fmtP(p12.pcdi) + ' do CDI)' : '') + '.' + (D.evol.length < 12 ? ' A conta tem menos de 12 meses de histórico; as rentabilidades acumuladas refletem o início recente dos aportes e devem ser lidas com cautela.' : '') + ' A alocação é mais aderente ao ' + R.matriz.perfis[R.maisProximo].nome + ' (' + fmtP(100 - R.realocar[R.maisProximo], 1) + ').' + (Math.abs(difBruto) > 1 ? ' O patrimônio bruto informado no relatório difere em ' + fmtBRL(Math.abs(difBruto)) + ' da soma das estratégias; a diferença não está atribuída a ativos específicos e não foi considerada na análise.' : '');
   var top = agrupar('ativo');
   var h = '<p class="resumo">' + esc(resumo) + '</p>' + kpisGeral() + '<div class="tiles">';
   h += tile('t4', 'Por estratégia', donutDim('est', 'total'), 'clique para filtrar');
@@ -16792,7 +16839,7 @@ PAGINAS.rf = function () {
   var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Título</th><th class="e">Emissor</th><th class="e">Taxa</th><th class="e">Vencimento</th><th>Prazo</th><th>Saldo bruto</th><th>% carteira</th><th>Rent. ano</th><th>% CDI (ano)</th></tr></thead><tbody>';
   F.forEach(function (p, i) {
     var prazo = p.meses === null ? '' : (p.meses < 0 ? 'vencido' : (p.meses === 0 ? 'este mês' : p.meses + ' m'));
-    t += '<tr class="clic ' + (i % 2 ? 'zebra' : '') + (selecionado('ativo', p.nome) ? ' selrow' : '') + '"' + dF('ativo', p.nome) + '><td class="e">' + esc(p.papel || '') + '</td><td class="e">' + esc(p.emissor || p.nome) + '</td><td class="e">' + esc(p.taxa || '') + '</td><td class="e">' + (p.venc ? String(p.venc.m).padStart(2, '0') + '/' + p.venc.a : '') + '</td><td>' + prazo + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td><td class="' + clsv(p.ano) + '">' + fmtP(p.ano) + '</td><td>' + fmtP(p.acdi) + '</td></tr>';
+    t += '<tr class="clic ' + (i % 2 ? 'zebra' : '') + (selecionado('ativo', p.nome) ? ' selrow' : '') + '"' + dF('ativo', p.nome) + '><td class="e">' + esc(p.papel || '') + '</td><td class="e">' + esc(p.emissor || p.nome) + '</td><td class="e">' + esc(p.taxa || '') + '</td><td class="e">' + fmtVenc(p) + '</td><td>' + prazo + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td><td class="' + clsv(p.ano) + '">' + fmtP(p.ano) + '</td><td>' + fmtP(p.acdi) + '</td></tr>';
   });
   t += '</tbody></table></div>';
   var h = k + '<div class="tiles">';
@@ -16803,9 +16850,11 @@ PAGINAS.rf = function () {
 };
 function tipoMov(m) {
   var h = m.hist.toUpperCase();
+  if (/IRRF|IMPOSTO|\\bIOF\\b|TAXA DE CUST[ÓO]DIA|TARIFA/.test(h)) return 'Impostos e tarifas';
+  if (/REMUNER|INTERMEDIA[ÇC][ÃA]O|ALUGUEL|DOADOR/.test(h)) return 'Aluguel de ativos';
   if (/RENDIMENTO|JUROS S\\/ CAPITAL|DIVIDENDO|PROVENTO|AMORTIZA|CUPOM|JCP/.test(h)) return 'Proventos';
   if (/^TED|\\bTED\\b|\\bPIX\\b|TRANSFER/.test(h)) return m.valor >= 0 ? 'Aporte' : 'Resgate';
-  if (/OPERA[ÇC][ÕO]ES EM BOLSA|NOTA N/.test(h)) return m.valor < 0 ? 'Compra' : 'Venda';
+  if (/OPERA[ÇC][ÕO]ES EM BOLSA|NOTA N|COMPRA|VENDA|RESGATE TESOURO/.test(h)) return m.valor < 0 ? 'Compra' : 'Venda';
   return 'Outros';
 }
 PAGINAS.credito = function () {
@@ -16834,7 +16883,7 @@ PAGINAS.credito = function () {
       var ap = at ? at.aprovado : null;
       ctl = ehMaster ? '<span class="seg-btns"><button type="button" class="' + (ap === true ? 'on' : '') + '" data-priv="' + esc(nome) + '|1">Aprovar</button><button type="button" class="' + (ap === false ? 'on' : '') + '" data-priv="' + esc(nome) + '|0">Reprovar</button></span>' : (ap === null || ap === undefined ? '—' : (ap ? 'Aprovado' : 'Reprovado'));
     }
-    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(p.papel + ' ' + (p.venc ? String(p.venc.m).padStart(2, '0') + '/' + p.venc.a : '')) + '</td><td class="e">' + esc(nome) + '</td><td class="e">' + c.tipo + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td><td class="e">' + ctl + '</td><td class="e"><span class="res res-' + c.st + '"' + dF('cred', CREDLAB[c.st]) + '>' + CREDLAB[c.st] + '</span></td><td class="e">' + esc(c.motivo) + '</td></tr>';
+    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(p.papel + ' ' + fmtVenc(p)) + '</td><td class="e">' + esc(nome) + '</td><td class="e">' + c.tipo + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td><td class="e">' + ctl + '</td><td class="e"><span class="res res-' + c.st + '"' + dF('cred', CREDLAB[c.st]) + '>' + CREDLAB[c.st] + '</span></td><td class="e">' + esc(c.motivo) + '</td></tr>';
   });
   t += '</tbody></table></div>';
   h += tile('t12', 'Títulos avaliados', rf.length ? t : '<p class="vazio">Nenhum título de renda fixa direta para os filtros selecionados.</p>', ehMaster ? 'classifique direto na tabela; a alteração vale para todos' : 'somente o usuário master altera a classificação');
@@ -16934,9 +16983,9 @@ PAGINAS.hist = function () {
 };
 PAGINAS.movs = function () {
   if (!D.movs.length) return '<p class="vazio">Nenhuma movimentação listada no relatório.</p>';
-  var tot = { Proventos: 0, Aporte: 0, Resgate: 0, Compra: 0, Venda: 0, Outros: 0 }, qtd = {};
+  var tot = { Proventos: 0, Aporte: 0, Resgate: 0, Compra: 0, Venda: 0, 'Aluguel de ativos': 0, 'Impostos e tarifas': 0, Outros: 0 }, qtd = {};
   D.movs.forEach(function (m) { m.tipo = tipoMov(m); tot[m.tipo] += m.valor; qtd[m.tipo] = (qtd[m.tipo] || 0) + 1; });
-  var tipos = ['Proventos', 'Aporte', 'Resgate', 'Compra', 'Venda', 'Outros'].filter(function (t2) { return qtd[t2]; });
+  var tipos = ['Proventos', 'Aporte', 'Resgate', 'Compra', 'Venda', 'Aluguel de ativos', 'Impostos e tarifas', 'Outros'].filter(function (t2) { return qtd[t2]; });
   var botoes = '<div class="seg-btns"><button type="button" class="' + (ST.movTipo === '' ? 'on' : '') + '" data-mt="">Todos</button>' + tipos.map(function (t2) { return '<button type="button" class="' + (ST.movTipo === t2 ? 'on' : '') + '" data-mt="' + t2 + '">' + t2 + ' (' + qtd[t2] + ')</button>'; }).join('') + '</div>';
   var cards = '<div class="kpis">' +
     kpi('Proventos recebidos', fmtBRL(tot.Proventos), 'Rendimentos, JCP e dividendos') + kpi('Aportes', fmtBRL(tot.Aporte), 'Entradas por TED') +
@@ -17077,7 +17126,7 @@ document.getElementById('btn-excel').addEventListener('click', function () {
   var ev = [['Mês', 'Patrimônio inicial', 'Movimentações', 'IR', 'IOF', 'Patrimônio final', 'Ganho financeiro', 'Rentab. (%)', '% CDI']];
   D.evol.forEach(function (e) { ev.push([e.rot, e.ini, e.mov, e.ir, e.iof, e.fin, e.ganho, e.rent, e.pcdi]); });
   var cr = [['Título', 'Emissor', 'Tipo', 'Saldo bruto (R$)', '% carteira', 'Segmento', 'Resultado', 'Motivo']];
-  R.itens.forEach(function (p) { if (p.cred) cr.push([p.papel + ' ' + (p.venc ? String(p.venc.m).padStart(2, '0') + '/' + p.venc.a : ''), p.emissor || p.nome, p.cred.tipo, p.saldo, Math.round(p.pct * 100) / 100, p.cred.seg, CREDLAB[p.cred.st], p.cred.motivo]); });
+  R.itens.forEach(function (p) { if (p.cred) cr.push([p.papel + ' ' + fmtVenc(p), p.emissor || p.nome, p.cred.tipo, p.saldo, Math.round(p.pct * 100) / 100, p.cred.seg, CREDLAB[p.cred.st], p.cred.motivo]); });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cr), 'Análise de crédito');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ev), 'Evolução');
   var mv = [['Data', 'Liquidação', 'Tipo', 'Histórico', 'Valor', 'Saldo']];
