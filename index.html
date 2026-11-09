@@ -16351,9 +16351,11 @@ function reanalisar() {
     D = null; R = null;
     document.getElementById('painel').hidden = true;
     var st = document.getElementById('status'); st.style.color = 'var(--ink-soft)'; st.textContent = 'Nenhum arquivo carregado.';
+    removerConsolidacaoSalva();
     return;
   }
   R = analisar(D); recalcularCredito(); render();
+  agendarGravacao();
 }
 
 function aplicarAcaoInst(t) {
@@ -16420,7 +16422,7 @@ function renderSelCliente() {
 }
 function carregarClientes() {
   if (!sb || !logado) return Promise.resolve();
-  return sb.from('clientes').select('id,nome').order('nome', { ascending: true }).then(function (r) { CLIENTES = r.error ? [] : (r.data || []); renderSelCliente(); });
+  return sb.from('clientes').select('id,nome').order('nome', { ascending: true }).then(function (r) { CLIENTES = r.error ? [] : (r.data || []); renderSelCliente(); retomarUltimoCliente(); });
 }
 function carregarSalvas() {
   if (!sb || !logado) return Promise.resolve();
@@ -16536,13 +16538,15 @@ document.addEventListener('change', function (ev) {
         CLIENTES.push(r.data); CLIENTES.sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
         CLI = { id: r.data.id, nome: r.data.nome };
         document.getElementById('in-cliente').value = CLI.nome;
-        renderSelCliente(); if (D && R) render();
+        lembrarCliente(CLI.id);
+        renderSelCliente(); if (D && R) { render(); agendarGravacao(); }
       }).catch(function (e) { alert('Não foi possível cadastrar o cliente: ' + (e && e.message ? e.message : e)); renderSelCliente(); });
       return;
     }
     var c = CLIENTES.filter(function (x) { return x.id === t.value; })[0];
     CLI = c ? { id: c.id, nome: c.nome } : { id: '', nome: '' };
-    if (c) { document.getElementById('in-cliente').value = c.nome; carregarPerfilCliente(c.id); }
+    lembrarCliente(c ? c.id : '');
+    if (c) { document.getElementById('in-cliente').value = c.nome; carregarConsolidacaoCliente(c.id, false); }
     if (D && R) render();
   }
 });
@@ -16723,15 +16727,15 @@ function lerCarteiraUSD(wb) {
       if (/saldo em conta/i.test(String(l[0])) && typeof l[1] === 'number' && l[1] > 0) caixa = l[1];
       l.forEach(function (c) { if (/US\\$/.test(String(c))) moeda = true; });
     });
-    var hi = -1, ct = -1, cnome = -1, cat = -1, cv = -1, cc = -1;
+    var hi = -1, ct = -1, cnome = -1, cat = -1, cv = -1, cc = -1, cq = -1;
     for (var i = 0; i < Math.min(linhas.length, 15) && hi < 0; i++) {
-      var tt = -1, nn = -1, aa = -1, vv = -1, kk = -1;
+      var tt = -1, nn = -1, aa = -1, vv = -1, kk = -1, qq = -1;
       linhas[i].forEach(function (c, j) {
         var t = compacto(c);
-        if (t === 'ticker') tt = j; else if (t === 'nome') nn = j; else if (t === 'ativo') aa = j; else if (t === 'classe') kk = j;
+        if (t === 'ticker') tt = j; else if (t === 'nome') nn = j; else if (t === 'ativo') aa = j; else if (t === 'classe') kk = j; else if (t === 'quantidade') qq = j;
         else if (/^posicaoatual.*us/.test(t) || /^valoratual.*us/.test(t)) vv = j;
       });
-      if (vv >= 0 && (tt >= 0 || aa >= 0)) { hi = i; ct = tt; cnome = nn; cat = aa; cv = vv; cc = kk; }
+      if (vv >= 0 && (tt >= 0 || aa >= 0)) { hi = i; ct = tt; cnome = nn; cat = aa; cv = vv; cc = kk; cq = qq; }
     }
     if (hi < 0) return;
     var ehBond = /bond|rendafixa/.test(compacto(nm));
@@ -16743,7 +16747,7 @@ function lerCarteiraUSD(wb) {
       var nome = ct >= 0 ? (primeiro + (cnome >= 0 && l2[cnome] ? ' - ' + String(l2[cnome]).trim() : '')) : primeiro;
       var cl = cc >= 0 ? compacto(l2[cc]) : '';
       var est = (ehBond || /rendafixa|caixa|tesouro/.test(cl)) ? 'Renda Fixa Global' : (/ouro/.test(cl) ? 'Alternativo' : 'Renda Variável Global');
-      itens.push({ nome: nome, usd: v, instr: 'Internacional', estrategia: est });
+      itens.push({ nome: nome, usd: v, instr: 'Internacional', estrategia: est, ticker: ct >= 0 ? primeiro : '', qtd: cq >= 0 ? (typeof l2[cq] === 'number' ? l2[cq] : numQtd(l2[cq])) : null });
     }
   });
   if (!itens.length || !moeda) return null;
@@ -16854,7 +16858,7 @@ function identificarPlanilha(wb, nomeArq) {
   return { arq: nomeArq, tipo: 'generico', itens: lidos.map(classificarItemGenerico), inst: banco, rotulo: 'Extrato em planilha (leitura genérica)', info: 'Leitura genérica de ' + nomeArq + ': confira o nome, a classe, o instrumento e o valor de cada ativo.' };
 }
 function converterUSD(f, cb) {
-  f.itens = f.usd.map(function (x) { return { nome: x.nome, valor: Math.round(x.usd * cb * 100) / 100, instr: x.instr, estrategia: x.estrategia, moeda: 'USD', valorMoeda: x.usd, cambio: cb }; });
+  f.itens = f.usd.map(function (x) { return { nome: x.nome, valor: Math.round(x.usd * cb * 100) / 100, instr: x.instr, estrategia: x.estrategia, moeda: 'USD', valorMoeda: x.usd, cambio: cb, ticker: x.ticker || '', qtd: x.qtd }; });
   f.info = 'Valores em US$ de ' + f.arq + ' convertidos à cotação de R$ ' + cb.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' (total de US$ ' + soma(f.usd, function (x) { return x.usd; }).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ').';
 }
 function lerBuffer(arquivo) {
@@ -16957,6 +16961,7 @@ function processarArquivos(lista, modo) {
     if (modo === 'novo') { ST.aba = r.lidos.length > 1 ? 'inst' : 'geral'; ST.mesSel = null; ST.busca = ''; ST.periodo = 12; ST.movTipo = ''; }
     document.getElementById('painel').hidden = false;
     render();
+    agendarGravacao();
     dizer('✓ ' + r.lidos.length + (r.lidos.length > 1 ? ' arquivos lidos' : ' arquivo lido') + ' — ' + r.lidos.map(function (x) { return x.arq + ' → ' + x.inst; }).join(' · ') + '.' + (r.erros.length ? ' Atenção: ' + r.erros.join(' ') : ''), r.erros.length > 0);
   });
 }
@@ -17061,6 +17066,173 @@ document.addEventListener('change', function (ev) {
     if (pi >= np && PERFIL_CLI.novos[pi - np] && n) { PERFIL_CLI.novos[pi - np].nome = n; PERFIL_SUJO = true; reanalisar(); }
   }
 });
+
+// ── Consolidação salva por cliente (gravação automática) e atualização das cotações ──
+var ESTADO_GRAV = { t: '', erro: false }, ULT_COT = { t: '', erro: false }, tGravar = null, atualizandoCot = false;
+var RE_TICKER_BR = /^[A-Z][A-Z0-9]{3}\\d{1,2}$/;
+function dataHoraBR(iso) { var d = new Date(iso); return isNaN(d.getTime()) ? '' : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+function arred2(v) { return Math.round(v * 100) / 100; }
+function atualizarIndicadorGravacao() {
+  var el = document.getElementById('ind-grav');
+  if (el) { el.textContent = ESTADO_GRAV.t; el.style.color = ESTADO_GRAV.erro ? 'var(--red)' : 'var(--ink-soft)'; }
+}
+function agendarGravacao() {
+  if (!D || !R) return;
+  if (!logado || !sb) { ESTADO_GRAV = { t: 'Consolidação não salva: entre no site com a sua conta.', erro: true }; atualizarIndicadorGravacao(); return; }
+  if (!CLI.id) { ESTADO_GRAV = { t: 'Consolidação não salva: selecione ou cadastre um cliente no campo "Cliente cadastrado", no topo da página.', erro: true }; atualizarIndicadorGravacao(); return; }
+  clearTimeout(tGravar);
+  ESTADO_GRAV = { t: 'Salvando a consolidação...', erro: false }; atualizarIndicadorGravacao();
+  tGravar = setTimeout(gravarConsolidacao, 1500);
+}
+function gravarConsolidacao() {
+  if (!D || !R || !CLI.id || !sb || !logado) return;
+  var id = CLI.id, nome = CLI.nome;
+  sb.from('consolidacao_atual').upsert({ cliente_id: id, dados: { versao: 2, D: D, outras: OUTRAS, perfis: dadosPerfis(), cambio: ST.cambio || '' }, updated_at: new Date().toISOString() }, { onConflict: 'user_id,cliente_id' }).then(function (r) {
+    ESTADO_GRAV = r.error ? { t: 'Não foi possível salvar a consolidação: ' + r.error.message, erro: true } : { t: 'Consolidação salva automaticamente para ' + nome + ' em ' + dataHoraBR(new Date().toISOString()) + '.', erro: false };
+    atualizarIndicadorGravacao();
+  });
+}
+function lembrarCliente(id) { try { localStorage.setItem('cons_ultimo_cliente', id || ''); } catch (e) {} }
+function retomarUltimoCliente() {
+  var id = '';
+  try { id = localStorage.getItem('cons_ultimo_cliente') || ''; } catch (e) {}
+  var c = CLIENTES.filter(function (x) { return x.id === id; })[0];
+  if (!c || CLI.id || D) return;
+  CLI = { id: c.id, nome: c.nome };
+  document.getElementById('in-cliente').value = c.nome;
+  renderSelCliente();
+  carregarConsolidacaoCliente(c.id, true);
+}
+function restaurarConsolidacao(dd) {
+  D = dd.D; OUTRAS = dd.outras || []; msgInst = { t: '', erro: false };
+  if (!D.vazia) D.inst = D.inst || INST_PADRAO;
+  if (dd.perfis) aplicarPerfisSalvos(dd.perfis); else perfilSel = null;
+  if (dd.cambio) ST.cambio = dd.cambio;
+  R = analisar(D); recalcularCredito();
+  ST.f = {}; ST.aba = 'geral'; ST.mesSel = null; ST.busca = ''; ST.periodo = 12; ST.movTipo = '';
+  document.getElementById('painel').hidden = false;
+  render();
+}
+function carregarConsolidacaoCliente(id, silencioso) {
+  if (!sb || !logado) return;
+  sb.from('consolidacao_atual').select('dados,updated_at').eq('cliente_id', id).maybeSingle().then(function (r) {
+    if (CLI.id !== id || !r || r.error) return;
+    var dd = r.data && r.data.dados;
+    var temDados = !!D && (!D.vazia || OUTRAS.length > 0);
+    if (!dd || !dd.D) { carregarPerfilCliente(id); if (temDados) agendarGravacao(); return; }
+    if (temDados) {
+      if (silencioso) return;
+      if (!confirm('Já existe uma consolidação salva para ' + CLI.nome + ' (gravada em ' + dataHoraBR(r.data.updated_at) + ').\\n\\nOK: abrir a consolidação salva (substitui a carteira carregada agora).\\nCancelar: manter a carteira carregada agora e substituir a salva.')) { agendarGravacao(); return; }
+    }
+    restaurarConsolidacao(dd);
+    var st = document.getElementById('status');
+    st.style.color = 'var(--green)';
+    st.textContent = '✓ Consolidação salva de ' + CLI.nome + ' aberta (gravada em ' + dataHoraBR(r.data.updated_at) + '). Atualizando cotações...';
+    ESTADO_GRAV = { t: 'Consolidação salva de ' + CLI.nome + ' aberta (gravada em ' + dataHoraBR(r.data.updated_at) + ').', erro: false };
+    atualizarCotacoes(false);
+  });
+}
+function removerConsolidacaoSalva() {
+  if (!CLI.id || !sb || !logado) return;
+  clearTimeout(tGravar);
+  sb.from('consolidacao_atual').delete().eq('cliente_id', CLI.id).then(function () {});
+}
+
+// Ações, FIIs e ETFs com código e quantidade: valor = quantidade x cotação atual (Yahoo Finance, via função do Supabase).
+// Renda fixa, fundos, COE e previdência mantêm o valor da data-base do arquivo.
+function alvosDeCotacao() {
+  var alvos = [];
+  if (D) D.posicoes.forEach(function (p) {
+    if (/^(acao|fii|etf)$/.test(p.tipo || '') && p.ticker && RE_TICKER_BR.test(p.ticker) && p.qtd > 0) alvos.push({ sym: p.ticker + '.SA', ref: p, kind: 'base' });
+  });
+  OUTRAS.forEach(function (o) {
+    o.itens.forEach(function (it) {
+      if (!(it.qtd > 0) || !it.ticker) return;
+      if (it.moeda === 'USD') alvos.push({ sym: String(it.ticker).toUpperCase(), ref: it, kind: 'usd' });
+      else if (RE_TICKER_BR.test(it.ticker) && /^(acao|fii|etf)$/.test(it.tipoPos || '')) alvos.push({ sym: it.ticker + '.SA', ref: it, kind: 'outra' });
+    });
+  });
+  return alvos;
+}
+function buscarCotacoes(simbolos) {
+  var lotes = [];
+  for (var i = 0; i < simbolos.length; i += 25) lotes.push(simbolos.slice(i, i + 25));
+  return Promise.all(lotes.map(function (l) {
+    return fetch(SB_URL + '/functions/v1/cotacoes-yahoo?s=' + encodeURIComponent(l.join(','))).then(function (r) { return r.json(); }).catch(function () { return null; });
+  })).then(function (rs) {
+    var cot = {}, ok = false;
+    rs.forEach(function (j) { if (j && j.cotacoes) { ok = true; Object.keys(j.cotacoes).forEach(function (k) { cot[k] = j.cotacoes[k]; }); } });
+    return ok ? cot : null;
+  });
+}
+function recalcularAlocBase() {
+  var tot = soma(D.estrategias, function (e) { return e.saldo; });
+  D.estrategias.forEach(function (e) { e.aloc = tot > 0 ? e.saldo / tot * 100 : 0; });
+  D.posicoes.forEach(function (p) { p.aloc = tot > 0 ? p.saldo / tot * 100 : 0; });
+}
+function variacaoDesdeBase() {
+  var v = 0, n = 0;
+  if (D) D.posicoes.forEach(function (p) { if (p.saldoBase !== undefined) { v += p.saldo - p.saldoBase; n++; } });
+  OUTRAS.forEach(function (o) { o.itens.forEach(function (it) { if (it.valorBase !== undefined) { v += (Number(it.valor) || 0) - it.valorBase; n++; } }); });
+  return { v: v, n: n };
+}
+function atualizarCotacoes(manual) {
+  if (!D || !R || atualizandoCot) return Promise.resolve();
+  var alvos = alvosDeCotacao();
+  if (!alvos.length) { ULT_COT = { t: manual ? 'Nenhum ativo com código e quantidade para atualizar (somente ações, FIIs e ETFs são atualizados).' : '', erro: false }; if (manual) render(); return Promise.resolve(); }
+  atualizandoCot = true;
+  var el = document.getElementById('ind-cot'); if (el) el.textContent = 'Atualizando cotações...';
+  var syms = [];
+  alvos.forEach(function (a) { if (syms.indexOf(a.sym) === -1) syms.push(a.sym); });
+  if (alvos.some(function (a) { return a.kind === 'usd'; })) syms.push('USDBRL=X');
+  return buscarCotacoes(syms).then(function (cot) {
+    atualizandoCot = false;
+    if (!cot) { ULT_COT = { t: 'Não foi possível obter as cotações agora. Os valores permanecem os da última atualização.', erro: true }; render(); return; }
+    var fx = cot['USDBRL=X'] && cot['USDBRL=X'].preco, n = 0, falt = [];
+    alvos.forEach(function (a) {
+      var c = cot[a.sym];
+      if (!c || !(c.preco > 0) || (a.kind === 'usd' && !(fx > 0))) { falt.push(a.sym.replace('.SA', '')); return; }
+      if (a.kind === 'base') {
+        var p = a.ref, novo = arred2(p.qtd * c.preco);
+        if (p.saldoBase === undefined) p.saldoBase = p.saldo;
+        var delta = novo - p.saldo;
+        p.saldo = novo; p.preco = c.preco;
+        var e = D.estrategias.filter(function (x) { return x.nome === p.estrategia; })[0];
+        if (e) e.saldo += delta;
+        D.kpi.patrimonio += delta;
+      } else {
+        var it = a.ref;
+        if (it.valorBase === undefined) it.valorBase = it.valor;
+        if (a.kind === 'usd') { it.valorMoeda = arred2(it.qtd * c.preco); it.cambio = fx; it.valor = arred2(it.qtd * c.preco * fx); }
+        else it.valor = arred2(it.qtd * c.preco);
+        it.preco = c.preco;
+      }
+      n++;
+    });
+    if (fx > 0) ST.cambio = String(fx).replace('.', ',');
+    if (n) { D.cotacoesEm = new Date().toISOString(); D.cotacoesN = n; recalcularAlocBase(); }
+    ULT_COT = { t: falt.length ? 'Sem cotação disponível para: ' + falt.filter(function (x, i, a2) { return a2.indexOf(x) === i; }).join(', ') + '.' : '', erro: n === 0 };
+    reanalisar();
+    var st = document.getElementById('status');
+    if (n && st && /Atualizando cotações/.test(st.textContent)) st.textContent = st.textContent.replace(' Atualizando cotações...', ' Cotações atualizadas.');
+  });
+}
+function htmlIndicadoresCab() {
+  var alvos = alvosDeCotacao();
+  var vd = variacaoDesdeBase();
+  var h = '<div style="text-align:right;font-size:12.5px;line-height:1.55;max-width:520px;">';
+  if (alvos.length) {
+    h += '<button type="button" class="btn btn-peq" data-cot="1">↻ Atualizar cotações</button><br>';
+    h += '<span id="ind-cot" style="color:var(--ink-soft);">' + (D.cotacoesEm ? 'Ações, FIIs e ETFs atualizados em ' + esc(dataHoraBR(D.cotacoesEm)) + ' (' + (D.cotacoesN || 0) + ' ativos' + (vd.n ? '; variação desde a data-base: ' + (vd.v >= 0 ? '+' : '') + fmtBRL(vd.v) : '') + '). Renda fixa, fundos e previdência mantêm o valor da data-base.' : 'Valores na data-base do arquivo. Use "Atualizar cotações" para atualizar ações, FIIs e ETFs.') + '</span>' + (ULT_COT.t ? '<br><span style="color:' + (ULT_COT.erro ? 'var(--red)' : 'var(--ink-soft)') + ';">' + esc(ULT_COT.t) + '</span>' : '') + '<br>';
+  }
+  h += '<span id="ind-grav" style="color:' + (ESTADO_GRAV.erro ? 'var(--red)' : 'var(--ink-soft)') + ';">' + esc(ESTADO_GRAV.t) + '</span></div>';
+  return h;
+}
+function aplicarAcaoCotacao(t) {
+  if (t && t.closest && t.closest('[data-cot]')) { atualizarCotacoes(true); return true; }
+  return false;
+}
+if (window.setInterval) window.setInterval(function () { if (D && R && D.cotacoesEm && !document.hidden) atualizarCotacoes(false); }, 600000);
 
 // ── Estado, filtros cruzados e dimensões ──
 // Cada dimensão pode ter vários valores selecionados (união dentro da dimensão, interseção entre dimensões).
@@ -17598,7 +17770,7 @@ function render() {
   if (!D || !R) return;
   var foco = document.activeElement && document.activeElement.id === 'in-busca' ? document.activeElement.selectionStart : null;
   var cliente = (document.getElementById('in-cliente').value || '').trim();
-  document.getElementById('cab').innerHTML = '<div><h2 id="tit-cliente">' + esc(cliente ? 'Carteira de ' + cliente : 'Carteira do cliente') + '</h2><small>Conta ' + esc(D.cab.conta || '') + (D.cab.assessor ? ' · Assessor ' + esc(D.cab.assessor) : '') + ' · Posições em ' + esc(D.cab.data || '') + ' · Fonte: ' + esc(nomesFontes()) + '</small></div>';
+  document.getElementById('cab').innerHTML = '<div><h2 id="tit-cliente">' + esc(cliente ? 'Carteira de ' + cliente : 'Carteira do cliente') + '</h2><small>Conta ' + esc(D.cab.conta || '') + (D.cab.assessor ? ' · Assessor ' + esc(D.cab.assessor) : '') + ' · Posições em ' + esc(D.cab.data || '') + ' · Fonte: ' + esc(nomesFontes()) + '</small></div>' + htmlIndicadoresCab();
   document.getElementById('abas').innerHTML = ABAS.map(function (a) { return '<button type="button" class="aba' + (ST.aba === a[0] ? ' on' : '') + '" data-aba="' + a[0] + '">' + a[1] + (a[0] === 'alertas' ? ' <span class="badge">' + R.alertas.filter(function (x) { return x.n === 'alto'; }).length + '</span>' : '') + '</button>'; }).join('');
   document.getElementById('filtros').innerHTML = (ST.imprimir || ['geral', 'alocacao', 'inst', 'posicoes', 'rf', 'credito'].indexOf(ST.aba) !== -1) ? htmlFiltros() : '';
   var paginas = ST.imprimir ? ABAS.map(function (a) { return a[0]; }) : [ST.aba];
@@ -17612,7 +17784,7 @@ document.addEventListener('click', function (ev) {
   var t = ev.target;
   function ach(sel) { return t && t.closest ? t.closest(sel) : null; }
   var el;
-  if (aplicarAcaoCriterio(t) || aplicarAcaoInst(t) || aplicarAcaoHist(t) || aplicarAcaoPerfil(t)) return;
+  if (aplicarAcaoCriterio(t) || aplicarAcaoInst(t) || aplicarAcaoHist(t) || aplicarAcaoPerfil(t) || aplicarAcaoCotacao(t)) return;
   if ((el = ach('[data-rm]'))) { var pr = el.getAttribute('data-rm'), ix = pr.indexOf('|'); alternar(pr.slice(0, ix), pr.slice(ix + 1)); render(); return; }
   if ((el = ach('[data-limpar]'))) { ST.f = {}; render(); return; }
   if ((el = ach('[data-aba]'))) { ST.aba = el.getAttribute('data-aba'); render(); return; }
