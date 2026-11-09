@@ -15441,7 +15441,7 @@ th.ord:hover{color:var(--ink);}
 <div class="container">
   <span class="eyebrow">Análise de carteira</span>
   <h1>Consolidação de Carteira</h1>
-  <p class="sub">Carregue o relatório XPerformance do cliente (PDF). O painel consolida patrimônio, rentabilidade, alocação por estratégia, aderência aos perfis, concentração, vencimentos da renda fixa, liquidez, tributação e movimentações, com pontos de atenção. O arquivo é lido apenas neste navegador e não é enviado a nenhum servidor.</p>
+  <p class="sub">Carregue os arquivos da carteira do cliente: relatório XPerformance (PDF), posição detalhada da XP (Excel), extratos de outras instituições (PDF, Excel ou CSV) e carteiras em dólar. É possível enviar vários arquivos de uma vez, ou arrastá-los para esta área: o sistema identifica o tipo de cada arquivo e a instituição de origem, e o nome de cada banco pode ser corrigido na aba Instituições. O painel consolida patrimônio, rentabilidade, alocação por estratégia, aderência aos perfis, concentração, vencimentos da renda fixa, liquidez, tributação e movimentações, com pontos de atenção. O arquivo é lido apenas neste navegador e não é enviado a nenhum servidor.</p>
 
   <div class="card" id="area-envio">
     <div class="controles">
@@ -15449,8 +15449,8 @@ th.ord:hover{color:var(--ink);}
       <div class="campo"><label for="in-cliente">Nome do cliente (opcional, aparece no painel)</label><input type="text" id="in-cliente" placeholder="Ex.: Maria da Silva" autocomplete="off"></div>
     </div>
     <div class="barra-acoes">
-      <label for="arq-carteira" class="btn btn-primary" style="cursor:pointer;">⬆ Carregar carteira da XP (PDF XPerformance ou Excel Posição Detalhada)</label>
-      <input type="file" id="arq-carteira" accept=".pdf,.xlsx,.xls" hidden>
+      <label for="arq-carteira" class="btn btn-primary" style="cursor:pointer;">⬆ Carregar arquivos (um ou vários)</label>
+      <input type="file" id="arq-carteira" accept=".pdf,.xlsx,.xls,.csv" multiple hidden>
       <span id="status" style="font-size:12.5px;color:var(--ink-soft);">Nenhum arquivo carregado.</span>
       <span style="flex:1"></span>
       <button type="button" class="btn" id="btn-salvas">Carteiras salvas</button>
@@ -15817,7 +15817,7 @@ function analisar(d) {
   // alocação por classe (caixa e proventos entram no pós-fixado, como no relatório de diagnóstico)
   A.porChave = {};
   d.estrategias.forEach(function (e) { var k = e.chave === 'caixa' ? 'pos' : e.chave; A.porChave[k] = (A.porChave[k] || 0) + e.saldo; });
-  A.itens.forEach(function (p) { if (p.tipo === 'outro') { var k2 = p.chave === 'caixa' ? 'pos' : p.chave; A.porChave[k2] = (A.porChave[k2] || 0) + p.saldo; } });
+  A.itens.forEach(function (p) { if (p.outra) { var k2 = p.chave === 'caixa' ? 'pos' : p.chave; A.porChave[k2] = (A.porChave[k2] || 0) + p.saldo; } });
 
   // matriz de perfis e aderência
   A.matriz = carregarMatriz();
@@ -16202,7 +16202,7 @@ var INSTR_OUTRAS = [
   ['Ações', 'bolsa', 'trib'], ['Fundo imobiliário listado', 'bolsa', 'fii'], ['Fundo imobiliário não listado', 'sem', 'fii'], ['ETF', 'bolsa', 'trib'],
   ['Fundo de investimento', 'fundo', 'trib'], ['Renda fixa bancária (CDB, LC, LF)', 'venc', 'trib'], ['Renda fixa bancária isenta (LCA, LCI)', 'venc', 'isento'],
   ['Crédito privado isento (CRA, CRI, debêntures incentivadas)', 'venc', 'isento'], ['Crédito privado tributado (debêntures)', 'venc', 'trib'],
-  ['Tesouro Direto', 'venc', 'trib'], ['Previdência', 'sem', 'trib'], ['Internacional', 'bolsa', 'trib'], ['Saldo em conta', 'd0', 'trib'], ['Outros', 'sem', 'trib']
+  ['Tesouro Direto', 'venc', 'trib'], ['Previdência', 'sem', 'trib'], ['Internacional', 'bolsa', 'trib'], ['Saldo em conta', 'd0', 'trib'], ['COE (nota estruturada)', 'sem', 'trib'], ['Outros', 'sem', 'trib']
 ];
 var CLASSES_OUTRAS = ['Pós Fixado', 'Inflação', 'Prefixado', 'Multimercado', 'Renda Variável Brasil', 'Fundos Listados', 'Alternativo', 'Global Renda Variável', 'Global Renda Fixa', 'Caixa', 'Outros (verificar)'];
 var INSTITUICOES_COMUNS = ['BTG Pactual', 'Itaú', 'Bradesco', 'Santander', 'Banco do Brasil', 'Caixa Econômica', 'Inter', 'Nubank', 'C6 Bank', 'Safra', 'Sicredi', 'Sicoob', 'Genial', 'Warren', 'Órama', 'Avenue', 'Banco Pan', 'Daycoval'];
@@ -16211,10 +16211,15 @@ var msgInst = { t: '', erro: false };
 function itemOutro(o, it) {
   var def = INSTR_OUTRAS.filter(function (x) { return x[0] === it.instr; })[0] || INSTR_OUTRAS[INSTR_OUTRAS.length - 1];
   var est = it.estrategia || 'Outros (verificar)';
-  var p = { nome: it.nome || 'Sem nome', estrategia: est, chave: chaveClasse(est) || 'outros', saldo: Number(it.valor), tipo: 'outro', instr: def[0], inst: o.inst, liq: def[1], trib: def[2] };
+  var p = { nome: it.nome || 'Sem nome', estrategia: est, chave: chaveClasse(est) || 'outros', saldo: Number(it.valor), tipo: 'outro', instr: def[0], inst: o.inst, liq: def[1], trib: def[2], outra: true };
+  if (it.qtd !== undefined && it.qtd !== null) p.qtd = it.qtd;
   if (it.moeda) { p.moeda = it.moeda; p.valorMoeda = it.valorMoeda; p.cambio = it.cambio; }
+  if (it.tipoPos && !it.papel) {   // posição de outra conta da XP: mantém o tipo original (ações, FII, fundos, COE, previdência)
+    p.tipo = it.tipoPos; if (it.ticker) p.ticker = it.ticker; delete p.liq; delete p.trib;
+  }
   if (it.papel) {   // título de renda fixa com emissor e vencimento
     p.tipo = 'rf'; p.papel = it.papel; p.emissor = it.emissor || ''; p.venc = it.venc || null; p.taxa = it.taxa || '';
+    if (it.ticker) p.ticker = it.ticker;
     if (it.publico) p.publico = true;
     if (it.isento !== undefined) p.isento = it.isento;
     if (it.liqFixa) p.liqFixa = it.liqFixa;
@@ -16316,17 +16321,34 @@ function lerExtratoPlanilha(linhas) {
   }
   return itens;
 }
-function addOutras(inst, arquivo, itens) {
-  var g = OUTRAS.filter(function (o) { return compacto(o.inst) === compacto(inst); })[0];
-  if (!g) { g = { inst: inst, arquivos: [], itens: [] }; OUTRAS.push(g); }
+function addOutras(inst, arquivo, itens, meta) {
+  meta = meta || {};
+  var g = arquivo ? null : OUTRAS.filter(function (o) { return compacto(o.inst) === compacto(inst); })[0];
+  if (!g) {
+    g = { inst: inst, arquivos: [], itens: [], fonte: meta.fonte || 'manual', rotulo: meta.rotulo || 'Lançamento manual', auto: meta.auto !== false };
+    if (meta.info) g.info = meta.info;
+    if (meta.conta) g.conta = meta.conta;
+    OUTRAS.push(g);
+  }
   if (arquivo) g.arquivos.push(arquivo);
   itens.forEach(function (it) { g.itens.push(it); });
+  return g;
 }
-function reanalisar() { if (!D) return; R = analisar(D); recalcularCredito(); render(); }
+function reanalisar() {
+  if (!D) return;
+  if (D.vazia && !OUTRAS.length) {
+    D = null; R = null;
+    document.getElementById('painel').hidden = true;
+    var st = document.getElementById('status'); st.style.color = 'var(--ink-soft)'; st.textContent = 'Nenhum arquivo carregado.';
+    return;
+  }
+  R = analisar(D); recalcularCredito(); render();
+}
 
 function aplicarAcaoInst(t) {
   function ach(sel) { return t && t.closest ? t.closest(sel) : null; }
   var el;
+  if (ach('[data-rmbase]')) { removerBase(); return true; }
   if ((el = ach('[data-oxdel]'))) { var p = el.getAttribute('data-oxdel').split('|'); OUTRAS[Number(p[0])].itens.splice(Number(p[1]), 1); reanalisar(); return true; }
   if ((el = ach('[data-oxadd]'))) { OUTRAS[Number(el.getAttribute('data-oxadd'))].itens.push({ nome: '', valor: 0, instr: 'Outros', estrategia: 'Outros (verificar)' }); reanalisar(); return true; }
   if ((el = ach('[data-oxrm]'))) {
@@ -16342,7 +16364,7 @@ function aplicarAcaoInst(t) {
   }
   return false;
 }
-document.addEventListener('input', function (ev) { if (ev.target && ev.target.id === 'in-nova-inst') ST.novaInst = ev.target.value; });
+document.addEventListener('input', function (ev) { if (!ev.target) return; if (ev.target.id === 'in-nova-inst') ST.novaInst = ev.target.value; else if (ev.target.id === 'in-cambio') ST.cambio = ev.target.value; });
 document.addEventListener('change', function (ev) {
   var t = ev.target;
   if (!t || !t.getAttribute) return;
@@ -16350,67 +16372,25 @@ document.addEventListener('change', function (ev) {
   if ((a = t.getAttribute('data-ox'))) {
     var p = a.split('|'), it = OUTRAS[Number(p[0])] && OUTRAS[Number(p[0])].itens[Number(p[1])];
     if (!it) return;
-    if (p[2] === 'valor') it.valor = numExtrato(t.value) || 0; else it[p[2]] = t.value;
+    if (p[2] === 'valor') it.valor = numExtrato(t.value) || 0;
+    else {
+      it[p[2]] = t.value;
+      if (p[2] === 'instr') {
+        delete it.tipoPos;
+        if (it.papel) {
+          if (/Tesouro|Renda fixa bancária|Crédito privado/.test(t.value)) it.isento = /isent/.test(t.value);
+          else { delete it.papel; delete it.emissor; delete it.venc; delete it.taxa; delete it.publico; delete it.isento; delete it.liqFixa; }
+        }
+      }
+    }
     reanalisar(); return;
   }
-  if ((a = t.getAttribute('data-oxinst'))) { var o = OUTRAS[Number(a)]; if (o && t.value.trim()) { o.inst = t.value.trim(); reanalisar(); } return; }
-  if (t.id === 'in-inst-xp') { D.inst = t.value.trim() || INST_PADRAO; reanalisar(); return; }
+  if ((a = t.getAttribute('data-oxinst'))) { var o = OUTRAS[Number(a)]; if (o && t.value.trim()) { o.inst = t.value.trim(); o.auto = true; reanalisar(); } return; }
+  if (t.id === 'in-inst-xp') { D.inst = t.value.trim() || INST_PADRAO; D.instAuto = true; reanalisar(); return; }
   if (t.id === 'arq-extrato') {
-    var arquivo = t.files && t.files[0];
+    var arqs = Array.prototype.slice.call(t.files || []);
     t.value = '';
-    if (!arquivo) return;
-    var inst = (document.getElementById('in-nova-inst').value || '').trim();
-    if (!inst && /nubank/i.test(arquivo.name)) inst = 'Nubank';
-    if (!inst && !/[.]pdf$/i.test(arquivo.name)) { msgInst = { t: 'Informe o nome da instituição antes de carregar o extrato.', erro: true }; render(); return; }
-    var leitor = new FileReader();
-    leitor.onerror = function () { msgInst = { t: 'Não foi possível ler o arquivo.', erro: true }; render(); };
-    leitor.onload = function (e) {
-      function concluir(lidos, extra) {
-        if (!lidos.length) { msgInst = { t: 'Nenhum ativo foi identificado em ' + arquivo.name + '. Cadastre-os manualmente com "Adicionar instituição".', erro: true }; render(); return; }
-        var itens = lidos.map(function (x) {
-          if (x.instr) return x;
-          var ai = adivinharInstr(x.nome);
-          return { nome: x.nome, valor: x.valor, instr: ai, estrategia: adivinharClasse(x.nome, ai) };
-        });
-        addOutras(instFinal, arquivo.name, itens);
-        ST.novaInst = '';
-        var soma0 = soma(itens, function (x) { return Number(x.valor) || 0; });
-        msgInst = { t: itens.length + ' linha(s) importada(s) de ' + arquivo.name + ' para ' + instFinal + ' (total de ' + fmtBRL(soma0) + ').' + (extra ? ' ' + extra : '') + ' Revise a classe, o instrumento e o valor de cada ativo na tabela abaixo.', erro: false };
-        reanalisar();
-      }
-      var instFinal = inst;
-      try {
-        if (/[.]pdf$/i.test(arquivo.name) || arquivo.type === 'application/pdf') {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-          pdfjsLib.getDocument({ data: new Uint8Array(e.target.result) }).promise.then(extrairLinhasPDF).then(function (l) {
-            var nb = lerExtratoNubank(l);
-            if (nb) {
-              if (!instFinal) instFinal = nb.nome;
-              var somaNb = soma(nb.itens, function (x) { return x.valor; });
-              var conf = nb.totalResumo !== null ? (Math.abs(somaNb - nb.totalResumo) < 1 ? 'Total conferido com o resumo do extrato.' : 'Atenção: o resumo do extrato informa ' + fmtBRL(nb.totalResumo) + '; confira os ativos.') : '';
-              concluir(nb.itens, conf);
-            } else if (!instFinal) { msgInst = { t: 'Informe o nome da instituição antes de carregar o extrato.', erro: true }; render(); }
-            else concluir(lerExtratoLinhasPDF(l));
-          }).catch(function (err) { msgInst = { t: 'Erro ao ler o PDF: ' + (err && err.message ? err.message : err), erro: true }; render(); });
-        } else {
-          var wb = XLSX.read(e.target.result, { type: 'array' }), lidos = [];
-          var usd = lerCarteiraUSD(wb);
-          if (usd) {
-            var manual = pNum(document.getElementById('in-cambio') ? document.getElementById('in-cambio').value : '');
-            Promise.resolve(manual > 0 ? manual : obterCambioUSD()).then(function (cb) {
-              if (!(cb > 0)) { msgInst = { t: 'Planilha em US$ reconhecida. Informe a cotação do dólar (R$) e carregue o arquivo novamente.', erro: true }; render(); return; }
-              ST.cambio = String(cb).replace('.', ',');
-              var its = usd.itens.map(function (x) { return { nome: x.nome, valor: Math.round(x.usd * cb * 100) / 100, instr: x.instr, estrategia: x.estrategia, moeda: 'USD', valorMoeda: x.usd, cambio: cb }; });
-              concluir(its, 'Valores em US$ convertidos à cotação de R$ ' + cb.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' (total de US$ ' + soma(usd.itens, function (x) { return x.usd; }).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ').');
-            });
-            return;
-          }
-          wb.SheetNames.forEach(function (nm) { lidos = lidos.concat(lerExtratoPlanilha(XLSX.utils.sheet_to_json(wb.Sheets[nm], { header: 1, raw: true, defval: '' }))); });
-          concluir(lidos);
-        }
-      } catch (err) { msgInst = { t: 'Erro ao processar o arquivo: ' + err.message, erro: true }; render(); }
-    };
-    leitor.readAsArrayBuffer(arquivo);
+    if (arqs.length) processarArquivos(arqs, 'adicionar');
   }
 });
 
@@ -16444,7 +16424,7 @@ function salvarCarteira() {
   if (!D || !R) return;
   function dizer(t, erro) { msgSalvar = { t: t, erro: !!erro }; Array.prototype.forEach.call(document.querySelectorAll('.msg-salvar'), function (el) { el.style.color = erro ? 'var(--red)' : 'var(--green)'; el.textContent = t; }); }
   if (!logado || !sb) { dizer('Entre no site com a sua conta para salvar carteiras (abra esta ferramenta a partir do site autenticado).', true); return; }
-  var iso = dataRefISO(D), outrasTot = soma(R.itens.filter(function (p) { return p.tipo === 'outro'; }), function (p) { return p.saldo; });
+  var iso = dataRefISO(D), outrasTot = soma(R.itens.filter(function (p) { return p.outra; }), function (p) { return p.saldo; });
   var linha = {
     cliente_id: CLI.id || null, cliente_nome: nomeClienteAtual() || null, conta: D.cab.conta || null, data_ref: iso,
     patrimonio: D.kpi.patrimonio, patrimonio_outras: outrasTot,
@@ -16765,45 +16745,220 @@ function obterCambioUSD() {
   }).catch(function () { return null; });
 }
 
-// Envio do arquivo-base: relatório XPerformance (PDF) ou XP Posição Detalhada (Excel)
-function carregarBase(arquivo) {
+// ── Envio de vários arquivos: identificação automática do tipo de arquivo e da instituição de cada um ──
+var BANCOS_CONHECIDOS = [
+  ['Nubank', /nubank|nu invest|nu pagamentos/i], ['XP', /\\bxp\\b|xp investimentos/i], ['Clear', /clear corretora/i], ['BTG Pactual', /\\bbtg\\b/i],
+  ['Itaú', /ita[uú]/i], ['Bradesco', /bradesco/i], ['Santander', /santander/i], ['Banco do Brasil', /banco do brasil/i],
+  ['Caixa Econômica', /caixa econ[oô]mica/i], ['Inter', /banco inter|inter dtvm|inter invest|inter global/i], ['C6 Bank', /\\bc6\\b/i],
+  ['Safra', /\\bsafra\\b/i], ['Sicredi', /sicredi/i], ['Sicoob', /sicoob/i], ['Genial', /genial/i], ['Warren', /warren/i], ['Órama', /[oó]rama/i],
+  ['Avenue', /avenue/i], ['Banco Pan', /banco pan/i], ['Daycoval', /daycoval/i], ['Modal', /modalmais|banco modal/i], ['Toro', /toro (investimentos|corretora)/i],
+  ['Mercado Pago', /mercado ?pago/i], ['PicPay', /picpay/i], ['Interactive Brokers', /interactive brokers/i], ['Charles Schwab', /schwab/i]
+];
+var CLASSE_OUTRAS_POR_CHAVE = { pos: 'Pós Fixado', infl: 'Inflação', pre: 'Prefixado', multi: 'Multimercado', rvb: 'Renda Variável Brasil', grv: 'Global Renda Variável', listados: 'Fundos Listados', alt: 'Alternativo', grf: 'Global Renda Fixa', caixa: 'Caixa' };
+function classeOutras(est, chave) { return CLASSE_OUTRAS_POR_CHAVE[chave || chaveClasse(est)] || est || 'Outros (verificar)'; }
+function detectarBanco(texto, nomeArquivo) {
+  var alvos = [String(nomeArquivo || '').replace(/[._-]+/g, ' '), String(texto || '')];
+  for (var k = 0; k < alvos.length; k++) {
+    for (var i = 0; i < BANCOS_CONHECIDOS.length; i++) if (BANCOS_CONHECIDOS[i][1].test(alvos[k])) return BANCOS_CONHECIDOS[i][0];
+  }
+  return '';
+}
+function bancoXPerformance(linhas) {
+  var t = linhas.join(' ');
+  if (/RICO CORRETORA|custodiada pela Rico/i.test(t)) return INST_PADRAO;
+  if (/CLEAR CORRETORA/i.test(t)) return 'Clear';
+  return 'XP';
+}
+function classificarItemGenerico(x) {
+  if (x.instr) return x;
+  var ai = adivinharInstr(x.nome);
+  return { nome: x.nome, valor: x.valor, instr: ai, estrategia: adivinharClasse(x.nome, ai) };
+}
+function instrRendaFixa(papel, publico, isento) {
+  if (publico || /^(NTN|LTN|LFT|TESOURO)/.test(papel)) return 'Tesouro Direto';
+  if (/^DEB/.test(papel)) return isento === true ? 'Crédito privado isento (CRA, CRI, debêntures incentivadas)' : 'Crédito privado tributado (debêntures)';
+  if (/^(CRA|CRI)$/.test(papel)) return 'Crédito privado isento (CRA, CRI, debêntures incentivadas)';
+  if (/^(LCA|LCI|LCD)$/.test(papel)) return 'Renda fixa bancária isenta (LCA, LCI)';
+  return 'Renda fixa bancária (CDB, LC, LF)';
+}
+// posição de um relatório da XP convertida para o formato dos itens de outras instituições
+function posParaItem(p) {
+  var it = { nome: p.nome, valor: p.saldo, estrategia: classeOutras(p.estrategia, p.chave) };
+  if (p.qtd !== undefined && p.qtd !== null) it.qtd = p.qtd;
+  if (p.ticker) it.ticker = p.ticker;
+  if (p.tipo === 'rf') {
+    var pp = p.papel || '';
+    it.papel = pp; it.emissor = p.emissor || ''; it.venc = p.venc || null; it.taxa = p.taxa || '';
+    if (p.publico) it.publico = true;
+    if (p.isento !== undefined) it.isento = p.isento;
+    if (p.liqFixa) it.liqFixa = p.liqFixa;
+    it.instr = instrRendaFixa(pp, p.publico, p.isento);
+  } else {
+    it.tipoPos = p.tipo;
+    it.instr = { acao: 'Ações', fii: 'Fundo imobiliário listado', fii_nl: 'Fundo imobiliário não listado', etf: 'ETF', coe: 'COE (nota estruturada)', prev: 'Previdência' }[p.tipo] || 'Fundo de investimento';
+  }
+  return it;
+}
+function relParaItens(rel) {
+  var itens = rel.posicoes.map(posParaItem);
+  rel.estrategias.forEach(function (e) {
+    if (e.chave === 'caixa' && e.saldo > 0) itens.push({ nome: /provento/i.test(e.nome) ? 'Proventos a receber' : 'Saldo em conta', valor: e.saldo, instr: 'Saldo em conta', estrategia: 'Caixa' });
+  });
+  return itens;
+}
+function baseVazia() {
+  var h = new Date();
+  var hoje = String(h.getDate()).padStart(2, '0') + '/' + String(h.getMonth() + 1).padStart(2, '0') + '/' + h.getFullYear();
+  return { cab: { conta: '', assessor: '', data: hoje }, kpi: { per: {}, patrimonio: 0 }, bench: {}, anos: {}, evol: [], estrategias: [], posicoes: [], movs: [], semRent: true, vazia: true, origem: 'extratos das instituições', inst: '' };
+}
+
+// Identificação por conteúdo: PDF (relatório XPerformance, extrato do Nubank ou leitura genérica)
+function identificarPDF(linhas, nomeArq) {
+  var rel = null;
+  try { rel = lerRelatorio(linhas); } catch (e) { rel = null; }
+  if (rel) return { arq: nomeArq, tipo: 'xperf', rel: rel, inst: bancoXPerformance(linhas), rotulo: 'Relatório XPerformance (PDF)' };
+  var nb = lerExtratoNubank(linhas);
+  if (nb) {
+    var somaNb = soma(nb.itens, function (x) { return x.valor; });
+    var conf = nb.totalResumo !== null ? (Math.abs(somaNb - nb.totalResumo) < 1 ? 'Total conferido com o resumo do extrato.' : 'Atenção: o resumo do extrato informa ' + fmtBRL(nb.totalResumo) + '; confira os ativos.') : '';
+    return { arq: nomeArq, tipo: 'nubank', itens: nb.itens, inst: nb.nome, rotulo: 'Extrato de custódia do Nubank (PDF)', info: conf };
+  }
+  return { arq: nomeArq, tipo: 'generico', itens: lerExtratoLinhasPDF(linhas).map(classificarItemGenerico), inst: detectarBanco(linhas.slice(0, 25).join(' '), nomeArq), rotulo: 'Extrato em PDF (leitura genérica)', info: 'Leitura genérica de ' + nomeArq + ': confira o nome, a classe, o instrumento e o valor de cada ativo.' };
+}
+// Planilhas: posição detalhada da XP, carteira em dólar ou leitura genérica
+function identificarPlanilha(wb, nomeArq) {
+  var rel = null, topo = wb.SheetNames.join(' ');
+  wb.SheetNames.forEach(function (nm) {
+    var linhas = XLSX.utils.sheet_to_json(wb.Sheets[nm], { header: 1, raw: true, defval: '' });
+    linhas.slice(0, 8).forEach(function (l) { topo += ' ' + l.join(' '); });
+    if (!rel) rel = lerPosicaoDetalhadaXP(linhas);
+  });
+  if (rel) return { arq: nomeArq, tipo: 'xpexcel', rel: rel, inst: 'XP', rotulo: 'XP · Posição detalhada (Excel)' };
+  var usd = lerCarteiraUSD(wb);
+  var banco = detectarBanco(topo, nomeArq);
+  if (usd) return { arq: nomeArq, tipo: 'usd', usd: usd.itens, inst: banco, instPadrao: 'Conta internacional', rotulo: 'Carteira em dólar (Excel)' };
+  var lidos = [];
+  wb.SheetNames.forEach(function (nm) { lidos = lidos.concat(lerExtratoPlanilha(XLSX.utils.sheet_to_json(wb.Sheets[nm], { header: 1, raw: true, defval: '' }))); });
+  return { arq: nomeArq, tipo: 'generico', itens: lidos.map(classificarItemGenerico), inst: banco, rotulo: 'Extrato em planilha (leitura genérica)', info: 'Leitura genérica de ' + nomeArq + ': confira o nome, a classe, o instrumento e o valor de cada ativo.' };
+}
+function converterUSD(f, cb) {
+  f.itens = f.usd.map(function (x) { return { nome: x.nome, valor: Math.round(x.usd * cb * 100) / 100, instr: x.instr, estrategia: x.estrategia, moeda: 'USD', valorMoeda: x.usd, cambio: cb }; });
+  f.info = 'Valores em US$ de ' + f.arq + ' convertidos à cotação de R$ ' + cb.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' (total de US$ ' + soma(f.usd, function (x) { return x.usd; }).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ').';
+}
+function lerBuffer(arquivo) {
+  return new Promise(function (res, rej) {
+    var r = new FileReader();
+    r.onload = function (e) { res(e.target.result); };
+    r.onerror = function () { rej(new Error('falha de leitura')); };
+    r.readAsArrayBuffer(arquivo);
+  });
+}
+function identificarArquivo(arquivo) {
+  var ehPDF = /[.]pdf$/i.test(arquivo.name) || arquivo.type === 'application/pdf';
+  return lerBuffer(arquivo).then(function (buf) {
+    if (ehPDF) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      return pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise.then(extrairLinhasPDF).then(function (linhas) { return identificarPDF(linhas, arquivo.name); });
+    }
+    return identificarPlanilha(XLSX.read(buf, { type: 'array' }), arquivo.name);
+  });
+}
+
+// Reúne as fontes identificadas: o relatório XPerformance (ou, na falta dele, a posição detalhada da XP) é o arquivo-base;
+// os demais viram uma entrada por arquivo, cada uma com o nome da respectiva instituição (editável).
+function consolidarFontes(fontes, modo, nomeForcado) {
+  var erros = [], infos = [], lidos = [], ok = [];
+  fontes.forEach(function (f) {
+    if (f.tipo === 'erro') { erros.push(f.arq + ': ' + f.msg); return; }
+    if (f.tipo === 'usd' && !f.itens) { erros.push(f.arq + ': planilha em US$ reconhecida, mas a cotação do dólar não pôde ser obtida. Informe a cotação (aba Instituições) e adicione o arquivo novamente.'); return; }
+    if (!(f.rel ? f.rel.posicoes.length : (f.itens ? f.itens.length : 0))) { erros.push(f.arq + ': nenhum ativo foi identificado. Cadastre os ativos manualmente com "Adicionar instituição manualmente".'); return; }
+    ok.push(f);
+  });
+  if (!ok.length) return { ok: false, erros: erros, infos: infos, lidos: lidos };
+  var novo = modo === 'novo';
+  var baseAtual = novo ? null : ((D && !D.vazia) ? D : null);
+  var baseF = null;
+  if (baseAtual && baseAtual.semRent) {   // a base atual não tem histórico: um relatório XPerformance recebido agora passa a ser a base
+    var xp0 = ok.filter(function (f) { return f.tipo === 'xperf'; })[0];
+    if (xp0) {
+      if (baseAtual.cab && xp0.rel.cab && baseAtual.cab.conta && baseAtual.cab.conta === xp0.rel.cab.conta) infos.push((baseAtual.arquivo || 'Arquivo anterior') + ': substituído pelo relatório XPerformance da mesma conta.');
+      else addOutras(baseAtual.inst || INST_PADRAO, baseAtual.arquivo || 'Relatório-base', relParaItens(baseAtual), { fonte: 'xpexcel', rotulo: baseAtual.rotulo || baseAtual.origem, auto: baseAtual.instAuto !== false, conta: baseAtual.cab ? baseAtual.cab.conta : '' });
+      baseAtual = null;
+    }
+  }
+  if (!baseAtual) baseF = ok.filter(function (f) { return f.tipo === 'xperf'; })[0] || ok.filter(function (f) { return f.tipo === 'xpexcel'; })[0] || null;
+  if (novo) { OUTRAS = []; D = baseF ? baseF.rel : baseVazia(); }
+  else if (baseF) D = baseF.rel;
+  else if (!D) D = baseVazia();
+  if (baseF) {
+    D.inst = baseF.inst || INST_PADRAO; D.instAuto = !!baseF.inst; D.arquivo = baseF.arq; D.rotulo = baseF.rotulo;
+    D.origem = D.origem || baseF.rotulo;
+    lidos.push({ arq: baseF.arq, rotulo: baseF.rotulo, inst: D.inst, base: true });
+    if (baseF.info) infos.push(baseF.info);
+  }
+  ok.forEach(function (f) {
+    if (f === baseF) return;
+    var conta = f.rel && f.rel.cab ? f.rel.cab.conta : '';
+    if (OUTRAS.some(function (o) { return o.arquivos && o.arquivos.indexOf(f.arq) !== -1; }) || (D && D.arquivo === f.arq)) { erros.push(f.arq + ': arquivo já carregado.'); return; }
+    if (conta && ((D && !D.vazia && D.cab && D.cab.conta === conta) || OUTRAS.some(function (o) { return o.conta === conta; }))) { erros.push(f.arq + ': refere-se à conta ' + conta + ', já carregada; não foi somado, para evitar duplicidade.'); return; }
+    var itens = f.rel ? relParaItens(f.rel) : f.itens;
+    itens = itens.map(function (x) { x.estrategia = classeOutras(x.estrategia); return x; });
+    var nome = f.inst || nomeForcado || f.instPadrao || ('Instituição ' + (OUTRAS.length + 2));
+    var g = addOutras(nome, f.arq, itens, { fonte: f.tipo, rotulo: f.rotulo, auto: !!(f.inst || nomeForcado), info: f.info, conta: conta });
+    lidos.push({ arq: f.arq, rotulo: f.rotulo, inst: g.inst, auto: g.auto });
+    if (f.rel) infos.push(f.arq + ': posições convertidas em ativos editáveis (a rentabilidade histórica continua a do arquivo-base).');
+    if (f.info) infos.push(f.info);
+  });
+  if (!lidos.length) return { ok: false, erros: erros, infos: infos, lidos: lidos };
+  return { ok: true, erros: erros, infos: infos, lidos: lidos };
+}
+function processarArquivos(lista, modo) {
+  var arqs = Array.prototype.slice.call(lista || []);
+  if (!arqs.length) return;
   var st = document.getElementById('status');
+  function dizer(t, erro) { st.style.color = erro ? 'var(--red)' : 'var(--green)'; st.textContent = t; }
   st.style.color = 'var(--ink-soft)';
-  st.textContent = 'Lendo ' + arquivo.name + '...';
-  function erro(msg) { st.style.color = 'var(--red)'; st.textContent = msg; }
-  function concluir(rel, origem) {
-    D = rel; D.inst = INST_PADRAO; OUTRAS = []; msgInst = { t: '', erro: false }; perfilSel = null;
+  st.textContent = 'Lendo ' + arqs.length + (arqs.length > 1 ? ' arquivos' : ' arquivo') + '...';
+  var campoNome = document.getElementById('in-nova-inst'), campoCambio = document.getElementById('in-cambio');
+  var forcado = modo === 'adicionar' && campoNome ? (campoNome.value || '').trim() : '';
+  var cambioManual = campoCambio ? pNum(campoCambio.value) : 0;
+  Promise.all(arqs.map(function (a) {
+    return identificarArquivo(a).catch(function (err) { return { arq: a.name, tipo: 'erro', msg: 'não foi possível ler o arquivo' + (err && err.message ? ' (' + err.message + ')' : '') + '.' }; });
+  })).then(function (fontes) {
+    if (!fontes.some(function (f) { return f.tipo === 'usd'; })) return fontes;
+    return Promise.resolve(cambioManual > 0 ? cambioManual : obterCambioUSD()).then(function (cb) {
+      if (cb > 0) { ST.cambio = String(cb).replace('.', ','); fontes.forEach(function (f) { if (f.tipo === 'usd') converterUSD(f, cb); }); }
+      return fontes;
+    });
+  }).then(function (fontes) {
+    var r = consolidarFontes(fontes, modo, forcado);
+    if (!r.ok) {
+      dizer(r.erros.join(' ') || 'Nenhum arquivo pôde ser lido.', true);
+      if (modo === 'adicionar') { msgInst = { t: r.erros.join(' '), erro: true }; render(); }
+      return;
+    }
+    msgInst = { t: r.erros.concat(r.infos).join(' '), erro: r.erros.length > 0 };
+    ST.novaInst = '';
     R = analisar(D);
     recalcularCredito();
-    ST.f = {}; ST.aba = 'geral'; ST.mesSel = null; ST.busca = ''; ST.periodo = 12; ST.movTipo = '';
+    ST.f = {};
+    if (modo === 'novo') { perfilSel = null; ST.aba = r.lidos.length > 1 ? 'inst' : 'geral'; ST.mesSel = null; ST.busca = ''; ST.periodo = 12; ST.movTipo = ''; }
     document.getElementById('painel').hidden = false;
     render();
-    st.style.color = 'var(--green)';
-    st.textContent = '✓ ' + arquivo.name + ' (' + origem + '): ' + R.itens.filter(function (p) { return p.tipo !== 'caixa'; }).length + ' ativos e ' + D.estrategias.length + ' classes lidos.';
-  }
-  var leitor = new FileReader();
-  leitor.onerror = function () { erro('Não foi possível ler o arquivo.'); };
-  leitor.onload = function (e) {
-    try {
-      if (/[.]xlsx?$/i.test(arquivo.name)) {
-        var wb = XLSX.read(e.target.result, { type: 'array' }), rel = null;
-        wb.SheetNames.forEach(function (nm) { if (!rel) rel = lerPosicaoDetalhadaXP(XLSX.utils.sheet_to_json(wb.Sheets[nm], { header: 1, raw: true, defval: '' })); });
-        if (!rel) { erro('Não foi possível reconhecer a Posição Detalhada da XP nesta planilha.'); return; }
-        concluir(rel, 'XP · Posição detalhada');
-        return;
-      }
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-      pdfjsLib.getDocument({ data: new Uint8Array(e.target.result) }).promise
-        .then(extrairLinhasPDF)
-        .then(function (linhas) {
-          var rel2 = lerRelatorio(linhas);
-          if (!rel2) { erro('Não foi possível reconhecer o relatório XPerformance neste PDF (evolução patrimonial e composição por estratégia).'); return; }
-          concluir(rel2, 'XPerformance');
-        })
-        .catch(function (err) { erro('Erro ao ler o PDF: ' + (err && err.message ? err.message : err)); });
-    } catch (err) { erro('Erro ao processar o arquivo: ' + err.message); }
-  };
-  leitor.readAsArrayBuffer(arquivo);
+    dizer('✓ ' + r.lidos.length + (r.lidos.length > 1 ? ' arquivos lidos' : ' arquivo lido') + ' — ' + r.lidos.map(function (x) { return x.arq + ' → ' + x.inst; }).join(' · ') + '.' + (r.erros.length ? ' Atenção: ' + r.erros.join(' ') : ''), r.erros.length > 0);
+  });
+}
+function nomesFontes() {
+  var n = [];
+  if (D && !D.vazia) n.push(D.rotulo || D.origem || 'XPerformance');
+  OUTRAS.forEach(function (o) { var r = o.rotulo || 'extrato'; if (n.indexOf(r) === -1) n.push(r); });
+  return n.join(' + ') || 'arquivos carregados';
+}
+function removerBase() {
+  if (!D || D.vazia) return;
+  if (!confirm('Remover o arquivo-base "' + (D.arquivo || 'relatório') + '"? Os extratos das demais instituições serão mantidos.')) return;
+  D = baseVazia();
+  reanalisar();
 }
 
 // ── Estado, filtros cruzados e dimensões ──
@@ -17193,12 +17348,12 @@ PAGINAS.inst = function () {
   var insts = agrupar('inst'), tot = soma(insts, function (x) { return x.v; });
   var totalGeral = R.total;
   var maior = insts.slice().sort(function (a, b) { return b.v - a.v; })[0];
-  var outrasV = soma(R.itens.filter(function (p) { return p.tipo === 'outro'; }), function (p) { return p.saldo; });
+  var outrasV = soma(R.itens.filter(function (p) { return p.outra; }), function (p) { return p.saldo; });
   var k = '<div class="kpis">' +
     kpi('Patrimônio consolidado', fmtBRL(totalGeral), 'Todas as instituições carregadas') +
-    kpi('Instituições', String(Object.keys(R.porInst).length), OUTRAS.length ? 'XP e ' + OUTRAS.length + ' outra(s)' : 'Somente o relatório XPerformance') +
+    kpi('Instituições', String(Object.keys(R.porInst).length), OUTRAS.length ? (D.vazia ? OUTRAS.length + ' arquivo(s) carregado(s)' : 'Arquivo-base e ' + OUTRAS.length + ' outro(s) arquivo(s)') : 'Somente o arquivo-base') +
     kpi('Maior instituição', maior ? fmtP(totalGeral > 0 ? R.porInst[maior.r] / totalGeral * 100 : 0, 1) : '—', maior ? esc(maior.r) : '') +
-    kpi('Outras instituições', fmtRS(outrasV), fmtP(totalGeral > 0 ? outrasV / totalGeral * 100 : 0, 1) + ' do patrimônio consolidado') + '</div>';
+    kpi('Fora do arquivo-base', fmtRS(outrasV), fmtP(totalGeral > 0 ? outrasV / totalGeral * 100 : 0, 1) + ' do patrimônio consolidado') + '</div>';
   // composição por classe dentro de cada instituição
   var comp = '';
   insts.sort(function (a, b) { return b.v - a.v; }).forEach(function (g) {
@@ -17218,29 +17373,42 @@ PAGINAS.inst = function () {
   h += tile('t5', 'Por instituição', donutDim('inst', 'consolidado'), 'clique para filtrar');
   h += tile('t7', 'Composição de cada instituição', comp || '<p class="vazio">Sem ativos.</p>', 'clique em uma classe ou instituição para filtrar');
 
-  // cadastro de outras instituições
+  // arquivos carregados: tipo identificado e nome da instituição de cada um (editável)
   var opcoesInst = INSTITUICOES_COMUNS.map(function (n) { return '<option value="' + esc(n) + '">'; }).join('');
   var aviso = msgInst.t ? '<p class="card-sub" style="color:' + (msgInst.erro ? 'var(--red)' : 'var(--green)') + ';">' + esc(msgInst.t) + '</p>' : '';
-  var form = '<div class="form-crit"><label style="font-size:12.5px;" for="in-inst-xp">Instituição do relatório XPerformance</label><input type="text" id="in-inst-xp" class="in-crit" style="max-width:200px;" value="' + esc(D.inst || INST_PADRAO) + '"></div>' +
-    '<div class="form-crit"><label style="font-size:12.5px;" for="in-cambio">Cotação do dólar (R$) para planilhas em US$</label><input type="text" id="in-cambio" class="in-crit" style="max-width:100px;" value="' + esc(ST.cambio || '') + '" placeholder="automática"></div>' +
-    '<div class="form-crit"><input type="text" id="in-nova-inst" list="lista-inst" class="in-crit" placeholder="Instituição (ex.: BTG Pactual, Itaú)" value="' + esc(ST.novaInst || '') + '" autocomplete="off"><datalist id="lista-inst">' + opcoesInst + '</datalist>' +
-    '<label for="arq-extrato" class="btn btn-primary btn-peq" style="cursor:pointer;">⬆ Carregar extrato (PDF, Excel ou CSV)</label><input type="file" id="arq-extrato" accept=".pdf,.xlsx,.xls,.csv" hidden>' +
+  var avisoNome = '<br><small style="color:var(--red);">Nome não identificado automaticamente: informe o banco.</small>';
+  var linhasArq = '', zi = 0;
+  if (!D.vazia) {
+    var itensBase = R.itens.filter(function (p) { return !p.outra; });
+    linhasArq += '<tr class="' + (zi++ % 2 ? 'zebra' : '') + '"><td class="e">' + esc(D.arquivo || 'Relatório-base') + '<br><small>Arquivo-base' + (D.semRent ? '' : ' (rentabilidade e movimentações)') + '</small></td><td class="e">' + esc(D.rotulo || D.origem || 'Relatório XPerformance') + '</td><td class="e"><input type="text" id="in-inst-xp" list="lista-inst" class="in-crit" value="' + esc(D.inst || INST_PADRAO) + '">' + (D.instAuto === false ? avisoNome : '') + '</td><td>' + itensBase.filter(function (p) { return p.tipo !== 'caixa'; }).length + '</td><td>' + fmtBRL(soma(itensBase, function (p) { return p.saldo; })) + '</td><td><button type="button" class="rm" data-rmbase="1" title="Remover o arquivo-base">×</button></td></tr>';
+  }
+  OUTRAS.forEach(function (o, i) {
+    var totO = soma(o.itens, function (it) { return Number(it.valor) || 0; });
+    linhasArq += '<tr class="' + (zi++ % 2 ? 'zebra' : '') + '"><td class="e">' + esc((o.arquivos && o.arquivos.length) ? o.arquivos.join(', ') : 'Lançamento manual') + '</td><td class="e">' + esc(o.rotulo || 'Extrato') + '</td><td class="e"><input type="text" class="in-crit" list="lista-inst" data-oxinst="' + i + '" value="' + esc(o.inst) + '">' + (o.auto === false ? avisoNome : '') + '</td><td>' + o.itens.filter(function (it) { return Number(it.valor) > 0; }).length + '</td><td>' + fmtBRL(totO) + '</td><td><button type="button" class="rm" data-oxrm="' + i + '" title="Remover">×</button></td></tr>';
+  });
+  var tabArq = linhasArq ? '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Arquivo</th><th class="e">Tipo identificado</th><th class="e">Instituição (editável)</th><th>Ativos</th><th>Valor (R$)</th><th></th></tr></thead><tbody>' + linhasArq + '</tbody></table></div>' : '<p class="vazio">Nenhum arquivo carregado.</p>';
+  var form = '<div class="form-crit" style="margin-top:12px;"><input type="text" id="in-nova-inst" list="lista-inst" class="in-crit" placeholder="Instituição dos arquivos não identificados (opcional)" value="' + esc(ST.novaInst || '') + '" autocomplete="off"><datalist id="lista-inst">' + opcoesInst + '</datalist>' +
+    '<label style="font-size:12.5px;" for="in-cambio">Cotação do dólar (R$)</label><input type="text" id="in-cambio" class="in-crit" style="max-width:100px;" value="' + esc(ST.cambio || '') + '" placeholder="automática">' +
+    '<label for="arq-extrato" class="btn btn-primary btn-peq" style="cursor:pointer;">⬆ Adicionar arquivos (PDF, Excel ou CSV)</label><input type="file" id="arq-extrato" accept=".pdf,.xlsx,.xls,.csv" multiple hidden>' +
     '<button type="button" class="btn btn-peq" data-oxnovo="1">+ Adicionar instituição manualmente</button></div>' + aviso +
-    '<p class="nota">O extrato é lido neste navegador. A leitura é genérica (nome do ativo e valor); confira a classe, o instrumento e o valor de cada linha na tabela abaixo, que pode ser editada. Extratos de outras instituições entram na alocação, na diversificação e na concentração; a rentabilidade continua a do relatório XPerformance.</p>';
+    '<p class="nota">Cada arquivo é lido neste navegador e o sistema identifica o tipo e a instituição de origem (arquivos de bancos diferentes podem ser enviados juntos). Corrija o nome de qualquer instituição na coluna indicada; arquivos com o mesmo nome de instituição são somados nos gráficos de diversificação. A cotação do dólar é usada apenas em planilhas em US$. A rentabilidade continua a do arquivo-base.</p>';
+  h += tile('t12', 'Arquivos carregados e instituições', tabArq + form, 'edite o nome de cada instituição');
+
+  // ativos de cada arquivo (editáveis)
   var opInstr = function (v) { return INSTR_OUTRAS.map(function (x) { return '<option value="' + esc(x[0]) + '"' + (v === x[0] ? ' selected' : '') + '>' + esc(x[0]) + '</option>'; }).join(''); };
   var opCls = function (v) { return CLASSES_OUTRAS.map(function (x) { return '<option value="' + esc(x) + '"' + (v === x ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join(''); };
   var ed = '';
   OUTRAS.forEach(function (o, i) {
     var totO = soma(o.itens, function (it) { return Number(it.valor) || 0; });
-    ed += '<div class="tit-sec" style="margin-top:18px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><input type="text" class="in-crit" style="max-width:220px;font-weight:700;" data-oxinst="' + i + '" value="' + esc(o.inst) + '"><span style="font-weight:500;text-transform:none;letter-spacing:0;">' + fmtBRL(totO) + (o.arquivos && o.arquivos.length ? ' · ' + esc(o.arquivos.join(', ')) : '') + '</span><button type="button" class="btn btn-peq" data-oxrm="' + i + '">Remover instituição</button></div>';
+    ed += '<div class="tit-sec" style="margin-top:' + (i ? 18 : 0) + 'px;"><b>' + esc(o.inst) + '</b> <span style="font-weight:500;text-transform:none;letter-spacing:0;">· ' + esc((o.arquivos && o.arquivos.length) ? o.arquivos.join(', ') : 'lançamento manual') + ' · ' + fmtBRL(totO) + '</span></div>';
     ed += '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Ativo</th><th class="e">Classe</th><th class="e">Instrumento</th><th>Valor (R$)</th><th></th></tr></thead><tbody>';
     o.itens.forEach(function (it, j) {
-      ed += '<tr class="' + (j % 2 ? 'zebra' : '') + '"><td class="e"><input type="text" class="in-crit" data-ox="' + i + '|' + j + '|nome" value="' + esc(it.nome) + '"></td><td class="e"><select data-ox="' + i + '|' + j + '|estrategia">' + opCls(it.estrategia) + '</select></td><td class="e"><select data-ox="' + i + '|' + j + '|instr">' + opInstr(it.instr) + '</select></td><td><input type="text" class="in-crit" style="max-width:130px;text-align:right;" data-ox="' + i + '|' + j + '|valor" value="' + (Number(it.valor) ? Number(it.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '') + '"></td><td><button type="button" class="rm" data-oxdel="' + i + '|' + j + '" title="Remover">×</button></td></tr>';
+      var instr0 = INSTR_OUTRAS.some(function (x) { return x[0] === it.instr; }) ? it.instr : 'Outros';
+      ed += '<tr class="' + (j % 2 ? 'zebra' : '') + '"><td class="e"><input type="text" class="in-crit" data-ox="' + i + '|' + j + '|nome" value="' + esc(it.nome) + '"></td><td class="e"><select data-ox="' + i + '|' + j + '|estrategia">' + opCls(it.estrategia) + '</select></td><td class="e"><select data-ox="' + i + '|' + j + '|instr">' + opInstr(instr0) + '</select></td><td><input type="text" class="in-crit" style="max-width:130px;text-align:right;" data-ox="' + i + '|' + j + '|valor" value="' + (Number(it.valor) ? Number(it.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '') + '"></td><td><button type="button" class="rm" data-oxdel="' + i + '|' + j + '" title="Remover">×</button></td></tr>';
     });
     ed += '</tbody></table></div><div style="margin-top:8px;"><button type="button" class="btn btn-peq" data-oxadd="' + i + '">+ Adicionar linha</button></div>';
   });
-  if (!OUTRAS.length) ed = '<p class="vazio" style="margin-top:12px;">Nenhuma outra instituição carregada. Informe o nome da instituição e carregue o extrato para ver a diversificação entre bancos.</p>';
-  h += tile('t12', 'Extratos de outras instituições', form + ed);
+  if (OUTRAS.length) h += tile('t12', 'Ativos dos arquivos de outras instituições', ed, 'edite o nome, a classe, o instrumento e o valor');
   return h + '</div>';
 };
 PAGINAS.hist = function () {
@@ -17314,12 +17482,12 @@ function render() {
   if (!D || !R) return;
   var foco = document.activeElement && document.activeElement.id === 'in-busca' ? document.activeElement.selectionStart : null;
   var cliente = (document.getElementById('in-cliente').value || '').trim();
-  document.getElementById('cab').innerHTML = '<div><h2 id="tit-cliente">' + esc(cliente ? 'Carteira de ' + cliente : 'Carteira do cliente') + '</h2><small>Conta ' + esc(D.cab.conta || '') + (D.cab.assessor ? ' · Assessor ' + esc(D.cab.assessor) : '') + ' · Posições em ' + esc(D.cab.data || '') + ' · Fonte: XPerformance</small></div>';
+  document.getElementById('cab').innerHTML = '<div><h2 id="tit-cliente">' + esc(cliente ? 'Carteira de ' + cliente : 'Carteira do cliente') + '</h2><small>Conta ' + esc(D.cab.conta || '') + (D.cab.assessor ? ' · Assessor ' + esc(D.cab.assessor) : '') + ' · Posições em ' + esc(D.cab.data || '') + ' · Fonte: ' + esc(nomesFontes()) + '</small></div>';
   document.getElementById('abas').innerHTML = ABAS.map(function (a) { return '<button type="button" class="aba' + (ST.aba === a[0] ? ' on' : '') + '" data-aba="' + a[0] + '">' + a[1] + (a[0] === 'alertas' ? ' <span class="badge">' + R.alertas.filter(function (x) { return x.n === 'alto'; }).length + '</span>' : '') + '</button>'; }).join('');
   document.getElementById('filtros').innerHTML = (ST.imprimir || ['geral', 'alocacao', 'inst', 'posicoes', 'rf', 'credito'].indexOf(ST.aba) !== -1) ? htmlFiltros() : '';
   var paginas = ST.imprimir ? ABAS.map(function (a) { return a[0]; }) : [ST.aba];
   document.getElementById('conteudo').innerHTML = paginas.map(function (p) { return (ST.imprimir ? '<h3 class="tit-pagina">' + ABAS.filter(function (a) { return a[0] === p; })[0][1] + '</h3>' : '') + PAGINAS[p](); }).join('') +
-    '<p class="nota">Material de caráter meramente informativo, elaborado com base no relatório XPerformance. Não constitui oferta, solicitação ou recomendação de compra ou venda de qualquer ativo. Rentabilidade passada não representa garantia de rentabilidade futura.</p>';
+    '<p class="nota">Material de caráter meramente informativo, elaborado com base nos arquivos carregados. Não constitui oferta, solicitação ou recomendação de compra ou venda de qualquer ativo. Rentabilidade passada não representa garantia de rentabilidade futura.</p>';
   if (foco !== null) { var b = document.getElementById('in-busca'); if (b) { b.focus(); try { b.setSelectionRange(foco, foco); } catch (e) {} } }
 }
 function recalcularAlertas() { R.alertas = montarAlertas(R, D); }
@@ -17366,10 +17534,16 @@ document.getElementById('in-cliente').addEventListener('input', function () {
 });
 
 document.getElementById('arq-carteira').addEventListener('change', function (ev) {
-  var arquivo = ev.target.files && ev.target.files[0];
+  var arqs = Array.prototype.slice.call(ev.target.files || []);
   ev.target.value = '';
-  if (arquivo) carregarBase(arquivo);
+  if (arqs.length) processarArquivos(arqs, 'novo');
 });
+(function () {
+  var zona = document.getElementById('area-envio');
+  zona.addEventListener('dragover', function (ev) { ev.preventDefault(); zona.style.outline = '2px dashed #111'; });
+  zona.addEventListener('dragleave', function () { zona.style.outline = ''; });
+  zona.addEventListener('drop', function (ev) { ev.preventDefault(); zona.style.outline = ''; if (ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files.length) processarArquivos(ev.dataTransfer.files, 'novo'); });
+})();
 
 // impressão: todas as páginas do painel, em sequência
 window.addEventListener('beforeprint', function () { if (D && R) { ST.imprimir = true; render(); } });
