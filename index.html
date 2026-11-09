@@ -15751,8 +15751,18 @@ var MATRIZ_PADRAO = {
     { nome: 'Global Renda Fixa', alvo: [2.5, 2.5, 2.5, 5, 5] }
   ]
 };
+var PERFIL_CLI = { editados: {}, novos: [] };   // ajustes de percentuais e perfis criados para o cliente
 function carregarMatriz() {
-  return { perfis: MATRIZ_PADRAO.perfis, classes: MATRIZ_PADRAO.classes, origem: 'padrão' };
+  var perfis = MATRIZ_PADRAO.perfis.map(function (p, i) { return { nome: p.nome, editado: !!PERFIL_CLI.editados[i] }; });
+  var classes = MATRIZ_PADRAO.classes.map(function (c) { return { nome: c.nome, alvo: c.alvo.slice() }; });
+  Object.keys(PERFIL_CLI.editados).forEach(function (idx) {
+    classes.forEach(function (c) { var v = PERFIL_CLI.editados[idx][chaveClasse(c.nome)]; if (typeof v === 'number') c.alvo[Number(idx)] = v; });
+  });
+  PERFIL_CLI.novos.forEach(function (n) {
+    perfis.push({ nome: n.nome, custom: true });
+    classes.forEach(function (c) { var v = n.alvos[chaveClasse(c.nome)]; c.alvo.push(typeof v === 'number' ? v : 0); });
+  });
+  return { perfis: perfis, classes: classes, origem: PERFIL_CLI.novos.length || Object.keys(PERFIL_CLI.editados).length ? 'ajustada para o cliente' : 'padrão' };
 }
 function fmtVenc(p) { return p.venc ? (p.venc.aprox ? String(p.venc.a) : String(p.venc.m).padStart(2, '0') + '/' + p.venc.a) : ''; }
 function rotuloInstrumento(p) {
@@ -15821,6 +15831,7 @@ function analisar(d) {
 
   // matriz de perfis e aderência
   A.matriz = carregarMatriz();
+  if (perfilSel !== null && !A.matriz.perfis[perfilSel]) perfilSel = null;
   var linhas = [], usadas = {};
   A.matriz.classes.forEach(function (c) {
     var k = chaveClasse(c.nome) || compacto(c.nome);
@@ -16364,7 +16375,7 @@ function aplicarAcaoInst(t) {
   }
   return false;
 }
-document.addEventListener('input', function (ev) { if (!ev.target) return; if (ev.target.id === 'in-nova-inst') ST.novaInst = ev.target.value; else if (ev.target.id === 'in-cambio') ST.cambio = ev.target.value; });
+document.addEventListener('input', function (ev) { if (!ev.target) return; if (ev.target.id === 'in-nova-inst') ST.novaInst = ev.target.value; else if (ev.target.id === 'in-cambio') ST.cambio = ev.target.value; else if (ev.target.id === 'in-novo-perfil') ST.novoPerfil = ev.target.value; });
 document.addEventListener('change', function (ev) {
   var t = ev.target;
   if (!t || !t.getAttribute) return;
@@ -16429,7 +16440,7 @@ function salvarCarteira() {
     cliente_id: CLI.id || null, cliente_nome: nomeClienteAtual() || null, conta: D.cab.conta || null, data_ref: iso,
     patrimonio: D.kpi.patrimonio, patrimonio_outras: outrasTot,
     rent_ano: D.kpi.per.ano ? D.kpi.per.ano.rent : null, rent_12m: D.kpi.per.m12 ? D.kpi.per.m12.rent : null,
-    dados: { versao: 1, D: D, outras: OUTRAS }
+    dados: { versao: 1, D: D, outras: OUTRAS, perfis: dadosPerfis() }
   };
   dizer('Salvando...', false);
   var busca = iso ? sb.from('consolidacao_carteiras').select('id').eq('conta', D.cab.conta || '').eq('data_ref', iso) : null;
@@ -16458,7 +16469,8 @@ function abrirRegistro(id) {
     CLI = r.data.cliente_id ? { id: r.data.cliente_id, nome: r.data.cliente_nome || '' } : { id: '', nome: '' };
     document.getElementById('in-cliente').value = r.data.cliente_nome || '';
     renderSelCliente();
-    perfilSel = null; R = analisar(D); recalcularCredito();
+    if (dd.perfis) aplicarPerfisSalvos(dd.perfis); else { perfilSel = null; if (CLI.id) carregarPerfilCliente(CLI.id); }
+    R = analisar(D); recalcularCredito();
     ST.f = {}; ST.aba = 'geral'; ST.mesSel = null; ST.busca = ''; ST.periodo = 12; ST.movTipo = '';
     document.getElementById('painel').hidden = false;
     var st = document.getElementById('status');
@@ -16530,7 +16542,7 @@ document.addEventListener('change', function (ev) {
     }
     var c = CLIENTES.filter(function (x) { return x.id === t.value; })[0];
     CLI = c ? { id: c.id, nome: c.nome } : { id: '', nome: '' };
-    if (c) document.getElementById('in-cliente').value = c.nome;
+    if (c) { document.getElementById('in-cliente').value = c.nome; carregarPerfilCliente(c.id); }
     if (D && R) render();
   }
 });
@@ -16942,7 +16954,7 @@ function processarArquivos(lista, modo) {
     R = analisar(D);
     recalcularCredito();
     ST.f = {};
-    if (modo === 'novo') { perfilSel = null; ST.aba = r.lidos.length > 1 ? 'inst' : 'geral'; ST.mesSel = null; ST.busca = ''; ST.periodo = 12; ST.movTipo = ''; }
+    if (modo === 'novo') { ST.aba = r.lidos.length > 1 ? 'inst' : 'geral'; ST.mesSel = null; ST.busca = ''; ST.periodo = 12; ST.movTipo = ''; }
     document.getElementById('painel').hidden = false;
     render();
     dizer('✓ ' + r.lidos.length + (r.lidos.length > 1 ? ' arquivos lidos' : ' arquivo lido') + ' — ' + r.lidos.map(function (x) { return x.arq + ' → ' + x.inst; }).join(' · ') + '.' + (r.erros.length ? ' Atenção: ' + r.erros.join(' ') : ''), r.erros.length > 0);
@@ -16960,6 +16972,95 @@ function removerBase() {
   D = baseVazia();
   reanalisar();
 }
+
+// ── Perfis de investimento do cliente: pesos editáveis, perfis criados pelo usuário e gravação por cliente ──
+var PERFIL_SUJO = false, msgPerfil = { t: '', erro: false };
+function perfisVazios() { return { editados: {}, novos: [] }; }
+function normalizarPerfis(p) { return { editados: (p && p.editados) || {}, novos: (p && p.novos) || [] }; }
+function perfilAtualIdx() { return perfilSel === null ? R.maisProximo : perfilSel; }
+function pesosDoPerfil(pi, zerar) {
+  var o = {};
+  R.linhas.forEach(function (l) { o[l.chave] = zerar ? 0 : (l.alvo[pi] || 0); });
+  return o;
+}
+function dadosPerfis() { return { editados: PERFIL_CLI.editados, novos: PERFIL_CLI.novos, sel: perfilSel }; }
+function aplicarPerfisSalvos(dd) {
+  PERFIL_CLI = normalizarPerfis(dd);
+  perfilSel = dd && typeof dd.sel === 'number' ? dd.sel : null;
+  PERFIL_SUJO = false;
+}
+function carregarPerfilCliente(id) {
+  if (!id || !sb || !logado) return;
+  sb.from('consolidacao_perfis').select('dados').eq('cliente_id', id).maybeSingle().then(function (r) {
+    if (CLI.id !== id || !r || r.error) return;
+    var dd = r.data && r.data.dados;
+    if (dd) { aplicarPerfisSalvos(dd); msgPerfil = { t: 'Perfil salvo de ' + CLI.nome + ' carregado.', erro: false }; }
+    else if (!PERFIL_SUJO) { PERFIL_CLI = perfisVazios(); msgPerfil = { t: '', erro: false }; }
+    if (D && R) reanalisar();
+  });
+}
+function salvarPerfilCliente() {
+  function dizer(t, erro) { msgPerfil = { t: t, erro: !!erro }; if (D && R) render(); }
+  if (!logado || !sb) { dizer('Entre no site com a sua conta para salvar o perfil do cliente (abra esta ferramenta a partir do site autenticado).', true); return; }
+  if (!CLI.id) { dizer('Selecione ou cadastre um cliente no campo "Cliente cadastrado", no topo da página, para salvar o perfil.', true); return; }
+  var id = CLI.id, nome = CLI.nome;
+  sb.from('consolidacao_perfis').upsert({ cliente_id: id, dados: dadosPerfis(), updated_at: new Date().toISOString() }, { onConflict: 'user_id,cliente_id' }).then(function (r) {
+    if (r.error) { dizer('Não foi possível salvar o perfil: ' + r.error.message, true); return; }
+    PERFIL_SUJO = false;
+    dizer('Perfil salvo para ' + nome + ' em ' + new Date().toLocaleString('pt-BR') + '. Ele será carregado automaticamente ao selecionar este cliente.', false);
+  });
+}
+function definirAlvo(pi, chave, v) {
+  var np = MATRIZ_PADRAO.perfis.length;
+  if (pi < np) { var e = PERFIL_CLI.editados[pi] || (PERFIL_CLI.editados[pi] = pesosDoPerfil(pi)); e[chave] = v; }
+  else if (PERFIL_CLI.novos[pi - np]) PERFIL_CLI.novos[pi - np].alvos[chave] = v;
+}
+function aplicarAcaoPerfil(t) {
+  function ach(sel) { return t && t.closest ? t.closest(sel) : null; }
+  var el, np = MATRIZ_PADRAO.perfis.length;
+  if (!R) return false;
+  var pi = perfilAtualIdx();
+  if ((el = ach('[data-perfil-novo]'))) {
+    var campo = document.getElementById('in-novo-perfil');
+    var nome = ((campo && campo.value) || '').trim() || ('Perfil personalizado ' + (PERFIL_CLI.novos.length + 1));
+    PERFIL_CLI.novos.push({ nome: nome, alvos: pesosDoPerfil(pi, el.getAttribute('data-perfil-novo') === 'zerado') });
+    perfilSel = np + PERFIL_CLI.novos.length - 1;
+    ST.novoPerfil = ''; PERFIL_SUJO = true;
+    msgPerfil = { t: 'Perfil "' + nome + '" criado. Ajuste os percentuais na tabela e salve o perfil para o cliente.', erro: false };
+    reanalisar(); return true;
+  }
+  if (ach('[data-perfil-excluir]')) {
+    if (pi < np || !PERFIL_CLI.novos[pi - np]) return true;
+    if (!confirm('Excluir o perfil "' + PERFIL_CLI.novos[pi - np].nome + '"?')) return true;
+    PERFIL_CLI.novos.splice(pi - np, 1); perfilSel = null; PERFIL_SUJO = true;
+    msgPerfil = { t: 'Perfil excluído. Salve o perfil para o cliente para manter a alteração.', erro: false };
+    reanalisar(); return true;
+  }
+  if (ach('[data-perfil-restaurar]')) {
+    delete PERFIL_CLI.editados[pi]; PERFIL_SUJO = true;
+    msgPerfil = { t: 'Valores padrão restaurados. Salve o perfil para o cliente para manter a alteração.', erro: false };
+    reanalisar(); return true;
+  }
+  if (ach('[data-perfil-salvar]')) { salvarPerfilCliente(); return true; }
+  return false;
+}
+document.addEventListener('change', function (ev) {
+  var t = ev.target;
+  if (!t || !t.getAttribute || !R) return;
+  var chave = t.getAttribute('data-alvo');
+  if (chave !== null) {
+    var v = numExtrato(t.value);
+    if (v === null || v < 0 || v > 100) { msgPerfil = { t: 'Informe um percentual entre 0 e 100.', erro: true }; render(); return; }
+    definirAlvo(perfilAtualIdx(), chave, Math.round(v * 100) / 100);
+    PERFIL_SUJO = true;
+    msgPerfil = { t: 'Percentuais alterados. Salve o perfil para o cliente para mantê-los.', erro: false };
+    reanalisar(); return;
+  }
+  if (t.id === 'in-nome-perfil') {
+    var np = MATRIZ_PADRAO.perfis.length, pi = perfilAtualIdx(), n = t.value.trim();
+    if (pi >= np && PERFIL_CLI.novos[pi - np] && n) { PERFIL_CLI.novos[pi - np].nome = n; PERFIL_SUJO = true; reanalisar(); }
+  }
+});
 
 // ── Estado, filtros cruzados e dimensões ──
 // Cada dimensão pode ter vários valores selecionados (união dentro da dimensão, interseção entre dimensões).
@@ -17250,14 +17351,29 @@ PAGINAS.alocacao = function () {
     var alvo = l.alvo[pi] || 0;
     return '<div class="cmp"><div class="cmp-rot">' + esc(l.nome) + '</div><div class="cmp-b"><div class="trilho"><div class="fill" style="width:' + (l.atual / maxP * 100).toFixed(1) + '%"></div></div><span>' + fmtP(l.atual, 1) + ' atual</span></div><div class="cmp-b"><div class="trilho"><div class="fill cinza" style="width:' + (alvo / maxP * 100).toFixed(1) + '%"></div></div><span>' + fmtP(alvo, 1) + ' alvo</span></div></div>';
   }).join('');
+  var np = MATRIZ_PADRAO.perfis.length, ehCustom = pi >= np, editado = pi < np && !!PERFIL_CLI.editados[pi];
+  var fmtIn = function (v) { return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  var somaAlvo = soma(R.linhas, function (l) { return l.alvo[pi] || 0; });
   var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Classe</th><th>Atual (%)</th><th>Atual (R$)</th><th>' + esc(perfis[pi].nome) + ' (%)</th><th>Diferença (p.p.)</th><th>Ajuste (R$)</th></tr></thead><tbody>';
   var ausentes = [];
   R.linhas.forEach(function (l, i) {
     var alvo = l.alvo[pi] || 0, dif = l.atual - alvo, aj = -dif / 100 * R.total;
     if (l.atual < 0.005 && alvo > 0) ausentes.push({ nome: l.nome, alvo: alvo });
-    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(l.nome) + '</td><td>' + fmtP(l.atual) + '</td><td>' + fmtBRL(l.valor) + '</td><td>' + fmtP(alvo) + '</td><td class="' + (Math.abs(dif) < 0.005 ? '' : (dif > 0 ? 'neg' : 'pos')) + '">' + (dif > 0 ? '+' : '') + fmtP(dif) + '</td><td class="' + (aj > 0 ? 'pos' : (aj < 0 ? 'neg' : '')) + '">' + (aj > 0 ? '+' : '') + fmtBRL(aj) + '</td></tr>';
+    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(l.nome) + '</td><td>' + fmtP(l.atual) + '</td><td>' + fmtBRL(l.valor) + '</td><td><input type="text" class="in-crit" style="max-width:84px;text-align:right;" data-alvo="' + esc(l.chave) + '" value="' + fmtIn(alvo) + '" title="Percentual-alvo do perfil (editável)"></td><td class="' + (Math.abs(dif) < 0.005 ? '' : (dif > 0 ? 'neg' : 'pos')) + '">' + (dif > 0 ? '+' : '') + fmtP(dif) + '</td><td class="' + (aj > 0 ? 'pos' : (aj < 0 ? 'neg' : '')) + '">' + (aj > 0 ? '+' : '') + fmtBRL(aj) + '</td></tr>';
   });
-  t += '</tbody></table></div><p class="nota">Ajuste positivo indica compra e negativo indica venda para atingir a alocação-alvo do perfil. Caixa e proventos estão incluídos em RF Pós-fixado. Pesos dos perfis: matriz padrão das carteiras recomendadas.</p>';
+  t += '<tr><td class="e"><b>Total</b></td><td><b>' + fmtP(soma(R.linhas, function (l) { return l.atual; })) + '</b></td><td><b>' + fmtBRL(soma(R.linhas, function (l) { return l.valor; })) + '</b></td><td class="' + (Math.abs(somaAlvo - 100) < 0.01 ? '' : 'neg') + '"><b>' + fmtP(somaAlvo) + '</b></td><td></td><td></td></tr>';
+  t += '</tbody></table></div>';
+  var avisoSoma = Math.abs(somaAlvo - 100) >= 0.01 ? '<p class="nota" style="color:var(--red);">A soma dos percentuais-alvo é ' + fmtP(somaAlvo) + '; o ideal é 100,00%. Os ajustes em R$ são calculados sobre os percentuais informados.</p>' : '';
+  var barra = '<div class="barra-sl" style="margin-bottom:10px;gap:8px;">' +
+    '<input type="text" id="in-novo-perfil" class="in-crit" style="max-width:200px;" placeholder="Nome do novo perfil" value="' + esc(ST.novoPerfil || '') + '" autocomplete="off">' +
+    '<button type="button" class="btn btn-peq" data-perfil-novo="copia">+ Criar a partir deste perfil</button>' +
+    '<button type="button" class="btn btn-peq" data-perfil-novo="zerado">+ Criar em branco</button>' +
+    (ehCustom ? '<input type="text" id="in-nome-perfil" class="in-crit" style="max-width:200px;" value="' + esc(perfis[pi].nome) + '" title="Nome do perfil (editável)"><button type="button" class="btn btn-peq" data-perfil-excluir="1">Excluir perfil</button>' : '') +
+    (editado ? '<button type="button" class="btn btn-peq" data-perfil-restaurar="1">Restaurar valores padrão</button>' : '') +
+    '<button type="button" class="btn btn-primary btn-peq" data-perfil-salvar="1">💾 Salvar perfil para o cliente</button></div>';
+  var statusPerfil = '<p class="card-sub" style="margin:0 0 10px;">' + (CLI.id ? 'Cliente: <b>' + esc(CLI.nome) + '</b>' : 'Nenhum cliente cadastrado selecionado: escolha um no campo "Cliente cadastrado", no topo da página, para salvar o perfil.') + (PERFIL_SUJO ? ' · <b>alterações ainda não salvas</b>' : '') + (editado ? ' · perfil padrão com percentuais ajustados' : '') + (ehCustom ? ' · perfil criado pelo usuário' : '') + '</p>' +
+    (msgPerfil.t ? '<p class="card-sub" style="color:' + (msgPerfil.erro ? 'var(--red)' : 'var(--green)') + ';">' + esc(msgPerfil.t) + '</p>' : '');
+  t = barra + statusPerfil + t + avisoSoma + '<p class="nota">Ajuste positivo indica compra e negativo indica venda para atingir a alocação-alvo do perfil. Caixa e proventos estão incluídos em RF Pós-fixado. Pesos dos perfis: matriz padrão das carteiras recomendadas; os percentuais podem ser editados e o perfil pode ser salvo para cada cliente.</p>';
   var aus = ausentes.length ? '<p class="nota"><b>Classes ausentes na carteira:</b> ' + ausentes.map(function (a) { return esc(a.nome) + ' (alvo de ' + fmtP(a.alvo, 1) + ', ' + fmtRS(a.alvo / 100 * R.total) + ')'; }).join('; ') + '.</p>' : '';
   var h = '<p class="resumo">O perfil do cliente não consta do relatório XPerformance. Clique em um perfil da régua para compará-lo classe a classe.</p><div class="tiles">';
   h += tile('t5', 'Régua de perfis', reg, 'clique para comparar');
@@ -17496,7 +17612,7 @@ document.addEventListener('click', function (ev) {
   var t = ev.target;
   function ach(sel) { return t && t.closest ? t.closest(sel) : null; }
   var el;
-  if (aplicarAcaoCriterio(t) || aplicarAcaoInst(t) || aplicarAcaoHist(t)) return;
+  if (aplicarAcaoCriterio(t) || aplicarAcaoInst(t) || aplicarAcaoHist(t) || aplicarAcaoPerfil(t)) return;
   if ((el = ach('[data-rm]'))) { var pr = el.getAttribute('data-rm'), ix = pr.indexOf('|'); alternar(pr.slice(0, ix), pr.slice(ix + 1)); render(); return; }
   if ((el = ach('[data-limpar]'))) { ST.f = {}; render(); return; }
   if ((el = ach('[data-aba]'))) { ST.aba = el.getAttribute('data-aba'); render(); return; }
