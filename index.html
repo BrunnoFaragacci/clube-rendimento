@@ -20320,11 +20320,7 @@ var corpo = document.getElementById('cp-corpo');
 // silêncio (sem erro no console). Por isso "statusEl".
 var statusEl = document.getElementById('cp-status');
 
-fetch(SB_URL + '/rest/v1/credito_privado_indicadores?select=*&order=nome.asc', {
-  headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
-})
-  .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-  .then(function(linhas) {
+function renderizarIndicadores(linhas) {
     if (!linhas || !linhas.length) {
       statusEl.textContent = 'Nenhum dado disponível no momento.';
       return;
@@ -20362,10 +20358,32 @@ fetch(SB_URL + '/rest/v1/credito_privado_indicadores?select=*&order=nome.asc', {
     tornarColunasAjustaveis(document.querySelector('.cp-table'));
     tornarLinhasMarcaveisExcluiveis(corpo);
     configurarSelecaoPrint();
+}
+
+// Carrega os indicadores com limite de tempo e até 3 tentativas (falhas momentâneas de rede ou do
+// servidor não deixam mais a tela vazia); se todas falharem, informa o motivo e oferece nova tentativa.
+function carregarIndicadores(tentativa) {
+  statusEl.textContent = tentativa > 1 ? 'Tentando novamente (' + tentativa + ' de 3)...' : 'Carregando indicadores...';
+  var ctrl = new AbortController();
+  var limite = setTimeout(function() { ctrl.abort(); }, 20000);
+  fetch(SB_URL + '/rest/v1/credito_privado_indicadores?select=*&order=nome.asc', {
+    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY },
+    signal: ctrl.signal
   })
-  .catch(function(e) {
-    statusEl.textContent = 'Não foi possível carregar os indicadores agora. Tente novamente em instantes.';
-  });
+    .then(function(r) { clearTimeout(limite); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(linhas) {
+      try { renderizarIndicadores(linhas); }
+      catch (e) { console.error(e); statusEl.textContent = 'Os indicadores foram recebidos, mas não puderam ser exibidos (' + (e && e.message ? e.message : e) + ').'; }
+    })
+    .catch(function(e) {
+      clearTimeout(limite);
+      if (tentativa < 3) { setTimeout(function() { carregarIndicadores(tentativa + 1); }, 1500 * tentativa); return; }
+      var motivo = e && e.name === 'AbortError' ? 'tempo de resposta esgotado' : (e && e.message ? e.message : 'falha de conexão');
+      statusEl.innerHTML = 'Não foi possível carregar os indicadores agora (' + motivo + '). <button type="button" id="cp-tentar" class="btn" style="margin-left:8px;">Tentar novamente</button>';
+      document.getElementById('cp-tentar').addEventListener('click', function() { carregarIndicadores(1); });
+    });
+}
+carregarIndicadores(1);
 
 // Checkbox por linha ("selecionar os ativos que quero que apareça no
 // print") + botão "Tirar print", mesmo mecanismo de captura via
