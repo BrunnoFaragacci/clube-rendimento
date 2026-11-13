@@ -52,6 +52,8 @@ a{color:inherit;}
   /* Garante que o atributo HTML 'hidden' sempre vença qualquer display definido em classes CSS */
   [hidden] { display: none !important; }
   .auth-logado{display:flex;align-items:center;gap:12px;position:relative;}
+  body.conta-cliente .nav-links > *:not(#btn-nav-consolidacao){display:none !important;}
+  body.conta-cliente #dd-meus-clientes{display:none !important;}
   .auth-email{font-size:13px;font-weight:600;color:var(--ink);}
   .user-menu-btn{display:flex;align-items:center;gap:6px;background:var(--bg-soft);border:1px solid var(--line);cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;color:var(--ink);padding:8px 14px;border-radius:999px;transition:border-color .18s,box-shadow .18s;}
   .user-menu-btn:hover{border-color:var(--orange);box-shadow:0 4px 14px rgba(0,0,0,.15);}
@@ -10178,6 +10180,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           if (elNome) elNome.textContent = (r.data && r.data.nome) ? r.data.nome : sessaoAtual.user.email;
           var itemGerenciar = document.getElementById('dd-gerenciar-usuarios');
           if (itemGerenciar) itemGerenciar.hidden = !isMasterAtual;
+          verificarContaCliente();
         });
       }
       verificarPrecosAlvoAtingidos();
@@ -10186,8 +10189,28 @@ h2{font-size:32px;letter-spacing:-.02em;}
       esconderId('auth-logado');
       esconderId('user-dropdown');
       isMasterAtual = false;
+      document.body.classList.remove('conta-cliente');
       esconderId('alertas-precos');
     }
+  }
+
+  // Conta de cliente: e-mail cadastrado por um assessor, verificado, sem clientes próprios e sem perfil master.
+  // Nesse caso o menu mostra somente "Minha carteira" (a consolidação do próprio cliente, em modo de leitura).
+  function verificarContaCliente() {
+    if (!supabaseClient || !sessaoAtual || isMasterAtual) { document.body.classList.remove('conta-cliente'); return; }
+    var uid = sessaoAtual.user.id;
+    Promise.all([
+      supabaseClient.rpc('minha_consolidacao'),
+      supabaseClient.from('clientes').select('id', { count: 'exact', head: true })
+    ]).then(function(rs) {
+      if (!sessaoAtual || sessaoAtual.user.id !== uid) return;
+      var tem = rs[0] && !rs[0].error && Array.isArray(rs[0].data) && rs[0].data.length > 0;
+      var proprios = rs[1] && !rs[1].error ? (rs[1].count || 0) : 1;
+      var soCliente = tem && proprios === 0;
+      document.body.classList.toggle('conta-cliente', soCliente);
+      var b = document.getElementById('btn-nav-consolidacao');
+      if (b) b.textContent = soCliente ? 'Minha carteira ↗' : 'Consolidação de Carteira ↗';
+    }).catch(function() {});
   }
 
   // Alerta na tela inicial: compara o preço atual de cada ticker com
@@ -10452,7 +10475,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
 body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-soft);color:var(--ink);min-height:100vh;}
 .nav{background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;}
 .nav-brand{font-weight:700;font-size:15px;text-decoration:none;color:var(--ink);}
-.container{max-width:780px;margin:0 auto;padding:32px 20px;}
+.container{max-width:1000px;margin:0 auto;padding:32px 20px;}
 .eyebrow{display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:600;color:var(--og);margin-bottom:14px;}
 .eyebrow::before{content:"";width:18px;height:2px;background:var(--orange);display:inline-block;}
 h1{font-size:24px;font-weight:700;margin-bottom:6px;}
@@ -10477,7 +10500,11 @@ tbody tr:last-child td{border-bottom:none;}
 tbody tr:hover td{background:var(--bg-soft);}
 .nome-link{background:none;border:none;padding:0;font:inherit;color:var(--og);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
 .nome-link:hover{color:var(--orange);}
-.acoes-cel{display:flex;gap:8px;justify-content:flex-end;}
+.acoes-cel{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
+.sel-acesso{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:700;border:1.5px solid var(--ink);white-space:nowrap;}
+.sel-acesso.on{background:var(--ink);color:#fff;}
+.sel-acesso.fraco{border-color:var(--line);color:var(--ink-soft);font-weight:600;}
+.email-cel{color:var(--ink-soft);font-size:13px;word-break:break-all;}
 .vazio{padding:32px;text-align:center;color:var(--ink-soft);font-size:13px;}
 </style>
 </head>
@@ -10490,11 +10517,12 @@ tbody tr:hover td{background:var(--bg-soft);}
 <div class="container">
   <span class="eyebrow">Área do assessor</span>
   <h1>Meus Clientes</h1>
-  <p class="sub">Cadastre os clientes que você acompanha. Clique no nome de um cliente para cadastrar os preços-alvo de venda dos ativos dele. Cada cliente cadastrado é visível apenas para você.</p>
+  <p class="sub">Cadastre os clientes que você acompanha. Clique no nome de um cliente para cadastrar os preços-alvo de venda dos ativos dele. Cada cliente cadastrado é visível apenas para você. Ao informar o e-mail do cliente, ele passa a visualizar a própria carteira, somente para leitura, em "Consolidação de Carteira", assim que criar uma conta no site com esse e-mail e confirmá-lo.</p>
 
   <div class="card">
     <div class="form-row">
       <input type="text" id="cliente-novo-nome" placeholder="Nome do cliente" autocomplete="off">
+      <input type="email" id="cliente-novo-email" placeholder="E-mail do cliente (opcional)" autocomplete="off">
       <button type="button" class="btn" id="btn-adicionar">Adicionar</button>
     </div>
     <p class="erro" id="erro-form" hidden></p>
@@ -10537,6 +10565,16 @@ function abrirPaginaCliente(id, nome) {
   }
 }
 
+var acessoCache = {};
+function escHtml(t) { return String(t === undefined || t === null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+function rotuloAcesso(c) {
+  if (!c.email) return '<span class="sel-acesso fraco">Sem e-mail</span>';
+  var a = acessoCache[c.id];
+  if (a && a.verificado) return '<span class="sel-acesso on">Acesso liberado</span>';
+  if (a && a.tem_conta) return '<span class="sel-acesso">Conta criada: e-mail não confirmado</span>';
+  return '<span class="sel-acesso fraco">Aguardando cadastro do cliente</span>';
+}
+function emailValido(e) { return /^[^ @]+@[^ @]+[.][^ @]+$/.test(e); }
 function renderizarLista() {
   var cont = document.getElementById('lista-conteudo');
   if (!clientesCache.length) {
@@ -10544,21 +10582,37 @@ function renderizarLista() {
     return;
   }
   var linhas = clientesCache.map(function(c) {
-    var nomeEscapado = c.nome.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
     return '<tr>' +
-      '<td><button type="button" class="nome-link" data-acao="abrir" data-id="' + c.id + '">' + nomeEscapado + '</button></td>' +
+      '<td><button type="button" class="nome-link" data-acao="abrir" data-id="' + c.id + '">' + escHtml(c.nome) + '</button></td>' +
+      '<td class="email-cel">' + (c.email ? escHtml(c.email) : '—') + '</td>' +
+      '<td>' + rotuloAcesso(c) + '</td>' +
       '<td><div class="acoes-cel">' +
+      '<button type="button" class="btn btn-outline btn-sm" data-acao="email" data-id="' + c.id + '">' + (c.email ? 'Alterar e-mail' : 'Cadastrar e-mail') + '</button>' +
       '<button type="button" class="btn btn-outline btn-sm" data-acao="renomear" data-id="' + c.id + '">Renomear</button>' +
       '<button type="button" class="btn btn-excluir btn-sm" data-acao="excluir" data-id="' + c.id + '">Excluir</button>' +
       '</div></td>' +
       '</tr>';
   }).join('');
-  cont.innerHTML = '<table><thead><tr><th>Cliente</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table>';
+  cont.innerHTML = '<table><thead><tr><th>Cliente</th><th>E-mail</th><th>Acesso à carteira</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table>';
 
   Array.prototype.forEach.call(cont.querySelectorAll('[data-acao="abrir"]'), function(btn) {
     btn.addEventListener('click', function() {
       var c = clientesCache.find(function(x) { return String(x.id) === btn.getAttribute('data-id'); });
       if (c) abrirPaginaCliente(c.id, c.nome);
+    });
+  });
+  Array.prototype.forEach.call(cont.querySelectorAll('[data-acao="email"]'), function(btn) {
+    btn.addEventListener('click', function() {
+      var c = clientesCache.find(function(x) { return String(x.id) === btn.getAttribute('data-id'); });
+      if (!c) return;
+      var novo = prompt('E-mail de ' + c.nome + ' (deixe em branco para remover o acesso):', c.email || '');
+      if (novo === null) return;
+      novo = novo.trim().toLowerCase();
+      if (novo && !emailValido(novo)) { alert('Informe um e-mail válido.'); return; }
+      sb.from('clientes').update({ email: novo || null }).eq('id', c.id).then(function(r) {
+        if (r.error) { alert('Erro ao salvar o e-mail: ' + r.error.message); return; }
+        carregarClientes();
+      });
     });
   });
   Array.prototype.forEach.call(cont.querySelectorAll('[data-acao="renomear"]'), function(btn) {
@@ -10590,10 +10644,16 @@ function renderizarLista() {
 
 function carregarClientes() {
   var cont = document.getElementById('lista-conteudo');
-  sb.from('clientes').select('id,nome').order('nome', { ascending: true }).then(function(r) {
+  sb.from('clientes').select('id,nome,email').order('nome', { ascending: true }).then(function(r) {
     if (r.error) { cont.innerHTML = '<p class="vazio">Erro ao carregar clientes: ' + r.error.message + '</p>'; return; }
     clientesCache = r.data || [];
     renderizarLista();
+    if (!clientesCache.some(function(c) { return c.email; })) return;
+    sb.rpc('situacao_acesso_clientes').then(function(x) {
+      acessoCache = {};
+      ((x && !x.error && x.data) || []).forEach(function(a) { acessoCache[a.cliente_id] = a; });
+      renderizarLista();
+    });
   });
 }
 
@@ -10603,24 +10663,29 @@ document.getElementById('btn-adicionar').addEventListener('click', function() {
   var botao = document.getElementById('btn-adicionar');
   elErro.hidden = true;
   var nome = (input.value || '').trim();
+  var email = (document.getElementById('cliente-novo-email').value || '').trim().toLowerCase();
   if (!nome) { elErro.textContent = 'Informe o nome do cliente.'; elErro.hidden = false; return; }
+  if (email && !emailValido(email)) { elErro.textContent = 'Informe um e-mail válido ou deixe o campo em branco.'; elErro.hidden = false; return; }
 
   botao.disabled = true; botao.textContent = 'Adicionando...';
   sb.auth.getUser().then(function(res) {
     var usuario = res && res.data && res.data.user;
     if (!usuario) throw new Error('Sessão expirada. Feche esta aba, entre novamente no site e tente de novo.');
-    return sb.from('clientes').insert({ nome: nome, user_id: usuario.id });
+    return sb.from('clientes').insert({ nome: nome, email: email || null, user_id: usuario.id });
   }).then(function(r) {
     if (r.error) throw r.error;
     input.value = '';
+    document.getElementById('cliente-novo-email').value = '';
     carregarClientes();
   }).catch(function(e) {
     elErro.textContent = 'Erro ao adicionar cliente: ' + (e && e.message ? e.message : String(e));
     elErro.hidden = false;
   }).finally(function() { botao.disabled = false; botao.textContent = 'Adicionar'; });
 });
-document.getElementById('cliente-novo-nome').addEventListener('keydown', function(ev) {
-  if (ev.key === 'Enter') document.getElementById('btn-adicionar').click();
+['cliente-novo-nome', 'cliente-novo-email'].forEach(function(id) {
+  document.getElementById(id).addEventListener('keydown', function(ev) {
+    if (ev.key === 'Enter') document.getElementById('btn-adicionar').click();
+  });
 });
 
 sincronizarSessaoDoOpener().then(function() { carregarClientes(); });
@@ -15437,6 +15502,12 @@ th.ord:hover{color:var(--ink);}
 .tit-pagina{font-size:16px;margin:26px 0 4px;padding-top:14px;border-top:2px solid var(--ink);}
 @media(max-width:960px){.t4,.t5,.t6,.t7,.t8{grid-column:span 12;}}
 @media print{.abas,.filtros .btn,.chip-f button,.barra-sl,#dica{display:none!important;}.tile{box-shadow:none;border-color:#ccc;}.clic{cursor:default;}}
+
+/* visão do cliente: somente leitura */
+body.modo-cliente #area-envio,body.modo-cliente #area-salvas,body.modo-cliente #area-criterios,body.modo-cliente #btn-arquivos,body.modo-cliente .msg-salvar,body.modo-cliente [data-salvar],body.modo-cliente .rm,body.modo-cliente [data-oxadd],body.modo-cliente [data-oxnovo],body.modo-cliente .form-crit,body.modo-cliente [data-perfil-novo],body.modo-cliente [data-perfil-excluir],body.modo-cliente [data-perfil-restaurar],body.modo-cliente [data-perfil-salvar],body.modo-cliente .aba[data-aba="hist"],body.modo-cliente [data-baixar-arq]{display:none!important;}
+body.modo-cliente .container > .sub{display:none;}
+#faixa-cliente .card-sub{max-width:900px;}
+#faixa-cliente select{padding:8px 11px;border:1.5px solid var(--line);border-radius:9px;font-family:inherit;font-size:13px;margin-right:10px;}
 </style>
 </head>
 <body>
@@ -15450,6 +15521,8 @@ th.ord:hover{color:var(--ink);}
   <h1>Consolidação de Carteira</h1>
   <p class="sub">Carregue os arquivos da carteira do cliente: relatório XPerformance (PDF), posição detalhada da XP (Excel), extratos de outras instituições (PDF, Excel ou CSV) e carteiras em dólar. É possível enviar vários arquivos de uma vez, ou arrastá-los para esta área: o sistema identifica o tipo de cada arquivo e a instituição de origem, e o nome de cada banco pode ser corrigido na aba Instituições. O painel consolida patrimônio, rentabilidade, alocação por estratégia, aderência aos perfis, concentração, vencimentos da renda fixa, liquidez, tributação e movimentações, com pontos de atenção. O arquivo é lido apenas neste navegador e não é enviado a nenhum servidor.</p>
 
+  <div class="card" id="faixa-cliente" hidden></div>
+
   <div class="card" id="area-envio">
     <div class="controles">
       <div class="campo"><label for="sel-cliente">Cliente cadastrado</label><select id="sel-cliente" disabled><option value="">— sem cliente cadastrado —</option></select></div>
@@ -15460,6 +15533,7 @@ th.ord:hover{color:var(--ink);}
       <input type="file" id="arq-carteira" accept=".pdf,.xlsx,.xls,.csv" multiple hidden>
       <span id="status" style="font-size:12.5px;color:var(--ink-soft);">Nenhum arquivo carregado.</span>
       <span style="flex:1"></span>
+      <button type="button" class="btn" id="btn-minha-carteira" data-minha-carteira="0" hidden>Ver minha carteira (como cliente)</button>
       <button type="button" class="btn" id="btn-salvas">Carteiras salvas</button>
       <button type="button" class="btn" id="btn-criterios">Critérios de crédito</button>
     </div>
@@ -16109,7 +16183,7 @@ function iniciarCriterios() {
     var u = res && res.data && res.data.user;
     if (!u) return false;
     return sb.from('profiles').select('role').eq('id', u.id).single().then(function (x) { return !!(x.data && x.data.role === 'master'); });
-  }).then(function (m) { ehMaster = !!m; return Promise.all([carregarCriterios(), carregarClientes(), carregarSalvas()]); })
+  }).then(function (m) { ehMaster = !!m; return Promise.all([carregarCriterios(), carregarClientes(), carregarSalvas()]); }).then(function () { return carregarMinhaCarteira(); })
     .catch(function () { logado = false; })
     .then(function () { aposAlterarCriterios(); });
 }
@@ -16380,6 +16454,8 @@ function reanalisar() {
 function aplicarAcaoInst(t) {
   function ach(sel) { return t && t.closest ? t.closest(sel) : null; }
   var el;
+  if ((el = ach('[data-minha-carteira]'))) { entrarModoCliente(MINHAS[Number(el.getAttribute('data-minha-carteira')) || 0]); return true; }
+  if (ach('[data-sair-cliente]')) { sairModoCliente(); return true; }
   if ((el = ach('[data-baixar-arq]'))) { baixarArquivo(el.getAttribute('data-baixar-arq')); return true; }
   if (ach('[data-rmbase]')) { removerBase(); return true; }
   if ((el = ach('[data-oxdel]'))) { var p = el.getAttribute('data-oxdel').split('|'); OUTRAS[Number(p[0])].itens.splice(Number(p[1]), 1); reanalisar(); return true; }
@@ -16454,7 +16530,7 @@ function carregarSalvas() {
 }
 function nomeClienteAtual() { return CLI.id ? CLI.nome : (document.getElementById('in-cliente').value || '').trim(); }
 function salvarCarteira() {
-  if (!D || !R) return;
+  if (!D || !R || MODO_CLIENTE) return;
   function dizer(t, erro) { msgSalvar = { t: t, erro: !!erro }; Array.prototype.forEach.call(document.querySelectorAll('.msg-salvar'), function (el) { el.style.color = erro ? 'var(--red)' : 'var(--green)'; el.textContent = t; }); }
   if (!logado || !sb) { dizer('Entre no site com a sua conta para salvar carteiras (abra esta ferramenta a partir do site autenticado).', true); return; }
   var iso = dataRefISO(D), outrasTot = soma(R.itens.filter(function (p) { return p.outra; }), function (p) { return p.saldo; });
@@ -17147,12 +17223,64 @@ function baixarArquivo(nome) {
   });
 }
 function celulaArquivo(nome) {
-  if (!nome) return '';
+  if (!nome || MODO_CLIENTE) return '';
   var e = ARQS[nome];
   if (!e || !(e.file || e.caminho)) return '<br><small style="color:var(--ink-soft);">Arquivo original não armazenado (enviado antes deste recurso).</small>';
   var est = e.erroEnvio ? '<small style="color:var(--red);"> Não armazenado: ' + esc(e.erroEnvio) + '</small>' : (e.caminho ? '<small style="color:var(--ink-soft);"> Armazenado</small>' : (CLI.id ? '<small style="color:var(--ink-soft);"> Armazenando...</small>' : '<small style="color:var(--ink-soft);"> Não armazenado: selecione um cliente no topo da página</small>'));
   return '<br><button type="button" class="btn btn-peq" data-baixar-arq="' + esc(nome) + '">⬇ Baixar original</button>' + est;
 }
+// ── Visão do cliente: o cliente cadastrado pelo assessor (conta com e-mail verificado) vê, somente para leitura, a própria consolidação ──
+var MODO_CLIENTE = false, MINHAS = [], MINHA_IDX = 0;
+function bloquearEdicao() {
+  Array.prototype.forEach.call(document.querySelectorAll('#conteudo input, #conteudo select, #conteudo textarea'), function (e) { if (e.id !== 'in-busca') e.disabled = true; });
+}
+function renderFaixaCliente() {
+  var el = document.getElementById('faixa-cliente'), bt = document.getElementById('btn-minha-carteira');
+  if (bt) bt.hidden = !MINHAS.length || MODO_CLIENTE;
+  if (!el) return;
+  if (!MODO_CLIENTE) { el.hidden = true; el.innerHTML = ''; return; }
+  var row = MINHAS[MINHA_IDX] || {};
+  var sel = MINHAS.length > 1 ? '<div style="margin-top:10px;"><select id="sel-minha">' + MINHAS.map(function (m, i) { return '<option value="' + i + '"' + (i === MINHA_IDX ? ' selected' : '') + '>' + esc(m.cliente_nome || 'Carteira') + ' (atualizada em ' + dataHoraBR(m.updated_at) + ')</option>'; }).join('') + '</select></div>' : '';
+  var sair = (ehMaster || CLIENTES.length) ? '<div style="margin-top:10px;"><button type="button" class="btn btn-peq" data-sair-cliente="1">Sair da visão do cliente</button></div>' : '';
+  el.hidden = false;
+  el.innerHTML = '<div class="card-titulo">Minha carteira' + (row.cliente_nome ? ' · ' + esc(row.cliente_nome) : '') + '</div><p class="card-sub">Visualização somente para leitura da carteira acompanhada pelo seu assessor. Dados atualizados pelo assessor em ' + esc(dataHoraBR(row.updated_at)) + '. As cotações de ações, fundos imobiliários e ETFs são atualizadas automaticamente; os demais valores correspondem à data-base dos arquivos.</p>' + sel + sair;
+}
+function entrarModoCliente(row) {
+  if (!row || !row.dados || !row.dados.D) return;
+  MINHA_IDX = Math.max(0, MINHAS.indexOf(row));
+  MODO_CLIENTE = true;
+  document.body.classList.add('modo-cliente');
+  CLI = { id: '', nome: row.cliente_nome || '' };
+  document.getElementById('in-cliente').value = row.cliente_nome || '';
+  restaurarConsolidacao(row.dados);
+  ESTADO_GRAV = { t: '', erro: false };
+  renderFaixaCliente();
+  atualizarCotacoes(false);
+}
+function sairModoCliente() {
+  MODO_CLIENTE = false;
+  document.body.classList.remove('modo-cliente');
+  D = null; R = null; OUTRAS = []; ARQS = {}; CLI = { id: '', nome: '' };
+  document.getElementById('in-cliente').value = '';
+  document.getElementById('painel').hidden = true;
+  var st = document.getElementById('status');
+  st.style.color = 'var(--ink-soft)'; st.textContent = 'Nenhum arquivo carregado.';
+  renderSelCliente();
+  renderFaixaCliente();
+}
+function carregarMinhaCarteira() {
+  if (!sb || !logado) return Promise.resolve();
+  return sb.rpc('minha_consolidacao').then(function (r) {
+    MINHAS = r && !r.error && Array.isArray(r.data) ? r.data.filter(function (m) { return m && m.dados && m.dados.D; }) : [];
+    renderFaixaCliente();
+    if (MINHAS.length && !ehMaster && !CLIENTES.length && !D) entrarModoCliente(MINHAS[0]);
+  }).catch(function () {});
+}
+document.addEventListener('change', function (ev) {
+  var t = ev.target;
+  if (t && t.id === 'sel-minha' && MINHAS[Number(t.value)]) entrarModoCliente(MINHAS[Number(t.value)]);
+});
+(function () { var r0 = render; render = function () { r0(); if (MODO_CLIENTE) bloquearEdicao(); }; })();
 var ESTADO_GRAV = { t: '', erro: false }, ULT_COT = { t: '', erro: false }, tGravar = null, atualizandoCot = false;
 var RE_TICKER_BR = /^[A-Z][A-Z0-9]{3}\\d{1,2}$/;
 function dataHoraBR(iso) { var d = new Date(iso); return isNaN(d.getTime()) ? '' : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
@@ -17162,7 +17290,7 @@ function atualizarIndicadorGravacao() {
   if (el) { el.textContent = ESTADO_GRAV.t; el.style.color = ESTADO_GRAV.erro ? 'var(--red)' : 'var(--ink-soft)'; }
 }
 function agendarGravacao() {
-  if (!D || !R) return;
+  if (!D || !R || MODO_CLIENTE) return;
   if (!logado || !sb) { ESTADO_GRAV = { t: 'Consolidação não salva: entre no site com a sua conta.', erro: true }; atualizarIndicadorGravacao(); return; }
   if (!CLI.id) { ESTADO_GRAV = { t: 'Consolidação não salva: selecione ou cadastre um cliente no campo "Cliente cadastrado", no topo da página.', erro: true }; atualizarIndicadorGravacao(); return; }
   clearTimeout(tGravar);
