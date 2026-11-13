@@ -15990,21 +15990,32 @@ var CREDLAB = { ok: '✓ Passa nos critérios', nao: '✕ Não passa', pend: '? 
 
 function emissorChave(p) { return compacto(p.emissor || p.nome); }
 // o nome cadastrado pode ser parte do nome do emissor no relatório (e vice-versa)
-function acharEmissor(mapa, ch) {
-  if (mapa[ch]) return mapa[ch];
-  var ks = Object.keys(mapa);
-  for (var i = 0; i < ks.length; i++) {
-    var k = ks[i];
-    if (k.length >= 3 && ch.length >= 3 && (ch.indexOf(k) !== -1 || k.indexOf(ch) !== -1)) return mapa[k];
+// Localiza o cadastro do emissor: nome igual, um contido no outro ou igual após retirar termos societários
+// ("S.A.", "Participações", "Banco"...). A mesma decisão é compartilhada com a tela Análise de Crédito Privado.
+function acharChaveEmissor(mapa, nome) {
+  var ch = compacto(nome), ks = Object.keys(mapa), i, k;
+  if (!ch) return null;
+  if (mapa[ch]) return ch;
+  for (i = 0; i < ks.length; i++) {
+    k = ks[i];
+    if (k.length >= 3 && ch.length >= 3 && (ch.indexOf(k) !== -1 || k.indexOf(ch) !== -1)) return k;
+  }
+  var ce = chaveEmissor(nome);
+  if (ce.length >= 4) {
+    for (i = 0; i < ks.length; i++) {
+      var ck = chaveEmissor(mapa[ks[i]].nome);
+      if (ck.length >= 4 && (ck === ce || ck.indexOf(ce) !== -1 || ce.indexOf(ck) !== -1)) return ks[i];
+    }
   }
   return null;
 }
+function acharEmissor(mapa, nome) { var k = acharChaveEmissor(mapa, nome); return k ? mapa[k] : null; }
 function avaliarCredito(p, expo) {
   if (p.tipo !== 'rf') return null;
   if (p.publico) return { st: 'ok', tipo: 'Título público', seg: '', motivo: 'Título público federal' };
   var ch = emissorChave(p), res;
   if (PAPEIS_BANCO.test(p.papel || '')) {
-    var b = acharEmissor(CRIT.bancos, ch);
+    var b = acharEmissor(CRIT.bancos, p.emissor || p.nome);
     if (!b || (!b.segmento && (b.aprovado === null || b.aprovado === undefined))) res = { st: 'pend', tipo: 'Banco', seg: b ? b.segmento : '', motivo: 'Emissor sem segmento cadastrado' };
     else if (b.aprovado === true || b.aprovado === false) res = { st: b.aprovado ? 'ok' : 'nao', tipo: 'Banco', seg: b.segmento, motivo: 'Exceção cadastrada' + (b.obs ? ': ' + b.obs : '') };
     else {
@@ -16012,7 +16023,7 @@ function avaliarCredito(p, expo) {
       res = { st: aceito ? 'ok' : 'nao', tipo: 'Banco', seg: b.segmento, motivo: aceito ? 'Segmento ' + b.segmento + ' aceito' : 'Segmento ' + b.segmento + ' fora dos segmentos aceitos (' + (CRIT.seg.join(', ') || 'nenhum') + ')' };
     }
   } else {
-    var c = acharEmissor(CRIT.privado, ch);
+    var c = acharEmissor(CRIT.privado, p.emissor || p.nome);
     if (!c || c.aprovado === null || c.aprovado === undefined) res = { st: 'pend', tipo: 'Crédito privado', seg: '', motivo: 'Sem análise de crédito cadastrada' };
     else res = { st: c.aprovado ? 'ok' : 'nao', tipo: 'Crédito privado', seg: '', motivo: (c.aprovado ? 'Aprovado' : 'Reprovado') + ' na análise de crédito' + (c.obs ? ': ' + c.obs : '') };
   }
@@ -16048,15 +16059,15 @@ function remover(cat, ch) {
     if (r && r.error) { msgCrit = 'Não foi possível remover: ' + r.error.message; renderCriterios(); }
   });
 }
-function setBanco(nome, parc) {
-  var ch = compacto(nome);
+function setBanco(nome, parc, aprox) {
+  var ch = (aprox ? acharChaveEmissor(CRIT.bancos, nome) : null) || compacto(nome);
   if (!ch) return;
   var b = CRIT.bancos[ch] || (CRIT.bancos[ch] = { nome: nome, segmento: '', aprovado: null, obs: '' });
   Object.keys(parc).forEach(function (k) { b[k] = parc[k]; });
   persistir('banco', b.nome, ch, { segmento: b.segmento || null, aprovado: b.aprovado === undefined ? null : b.aprovado, observacao: b.obs || null });
 }
-function setPrivado(nome, parc) {
-  var ch = compacto(nome);
+function setPrivado(nome, parc, aprox) {
+  var ch = (aprox ? acharChaveEmissor(CRIT.privado, nome) : null) || compacto(nome);
   if (!ch) return;
   var c = CRIT.privado[ch] || (CRIT.privado[ch] = { nome: nome, aprovado: null, obs: '' });
   Object.keys(parc).forEach(function (k) { c[k] = parc[k]; });
@@ -16172,8 +16183,8 @@ function aplicarAcaoCriterio(t) {
   }
   if ((el = ach('[data-priv]'))) {
     var v = el.getAttribute('data-priv'), k = v.lastIndexOf('|'), nome = v.slice(0, k), val = v.slice(k + 1) === '1';
-    var atual = acharEmissor(CRIT.privado, compacto(nome));
-    setPrivado(nome, { aprovado: atual && atual.aprovado === val ? null : val });
+    var atual = acharEmissor(CRIT.privado, nome);
+    setPrivado(nome, { aprovado: atual && atual.aprovado === val ? null : val }, true);
     aposAlterarCriterios(); return true;
   }
   if (ach('[data-abrir-crit]')) { abrirCriterios(true); return true; }
@@ -16198,7 +16209,7 @@ document.addEventListener('change', function (ev) {
     if (q[1] === 'dec') setPrivado(c.nome, { aprovado: t.value === '' ? null : t.value === '1' }); else setPrivado(c.nome, { obs: t.value.trim() });
     aposAlterarCriterios(); return;
   }
-  if ((a = t.getAttribute('data-ibanco'))) { setBanco(a, { segmento: t.value }); aposAlterarCriterios(); return; }
+  if ((a = t.getAttribute('data-ibanco'))) { setBanco(a, { segmento: t.value }, true); aposAlterarCriterios(); return; }
   if (t.id === 'in-limite') {
     var n = pNum(t.value);
     CRIT.limite = (n !== null && n > 0) ? n : null;
@@ -17622,7 +17633,7 @@ PAGINAS.credito = function () {
     if (c.tipo === 'Banco') {
       ctl = ehMaster ? '<select data-ibanco="' + esc(nome) + '"><option value="">Segmento…</option>' + SEGMENTOS.map(function (s) { return '<option value="' + s[0] + '"' + (c.seg === s[0] ? ' selected' : '') + '>' + s[0] + '</option>'; }).join('') + '</select>' : esc(c.seg || '—');
     } else {
-      var at = acharEmissor(CRIT.privado, compacto(nome));
+      var at = acharEmissor(CRIT.privado, nome);
       var ap = at ? at.aprovado : null;
       ctl = ehMaster ? '<span class="seg-btns"><button type="button" class="' + (ap === true ? 'on' : '') + '" data-priv="' + esc(nome) + '|1">Aprovar</button><button type="button" class="' + (ap === false ? 'on' : '') + '" data-priv="' + esc(nome) + '|0">Reprovar</button></span>' : (ap === null || ap === undefined ? '—' : (ap ? 'Aprovado' : 'Reprovado'));
     }
@@ -19980,6 +19991,16 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 .th-tip{cursor:help;}.th-tip::after{content:"?";display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:rgba(255,255,255,.3);color:#fff;font-size:9px;font-weight:700;margin-left:5px;vertical-align:middle;}.th-tip-box{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:6px;width:280px;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow);z-index:50;text-transform:none;font-weight:400;letter-spacing:normal;white-space:normal;cursor:auto;}.th-tip:hover .th-tip-box{display:block;}.th-tip-titulo{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:6px;}.th-tip-desc{font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:8px;}.th-tip-lista{margin:0;padding-left:16px;font-size:12px;color:var(--ink-soft);line-height:1.5;}.th-tip-lista li{margin-bottom:4px;}
 .cp-busca-status{font-size:12.5px;color:var(--ink-soft);min-height:18px;margin-bottom:12px;}
 .filtro-tabela-input{padding:9px 14px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);width:280px;max-width:100%;background:#fff;}
+.cp-st{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11.5px;font-weight:700;border:1px solid;white-space:nowrap;}
+.cp-st.ok{color:var(--green);border-color:var(--green);}
+.cp-st.nao{color:var(--red);border-color:var(--red);}
+.cp-st.pend{color:var(--ink-soft);border-color:var(--line);}
+.cp-obs{display:block;font-size:11px;color:var(--ink-soft);margin-top:3px;max-width:220px;white-space:normal;}
+.cp-ab{border:1px solid var(--ink);background:#fff;color:var(--ink);border-radius:6px;font-family:inherit;font-size:11.5px;font-weight:700;padding:3px 8px;cursor:pointer;margin-right:4px;}
+.cp-ab:hover{background:var(--ink);color:#fff;}
+.cp-ab.ok:hover{background:var(--green);border-color:var(--green);}
+.cp-ab.nao:hover{background:var(--red);border-color:var(--red);}
+.cp-oculta-status{display:none!important;}
 .cp-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
 .cp-print-area{display:flex;align-items:center;gap:10px;}
 .cp-print-status{font-size:12.5px;color:var(--ink-soft);}
@@ -20023,6 +20044,8 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 
   <div class="cp-toolbar">
     <input type="text" class="filtro-tabela-input" id="cp-filtro" placeholder="Filtrar por nome...">
+    <select id="cp-filtro-analise" class="filtro-tabela-input" style="max-width:190px;"><option value="">Todas as análises</option><option value="ok">Aprovadas</option><option value="nao">Reprovadas</option><option value="pend">Sem análise</option></select>
+    <span class="cp-print-status" id="cp-resumo-analise"></span>
     <div class="cp-print-area">
       <span class="cp-print-status" id="cp-print-status">0 selecionadas</span>
       <button type="button" id="btn-print-cp">📷 Tirar print</button>
@@ -20035,6 +20058,7 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
       <thead><tr>
         <th style="text-align:center;"><input type="checkbox" id="cp-check-todas" title="Selecionar/desmarcar todas as linhas visíveis"></th>
         <th>Empresa</th>
+        <th class="th-tip">Análise<div class="th-tip-box"><div class="th-tip-titulo">Análise de crédito</div><div class="th-tip-desc">Decisão da casa sobre a empresa: aprovada ou reprovada. A mesma decisão é usada na análise de crédito da Consolidação de Carteira.</div><ul class="th-tip-lista"><li><strong>Quem decide:</strong> somente o usuário master; os demais usuários apenas consultam.</li></ul></div></th>
         <th class="th-tip">Segmento<div class="th-tip-box"><div class="th-tip-titulo">Segmento</div><div class="th-tip-desc">Setor de atuação da empresa, classificado manualmente.</div><ul class="th-tip-lista"><li><strong>Interpretação:</strong> empresas do mesmo segmento tendem a ter margens e níveis de endividamento parecidos — compare sempre dentro do mesmo grupo.</li></ul></div></th>
         <th class="th-tip">Rating<div class="th-tip-box"><div class="th-tip-titulo">Rating</div><div class="th-tip-desc">Nota de crédito mais recente encontrada (agência entre parênteses), pesquisada manualmente; sem atualização automática.</div><ul class="th-tip-lista"><li><strong>Interpretação:</strong> ratings mais altos (AAA, AA) indicam menor risco de crédito percebido pelas agências; ratings mais baixos pedem atenção redobrada.</li></ul></div></th>
         <th class="th-tip">Referência<div class="th-tip-box"><div class="th-tip-titulo">Referência</div><div class="th-tip-desc">Data de fim do exercício social a que os números se referem (fechamento do último balanço anual disponível).</div><ul class="th-tip-lista"><li><strong>Interpretação:</strong> prefira dados mais recentes; referências muito antigas podem não refletir a situação atual da empresa.</li></ul></div></th>
@@ -20059,9 +20083,92 @@ h1{font-size:26px;font-weight:700;margin-bottom:8px;}
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/dist/umd/supabase.min.js" referrerpolicy="no-referrer"><\/script>
 <script>
+var SESSAO_INICIAL = ${JSON.stringify(sessaoAtual)};
 var SB_URL = 'https://segeufywrjmstfmfscdi.supabase.co';
 var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZ2V1Znl3cmptc3RmbWZzY2RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzY0OTgsImV4cCI6MjA5ODQxMjQ5OH0.TUrp35SEI2NXdU1ZY7IEcdRm8VLLfLwAVWUtqjafElI';
+
+var sbCP = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+var ehMasterCP = false, logadoCP = false, ANALISES = {};
+// mesma normalização da Consolidação de Carteira: a chave liga a decisão ao emissor da carteira
+function compactoCP(t) { return String(t === undefined || t === null ? '' : t).normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+function escAttrCP(t) { return String(t === undefined || t === null ? '' : t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+function escTxtCP(t) { return String(t === undefined || t === null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+function carregarAnalises() {
+  if (!sbCP || !SESSAO_INICIAL || !SESSAO_INICIAL.access_token) return Promise.resolve();
+  return sbCP.auth.setSession({ access_token: SESSAO_INICIAL.access_token, refresh_token: SESSAO_INICIAL.refresh_token }).then(function(r) {
+    if (r.error) throw r.error;
+    logadoCP = true;
+    return sbCP.auth.getUser();
+  }).then(function(res) {
+    var u = res && res.data && res.data.user;
+    if (!u) throw new Error('sem usuário');
+    return sbCP.from('profiles').select('role').eq('id', u.id).single().then(function(x) { ehMasterCP = !!(x.data && x.data.role === 'master'); });
+  }).then(function() {
+    return sbCP.from('criterios_credito').select('chave,nome,aprovado,observacao').eq('categoria', 'credito_privado');
+  }).then(function(r) {
+    if (r && !r.error) (r.data || []).forEach(function(x) { ANALISES[x.chave] = { nome: x.nome, aprovado: x.aprovado, obs: x.observacao || '' }; });
+  }).catch(function() { /* sem sessão: a tabela segue disponível, sem as decisões */ });
+}
+// mesma regra de correspondência da Consolidação de Carteira (nome igual, um contido no outro ou igual sem termos societários)
+function chaveEmpresaCP(n) {
+  var STOP = { banco: 1, bco: 1, sa: 1, s: 1, a: 1, cia: 1, companhia: 1, participacoes: 1, holding: 1, concessionaria: 1, da: 1, do: 1, de: 1, dos: 1, das: 1, ltda: 1, financeira: 1 };
+  var toks = String(n || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ');
+  var r = toks.filter(function(x) { return x && !STOP[x]; });
+  return r.join('') || toks.join('');
+}
+function acharChaveAnalise(nome) {
+  var ch = compactoCP(nome), ks = Object.keys(ANALISES), i, k;
+  if (!ch) return null;
+  if (ANALISES[ch]) return ch;
+  for (i = 0; i < ks.length; i++) { k = ks[i]; if (k.length >= 3 && ch.length >= 3 && (ch.indexOf(k) !== -1 || k.indexOf(ch) !== -1)) return k; }
+  var ce = chaveEmpresaCP(nome);
+  if (ce.length >= 4) for (i = 0; i < ks.length; i++) { var ck = chaveEmpresaCP(ANALISES[ks[i]].nome); if (ck.length >= 4 && (ck === ce || ck.indexOf(ce) !== -1 || ce.indexOf(ck) !== -1)) return ks[i]; }
+  return null;
+}
+function statusAnalise(nome) {
+  var k = acharChaveAnalise(nome), a = k ? ANALISES[k] : null;
+  return !a || a.aprovado === null || a.aprovado === undefined ? 'pend' : (a.aprovado ? 'ok' : 'nao');
+}
+function htmlAnalise(nome) {
+  var st = statusAnalise(nome), k = acharChaveAnalise(nome), a = k ? ANALISES[k] : null;
+  var rot = { ok: 'Aprovada', nao: 'Reprovada', pend: 'Sem análise' }[st];
+  return '<span class="cp-st ' + st + '">' + rot + '</span>' + (a && a.obs && st !== 'pend' ? '<small class="cp-obs">' + escTxtCP(a.obs) + '</small>' : '');
+}
+function htmlBotoesAnalise() {
+  if (!ehMasterCP) return '';
+  return '<button type="button" class="cp-ab ok" data-dec="ok" title="Aprovar esta empresa">Aprovar</button><button type="button" class="cp-ab nao" data-dec="nao" title="Reprovar esta empresa">Reprovar</button><button type="button" class="cp-ab" data-dec="limpar" title="Remover a decisão (sem análise)">Limpar</button>';
+}
+function aplicarFiltroAnalise() {
+  var sel = document.getElementById('cp-filtro-analise'), f = sel ? sel.value : '', n = { ok: 0, nao: 0, pend: 0 };
+  Array.prototype.forEach.call(corpo.children, function(tr) {
+    var st = statusAnalise(tr.getAttribute('data-nome'));
+    n[st]++;
+    tr.classList.toggle('cp-oculta-status', !!f && st !== f);
+  });
+  var r = document.getElementById('cp-resumo-analise');
+  if (r) r.textContent = n.ok + ' aprovadas · ' + n.nao + ' reprovadas · ' + n.pend + ' sem análise';
+}
+function decidirEmpresa(tr, dec) {
+  var nome = tr.getAttribute('data-nome'), ch = acharChaveAnalise(nome) || compactoCP(nome), atual = ANALISES[ch] || { nome: nome, obs: '' };
+  nome = atual.nome || nome;
+  var obs = '';
+  if (dec !== 'limpar') {
+    obs = prompt('Observação sobre a decisão (opcional) — ' + nome + ':', atual.obs || '');
+    if (obs === null) return;
+  }
+  sbCP.auth.getUser().then(function(res) {
+    var u = res && res.data && res.data.user;
+    return sbCP.from('criterios_credito').upsert({ categoria: 'credito_privado', chave: ch, nome: nome, aprovado: dec === 'ok' ? true : (dec === 'nao' ? false : null), observacao: obs.trim() || null, atualizado_por: u ? u.id : null, atualizado_em: new Date().toISOString() }, { onConflict: 'categoria,chave' });
+  }).then(function(r) {
+    if (r && r.error) { alert('Não foi possível gravar a decisão: ' + r.error.message); return; }
+    ANALISES[ch] = { nome: nome, aprovado: dec === 'ok' ? true : (dec === 'nao' ? false : null), obs: obs.trim() };
+    tr.querySelector('.cp-analise').innerHTML = htmlAnalise(nome);
+    aplicarFiltroAnalise();
+  }).catch(function(e) { alert('Não foi possível gravar a decisão: ' + (e && e.message ? e.message : e)); });
+}
+var analisesProntas = carregarAnalises();
 
 function fmtMoeda(valorMil) {
   if (typeof valorMil !== 'number' || isNaN(valorMil)) return '—';
@@ -20333,9 +20440,10 @@ function renderizarIndicadores(linhas) {
       var tituloAlav = 'Referência geral: abaixo de 2,5x–3,0x costuma ser saudável para a maioria dos setores.';
       var tituloCobertura = 'Referência geral: acima de 3,0x é confortável; abaixo de 1,5x indica dificuldade de pagar juros só com a operação.';
       var tituloLiq = 'Referência geral: acima de 1,0 indica folga financeira no curto prazo.';
-      return '<tr>' +
+      return '<tr data-nome="' + escAttrCP(l.nome) + '">' +
         '<td style="text-align:center;"><input type="checkbox" class="cp-check-linha"></td>' +
         '<td class="cp-nome">' + l.nome + '</td>' +
+        '<td class="cp-analise">' + htmlAnalise(l.nome) + '</td>' +
         '<td>' + (l.segmento || '—') + '</td>' +
         '<td>' + fmtRating(l.rating, l.rating_agencia) + '</td>' +
         '<td>' + fmtData(l.referencia) + '</td>' +
@@ -20351,13 +20459,19 @@ function renderizarIndicadores(linhas) {
         '<td class="' + classificarAlavancagem(celAlav) + '" title="' + tituloAlav + '">' + fmtX(celAlav) + '</td>' +
         '<td class="' + classificarCobertura(l.indice_cobertura_juros) + '" title="' + tituloCobertura + '">' + fmtX(l.indice_cobertura_juros) + '</td>' +
         '<td title="' + tituloLiq + '">' + fmtX(l.liquidez_corrente) + '</td>' +
-        '<td style="text-align:center;"><button type="button" class="btn-excluir-linha" title="Remover esta empresa da lista">🗑️</button></td>' +
+        '<td style="text-align:center;white-space:nowrap;">' + htmlBotoesAnalise() + '<button type="button" class="btn-excluir-linha" title="Remover esta empresa da lista">🗑️</button></td>' +
         '</tr>';
     }).join('');
     tornarTabelaOrdenavel(document.querySelector('.cp-table'), document.getElementById('cp-filtro'));
     tornarColunasAjustaveis(document.querySelector('.cp-table'));
     tornarLinhasMarcaveisExcluiveis(corpo);
     configurarSelecaoPrint();
+    aplicarFiltroAnalise();
+    document.getElementById('cp-filtro-analise').addEventListener('change', aplicarFiltroAnalise);
+    corpo.addEventListener('click', function(ev) {
+      var bt = ev.target && ev.target.closest ? ev.target.closest('[data-dec]') : null;
+      if (bt && ehMasterCP) decidirEmpresa(bt.closest('tr'), bt.getAttribute('data-dec'));
+    });
 }
 
 // Carrega os indicadores com limite de tempo e até 3 tentativas (falhas momentâneas de rede ou do
@@ -20372,7 +20486,7 @@ function carregarIndicadores(tentativa) {
   })
     .then(function(r) { clearTimeout(limite); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(function(linhas) {
-      try { renderizarIndicadores(linhas); }
+      try { return analisesProntas.then(function() { renderizarIndicadores(linhas); }).catch(function(e) { console.error(e); statusEl.textContent = 'Os indicadores foram recebidos, mas não puderam ser exibidos (' + (e && e.message ? e.message : e) + ').'; }); }
       catch (e) { console.error(e); statusEl.textContent = 'Os indicadores foram recebidos, mas não puderam ser exibidos (' + (e && e.message ? e.message : e) + ').'; }
     })
     .catch(function(e) {
@@ -20398,7 +20512,7 @@ function configurarSelecaoPrint() {
   if (!btnPrint) return;
 
   function linhasVisiveis() {
-    return Array.prototype.filter.call(corpo.children, function(tr) { return tr.style.display !== 'none'; });
+    return Array.prototype.filter.call(corpo.children, function(tr) { return tr.style.display !== 'none' && !tr.classList.contains('cp-oculta-status'); });
   }
   function atualizarStatusPrint() {
     var marcadas = corpo.querySelectorAll('.cp-check-linha:checked').length;
@@ -20456,6 +20570,7 @@ function configurarSelecaoPrint() {
     });
     Array.prototype.forEach.call(tabelaClone.querySelectorAll('thead th:first-child, tbody td:first-child'), function(el) { el.remove(); });
     Array.prototype.forEach.call(tabelaClone.querySelectorAll('thead th:last-child, tbody td:last-child'), function(el) { el.remove(); });
+    Array.prototype.forEach.call(tabelaClone.querySelectorAll('.cp-oculta-status'), function(el) { el.remove(); });
 
     captura.appendChild(wrapClone);
     document.body.appendChild(captura);
