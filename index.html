@@ -292,6 +292,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
         <div class="nav-dropdown" id="dropdown-renda-variavel" hidden>
           <button type="button" class="nav-dropdown-item" id="btn-nav-nota-corretagem">Nota de Corretagem ↗</button>
           <button type="button" class="nav-dropdown-item" id="btn-nav-mapa-calor">Mapa de Calor ↗</button>
+          <button type="button" class="nav-dropdown-item" id="btn-nav-valuation">Valuation (P/L e P/VP) ↗</button>
         </div>
       </div>
       <div class="nav-dropdown-wrap">
@@ -18179,6 +18180,441 @@ document.getElementById('btn-excel').addEventListener('click', function () {
 </html>`);
   }
 
+  function abrirValuation() {
+    var win = window.open('', '_blank');
+    if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
+    escreverConteudoJanela(win, `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Valuation — Clube do Rendimento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/dist/umd/supabase.min.js" referrerpolicy="no-referrer"><\/script>
+<style>
+:root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--line:#E2E2E2;--green:#16A34A;--red:#DC2626;--radius:16px;--shadow-sm:0 2px 10px rgba(0,0,0,.05);}
+*{box-sizing:border-box;margin:0;padding:0;}
+[hidden]{display:none!important;}
+body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-soft);color:var(--ink);min-height:100vh;font-size:14px;}
+.nav{background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;}
+.nav-brand{font-weight:700;font-size:15px;text-decoration:none;color:var(--ink);}
+.container{max-width:1280px;margin:0 auto;padding:22px 20px 40px;}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:600;margin-bottom:10px;}
+.eyebrow::before{content:"";width:18px;height:2px;background:var(--ink);display:inline-block;}
+h1{font-size:24px;font-weight:700;margin-bottom:4px;}
+h2{font-size:17px;font-weight:700;margin-bottom:4px;}
+.sub{font-size:13px;color:var(--ink-soft);margin-bottom:16px;line-height:1.5;max-width:920px;}
+.btn{padding:9px 16px;border-radius:8px;font-weight:600;font-size:13px;border:1.5px solid var(--ink);background:#fff;color:var(--ink);cursor:pointer;font-family:inherit;}
+.btn:hover{background:var(--bg-soft);}
+.status{font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+.status b{color:var(--ink);}
+.topo{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:16px;box-shadow:var(--shadow-sm);}
+.grade2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:900px){.grade2{grid-template-columns:1fr;}}
+.indic{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-end;margin:10px 0 6px;}
+.indic .n{font-size:34px;font-weight:700;line-height:1;}
+.indic .r{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:5px;}
+.indic .m{font-size:20px;font-weight:600;color:var(--ink-soft);line-height:1;}
+.sel{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12.5px;font-weight:700;border:1.5px solid var(--ink);}
+.sel.alto{background:var(--ink);color:#fff;}
+.sel.baixo{background:#fff;color:var(--ink);}
+.graf{width:100%;height:auto;display:block;margin-top:8px;}
+.abas{display:inline-flex;border:1.5px solid var(--ink);border-radius:10px;overflow:hidden;}
+.abas button{padding:8px 16px;border:none;border-right:1px solid var(--line);background:#fff;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--ink-soft);cursor:pointer;}
+.abas button:last-child{border-right:none;}
+.abas button:hover{background:var(--bg-soft);color:var(--ink);}
+.abas button.ativo{background:var(--ink);color:#fff;}
+.fav-topo{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0;}
+.fav-topo input{padding:8px 11px;border:1.5px solid var(--line);border-radius:9px;font-family:inherit;font-size:13px;width:280px;max-width:100%;text-transform:uppercase;}
+.msg{font-size:12px;color:var(--ink-soft);}
+.msg.erro{color:var(--red);}
+.painel{background:#0b0b0b;border-radius:14px;padding:22px 22px 18px;color:#fff;margin-top:6px;}
+.painel .tit{font-size:20px;font-weight:500;line-height:1.3;color:#e9e9e9;margin-bottom:20px;}
+.lin{display:grid;grid-template-columns:130px 1fr 230px;gap:14px;align-items:center;min-height:34px;}
+.lin .nome{text-align:right;font-size:14.5px;color:#d9d9d9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lin .det{font-size:13px;color:#cfcfcf;white-space:nowrap;}
+.area{position:relative;height:18px;}
+.barra{position:absolute;top:2px;height:14px;border-radius:4px;background:#7a7a7a;}
+.barra.neg{background:#3a3a3a;border:1px solid #9a9a9a;}
+.val{position:absolute;top:0;line-height:18px;font-weight:700;font-size:15px;white-space:nowrap;}
+.vazio{padding:26px 10px;text-align:center;color:#9a9a9a;font-size:13px;}
+@media(max-width:760px){.lin{grid-template-columns:90px 1fr;}.lin .det{grid-column:1 / span 2;text-align:right;}}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px;}
+th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;}
+th:first-child,td:first-child{text-align:left;}
+th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);font-weight:700;}
+td button{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:16px;padding:0 6px;border-radius:6px;}
+td button:hover{background:#FDECEC;color:var(--red);}
+.tabela{overflow-x:auto;}
+.nota{font-size:12px;color:var(--ink-soft);margin-top:12px;line-height:1.55;max-width:1000px;}
+.aviso{font-size:12.5px;line-height:1.5;border:1.5px solid var(--ink);border-radius:10px;padding:10px 12px;margin-bottom:14px;background:#fff;}
+@media print{.nav,.topo .btn,.fav-topo{display:none!important;}}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <a href="javascript:window.close()" class="nav-brand">← Clube do Rendimento</a>
+</header>
+
+<div class="container">
+  <span class="eyebrow">Renda Variável</span>
+  <h1>Valuation — P/L e P/VP</h1>
+  <p class="sub">Acompanhamento do preço sobre lucro (P/L) e do preço sobre valor patrimonial (P/VP) da bolsa e das empresas favoritas, comparados com a mediana histórica dos últimos dez anos. Os indicadores são recalculados com a cotação mais recente, atualizada automaticamente a cada 60 segundos.</p>
+
+  <div class="topo">
+    <div class="status" id="status">Carregando...</div>
+    <button type="button" class="btn" id="btn-atualizar">↻ Atualizar agora</button>
+  </div>
+  <div class="aviso" id="aviso" hidden></div>
+
+  <div class="card">
+    <h2>Bolsa brasileira</h2>
+    <p class="sub" id="bolsa-sub" style="margin-bottom:6px;"></p>
+    <div class="grade2" id="bolsa"><div class="vazio" style="color:#777;">Carregando...</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Empresas favoritas</h2>
+    <p class="sub" style="margin-bottom:8px;">A lista é a mesma de "Favoritos Brasil" do Mapa de Calor. Inclua empresas pelo código de negociação (por exemplo, WEGE3).</p>
+    <div class="abas" id="abas"><button type="button" data-m="pvp" class="ativo">P/VP</button><button type="button" data-m="pl">P/L</button></div>
+    <div class="fav-topo">
+      <input type="text" id="fav-input" placeholder="Adicionar ação (ex.: PETR4)" autocomplete="off">
+      <button type="button" class="btn" id="fav-add">Adicionar</button>
+      <span class="msg" id="fav-msg"></span>
+    </div>
+    <div class="painel" id="painel"><div class="vazio">Carregando...</div></div>
+    <div class="tabela" id="tabela"></div>
+  </div>
+
+  <p class="nota">Fontes: cotações do Yahoo Finance (atualizadas a cada 60 segundos); lucro por ação (LPA), valor patrimonial por ação (VPA) e histórico anual de P/L e P/VP do Investidor10, renovados a cada 12 horas. P/L e P/VP atuais = cotação ÷ LPA e ÷ VPA do último balanço divulgado. A mediana considera os valores ao final de cada um dos últimos dez anos, desconsiderando anos de lucro negativo. O indicador da bolsa é calculado sobre as maiores empresas da B3 por valor de mercado (uma classe de ação por empresa), com média harmônica ponderada pelo valor de mercado atual de cada empresa; trata-se de uma aproximação e não do índice oficial. Valores de anos anteriores refletem o preço e o balanço de cada fechamento anual. Informação sem caráter de recomendação.</p>
+</div>
+
+<script>
+var SB_URL = 'https://segeufywrjmstfmfscdi.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZ2V1Znl3cmptc3RmbWZzY2RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzY0OTgsImV4cCI6MjA5ODQxMjQ5OH0.TUrp35SEI2NXdU1ZY7IEcdRm8VLLfLwAVWUtqjafElI';
+var BASE = SB_URL + '/functions/v1/brapi-proxy';
+var HDR = { 'Authorization': 'Bearer ' + SB_KEY, 'apikey': SB_KEY };
+var SESSAO_INICIAL = ${JSON.stringify(sessaoAtual)};
+var sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+var logado = false;
+var CH_FAV = 'cr_favoritos_acoes_v1', CH_FUND = 'cr_valuation_fund_v1', CH_UNIV = 'cr_valuation_univ_v1';
+var N_UNIV = 40, TTL_FUND = 12 * 3600 * 1000, TTL_FALHA = 3600 * 1000, TTL_UNIV = 24 * 3600 * 1000, INTERVALO_MS = 60000;
+var favs = [], uni = [], fund = {}, falha = {}, cot = {}, metrica = 'pvp';
+var funcaoIndisponivel = false, ultimaAtualizacao = null, ultimoErro = '', carregando = false, horaCotacao = '';
+
+function esc(t) { return String(t === undefined || t === null ? '' : t).split('&').join('&amp;').split('<').join('&lt;'); }
+function lerLocal(k) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v; } catch (e) { return null; } }
+function gravarLocal(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function fmt(v, d) { return v === null || v === undefined || isNaN(v) ? '—' : v.toLocaleString('pt-BR', { minimumFractionDigits: d === undefined ? 2 : d, maximumFractionDigits: d === undefined ? 2 : d }); }
+function fmtD(v) { if (v === null || v === undefined || isNaN(v)) return '—'; var r = Math.round(v); return (r > 0 ? '+' : (r < 0 ? '−' : '')) + Math.abs(r).toLocaleString('pt-BR') + '%'; }
+function mediana(a) {
+  var b = a.filter(function (x) { return typeof x === 'number' && x > 0; }).sort(function (x, y) { return x - y; });
+  if (!b.length) return null;
+  var m = Math.floor(b.length / 2);
+  return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2;
+}
+function nomeMetrica(m) { return m === 'pl' ? 'P/L' : 'P/VP'; }
+
+// ── Dados ──
+function buscarJson(url, tentativas) {
+  return fetch(url, { headers: HDR }).then(function (r) { if (!r.ok) { var e = new Error('HTTP ' + r.status); e.status = r.status; throw e; } return r.json(); })
+    .catch(function (e) { if (tentativas > 1 && e.status !== 404) return new Promise(function (res) { setTimeout(res, 700); }).then(function () { return buscarJson(url, tentativas - 1); }); throw e; });
+}
+function carregarUniverso() {
+  var c = lerLocal(CH_UNIV);
+  if (c && c.lista && c.lista.length >= 20 && Date.now() - c.t < TTL_UNIV) { uni = c.lista; return Promise.resolve(); }
+  return fetch(BASE + '/quote/list?type=stock&limit=120&sortBy=market_cap_basic&sortOrder=desc').then(function (r) { return r.json(); }).then(function (j) {
+    var porMc = {};
+    (j.stocks || []).forEach(function (a) {
+      var mc = Number(a.market_cap) || 0;
+      if (!/^[A-Z]{4}(3|4|5|6|11)$/.test(a.stock) || mc <= 0) return;
+      var k = String(Math.round(mc / 1000));
+      if (!porMc[k] || (a.volume || 0) > porMc[k].vol) porMc[k] = { t: a.stock, mc: mc, vol: a.volume || 0 };
+    });
+    var lista = Object.keys(porMc).map(function (k) { return { t: porMc[k].t, mc: porMc[k].mc }; }).sort(function (a, b) { return b.mc - a.mc; }).slice(0, N_UNIV);
+    if (lista.length < 10) throw new Error('lista de empresas indisponível');
+    uni = lista;
+    gravarLocal(CH_UNIV, { t: Date.now(), lista: lista });
+  }).catch(function () { if (c && c.lista) uni = c.lista; });
+}
+function carregarFundamentos(tickers) {
+  var c = lerLocal(CH_FUND) || { d: {}, f: {} };
+  fund = c.d || {}; falha = c.f || {};
+  var agora = Date.now();
+  var faltam = tickers.filter(function (t) {
+    return !(fund[t] && !fund[t].alt && agora - fund[t].t < TTL_FUND) && !(falha[t] && agora - falha[t] < TTL_FALHA);
+  });
+  if (!faltam.length) return Promise.resolve();
+  var blocos = [];
+  for (var i = 0; i < faltam.length; i += 12) blocos.push(faltam.slice(i, i + 12));
+  var okBlocos = 0, blocosComErro = [];
+  return Promise.all(blocos.map(function (b) {
+    return buscarJson(SB_URL + '/functions/v1/valuation-historico?tickers=' + encodeURIComponent(b.join(',')), 2).then(function (j) {
+      okBlocos++;
+      Object.keys(j.dados || {}).forEach(function (t) { var d = j.dados[t]; d.t = Date.now(); fund[t] = d; delete falha[t]; });
+      (j.falhas || []).forEach(function (t) { falha[t] = Date.now(); });
+    }).catch(function () { blocosComErro.push(b); });
+  })).then(function () {
+    // nenhuma chamada bem-sucedida: a função ainda não foi publicada (ou está fora do ar); tenta novamente a cada ciclo, sem registrar falha
+    funcaoIndisponivel = okBlocos === 0;
+    if (!funcaoIndisponivel) blocosComErro.forEach(function (b) { b.forEach(function (t) { falha[t] = Date.now(); }); });
+    gravarLocal(CH_FUND, { d: fund, f: falha });
+    if (funcaoIndisponivel) return carregarAlternativo(tickers.filter(function (t) { return favs.indexOf(t) !== -1; }));
+  });
+}
+// Alternativa enquanto a função valuation-historico não estiver publicada: valores atuais apenas (sem mediana), somente para os favoritos
+function carregarAlternativo(tickers) {
+  return Promise.all(tickers.filter(function (t) { return !fund[t] || (fund[t].alt && Date.now() - fund[t].t > 10 * 60 * 1000); }).map(function (t) {
+    var p1 = fetch(SB_URL + '/functions/v1/acoes-dados-extra?ticker=' + encodeURIComponent(t), { headers: HDR }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+    var p2 = fetch(BASE + '/quote/' + encodeURIComponent(t)).then(function (r) { return r.json(); }).catch(function () { return null; });
+    return Promise.all([p1, p2]).then(function (rs) {
+      var pvp = rs[0] && typeof rs[0].pvp === 'number' ? rs[0].pvp : null;
+      var q = rs[1] && rs[1].results && rs[1].results[0];
+      var pl = q && typeof q.priceEarnings === 'number' ? q.priceEarnings : null;
+      if (pvp === null && pl === null) return;
+      fund[t] = { alt: true, t: Date.now(), pl: { atual: pl, anos: [] }, pvp: { atual: pvp, anos: [] }, lpa: null, vpa: null };
+      delete falha[t];
+    });
+  }));
+}
+function carregarCotacoes(tickers) {
+  var syms = tickers.map(function (t) { return t + '.SA'; }), blocos = [];
+  for (var i = 0; i < syms.length; i += 30) blocos.push(syms.slice(i, i + 30));
+  return Promise.all(blocos.map(function (b) {
+    return fetch(SB_URL + '/functions/v1/cotacoes-yahoo?s=' + encodeURIComponent(b.join(','))).then(function (r) { return r.json(); }).catch(function () { return {}; });
+  })).then(function (rs) {
+    var n = 0;
+    rs.forEach(function (r) {
+      var c = (r && r.cotacoes) || {};
+      Object.keys(c).forEach(function (s) { if (c[s] && typeof c[s].preco === 'number') { cot[s.replace('.SA', '')] = c[s]; n++; if (c[s].hora) horaCotacao = c[s].hora; } });
+    });
+    if (!n && tickers.length) throw new Error('Não foi possível obter as cotações.');
+  });
+}
+
+// ── Cálculo ──
+function valorAtual(t, m) {
+  var f = fund[t];
+  if (!f) return null;
+  var c = cot[t], ind = m === 'pl' ? f.pl : f.pvp, base = m === 'pl' ? f.lpa : f.vpa;
+  if (c && typeof base === 'number' && base > 0) return c.preco / base;
+  return ind && typeof ind.atual === 'number' && ind.atual > 0 ? ind.atual : null;
+}
+function medianaDe(t, m) {
+  var f = fund[t], ind = f && (m === 'pl' ? f.pl : f.pvp);
+  return ind && ind.anos && ind.anos.length >= 3 ? mediana(ind.anos.map(function (x) { return x[1]; })) : null;
+}
+function linhaDe(t) {
+  var o = { t: t, preco: cot[t] ? cot[t].preco : null, dia: cot[t] ? cot[t].variacao : null, nome: (cot[t] && cot[t].nome) || t };
+  ['pl', 'pvp'].forEach(function (m) {
+    var v = valorAtual(t, m), md = medianaDe(t, m);
+    o[m] = v; o[m + 'Med'] = md; o[m + 'D'] = v !== null && md ? (v / md - 1) * 100 : null;
+  });
+  return o;
+}
+// Média harmônica ponderada pelo valor de mercado (equivale ao índice agregado Σ valor de mercado ÷ Σ lucro, ou patrimônio)
+function agregar(m) {
+  var tot = 0;
+  uni.forEach(function (u) { tot += u.mc; });
+  function harm(valorDe) {
+    var pw = 0, pe = 0, n = 0;
+    uni.forEach(function (u) { var v = valorDe(u.t); if (typeof v === 'number' && v > 0) { pw += u.mc; pe += u.mc / v; n++; } });
+    return pw / tot >= 0.5 && pe > 0 ? { v: pw / pe, n: n } : null;
+  }
+  var atual = harm(function (t) { return valorAtual(t, m); });
+  var anos = {};
+  uni.forEach(function (u) {
+    var f = fund[u.t], ind = f && (m === 'pl' ? f.pl : f.pvp);
+    ((ind && ind.anos) || []).forEach(function (x) { anos[x[0]] = 1; });
+  });
+  var serie = [];
+  Object.keys(anos).sort().forEach(function (a) {
+    var r = harm(function (t) {
+      var f = fund[t], ind = f && (m === 'pl' ? f.pl : f.pvp), x = ind && ind.anos ? ind.anos.filter(function (z) { return String(z[0]) === a; })[0] : null;
+      return x ? x[1] : null;
+    });
+    if (r) serie.push([parseInt(a, 10), r.v]);
+  });
+  var md = serie.length >= 3 ? mediana(serie.map(function (x) { return x[1]; })) : null;
+  return { atual: atual ? atual.v : null, n: atual ? atual.n : 0, serie: serie, med: md, d: atual && md ? (atual.v / md - 1) * 100 : null };
+}
+
+// ── Exibição ──
+function svgSerie(ag) {
+  var pts = ag.serie.slice(), W = 560, H = 210, pl = 40, pr = 18, pt = 24, pb = 30;
+  if (pts.length < 3) return '';
+  var vs = pts.map(function (p) { return p[1]; }).concat([ag.atual || pts[pts.length - 1][1], ag.med]);
+  var mn = Math.min.apply(null, vs), mx = Math.max.apply(null, vs), folga = (mx - mn) * 0.15 || 1;
+  mn = Math.max(0, mn - folga); mx += folga;
+  var n = pts.length + (ag.atual ? 1 : 0), dx = (W - pl - pr) / Math.max(n - 1, 1);
+  function X(i) { return pl + i * dx; }
+  function Y(v) { return pt + (H - pt - pb) * (1 - (v - mn) / (mx - mn)); }
+  var all = pts.map(function (p) { return [String(p[0]), p[1]]; });
+  if (ag.atual) all.push(['Atual', ag.atual]);
+  var d = all.map(function (p, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(p[1]).toFixed(1); }).join(' ');
+  var s = '<svg class="graf" viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img">';
+  s += '<line x1="' + pl + '" y1="' + Y(ag.med).toFixed(1) + '" x2="' + (W - pr) + '" y2="' + Y(ag.med).toFixed(1) + '" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="5 4"/>';
+  s += '<path d="' + d + '" fill="none" stroke="#111" stroke-width="2.2" stroke-linejoin="round"/>';
+  all.forEach(function (p, i) {
+    var atual = p[0] === 'Atual';
+    s += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(p[1]).toFixed(1) + '" r="' + (atual ? 5 : 3.2) + '" fill="' + (atual ? '#111' : '#fff') + '" stroke="#111" stroke-width="1.8"/>';
+    s += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 10) + '" text-anchor="middle" font-size="10.5" fill="#5C5C5C"' + (atual ? ' font-weight="700"' : '') + '>' + (atual ? 'Atual' : p[0]) + '</text>';
+    if (atual || i === 0 || p[1] === Math.max.apply(null, pts.map(function (q) { return q[1]; })) || p[1] === Math.min.apply(null, pts.map(function (q) { return q[1]; }))) {
+      s += '<text x="' + X(i).toFixed(1) + '" y="' + (Y(p[1]) - 9).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#111">' + fmt(p[1], 1) + '</text>';
+    }
+  });
+  return s + '</svg><div class="msg" style="margin-top:2px;">Linha tracejada: mediana dos fechamentos anuais.</div>';
+}
+function cartaoBolsa(m) {
+  var ag = agregar(m);
+  if (ag.atual === null) return '<div><h2>' + nomeMetrica(m) + '</h2><div class="vazio" style="color:#777;">Indicador indisponível no momento.</div></div>';
+  var sel = ag.d === null ? '' : '<span class="sel ' + (ag.d >= 0 ? 'alto' : 'baixo') + '">' + fmtD(ag.d) + ' frente à mediana</span>';
+  return '<div><h2>' + nomeMetrica(m) + ' da bolsa</h2><div class="indic"><div><div class="r">Hoje</div><div class="n">' + fmt(ag.atual, 2) + '</div></div><div><div class="r">Mediana (10 anos)</div><div class="m">' + (ag.med ? fmt(ag.med, 2) : '—') + '</div></div>' + (sel ? '<div>' + sel + '</div>' : '') + '</div>' + svgSerie(ag) + '</div>';
+}
+function renderBolsa() {
+  var el = document.getElementById('bolsa');
+  var ok = !funcaoIndisponivel && uni.some(function (u) { return fund[u.t]; });
+  if (!ok) {
+    el.innerHTML = '<div class="vazio" style="color:#777;grid-column:1 / -1;">' + (funcaoIndisponivel ? 'Indicadores da bolsa indisponíveis: a função "valuation-historico" ainda não foi publicada no Supabase.' : 'Carregando indicadores da bolsa...') + '</div>';
+    document.getElementById('bolsa-sub').textContent = '';
+    return;
+  }
+  document.getElementById('bolsa-sub').textContent = 'Média ponderada pelo valor de mercado das ' + uni.length + ' maiores empresas da B3, comparada com a mediana dos fechamentos anuais dos últimos dez anos.';
+  el.innerHTML = cartaoBolsa('pvp') + cartaoBolsa('pl');
+}
+function renderFavoritos() {
+  var m = metrica, linhas = favs.map(linhaDe);
+  var com = linhas.filter(function (l) { return l[m + 'D'] !== null; }).sort(function (a, b) { return b[m + 'D'] - a[m + 'D']; });
+  var sem = linhas.filter(function (l) { return l[m + 'D'] === null; });
+  var painel = document.getElementById('painel');
+  if (!favs.length) { painel.innerHTML = '<div class="vazio">Nenhuma empresa favorita. Digite um código acima, por exemplo WEGE3.</div>'; }
+  else if (!com.length) { painel.innerHTML = '<div class="vazio">' + (funcaoIndisponivel ? 'A comparação com a mediana histórica depende da função "valuation-historico", ainda não publicada no Supabase. Os valores atuais constam na tabela abaixo.' : 'Aguardando os indicadores das empresas...') + '</div>'; }
+  else {
+    var pos = Math.max.apply(null, [0].concat(com.map(function (l) { return l[m + 'D']; })));
+    var neg = Math.max.apply(null, [0].concat(com.map(function (l) { return -l[m + 'D']; })));
+    var tot = pos + neg || 1, zp = neg / tot * 100;
+    var h = '<div class="tit">' + nomeMetrica(m) + ' de hoje contra a mediana histórica de cada empresa</div>';
+    com.forEach(function (l) {
+      var d = l[m + 'D'], w = Math.abs(d) / tot * 100;
+      var area = '<div class="area" style="margin-left:' + (neg > 0 ? 64 : 0) + 'px;margin-right:78px;">';
+      if (d >= 0) area += '<div class="barra" style="left:' + zp.toFixed(2) + '%;width:' + Math.max(w, 0.6).toFixed(2) + '%;"></div><div class="val" style="left:calc(' + (zp + w).toFixed(2) + '% + 10px);">' + fmtD(d) + '</div>';
+      else area += '<div class="barra neg" style="left:' + (zp - w).toFixed(2) + '%;width:' + Math.max(w, 0.6).toFixed(2) + '%;"></div><div class="val" style="right:calc(' + (100 - zp + w).toFixed(2) + '% + 10px);">' + fmtD(d) + '</div>';
+      area += '</div>';
+      h += '<div class="lin"><div class="nome" title="' + esc(l.nome) + '">' + esc(l.t) + '</div>' + area + '<div class="det">' + nomeMetrica(m) + ' ' + fmt(l[m], 2) + ' · mediana ' + fmt(l[m + 'Med'], 2) + '</div></div>';
+    });
+    painel.innerHTML = h;
+  }
+  // tabela
+  var t = '<table><thead><tr><th>Ativo</th><th>Cotação</th><th>Dia</th><th>P/L</th><th>Mediana P/L</th><th>Frente à mediana</th><th>P/VP</th><th>Mediana P/VP</th><th>Frente à mediana</th><th></th></tr></thead><tbody>';
+  linhas.forEach(function (l) {
+    var semInd = !fund[l.t] ? (falha[l.t] ? ' title="Indicadores indisponíveis para este ativo (apenas ações da B3)"' : '') : '';
+    t += '<tr><td><b' + semInd + '>' + esc(l.t) + '</b></td><td>' + (l.preco === null ? '—' : 'R$ ' + fmt(l.preco, 2)) + '</td><td>' + (l.dia === null ? '—' : (l.dia > 0 ? '+' : '') + fmt(l.dia, 2) + '%') + '</td>' +
+      '<td>' + fmt(l.pl, 1) + '</td><td>' + fmt(l.plMed, 1) + '</td><td>' + fmtD(l.plD) + '</td><td>' + fmt(l.pvp, 2) + '</td><td>' + fmt(l.pvpMed, 2) + '</td><td>' + fmtD(l.pvpD) + '</td>' +
+      '<td><button type="button" data-rm="' + esc(l.t) + '" title="Remover dos favoritos">×</button></td></tr>';
+  });
+  t += '</tbody></table>';
+  document.getElementById('tabela').innerHTML = favs.length ? t : '';
+  var semDados = sem.filter(function (l) { return falha[l.t] && !fund[l.t]; }).map(function (l) { return l.t; });
+  if (semDados.length) mensagemFav('Sem indicadores disponíveis (apenas ações da B3): ' + semDados.join(', ') + '.', false);
+}
+function renderStatus() {
+  var el = document.getElementById('status');
+  if (ultimoErro) { el.innerHTML = '<b style="color:#DC2626;">' + esc(ultimoErro) + '</b> Nova tentativa em instantes.'; return; }
+  if (!ultimaAtualizacao) { el.textContent = 'Carregando...'; return; }
+  el.innerHTML = 'Atualizado às <b>' + ultimaAtualizacao.toLocaleTimeString('pt-BR') + '</b>' + (horaCotacao ? ' · última cotação: <b>' + new Date(horaCotacao).toLocaleTimeString('pt-BR') + '</b>' : '');
+  var av = document.getElementById('aviso');
+  av.hidden = !funcaoIndisponivel;
+  if (funcaoIndisponivel) av.textContent = 'A função "valuation-historico" ainda não está publicada no Supabase. Enquanto isso, são exibidos apenas os valores atuais dos favoritos, sem a mediana histórica e sem o indicador da bolsa.';
+}
+function renderizar() { renderBolsa(); renderFavoritos(); renderStatus(); }
+
+// ── Favoritos (mesma lista "Favoritos Brasil" do Mapa de Calor: tabela acoes_favoritas, lista 'brasil') ──
+function mensagemFav(txt, erro) { var el = document.getElementById('fav-msg'); el.textContent = txt || ''; el.className = 'msg' + (erro ? ' erro' : ''); }
+function gravarFavLocal() { gravarLocal(CH_FAV, favs); }
+function gravarFavRemoto(t, incluir) {
+  if (!logado || !sb) return;
+  sb.auth.getUser().then(function (res) {
+    var u = res && res.data && res.data.user;
+    if (!u) return;
+    return incluir ? sb.from('acoes_favoritas').upsert({ user_id: u.id, lista: 'brasil', ticker: t }, { onConflict: 'user_id,lista,ticker' })
+      : sb.from('acoes_favoritas').delete().eq('lista', 'brasil').eq('ticker', t);
+  }).then(function (r) { if (r && r.error) mensagemFav('Não foi possível gravar na conta: ' + r.error.message, true); });
+}
+function alternarFav(t) {
+  var i = favs.indexOf(t);
+  if (i !== -1) { favs.splice(i, 1); gravarFavRemoto(t, false); } else { favs.push(t); gravarFavRemoto(t, true); }
+  gravarFavLocal();
+  renderizar();
+  atualizar();
+}
+function adicionarFav() {
+  var el = document.getElementById('fav-input'), t = el.value.trim().toUpperCase();
+  if (!/^[A-Z0-9]{4,6}$/.test(t)) { mensagemFav('Informe um código válido, por exemplo WEGE3.', true); return; }
+  if (favs.indexOf(t) !== -1) { mensagemFav(t + ' já está nos favoritos.', true); return; }
+  mensagemFav('Verificando ' + t + '...', false);
+  fetch(BASE + '/quote/' + encodeURIComponent(t)).then(function (r) { return r.json(); }).then(function (j) {
+    if (!(j && j.results && j.results.length)) { mensagemFav('Ativo "' + t + '" não encontrado.', true); return; }
+    el.value = ''; mensagemFav('', false);
+    alternarFav(t);
+  }).catch(function () { mensagemFav('Não foi possível verificar o ativo agora. Tente novamente.', true); });
+}
+function iniciarFavoritos() {
+  var loc = lerLocal(CH_FAV);
+  favs = Array.isArray(loc) ? loc.slice() : [];
+  if (!sb || !SESSAO_INICIAL || !SESSAO_INICIAL.access_token) return Promise.resolve();
+  return sb.auth.setSession({ access_token: SESSAO_INICIAL.access_token, refresh_token: SESSAO_INICIAL.refresh_token }).then(function (r) {
+    if (r.error) throw r.error;
+    logado = true;
+    return sb.from('acoes_favoritas').select('ticker,lista').order('criado_em', { ascending: true });
+  }).then(function (r) {
+    if (r.error) throw r.error;
+    var remotos = (r.data || []).filter(function (x) { return (x.lista || 'brasil') === 'brasil'; }).map(function (x) { return x.ticker; });
+    var soLocais = favs.filter(function (t) { return remotos.indexOf(t) === -1; });
+    soLocais.forEach(function (t) { gravarFavRemoto(t, true); });
+    favs = remotos.concat(soLocais);
+    gravarFavLocal();
+  }).catch(function () { logado = false; });
+}
+
+// ── Ciclo de atualização ──
+function atualizar() {
+  if (carregando) return Promise.resolve();
+  carregando = true;
+  var btn = document.getElementById('btn-atualizar');
+  btn.disabled = true;
+  var tickers = uni.map(function (u) { return u.t; });
+  favs.forEach(function (t) { if (tickers.indexOf(t) === -1) tickers.push(t); });
+  return carregarFundamentos(tickers).then(function () { return carregarCotacoes(tickers); }).then(function () {
+    ultimoErro = ''; ultimaAtualizacao = new Date();
+  }).catch(function (e) { ultimoErro = e && e.message ? e.message : 'Falha ao atualizar.'; })
+    .then(function () { renderizar(); })
+    .then(function () { carregando = false; btn.disabled = false; });
+}
+document.getElementById('btn-atualizar').addEventListener('click', atualizar);
+document.getElementById('fav-add').addEventListener('click', adicionarFav);
+document.getElementById('fav-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') adicionarFav(); });
+document.getElementById('abas').addEventListener('click', function (e) {
+  var b = e.target.closest ? e.target.closest('button[data-m]') : null;
+  if (!b) return;
+  metrica = b.getAttribute('data-m');
+  Array.prototype.forEach.call(document.querySelectorAll('#abas button'), function (x) { x.classList.toggle('ativo', x === b); });
+  renderFavoritos();
+});
+document.getElementById('tabela').addEventListener('click', function (e) {
+  var b = e.target.closest ? e.target.closest('button[data-rm]') : null;
+  if (b) alternarFav(b.getAttribute('data-rm'));
+});
+iniciarFavoritos().then(carregarUniverso).then(atualizar);
+setInterval(function () { if (!document.hidden) atualizar(); }, INTERVALO_MS);
+<\/script>
+</body>
+</html>`);
+  }
+
   function abrirMapaCalor() {
     var win = window.open('', '_blank');
     if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
@@ -24593,6 +25029,7 @@ if (btnExportarExcelPesquisa) {
   document.getElementById('btn-nav-holding').addEventListener('click', abrirViabilidadeHolding);
   document.getElementById('btn-nav-consolidacao').addEventListener('click', abrirConsolidacaoCarteira);
   document.getElementById('btn-nav-mapa-calor').addEventListener('click', abrirMapaCalor);
+  document.getElementById('btn-nav-valuation').addEventListener('click', abrirValuation);
   document.getElementById('btn-nav-nota-corretagem').addEventListener('click', abrirNotaCorretagem);
   document.getElementById('btn-nav-cetipados').addEventListener('click', abrirCetipados);
   document.getElementById('btn-nav-pesquisa').addEventListener('click', abrirPesquisaAtivo);
