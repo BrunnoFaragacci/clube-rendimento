@@ -17737,6 +17737,8 @@ var ETFS_BT = [
 // Classes substituídas por ETF (lista em ordem de preferência: usa o primeiro com histórico consistente no período).
 // As demais classes (multimercados, fundos imobiliários, alternativos, renda fixa global...) são mantidas como estão.
 var REPL_BT = { pos: ['LFTS11'], infl: ['IMAB11', 'B5P211', 'IB5M11'], pre: ['IRFM11'], rvb: ['BOVA11'], grv: ['IVVB11'] };
+var PERFIL_ETF_BT = { pos: ['LFTS11'], infl: ['IMAB11', 'B5P211', 'IB5M11'], pre: ['IRFM11'], multi: ['LFTS11'], rvb: ['BOVA11'], grv: ['IVVB11'], listados: ['XFIX11'], alt: ['GOLD11'], grf: ['LFTS11'] };
+var SEM_ETF_BT = { multi: 1, grf: 1 };
 var BT = { dados: {}, tentados: {}, carregando: false, erro: '', em: 0 };
 var MESES_ABR = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 function fmtMesBT(ym, cap) { var m = MESES_ABR[ym % 100 - 1]; return (cap ? m.charAt(0).toUpperCase() + m.slice(1) : m) + '/' + String(Math.floor(ym / 100)).slice(2); }
@@ -17841,10 +17843,30 @@ function serieClassesBT(S, pesos, subst) {
   mant.sort(function (a, b) { return b.peso - a.peso; });
   return { idx: idx, m: metricasBT(idx), comp: itens.concat(mant), nEtf: itens.length, cobertura: tw };
 }
+function serieModeloBT(S, pesos) {
+  var cls = Object.keys(pesos).filter(function (c) { return pesos[c] > 0; }), tw = soma(cls, function (c) { return pesos[c]; });
+  if (!cls.length || tw <= 0) return null;
+  var idx = S.meses.map(function () { return 0; }), comp = {}, subs = [], refs = [], faltam = [];
+  function etf(s) { return S.etfs.filter(function (y) { return y.rot === s; })[0]; }
+  cls.forEach(function (c) {
+    var opc = (PERFIL_ETF_BT[c] || ['LFTS11']), sym = null, i2, x;
+    for (i2 = 0; i2 < opc.length; i2++) { x = etf(opc[i2]); if (x && x.idx) { sym = opc[i2]; break; } }
+    if (!sym && opc.indexOf('LFTS11') === -1) { x = etf('LFTS11'); if (x && x.idx) { sym = 'LFTS11'; subs.push(opc[0] + ' por LFTS11'); } }
+    if (!sym) { faltam.push(opc[0]); return; }
+    if (sym !== opc[0] && opc.indexOf(sym) !== -1) subs.push(opc[0] + ' por ' + sym);
+    if (SEM_ETF_BT[c] && (ROTULOS_CLASSE[c] || c) && refs.indexOf(ROTULOS_CLASSE[c] || c) === -1) refs.push(ROTULOS_CLASSE[c] || c);
+    var w = pesos[c] / tw, e = etf(sym);
+    S.meses.forEach(function (ym, i) { idx[i] += 100 * w * e.idx[i] / 100; });
+    comp[sym] = (comp[sym] || 0) + w;
+  });
+  if (faltam.length) { S.perfilFalta = 'sem histórico consistente dos ETFs ' + faltam.filter(function (z, i, a2) { return a2.indexOf(z) === i; }).join(', ') + ' no período'; return null; }
+  var itens = Object.keys(comp).map(function (s) { var e = ETFS_BT.filter(function (z) { return z.s === s; })[0]; return { rot: s + ' (' + e.n + ')', peso: comp[s] }; }).sort(function (a, b) { return b.peso - a.peso; });
+  return { idx: idx, m: metricasBT(idx), comp: itens, nEtf: itens.length, refs: refs, subs: subs.filter(function (z, i, a) { return a.indexOf(z) === i; }) };
+}
 function construirBT() {
   var per = perBT(), N = nMesesBT(), fim = fimBT(), meses = [], i;
   for (i = N; i >= 0; i--) meses.push(mesMaisBT(fim, -i));
-  var S = { per: per, N: N, meses: meses, etfs: [], extra: [] };
+  var S = { per: per, N: N, meses: meses, etfs: [], extra: [], perfilFalta: '' };
   ETFS_BT.forEach(function (e) {
     var sym = e.s + '.SA', idx = [], b0 = fechBT(sym, meses[0]), ok = !!b0;
     if (ok) meses.forEach(function (ym) { var c = fechBT(sym, ym); if (!c) ok = false; idx.push(c ? c / b0 * 100 : null); });
@@ -17857,7 +17879,8 @@ function construirBT() {
   R.linhas.forEach(function (l) { pp[l.chave] = l.alvo[pi] || 0; });
   S.atual = serieClassesBT(S, pa, false);
   S.etfsCart = serieClassesBT(S, pa, true);
-  S.perfil = serieClassesBT(S, pp, true);
+  S.perfil = serieModeloBT(S, pp);
+  S.perfilFalta = S.perfilFalta || '';
   S.coberturaPct = S.atual ? soma(Object.keys(pa).filter(function (c) { return retClasseBT(c, per) !== null; }), function (c) { return pa[c]; }) / Math.max(R.total, 1) * 100 : 0;
   // carteira real (relatório XPerformance), quando o relatório cobre o período
   S.real = null;
@@ -17901,26 +17924,36 @@ PAGINAS.backtest = function () {
   var botoes = [['ano', 'No ano'], [12, '12 meses'], [24, '24 meses']].map(function (o) { return '<button type="button" data-bt-per="' + o[0] + '"' + (o[0] === per ? ' class="on"' : '') + '>' + o[1] + '</button>'; }).join('');
   var topo = '<div class="barra-sl"><span class="rot-sl">Período</span><span class="seg-btns">' + botoes + '</span><button type="button" class="btn btn-peq" data-bt-recarregar="1">↻ Atualizar cotações dos ETFs</button>' + (BT.em ? '<span style="font-size:12px;color:var(--ink-soft);">Cotações consultadas em ' + esc(dataHoraBR(new Date(BT.em).toISOString())) + '</span>' : '') + '</div>';
   if (!Object.keys(BT.dados).length) return topo + (BT.carregando ? '<p class="resumo" style="margin-top:14px;">Carregando o histórico de cotações dos ETFs...</p>' : '<p class="resumo" style="margin-top:14px;color:var(--red);">' + esc(BT.erro || 'Os históricos ainda não foram carregados.') + '</p>');
-  var B = construirBT(), N = B.N, at = B.atual, et = B.etfsCart, pf = B.perfil;
+  var B = construirBT(), N = B.N, at = B.atual, pf = B.perfil, ca = B.etfsCart;
+  var modo = ST.btModo === 'atual' ? 'atual' : 'perfil';
+  var sg = modo === 'perfil' ? pf : (ca && ca.nEtf ? ca : null);
+  var nomePerfil = R.matriz.perfis[perfilAtualIdx()].nome;
+  var rotSug = modo === 'perfil' ? nomePerfil + ' com ETFs' : 'Mesma alocação com ETFs';
   var etfsOk = B.etfs.filter(function (e) { return e.m; });
   var ordem = ST.btOrd || 'ret';
   etfsOk.sort(function (a, b) { return ordem === 'rr' ? (b.m.rr || -99) - (a.m.rr || -99) : (ordem === 'mdd' ? b.m.mdd - a.m.mdd : b.m.ret - a.m.ret); });
   var h = topo;
+  // sugestão: alocação-alvo do perfil selecionado em "Alocação e perfis" (ou a alocação atual, em ETFs)
+  var selModo = '<div class="barra-sl" style="margin-top:10px;"><span class="rot-sl">Sugestão</span><span class="seg-btns"><button type="button" data-bt-modo="perfil"' + (modo === 'perfil' ? ' class="on"' : '') + '>' + esc(nomePerfil) + ' (alocação-alvo)</button><button type="button" data-bt-modo="atual"' + (modo === 'atual' ? ' class="on"' : '') + '>Mesma alocação atual</button></span>' +
+    '<span style="font-size:12px;color:var(--ink-soft);">' + (perfilSel === null ? 'Perfil mais próximo da carteira. ' : 'Perfil escolhido pelo usuário. ') + '</span><button type="button" class="btn btn-peq" data-aba="alocacao">Alterar o perfil em "Alocação e perfis"</button></div>';
+  h += selModo;
   if (!at) {
-    h += '<p class="resumo" style="margin-top:14px;">O retorno por classe da carteira atual não está disponível para este período: ele é informado pelo relatório XPerformance (no ano, 12 e 24 meses). Carregue o relatório XPerformance da conta para comparar a carteira com a mesma alocação em ETFs. Abaixo, o desempenho dos ETFs no período.</p>';
+    h += '<p class="resumo" style="margin-top:14px;">O retorno por classe da carteira atual não está disponível para este período: ele é informado pelo relatório XPerformance (no ano, 12 e 24 meses). Carregue o relatório XPerformance da conta para comparar a carteira com a sugestão em ETFs. Abaixo, o desempenho dos ETFs no período.</p>';
+    if (pf) h += '<p class="resumo">Para referência, a alocação-alvo do ' + esc(nomePerfil) + ' implementada em ETFs renderia ' + fmtP(pf.m.ret, 1) + ' no período.</p>';
   } else {
-    var dif = et && et.nEtf ? et.m.ret - at.m.ret : null;
+    var dif = sg ? sg.m.ret - at.m.ret : null;
     h += '<p class="resumo" style="margin-top:14px;">Entre ' + fmtMesLongoBT(B.meses[0]) + ' e ' + fmtMesLongoBT(B.meses[N]) + ', a carteira atual, com os pesos de hoje por classe, rendeu ' + fmtP(at.m.ret, 1) + '. ' +
-      (et && et.nEtf ? 'Substituindo ' + et.nEtf + (et.nEtf === 1 ? ' classe' : ' classes') + ' por ETFs, o retorno seria de ' + fmtP(et.m.ret, 1) + ' (' + (dif >= 0 ? '+' : '') + fmtP(dif, 1).replace('%', ' p.p.') + ', cerca de ' + (dif >= 0 ? '+' : '-') + 'R$ ' + fmtMilBT(dif / 100 * R.total) + ' sobre o patrimônio de R$ ' + fmtMilBT(R.total) + ').' : 'Nenhum ETF comparável tem histórico consistente neste período para substituir as classes da carteira.') +
-      (B.coberturaPct < 99 ? ' O retorno por classe cobre ' + fmtP(B.coberturaPct, 0) + ' do patrimônio consolidado (a parte restante, como saldo em conta e instituições sem relatório XPerformance, não entra na comparação).' : '') + '</p>';
-    // extras do gráfico
+      (sg ? (modo === 'perfil' ? 'A alocação-alvo do ' + esc(nomePerfil) + ', implementada em ETFs, teria rendido ' : 'Substituindo ' + sg.nEtf + (sg.nEtf === 1 ? ' classe' : ' classes') + ' por ETFs, o retorno seria de ') + fmtP(sg.m.ret, 1) + ' (' + (dif >= 0 ? '+' : '') + fmtP(dif, 1).replace('%', ' p.p.') + ', cerca de ' + (dif >= 0 ? '+' : '-') + 'R$ ' + fmtMilBT(Math.abs(dif) / 100 * R.total) + ' sobre o patrimônio de R$ ' + fmtMilBT(R.total) + ').'
+        : (modo === 'perfil' ? 'A alocação-alvo do ' + esc(nomePerfil) + ' não pode ser simulada neste período: ' + esc(B.perfilFalta || 'histórico insuficiente dos ETFs') + '. Escolha um período menor.' : 'Nenhum ETF comparável tem histórico consistente neste período para substituir as classes da carteira.')) +
+      (B.coberturaPct < 99 ? ' O retorno por classe da carteira atual cobre ' + fmtP(B.coberturaPct, 0) + ' do patrimônio consolidado (a parte restante, como saldo em conta e instituições sem relatório XPerformance, não entra na comparação).' : '') + '</p>';
     var extras = [];
-    if (pf && pf.nEtf) extras.push({ id: 'perfil', rot: R.matriz.perfis[perfilAtualIdx()].nome + ' com ETFs', idx: pf.idx });
+    if (modo === 'perfil' && ca && ca.nEtf) extras.push({ id: 'atualetf', rot: 'Mesma alocação atual com ETFs', idx: ca.idx });
+    if (modo === 'atual' && pf) extras.push({ id: 'perfil', rot: nomePerfil + ' com ETFs', idx: pf.idx });
     if (B.real) extras.push({ id: 'real', rot: 'Carteira real (XPerformance)', idx: B.real.idx });
     etfsOk.forEach(function (e) { extras.push({ id: e.id, rot: e.rot, idx: e.idx }); });
     var sel = ST.btSel || [], linhas = [{ rot: 'Carteira atual (pesos atuais)', idx: at.idx, cor: '#9A9A9A', larg: 3.6 }];
-    if (et && et.nEtf) linhas.push({ rot: 'Mesma alocação com ETFs', idx: et.idx, cor: '#111111', larg: 3.6 });
-    var leg = '<div class="bt-leg"><span><i style="border-color:#9A9A9A"></i>Carteira atual (pesos atuais)</span>' + (et && et.nEtf ? '<span><i style="border-color:#111"></i>Mesma alocação com ETFs</span>' : '');
+    if (sg) linhas.push({ rot: rotSug, idx: sg.idx, cor: '#111111', larg: 3.6 });
+    var leg = '<div class="bt-leg"><span><i style="border-color:#9A9A9A"></i>Carteira atual (pesos atuais)</span>' + (sg ? '<span><i style="border-color:#111"></i>' + esc(rotSug) + '</span>' : '');
     var chips = '';
     extras.forEach(function (x) {
       var on = sel.indexOf(x.id) !== -1;
@@ -17930,13 +17963,15 @@ PAGINAS.backtest = function () {
     leg += '</div>';
     var grafico = '<div class="bt-painel"><div class="bt-tit">Evolução de 100 investidos em ' + fmtMesBT(B.meses[0], true).toLowerCase().replace('/', '/20') + ', até ' + fmtMesBT(B.meses[N], true).toLowerCase().replace('/', '/20') + '</div>' + svgLinhasBT(B.meses, linhas) + leg +
       '<div style="margin-top:14px;font-size:12px;color:var(--ink-soft);">Incluir no gráfico:</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">' + chips + '</div></div>';
-    var resultado = '<table class="bt"><thead><tr><th>Resultado</th><th>Atual</th><th>ETFs</th></tr></thead><tbody>' +
-      '<tr><td>Retorno acumulado</td><td>' + fmtP(at.m.ret, 1) + '</td><td class="forte">' + (et && et.nEtf ? fmtP(et.m.ret, 1) : '—') + '</td></tr>' +
-      '<tr><td>Retorno anualizado</td><td>' + fmtP(at.m.aa, 1) + '</td><td class="forte">' + (et && et.nEtf ? fmtP(et.m.aa, 1) : '—') + '</td></tr>' +
-      '<tr><td>Sobre R$ ' + fmtMilBT(R.total) + '</td><td>–</td><td class="forte">' + (dif === null ? '—' : (dif >= 0 ? '+' : '-') + 'R$ ' + fmtMilBT(dif / 100 * R.total)) + '</td></tr></tbody></table>';
+    var cabSug = modo === 'perfil' ? esc(nomePerfil) + ' (ETFs)' : 'ETFs';
+    var resultado = '<table class="bt"><thead><tr><th>Resultado</th><th>Atual</th><th>' + cabSug + '</th></tr></thead><tbody>' +
+      '<tr><td>Retorno acumulado</td><td>' + fmtP(at.m.ret, 1) + '</td><td class="forte">' + (sg ? fmtP(sg.m.ret, 1) : '—') + '</td></tr>' +
+      '<tr><td>Retorno anualizado</td><td>' + fmtP(at.m.aa, 1) + '</td><td class="forte">' + (sg ? fmtP(sg.m.aa, 1) : '—') + '</td></tr>' +
+      '<tr><td>Sobre R$ ' + fmtMilBT(R.total) + '</td><td>–</td><td class="forte">' + (dif === null ? '—' : (dif >= 0 ? '+' : '-') + 'R$ ' + fmtMilBT(Math.abs(dif) / 100 * R.total)) + '</td></tr></tbody></table>';
     var comp = '';
-    if (et && et.comp.length) {
-      comp = '<table class="bt"><thead><tr><th>Composição da carteira de ETFs</th><th>Peso</th></tr></thead><tbody>' + et.comp.map(function (c) { return '<tr><td>' + esc(c.rot) + '</td><td>' + fmtP(c.peso * 100, 1) + '</td></tr>'; }).join('') + '<tr class="total"><td>Total</td><td>100%</td></tr></tbody></table>';
+    if (sg && sg.comp.length) {
+      comp = '<table class="bt"><thead><tr><th>Composição da carteira de ETFs' + (modo === 'perfil' ? ' (' + esc(nomePerfil) + ')' : '') + '</th><th>Peso</th></tr></thead><tbody>' + sg.comp.map(function (c) { return '<tr><td>' + esc(c.rot) + '</td><td>' + fmtP(c.peso * 100, 1) + '</td></tr>'; }).join('') + '<tr class="total"><td>Total</td><td>100%</td></tr></tbody></table>' +
+        (sg.refs && sg.refs.length ? '<p class="nota" style="margin:-8px 0 0;">Sem ETF equivalente: ' + esc(sg.refs.join('; ')) + ' (referência: Tesouro Selic, LFTS11).</p>' : '') + (sg.subs && sg.subs.length ? '<p class="nota" style="margin:6px 0 0;">Substituições por falta de histórico consistente no período: ' + esc(sg.subs.join('; ')) + '.</p>' : '');
     }
     h += '<div class="bt-grid">' + grafico + '<div class="bt-painel">' + resultado + comp + '</div></div>';
   }
@@ -17950,13 +17985,14 @@ PAGINAS.backtest = function () {
   var semHist = B.etfs.filter(function (e) { return !e.m && !e.incons; }).map(function (e) { return e.rot; }), incons = B.etfs.filter(function (e) { return e.incons; }).map(function (e) { return e.rot; });
   tb += '</tbody></table></div>' + (semHist.length ? '<p class="nota">Sem histórico suficiente para ' + N + ' meses: ' + esc(semHist.join(', ')) + '.</p>' : '') + (incons.length ? '<p class="nota">Excluídos por dados de cotação inconsistentes na fonte no período (salto incompatível com a classe ou cotação parada): ' + esc(incons.join(', ')) + '.</p>' : '');
   h += '<div class="tiles">' + tile('t12', 'ETFs comparados', tb, 'clique em uma linha para incluí-la no gráfico') + '</div>';
-  h += '<p class="nota"><b>Como ler.</b> A carteira atual usa os pesos de hoje por classe e o retorno de cada classe informado pelo relatório XPerformance (com proventos), distribuído de forma uniforme ao longo dos meses, pois o relatório traz apenas o retorno acumulado por classe. Na carteira com ETFs, as classes de renda fixa (pós-fixado, inflação e prefixado), renda variável Brasil e renda variável global são substituídas pelo ETF indicado, com a variação mensal real da cotação; as demais classes são mantidas, com o mesmo retorno nas duas carteiras. As posições iniciais não são rebalanceadas. Os ETFs usam o preço de fechamento na B3, sem proventos, impostos ou custos de negociação. Se um ETF não tem histórico consistente no período, a classe correspondente é mantida. Rentabilidade passada não representa garantia de rentabilidade futura; material informativo, que não constitui recomendação de investimento.</p>';
+  h += '<p class="nota"><b>Como ler.</b> A carteira atual usa os pesos de hoje por classe e o retorno de cada classe informado pelo relatório XPerformance (com proventos), distribuído de forma uniforme ao longo dos meses, pois o relatório traz apenas o retorno acumulado por classe. A sugestão padrão é a alocação-alvo do perfil selecionado em \\"Alocação e perfis\\", implementada em ETFs (pós-fixado: LFTS11; inflação: IMAB11; prefixado: IRFM11; renda variável Brasil: BOVA11; renda variável global: IVVB11; fundos imobiliários: XFIX11; alternativos: GOLD11); multimercados e renda fixa global não têm ETF equivalente e usam o Tesouro Selic como referência. A opção \\"Mesma alocação atual\\" troca por ETFs apenas as classes de renda fixa e de renda variável, mantendo as demais com o retorno da própria carteira. As posições iniciais não são rebalanceadas. Os ETFs usam o preço de fechamento na B3, sem proventos, impostos ou custos de negociação. Se um ETF não tem histórico consistente no período, a classe correspondente é mantida. Rentabilidade passada não representa garantia de rentabilidade futura; material informativo, que não constitui recomendação de investimento.</p>';
   return h;
 };
 function aplicarAcaoBT(t) {
   function ach(sel) { return t && t.closest ? t.closest(sel) : null; }
   var el;
   if ((el = ach('[data-bt-per]'))) { var v = el.getAttribute('data-bt-per'); ST.btPer = v === 'ano' ? 'ano' : Number(v); render(); return true; }
+  if ((el = ach('[data-bt-modo]'))) { ST.btModo = el.getAttribute('data-bt-modo'); render(); return true; }
   if ((el = ach('[data-bt-ord]'))) { ST.btOrd = el.getAttribute('data-bt-ord'); render(); return true; }
   if (ach('[data-bt-recarregar]')) { BT.tentados = {}; BT.dados = {}; BT.erro = ''; render(); return true; }
   if ((el = ach('[data-bt-sel]'))) {
