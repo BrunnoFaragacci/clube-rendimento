@@ -18211,6 +18211,7 @@ h2{font-size:17px;font-weight:700;margin-bottom:4px;}
 .status{font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
 .status b{color:var(--ink);}
 .topo{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.seletor{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
 .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:16px;box-shadow:var(--shadow-sm);}
 .grade2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 @media(max-width:900px){.grade2{grid-template-columns:1fr;}}
@@ -18263,12 +18264,13 @@ td button:hover{background:#FDECEC;color:var(--red);}
 <div class="container">
   <span class="eyebrow">Renda Variável</span>
   <h1>Valuation — P/L e P/VP</h1>
-  <p class="sub">Acompanhamento do preço sobre lucro (P/L) e do preço sobre valor patrimonial (P/VP) da bolsa e das empresas favoritas, comparados com a mediana histórica dos últimos dez anos. Os indicadores são recalculados com a cotação mais recente, atualizada automaticamente a cada 60 segundos.</p>
+  <p class="sub">Acompanhamento do preço sobre lucro (P/L) e do preço sobre valor patrimonial (P/VP) da bolsa e das empresas favoritas, comparados com a mediana histórica do período escolhido (10, 5, 2 ou 1 ano). Os indicadores são recalculados com a cotação mais recente, atualizada automaticamente a cada 60 segundos.</p>
 
   <div class="topo">
     <div class="status" id="status">Carregando...</div>
     <button type="button" class="btn" id="btn-atualizar">↻ Atualizar agora</button>
   </div>
+  <div class="seletor"><span class="msg" style="font-weight:700;color:var(--ink);">Mediana dos últimos</span><div class="abas" id="janelas"><button type="button" data-j="10" class="ativo">10 anos</button><button type="button" data-j="5">5 anos</button><button type="button" data-j="2">2 anos</button><button type="button" data-j="1">1 ano</button></div></div>
   <div class="aviso" id="aviso" hidden></div>
 
   <div class="card">
@@ -18290,7 +18292,7 @@ td button:hover{background:#FDECEC;color:var(--red);}
     <div class="tabela" id="tabela"></div>
   </div>
 
-  <p class="nota">Fontes: cotações do Yahoo Finance (atualizadas a cada 60 segundos); lucro por ação (LPA), valor patrimonial por ação (VPA) e histórico anual de P/L e P/VP do Investidor10, renovados a cada 12 horas. P/L e P/VP atuais = cotação ÷ LPA e ÷ VPA do último balanço divulgado. A mediana considera os valores ao final de cada um dos últimos dez anos, desconsiderando anos de lucro negativo. O indicador da bolsa é calculado sobre as maiores empresas da B3 por valor de mercado (uma classe de ação por empresa), com média harmônica ponderada pelo valor de mercado atual de cada empresa; trata-se de uma aproximação e não do índice oficial. Valores de anos anteriores refletem o preço e o balanço de cada fechamento anual. Informação sem caráter de recomendação.</p>
+  <p class="nota">Fontes: cotações do Yahoo Finance (atualizadas a cada 60 segundos); lucro por ação (LPA), valor patrimonial por ação (VPA) e histórico anual de P/L e P/VP do Investidor10, renovados a cada 12 horas. P/L e P/VP atuais = cotação ÷ LPA e ÷ VPA do último balanço divulgado. A mediana de 10 anos considera os valores ao final de cada ano; as de 5, 2 e 1 ano usam séries mensais reconstruídas com a cotação de fechamento de cada mês dividida pelo LPA ou VPA (interpolado entre os balanços anuais e o último divulgado), de modo que os fechamentos anuais coincidem com os do Investidor10. Períodos de lucro negativo são desconsiderados. O indicador da bolsa é calculado sobre as maiores empresas da B3 por valor de mercado (uma classe de ação por empresa), com média harmônica ponderada pelo valor de mercado atual de cada empresa; trata-se de uma aproximação e não do índice oficial. Informação sem caráter de recomendação.</p>
 </div>
 
 <script>
@@ -18301,9 +18303,9 @@ var HDR = { 'Authorization': 'Bearer ' + SB_KEY, 'apikey': SB_KEY };
 var SESSAO_INICIAL = ${JSON.stringify(sessaoAtual)};
 var sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
 var logado = false;
-var CH_FAV = 'cr_favoritos_acoes_v1', CH_FUND = 'cr_valuation_fund_v1', CH_UNIV = 'cr_valuation_univ_v1';
+var CH_FAV = 'cr_favoritos_acoes_v1', CH_FUND = 'cr_valuation_fund_v2', CH_UNIV = 'cr_valuation_univ_v1', CH_HIST = 'cr_valuation_hist_v1', CH_JAN = 'cr_valuation_janela';
 var N_UNIV = 40, TTL_FUND = 12 * 3600 * 1000, TTL_FALHA = 3600 * 1000, TTL_UNIV = 24 * 3600 * 1000, INTERVALO_MS = 60000;
-var favs = [], uni = [], fund = {}, falha = {}, cot = {}, metrica = 'pvp';
+var favs = [], uni = [], fund = {}, falha = {}, cot = {}, metrica = 'pvp', janela = 10, hist = {}, memo = {};
 var funcaoIndisponivel = false, ultimaAtualizacao = null, ultimoErro = '', carregando = false, horaCotacao = '';
 
 function esc(t) { return String(t === undefined || t === null ? '' : t).split('&').join('&amp;').split('<').join('&lt;'); }
@@ -18353,7 +18355,7 @@ function carregarFundamentos(tickers) {
   for (var i = 0; i < faltam.length; i += 12) blocos.push(faltam.slice(i, i + 12));
   var okBlocos = 0, blocosComErro = [];
   return Promise.all(blocos.map(function (b) {
-    return buscarJson(SB_URL + '/functions/v1/valuation-historico?tickers=' + encodeURIComponent(b.join(',')), 2).then(function (j) {
+    return buscarJson(SB_URL + '/functions/v1/valuation-historico?v=2&tickers=' + encodeURIComponent(b.join(',')), 2).then(function (j) {
       okBlocos++;
       Object.keys(j.dados || {}).forEach(function (t) { var d = j.dados[t]; d.t = Date.now(); fund[t] = d; delete falha[t]; });
       (j.falhas || []).forEach(function (t) { falha[t] = Date.now(); });
@@ -18381,6 +18383,31 @@ function carregarAlternativo(tickers) {
     });
   }));
 }
+// Fechamentos mensais (Yahoo Finance, ajustados por desdobramentos) para reconstruir as medianas de 5, 2 e 1 ano
+function carregarPrecos(tickers) {
+  var c = lerLocal(CH_HIST) || {};
+  hist = c.d || {};
+  var agora = Date.now();
+  var faltam = tickers.filter(function (t) { return fund[t] && !fund[t].alt && !(hist[t] && agora - hist[t].t < TTL_FUND); });
+  if (!faltam.length) return Promise.resolve();
+  var blocos = [];
+  for (var i = 0; i < faltam.length; i += 10) blocos.push(faltam.slice(i, i + 10));
+  return Promise.all(blocos.map(function (b) {
+    var syms = b.map(function (t) { return t + '.SA'; });
+    return fetch(SB_URL + '/functions/v1/cotacoes-yahoo?historico=1&s=' + encodeURIComponent(syms.join(','))).then(function (r) { return r.json(); }).catch(function () { return {}; });
+  })).then(function (rs) {
+    rs.forEach(function (r) {
+      var h = (r && r.historico) || {};
+      Object.keys(h).forEach(function (sim) {
+        var porMes = {};
+        ((h[sim] && h[sim].mensal) || []).forEach(function (x) { if (typeof x[1] === 'number' && x[1] > 0) porMes[x[0]] = x[1]; });
+        var arr = Object.keys(porMes).map(Number).sort(function (a, b) { return a - b; }).map(function (ym) { return [ym, porMes[ym]]; });
+        if (arr.length) hist[sim.replace('.SA', '')] = { t: Date.now(), m: arr };
+      });
+    });
+    gravarLocal(CH_HIST, { d: hist });
+  });
+}
 function carregarCotacoes(tickers) {
   var syms = tickers.map(function (t) { return t + '.SA'; }), blocos = [];
   for (var i = 0; i < syms.length; i += 30) blocos.push(syms.slice(i, i + 30));
@@ -18404,9 +18431,62 @@ function valorAtual(t, m) {
   if (c && typeof base === 'number' && base > 0) return c.preco / base;
   return ind && typeof ind.atual === 'number' && ind.atual > 0 ? ind.atual : null;
 }
+function rotJanela() { return janela === 1 ? '1 ano' : janela + ' anos'; }
+function imes(ym) { return Math.floor(ym / 100) * 12 + (ym % 100) - 1; }
+function ymAtual() { var d = new Date(); return d.getFullYear() * 100 + d.getMonth() + 1; }
+// Interpolação linear entre âncoras [índice do mês, valor]; fora do intervalo, vale a âncora mais próxima
+function interpolar(arr, i) {
+  if (i <= arr[0][0]) return arr[0][1];
+  for (var k = 1; k < arr.length; k++) {
+    if (i <= arr[k][0]) { var a = arr[k - 1], b = arr[k]; return a[1] + (b[1] - a[1]) * (i - a[0]) / ((b[0] - a[0]) || 1); }
+  }
+  return arr[arr.length - 1][1];
+}
+// Série mensal do indicador: fechamento do mês ÷ LPA (ou VPA) interpolado entre os valores de dezembro de cada ano e o valor atual.
+// O fator de calibração k reproduz exatamente os valores anuais do Investidor10 (corrige bonificações, que o Yahoo ajusta e o balanço não).
+function calcularSerieMensal(f, h, m) {
+  var anosB = m === 'pl' ? f.lpaAnos : f.vpaAnos, atualB = m === 'pl' ? f.lpa : f.vpa, ind = m === 'pl' ? f.pl : f.pvp;
+  if (!anosB || anosB.length < 3 || !ind || !ind.anos) return null;
+  var ya = ymAtual(), anc = anosB.map(function (x) { return [imes(x[0] * 100 + 12), x[1]]; });
+  if (typeof atualB === 'number') anc.push([imes(ya), atualB]);
+  anc.sort(function (x, y) { return x[0] - y[0]; });
+  var pm = {};
+  h.m.forEach(function (x) { pm[x[0]] = x[1]; });
+  var kA = [];
+  ind.anos.forEach(function (x) {
+    var ym = x[0] * 100 + 12, p = pm[ym], bse = interpolar(anc, imes(ym));
+    if (p > 0 && bse > 0 && x[1] > 0) { var k = x[1] / (p / bse); if (k > 0.3 && k < 3) kA.push([imes(ym), Math.abs(k - 1) < 0.02 ? 1 : k]); }
+  });
+  kA.sort(function (x, y) { return x[0] - y[0]; });
+  var out = [];
+  Object.keys(pm).map(Number).sort(function (x, y) { return x - y; }).forEach(function (ym) {
+    if (ym >= ya) return;
+    var i = imes(ym), bse = interpolar(anc, i);
+    if (!(bse > 0)) return;
+    out.push([ym, pm[ym] * (kA.length ? interpolar(kA, i) : 1) / bse]);
+  });
+  return out;
+}
+function serieMensal(t, m) {
+  var f = fund[t], h = hist[t];
+  if (!f || f.alt || !h || !h.m || !h.m.length) return null;
+  var ck = t + '|' + m + '|' + f.t + '|' + h.t + '|' + ymAtual();
+  if (memo[ck] === undefined) memo[ck] = calcularSerieMensal(f, h, m);
+  return memo[ck];
+}
+// Valores do indicador dentro da janela escolhida (10 anos: fechamentos anuais; demais: fechamentos mensais)
+function valoresJanela(t, m) {
+  var f = fund[t];
+  if (!f) return null;
+  if (janela === 10) { var ind = m === 'pl' ? f.pl : f.pvp; return ind && ind.anos && ind.anos.length >= 3 ? ind.anos.map(function (x) { return x[1]; }) : null; }
+  var s = serieMensal(t, m);
+  if (!s) return null;
+  var n = janela * 12, v = s.slice(-n);
+  return v.length >= Math.max(6, Math.round(n * 0.6)) ? v.map(function (x) { return x[1]; }) : null;
+}
 function medianaDe(t, m) {
-  var f = fund[t], ind = f && (m === 'pl' ? f.pl : f.pvp);
-  return ind && ind.anos && ind.anos.length >= 3 ? mediana(ind.anos.map(function (x) { return x[1]; })) : null;
+  var v = valoresJanela(t, m);
+  return v ? mediana(v) : null;
 }
 function linhaDe(t) {
   var o = { t: t, preco: cot[t] ? cot[t].preco : null, dia: cot[t] ? cot[t].variacao : null, nome: (cot[t] && cot[t].nome) || t };
@@ -18426,20 +18506,35 @@ function agregar(m) {
     return pw / tot >= 0.5 && pe > 0 ? { v: pw / pe, n: n } : null;
   }
   var atual = harm(function (t) { return valorAtual(t, m); });
-  var anos = {};
-  uni.forEach(function (u) {
-    var f = fund[u.t], ind = f && (m === 'pl' ? f.pl : f.pvp);
-    ((ind && ind.anos) || []).forEach(function (x) { anos[x[0]] = 1; });
-  });
-  var serie = [];
-  Object.keys(anos).sort().forEach(function (a) {
-    var r = harm(function (t) {
-      var f = fund[t], ind = f && (m === 'pl' ? f.pl : f.pvp), x = ind && ind.anos ? ind.anos.filter(function (z) { return String(z[0]) === a; })[0] : null;
-      return x ? x[1] : null;
+  var serie = [], nJan = janela * 12;
+  if (janela === 10) {
+    var anos = {};
+    uni.forEach(function (u) {
+      var f = fund[u.t], ind = f && (m === 'pl' ? f.pl : f.pvp);
+      ((ind && ind.anos) || []).forEach(function (x) { anos[x[0]] = 1; });
     });
-    if (r) serie.push([parseInt(a, 10), r.v]);
-  });
-  var md = serie.length >= 3 ? mediana(serie.map(function (x) { return x[1]; })) : null;
+    Object.keys(anos).sort().forEach(function (a) {
+      var r = harm(function (t) {
+        var f = fund[t], ind = f && (m === 'pl' ? f.pl : f.pvp), x = ind && ind.anos ? ind.anos.filter(function (z) { return String(z[0]) === a; })[0] : null;
+        return x ? x[1] : null;
+      });
+      if (r) serie.push([parseInt(a, 10), r.v]);
+    });
+  } else {
+    var mapas = {}, mesesSet = {};
+    uni.forEach(function (u) {
+      var sm = serieMensal(u.t, m);
+      if (!sm) return;
+      mapas[u.t] = {};
+      sm.forEach(function (x) { mapas[u.t][x[0]] = x[1]; mesesSet[x[0]] = 1; });
+    });
+    Object.keys(mesesSet).map(Number).sort(function (x, y) { return x - y; }).slice(-nJan).forEach(function (ym) {
+      var r = harm(function (t) { return mapas[t] ? mapas[t][ym] : null; });
+      if (r) serie.push([ym, r.v]);
+    });
+  }
+  var minimo = janela === 10 ? 3 : Math.max(6, Math.round(nJan * 0.6));
+  var md = serie.length >= minimo ? mediana(serie.map(function (x) { return x[1]; })) : null;
   return { atual: atual ? atual.v : null, n: atual ? atual.n : 0, serie: serie, med: md, d: atual && md ? (atual.v / md - 1) * 100 : null };
 }
 
@@ -18453,27 +18548,28 @@ function svgSerie(ag) {
   var n = pts.length + (ag.atual ? 1 : 0), dx = (W - pl - pr) / Math.max(n - 1, 1);
   function X(i) { return pl + i * dx; }
   function Y(v) { return pt + (H - pt - pb) * (1 - (v - mn) / (mx - mn)); }
-  var all = pts.map(function (p) { return [String(p[0]), p[1]]; });
+  var all = pts.map(function (p) { return [p[0] > 9999 ? ('0' + (p[0] % 100)).slice(-2) + '/' + String(Math.floor(p[0] / 100)).slice(-2) : String(p[0]), p[1]]; });
   if (ag.atual) all.push(['Atual', ag.atual]);
+  var passo = Math.max(1, Math.ceil(all.length / 12));
   var d = all.map(function (p, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(p[1]).toFixed(1); }).join(' ');
   var s = '<svg class="graf" viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img">';
   s += '<line x1="' + pl + '" y1="' + Y(ag.med).toFixed(1) + '" x2="' + (W - pr) + '" y2="' + Y(ag.med).toFixed(1) + '" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="5 4"/>';
   s += '<path d="' + d + '" fill="none" stroke="#111" stroke-width="2.2" stroke-linejoin="round"/>';
   all.forEach(function (p, i) {
     var atual = p[0] === 'Atual';
-    s += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(p[1]).toFixed(1) + '" r="' + (atual ? 5 : 3.2) + '" fill="' + (atual ? '#111' : '#fff') + '" stroke="#111" stroke-width="1.8"/>';
-    s += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 10) + '" text-anchor="middle" font-size="10.5" fill="#5C5C5C"' + (atual ? ' font-weight="700"' : '') + '>' + (atual ? 'Atual' : p[0]) + '</text>';
+    if (atual || all.length <= 14) s += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(p[1]).toFixed(1) + '" r="' + (atual ? 5 : 3.2) + '" fill="' + (atual ? '#111' : '#fff') + '" stroke="#111" stroke-width="1.8"/>';
+    if (atual || (i % passo === 0 && !(passo > 1 && i === all.length - 2))) s += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 10) + '" text-anchor="middle" font-size="10.5" fill="#5C5C5C"' + (atual ? ' font-weight="700"' : '') + '>' + (atual ? 'Atual' : p[0]) + '</text>';
     if (atual || i === 0 || p[1] === Math.max.apply(null, pts.map(function (q) { return q[1]; })) || p[1] === Math.min.apply(null, pts.map(function (q) { return q[1]; }))) {
       s += '<text x="' + X(i).toFixed(1) + '" y="' + (Y(p[1]) - 9).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#111">' + fmt(p[1], 1) + '</text>';
     }
   });
-  return s + '</svg><div class="msg" style="margin-top:2px;">Linha tracejada: mediana dos fechamentos anuais.</div>';
+  return s + '</svg><div class="msg" style="margin-top:2px;">Linha tracejada: mediana do período (' + rotJanela() + ').</div>';
 }
 function cartaoBolsa(m) {
   var ag = agregar(m);
   if (ag.atual === null) return '<div><h2>' + nomeMetrica(m) + '</h2><div class="vazio" style="color:#777;">Indicador indisponível no momento.</div></div>';
   var sel = ag.d === null ? '' : '<span class="sel ' + (ag.d >= 0 ? 'alto' : 'baixo') + '">' + fmtD(ag.d) + ' frente à mediana</span>';
-  return '<div><h2>' + nomeMetrica(m) + ' da bolsa</h2><div class="indic"><div><div class="r">Hoje</div><div class="n">' + fmt(ag.atual, 2) + '</div></div><div><div class="r">Mediana (10 anos)</div><div class="m">' + (ag.med ? fmt(ag.med, 2) : '—') + '</div></div>' + (sel ? '<div>' + sel + '</div>' : '') + '</div>' + svgSerie(ag) + '</div>';
+  return '<div><h2>' + nomeMetrica(m) + ' da bolsa</h2><div class="indic"><div><div class="r">Hoje</div><div class="n">' + fmt(ag.atual, 2) + '</div></div><div><div class="r">Mediana (' + rotJanela() + ')</div><div class="m">' + (ag.med ? fmt(ag.med, 2) : '—') + '</div></div>' + (sel ? '<div>' + sel + '</div>' : '') + '</div>' + svgSerie(ag) + '</div>';
 }
 function renderBolsa() {
   var el = document.getElementById('bolsa');
@@ -18483,7 +18579,7 @@ function renderBolsa() {
     document.getElementById('bolsa-sub').textContent = '';
     return;
   }
-  document.getElementById('bolsa-sub').textContent = 'Média ponderada pelo valor de mercado das ' + uni.length + ' maiores empresas da B3, comparada com a mediana dos fechamentos anuais dos últimos dez anos.';
+  document.getElementById('bolsa-sub').textContent = 'Média ponderada pelo valor de mercado das ' + uni.length + ' maiores empresas da B3, comparada com a mediana ' + (janela === 10 ? 'dos fechamentos anuais dos últimos dez anos.' : 'dos fechamentos mensais dos últimos ' + rotJanela() + '.');
   el.innerHTML = cartaoBolsa('pvp') + cartaoBolsa('pl');
 }
 function renderFavoritos() {
@@ -18497,7 +18593,7 @@ function renderFavoritos() {
     var pos = Math.max.apply(null, [0].concat(com.map(function (l) { return l[m + 'D']; })));
     var neg = Math.max.apply(null, [0].concat(com.map(function (l) { return -l[m + 'D']; })));
     var tot = pos + neg || 1, zp = neg / tot * 100;
-    var h = '<div class="tit">' + nomeMetrica(m) + ' de hoje contra a mediana histórica de cada empresa</div>';
+    var h = '<div class="tit">' + nomeMetrica(m) + ' de hoje contra a mediana dos últimos ' + rotJanela() + ' de cada empresa</div>';
     com.forEach(function (l) {
       var d = l[m + 'D'], w = Math.abs(d) / tot * 100;
       var area = '<div class="area" style="margin-left:' + (neg > 0 ? 64 : 0) + 'px;margin-right:78px;">';
@@ -18588,7 +18684,7 @@ function atualizar() {
   btn.disabled = true;
   var tickers = uni.map(function (u) { return u.t; });
   favs.forEach(function (t) { if (tickers.indexOf(t) === -1) tickers.push(t); });
-  return carregarFundamentos(tickers).then(function () { return carregarCotacoes(tickers); }).then(function () {
+  return carregarFundamentos(tickers).then(function () { return carregarPrecos(tickers).catch(function () {}); }).then(function () { return carregarCotacoes(tickers); }).then(function () {
     ultimoErro = ''; ultimaAtualizacao = new Date();
   }).catch(function (e) { ultimoErro = e && e.message ? e.message : 'Falha ao atualizar.'; })
     .then(function () { renderizar(); })
@@ -18597,6 +18693,18 @@ function atualizar() {
 document.getElementById('btn-atualizar').addEventListener('click', atualizar);
 document.getElementById('fav-add').addEventListener('click', adicionarFav);
 document.getElementById('fav-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') adicionarFav(); });
+document.getElementById('janelas').addEventListener('click', function (e) {
+  var b = e.target.closest ? e.target.closest('button[data-j]') : null;
+  if (!b) return;
+  janela = parseInt(b.getAttribute('data-j'), 10);
+  gravarLocal(CH_JAN, janela);
+  marcarJanela();
+  renderizar();
+});
+function marcarJanela() {
+  Array.prototype.forEach.call(document.querySelectorAll('#janelas button'), function (x) { x.classList.toggle('ativo', parseInt(x.getAttribute('data-j'), 10) === janela); });
+}
+(function () { var j = parseInt(lerLocal(CH_JAN), 10); if ([10, 5, 2, 1].indexOf(j) !== -1) janela = j; marcarJanela(); })();
 document.getElementById('abas').addEventListener('click', function (e) {
   var b = e.target.closest ? e.target.closest('button[data-m]') : null;
   if (!b) return;

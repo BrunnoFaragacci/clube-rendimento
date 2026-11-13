@@ -3,7 +3,7 @@
 // de P/L e P/VP, obtidos do Investidor10. Usada pela tela "Valuation (P/L e P/VP)" do site.
 //
 // Uso: GET /functions/v1/valuation-historico?tickers=PETR4,VALE3,WEGE3   (até 15 tickers por chamada)
-// Resposta: { dados: { PETR4: { id, pl: { atual, anos: [[2025, 4.1], ...] }, pvp: {...}, lpa, vpa }, ... }, falhas: ["XXXX3"] }
+// Resposta: { dados: { PETR4: { id, pl: { atual, anos: [[2025, 4.1], ...] }, pvp: {...}, lpa, vpa, lpaAnos: [[2025, 1.5], ...], vpaAnos: [...] }, ... }, falhas: ["XXXX3"] }
 //
 // Publicação: painel do Supabase > Edge Functions > Deploy a new function > nome "valuation-historico" (colar este arquivo).
 // A função aceita chamadas com a chave pública (anon) do projeto, como as demais funções do site.
@@ -37,7 +37,7 @@ function lerIndicador(lista: unknown): { atual: number | null; anos: [number, nu
     const ano = String((it && (it as { year?: unknown }).year) ?? '');
     if (v === null) continue;
     if (ano === 'Atual') atual.atual = v;
-    else if (/^\d{4}$/.test(ano)) atual.anos.push([parseInt(ano, 10), Math.round(v * 1000) / 1000]);
+    else if (/^\d{4}$/.test(ano)) atual.anos.push([parseInt(ano, 10), Math.round(v * 10000) / 10000]);
   }
   atual.anos.sort((a, b) => a[0] - b[0]);
   return atual;
@@ -61,10 +61,10 @@ export async function coletar(ticker: string) {
   const j = await r.json();
   const pl = lerIndicador(j['P/L']);
   const pvp = lerIndicador(j['P/VP']);
-  const lpa = lerIndicador(j['LPA']).atual;
-  const vpa = lerIndicador(j['VPA']).atual;
+  const lpaI = lerIndicador(j['LPA']);
+  const vpaI = lerIndicador(j['VPA']);
   if (pl.atual === null && pvp.atual === null && !pl.anos.length && !pvp.anos.length) throw new Error('sem indicadores');
-  return { id, pl, pvp, lpa, vpa };
+  return { id, pl, pvp, lpa: lpaI.atual, vpa: vpaI.atual, lpaAnos: lpaI.anos, vpaAnos: vpaI.anos };
 }
 
 async function tratar(req: Request): Promise<Response> {
