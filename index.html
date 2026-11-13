@@ -15486,6 +15486,7 @@ th.ord:hover{color:var(--ink);}
       <button type="button" class="btn btn-primary" data-salvar="1">💾 Salvar carteira</button>
       <button type="button" class="btn btn-primary" id="btn-excel">⬇ Exportar Excel</button>
       <button type="button" class="btn" id="btn-imprimir">Imprimir / salvar em PDF</button>
+      <button type="button" class="btn" data-aba="inst" id="btn-arquivos" title="Abre a aba Instituições, onde cada arquivo enviado pode ser baixado novamente">⬇ Arquivos enviados</button>
       <span class="msg-salvar" style="font-size:12.5px;"></span>
     </div>
     <div class="cab-rel" id="cab"></div>
@@ -16379,6 +16380,7 @@ function reanalisar() {
 function aplicarAcaoInst(t) {
   function ach(sel) { return t && t.closest ? t.closest(sel) : null; }
   var el;
+  if ((el = ach('[data-baixar-arq]'))) { baixarArquivo(el.getAttribute('data-baixar-arq')); return true; }
   if (ach('[data-rmbase]')) { removerBase(); return true; }
   if ((el = ach('[data-oxdel]'))) { var p = el.getAttribute('data-oxdel').split('|'); OUTRAS[Number(p[0])].itens.splice(Number(p[1]), 1); reanalisar(); return true; }
   if ((el = ach('[data-oxadd]'))) { OUTRAS[Number(el.getAttribute('data-oxadd'))].itens.push({ nome: '', valor: 0, instr: 'Outros', estrategia: 'Outros (verificar)' }); reanalisar(); return true; }
@@ -16460,7 +16462,7 @@ function salvarCarteira() {
     cliente_id: CLI.id || null, cliente_nome: nomeClienteAtual() || null, conta: D.cab.conta || null, data_ref: iso,
     patrimonio: D.kpi.patrimonio, patrimonio_outras: outrasTot,
     rent_ano: D.kpi.per.ano ? D.kpi.per.ano.rent : null, rent_12m: D.kpi.per.m12 ? D.kpi.per.m12.rent : null,
-    dados: { versao: 1, D: D, outras: OUTRAS, perfis: dadosPerfis() }
+    dados: { versao: 1, D: D, outras: OUTRAS, perfis: dadosPerfis(), arquivos: dadosArquivos() }
   };
   dizer('Salvando...', false);
   var busca = iso ? sb.from('consolidacao_carteiras').select('id').eq('conta', D.cab.conta || '').eq('data_ref', iso) : null;
@@ -16484,7 +16486,7 @@ function abrirRegistro(id) {
   sb.from('consolidacao_carteiras').select('dados,cliente_id,cliente_nome,data_ref').eq('id', id).single().then(function (r) {
     var dd = r && r.data && r.data.dados;
     if (!r || r.error || !dd || !dd.D) { alert('Não foi possível abrir o registro' + (r && r.error ? ': ' + r.error.message : '.')); return; }
-    D = dd.D; OUTRAS = dd.outras || []; msgInst = { t: '', erro: false };
+    D = dd.D; OUTRAS = dd.outras || []; restaurarArquivos(dd.arquivos); msgInst = { t: '', erro: false };
     D.inst = D.inst || INST_PADRAO;
     CLI = r.data.cliente_id ? { id: r.data.cliente_id, nome: r.data.cliente_nome || '' } : { id: '', nome: '' };
     document.getElementById('in-cliente').value = r.data.cliente_nome || '';
@@ -16971,6 +16973,11 @@ function processarArquivos(lista, modo) {
       if (modo === 'adicionar') { msgInst = { t: r.erros.join(' '), erro: true }; render(); }
       return;
     }
+    if (modo === 'novo') ARQS = {};
+    r.lidos.forEach(function (l) {
+      var a = arqs.filter(function (x) { return x.name === l.arq; })[0];
+      if (a) ARQS[a.name] = { nome: a.name, tamanho: a.size, tipo: a.type || '', enviadoEm: new Date().toISOString(), caminho: '', file: a };
+    });
     msgInst = { t: r.erros.concat(r.infos).join(' '), erro: r.erros.length > 0 };
     ST.novaInst = '';
     R = analisar(D);
@@ -17086,6 +17093,66 @@ document.addEventListener('change', function (ev) {
 });
 
 // ── Consolidação salva por cliente (gravação automática) e atualização das cotações ──
+// ── Arquivos originais enviados: guardados (privados) no Supabase Storage, por usuário e cliente, e disponíveis para download ──
+var BUCKET_ARQ = 'consolidacao-arquivos', ARQS = {};
+function nomeSeguroArq(n) { return String(n || 'arquivo').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9._-]+/g, '_').slice(0, 120); }
+function tipoMimeArq(e) {
+  if (e.tipo) return e.tipo;
+  var n = String(e.nome || '').toLowerCase();
+  return /[.]pdf$/.test(n) ? 'application/pdf' : (/[.]xlsx$/.test(n) ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : (/[.]xls$/.test(n) ? 'application/vnd.ms-excel' : (/[.]csv$/.test(n) ? 'text/csv' : 'application/octet-stream')));
+}
+function arquivoReferenciado(nome) { return !!nome && ((D && D.arquivo === nome) || OUTRAS.some(function (o) { return o.arquivos && o.arquivos.indexOf(nome) !== -1; })); }
+function dadosArquivos() {
+  return Object.keys(ARQS).map(function (k) { return ARQS[k]; }).filter(function (e) { return e.caminho && arquivoReferenciado(e.nome); })
+    .map(function (e) { return { nome: e.nome, tamanho: e.tamanho, tipo: e.tipo, enviadoEm: e.enviadoEm, caminho: e.caminho }; });
+}
+function restaurarArquivos(lista) {
+  ARQS = {};
+  (lista || []).forEach(function (a) { if (a && a.nome && a.caminho) ARQS[a.nome] = { nome: a.nome, tamanho: a.tamanho, tipo: a.tipo || '', enviadoEm: a.enviadoEm || '', caminho: a.caminho, file: null }; });
+}
+function enviarArquivos() {
+  if (!sb || !logado || !CLI.id) return Promise.resolve();
+  var pend = Object.keys(ARQS).map(function (k) { return ARQS[k]; }).filter(function (e) { return e.file && !e.caminho && !e.enviando && arquivoReferenciado(e.nome); });
+  if (!pend.length) return Promise.resolve();
+  return sb.auth.getUser().then(function (res) {
+    var u = res && res.data && res.data.user;
+    if (!u) return;
+    return Promise.all(pend.map(function (e, i) {
+      if (e.file.size > 25 * 1024 * 1024) { e.erroEnvio = 'arquivo maior que 25 MB'; return null; }
+      e.enviando = true;
+      var path = u.id + '/' + CLI.id + '/' + Date.now() + '_' + i + '_' + nomeSeguroArq(e.nome);
+      return sb.storage.from(BUCKET_ARQ).upload(path, e.file, { contentType: tipoMimeArq(e), upsert: false }).then(function (r) {
+        if (r.error) e.erroEnvio = r.error.message; else { e.caminho = path; e.erroEnvio = ''; }
+      }).catch(function (err) { e.erroEnvio = err && err.message ? err.message : 'falha de envio'; }).then(function () { e.enviando = false; });
+    }));
+  }).then(function () { if (R && ST.aba === 'inst') render(); });
+}
+function avisoEnvioArq() {
+  var falhas = Object.keys(ARQS).map(function (k) { return ARQS[k]; }).filter(function (e) { return e.erroEnvio && arquivoReferenciado(e.nome); });
+  return falhas.length ? ' Atenção: não foi possível armazenar ' + falhas.map(function (e) { return e.nome + ' (' + e.erroEnvio + ')'; }).join('; ') + '.' : '';
+}
+function baixarBlobArq(blob, nome) {
+  var u = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = u; a.download = nome; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(u); }, 4000);
+}
+function baixarArquivo(nome) {
+  var e = ARQS[nome];
+  if (!e) return;
+  if (e.file) { baixarBlobArq(e.file, e.nome); return; }
+  if (!e.caminho || !sb || !logado) { msgInst = { t: 'O arquivo original não está disponível para download.', erro: true }; render(); return; }
+  sb.storage.from(BUCKET_ARQ).download(e.caminho).then(function (r) {
+    if (r.error || !r.data) { msgInst = { t: 'Não foi possível baixar ' + e.nome + (r.error ? ': ' + r.error.message : '.'), erro: true }; render(); return; }
+    baixarBlobArq(r.data, e.nome);
+  });
+}
+function celulaArquivo(nome) {
+  if (!nome) return '';
+  var e = ARQS[nome];
+  if (!e || !(e.file || e.caminho)) return '<br><small style="color:var(--ink-soft);">Arquivo original não armazenado (enviado antes deste recurso).</small>';
+  var est = e.erroEnvio ? '<small style="color:var(--red);"> Não armazenado: ' + esc(e.erroEnvio) + '</small>' : (e.caminho ? '<small style="color:var(--ink-soft);"> Armazenado</small>' : (CLI.id ? '<small style="color:var(--ink-soft);"> Armazenando...</small>' : '<small style="color:var(--ink-soft);"> Não armazenado: selecione um cliente no topo da página</small>'));
+  return '<br><button type="button" class="btn btn-peq" data-baixar-arq="' + esc(nome) + '">⬇ Baixar original</button>' + est;
+}
 var ESTADO_GRAV = { t: '', erro: false }, ULT_COT = { t: '', erro: false }, tGravar = null, atualizandoCot = false;
 var RE_TICKER_BR = /^[A-Z][A-Z0-9]{3}\\d{1,2}$/;
 function dataHoraBR(iso) { var d = new Date(iso); return isNaN(d.getTime()) ? '' : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
@@ -17105,8 +17172,10 @@ function agendarGravacao() {
 function gravarConsolidacao() {
   if (!D || !R || !CLI.id || !sb || !logado) return;
   var id = CLI.id, nome = CLI.nome;
-  sb.from('consolidacao_atual').upsert({ cliente_id: id, dados: { versao: 2, D: D, outras: OUTRAS, perfis: dadosPerfis(), cambio: ST.cambio || '' }, updated_at: new Date().toISOString() }, { onConflict: 'user_id,cliente_id' }).then(function (r) {
-    ESTADO_GRAV = r.error ? { t: 'Não foi possível salvar a consolidação: ' + r.error.message, erro: true } : { t: 'Consolidação salva automaticamente para ' + nome + ' em ' + dataHoraBR(new Date().toISOString()) + '.', erro: false };
+  enviarArquivos().catch(function () {}).then(function () {
+    return sb.from('consolidacao_atual').upsert({ cliente_id: id, dados: { versao: 2, D: D, outras: OUTRAS, perfis: dadosPerfis(), cambio: ST.cambio || '', arquivos: dadosArquivos() }, updated_at: new Date().toISOString() }, { onConflict: 'user_id,cliente_id' });
+  }).then(function (r) {
+    ESTADO_GRAV = r.error ? { t: 'Não foi possível salvar a consolidação: ' + r.error.message, erro: true } : { t: 'Consolidação salva automaticamente para ' + nome + ' em ' + dataHoraBR(new Date().toISOString()) + '.' + avisoEnvioArq(), erro: avisoEnvioArq() !== '' };
     atualizarIndicadorGravacao();
   });
 }
@@ -17122,7 +17191,7 @@ function retomarUltimoCliente() {
   carregarConsolidacaoCliente(c.id, true);
 }
 function restaurarConsolidacao(dd) {
-  D = dd.D; OUTRAS = dd.outras || []; msgInst = { t: '', erro: false };
+  D = dd.D; OUTRAS = dd.outras || []; restaurarArquivos(dd.arquivos); msgInst = { t: '', erro: false };
   if (!D.vazia) D.inst = D.inst || INST_PADRAO;
   if (dd.perfis) aplicarPerfisSalvos(dd.perfis); else perfilSel = null;
   if (dd.cambio) ST.cambio = dd.cambio;
@@ -17686,11 +17755,11 @@ PAGINAS.inst = function () {
   var linhasArq = '', zi = 0;
   if (!D.vazia) {
     var itensBase = R.itens.filter(function (p) { return !p.outra; });
-    linhasArq += '<tr class="' + (zi++ % 2 ? 'zebra' : '') + '"><td class="e">' + esc(D.arquivo || 'Relatório-base') + '<br><small>Arquivo-base' + (D.semRent ? '' : ' (rentabilidade e movimentações)') + '</small></td><td class="e">' + esc(D.rotulo || D.origem || 'Relatório XPerformance') + '</td><td class="e"><input type="text" id="in-inst-xp" list="lista-inst" class="in-crit" value="' + esc(D.inst || INST_PADRAO) + '">' + (D.instAuto === false ? avisoNome : '') + '</td><td>' + itensBase.filter(function (p) { return p.tipo !== 'caixa'; }).length + '</td><td>' + fmtBRL(soma(itensBase, function (p) { return p.saldo; })) + '</td><td><button type="button" class="rm" data-rmbase="1" title="Remover o arquivo-base">×</button></td></tr>';
+    linhasArq += '<tr class="' + (zi++ % 2 ? 'zebra' : '') + '"><td class="e">' + esc(D.arquivo || 'Relatório-base') + '<br><small>Arquivo-base' + (D.semRent ? '' : ' (rentabilidade e movimentações)') + '</small>' + celulaArquivo(D.arquivo) + '</td><td class="e">' + esc(D.rotulo || D.origem || 'Relatório XPerformance') + '</td><td class="e"><input type="text" id="in-inst-xp" list="lista-inst" class="in-crit" value="' + esc(D.inst || INST_PADRAO) + '">' + (D.instAuto === false ? avisoNome : '') + '</td><td>' + itensBase.filter(function (p) { return p.tipo !== 'caixa'; }).length + '</td><td>' + fmtBRL(soma(itensBase, function (p) { return p.saldo; })) + '</td><td><button type="button" class="rm" data-rmbase="1" title="Remover o arquivo-base">×</button></td></tr>';
   }
   OUTRAS.forEach(function (o, i) {
     var totO = soma(o.itens, function (it) { return Number(it.valor) || 0; });
-    linhasArq += '<tr class="' + (zi++ % 2 ? 'zebra' : '') + '"><td class="e">' + esc((o.arquivos && o.arquivos.length) ? o.arquivos.join(', ') : 'Lançamento manual') + '</td><td class="e">' + esc(o.rotulo || 'Extrato') + '</td><td class="e"><input type="text" class="in-crit" list="lista-inst" data-oxinst="' + i + '" value="' + esc(o.inst) + '">' + (o.auto === false ? avisoNome : '') + '</td><td>' + o.itens.filter(function (it) { return Number(it.valor) > 0; }).length + '</td><td>' + fmtBRL(totO) + '</td><td><button type="button" class="rm" data-oxrm="' + i + '" title="Remover">×</button></td></tr>';
+    linhasArq += '<tr class="' + (zi++ % 2 ? 'zebra' : '') + '"><td class="e">' + ((o.arquivos && o.arquivos.length) ? o.arquivos.map(function (n) { return esc(n) + celulaArquivo(n); }).join('<br>') : 'Lançamento manual') + '</td><td class="e">' + esc(o.rotulo || 'Extrato') + '</td><td class="e"><input type="text" class="in-crit" list="lista-inst" data-oxinst="' + i + '" value="' + esc(o.inst) + '">' + (o.auto === false ? avisoNome : '') + '</td><td>' + o.itens.filter(function (it) { return Number(it.valor) > 0; }).length + '</td><td>' + fmtBRL(totO) + '</td><td><button type="button" class="rm" data-oxrm="' + i + '" title="Remover">×</button></td></tr>';
   });
   var tabArq = linhasArq ? '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Arquivo</th><th class="e">Tipo identificado</th><th class="e">Instituição (editável)</th><th>Ativos</th><th>Valor (R$)</th><th></th></tr></thead><tbody>' + linhasArq + '</tbody></table></div>' : '<p class="vazio">Nenhum arquivo carregado.</p>';
   var form = '<div class="form-crit" style="margin-top:12px;"><input type="text" id="in-nova-inst" list="lista-inst" class="in-crit" placeholder="Instituição dos arquivos não identificados (opcional)" value="' + esc(ST.novaInst || '') + '" autocomplete="off"><datalist id="lista-inst">' + opcoesInst + '</datalist>' +
