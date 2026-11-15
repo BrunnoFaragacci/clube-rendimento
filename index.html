@@ -15529,7 +15529,7 @@ body.modo-cliente .container > .sub{display:none;}
       <div class="campo"><label for="in-cliente">Nome do cliente (opcional, aparece no painel)</label><input type="text" id="in-cliente" placeholder="Ex.: Maria da Silva" autocomplete="off"></div>
     </div>
     <div class="barra-acoes">
-      <label for="arq-carteira" class="btn btn-primary" style="cursor:pointer;">⬆ Carregar arquivos (um ou vários)</label>
+      <label for="arq-carteira" id="lbl-carregar" class="btn btn-primary" style="cursor:pointer;">⬆ Carregar arquivos (um ou vários)</label>
       <input type="file" id="arq-carteira" accept=".pdf,.xlsx,.xls,.csv" multiple hidden>
       <span id="status" style="font-size:12.5px;color:var(--ink-soft);">Nenhum arquivo carregado.</span>
       <span style="flex:1"></span>
@@ -16511,6 +16511,7 @@ function dataRefISO(d) { var m = /^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/.exec((d.cab 
 function renderSelCliente() {
   var sel = document.getElementById('sel-cliente');
   if (!sel) return;
+  atualizarRotuloCarregar();
   var h = '<option value="">— sem cliente cadastrado —</option>' + CLIENTES.map(function (c) { return '<option value="' + esc(c.id) + '">' + esc(c.nome) + '</option>'; }).join('');
   if (logado) h += '<option value="__novo__">+ Cadastrar novo cliente...</option>';
   sel.innerHTML = h;
@@ -16566,6 +16567,7 @@ function abrirRegistro(id) {
     D = dd.D; OUTRAS = dd.outras || []; restaurarArquivos(dd.arquivos); msgInst = { t: '', erro: false };
     D.inst = D.inst || INST_PADRAO;
     CLI = r.data.cliente_id ? { id: r.data.cliente_id, nome: r.data.cliente_nome || '' } : { id: '', nome: '' };
+    DONO = CLI.id;
     document.getElementById('in-cliente').value = r.data.cliente_nome || '';
     renderSelCliente();
     if (dd.perfis) aplicarPerfisSalvos(dd.perfis); else { perfilSel = null; if (CLI.id) carregarPerfilCliente(CLI.id); }
@@ -16641,9 +16643,15 @@ document.addEventListener('change', function (ev) {
       return;
     }
     var c = CLIENTES.filter(function (x) { return x.id === t.value; })[0];
+    var anterior = CLI.id;
+    if (c && c.id === anterior) return;
+    // os dados carregados pertencem a outro cliente: não são levados para o novo cliente
+    if (D && DONO && DONO !== (c ? c.id : '')) limparCarteira();
     CLI = c ? { id: c.id, nome: c.nome } : { id: '', nome: '' };
     lembrarCliente(c ? c.id : '');
     if (c) { document.getElementById('in-cliente').value = c.nome; carregarConsolidacaoCliente(c.id, false); }
+    else if (!D) document.getElementById('in-cliente').value = '';
+    atualizarRotuloCarregar();
     if (D && R) render();
   }
 });
@@ -17050,7 +17058,7 @@ function processarArquivos(lista, modo) {
       if (modo === 'adicionar') { msgInst = { t: r.erros.join(' '), erro: true }; render(); }
       return;
     }
-    if (modo === 'novo') ARQS = {};
+    if (modo === 'novo') { ARQS = {}; DONO = CLI.id || ''; }
     r.lidos.forEach(function (l) {
       var a = arqs.filter(function (x) { return x.name === l.arq; })[0];
       if (a) ARQS[a.name] = { nome: a.name, tamanho: a.size, tipo: a.type || '', enviadoEm: new Date().toISOString(), caminho: '', file: a };
@@ -17566,7 +17574,24 @@ document.addEventListener('change', function (ev) {
   var t = ev.target;
   if (t && t.id === 'sel-minha' && MINHAS[Number(t.value)]) entrarModoCliente(MINHAS[Number(t.value)]);
 });
-(function () { var r0 = render; render = function () { r0(); if (MODO_CLIENTE) bloquearEdicao(); }; })();
+(function () { var r0 = render; render = function () { r0(); atualizarRotuloCarregar(); if (MODO_CLIENTE) bloquearEdicao(); }; })();
+// Cliente a que pertencem os dados carregados ('' = arquivos enviados antes de escolher um cliente)
+var DONO = '';
+function atualizarRotuloCarregar() {
+  var l = document.getElementById('lbl-carregar');
+  if (!l) return;
+  var temDados = !!D && (!D.vazia || OUTRAS.length > 0);
+  l.textContent = (CLI.id && temDados) ? '↻ Atualizar arquivos de ' + CLI.nome + ' (substitui os atuais)' : '⬆ Carregar arquivos (um ou vários)';
+}
+function limparCarteira() {
+  clearTimeout(tGravar);
+  D = null; R = null; OUTRAS = []; ARQS = {}; DONO = '';
+  PERFIL_CLI = perfisVazios(); perfilSel = null; PERFIL_SUJO = false;
+  msgInst = { t: '', erro: false }; ESTADO_GRAV = { t: '', erro: false };
+  document.getElementById('painel').hidden = true;
+  var st = document.getElementById('status');
+  st.style.color = 'var(--ink-soft)'; st.textContent = 'Nenhum arquivo carregado.';
+}
 var ESTADO_GRAV = { t: '', erro: false }, ULT_COT = { t: '', erro: false }, tGravar = null, atualizandoCot = false;
 var RE_TICKER_BR = /^[A-Z][A-Z0-9]{3}\\d{1,2}$/;
 function dataHoraBR(iso) { var d = new Date(iso); return isNaN(d.getTime()) ? '' : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
@@ -17586,6 +17611,7 @@ function agendarGravacao() {
 function gravarConsolidacao() {
   if (!D || !R || !CLI.id || !sb || !logado) return;
   var id = CLI.id, nome = CLI.nome;
+  DONO = id;
   enviarArquivos().catch(function () {}).then(function () {
     return sb.from('consolidacao_atual').upsert({ cliente_id: id, dados: { versao: 2, D: D, outras: OUTRAS, perfis: dadosPerfis(), cambio: ST.cambio || '', arquivos: dadosArquivos() }, updated_at: new Date().toISOString() }, { onConflict: 'user_id,cliente_id' });
   }).then(function (r) {
@@ -17605,7 +17631,7 @@ function retomarUltimoCliente() {
   carregarConsolidacaoCliente(c.id, true);
 }
 function restaurarConsolidacao(dd) {
-  D = dd.D; OUTRAS = dd.outras || []; restaurarArquivos(dd.arquivos); msgInst = { t: '', erro: false };
+  D = dd.D; OUTRAS = dd.outras || []; restaurarArquivos(dd.arquivos); DONO = CLI.id || ''; msgInst = { t: '', erro: false };
   if (!D.vazia) D.inst = D.inst || INST_PADRAO;
   if (dd.perfis) aplicarPerfisSalvos(dd.perfis); else perfilSel = null;
   if (dd.cambio) ST.cambio = dd.cambio;
@@ -17620,13 +17646,23 @@ function carregarConsolidacaoCliente(id, silencioso) {
     if (CLI.id !== id || !r || r.error) return;
     var dd = r.data && r.data.dados;
     var temDados = !!D && (!D.vazia || OUTRAS.length > 0);
-    if (!dd || !dd.D) { carregarPerfilCliente(id); if (temDados) agendarGravacao(); return; }
+    var st = document.getElementById('status');
+    if (!dd || !dd.D) {
+      carregarPerfilCliente(id);
+      if (temDados) { DONO = id; agendarGravacao(); st.style.color = 'var(--green)'; st.textContent = '✓ Arquivos carregados vinculados a ' + CLI.nome + '.'; }
+      else { st.style.color = 'var(--ink-soft)'; st.textContent = 'Nenhuma consolidação salva para ' + CLI.nome + '. Carregue os arquivos do cliente.'; }
+      atualizarRotuloCarregar();
+      return;
+    }
     if (temDados) {
+      // arquivos enviados antes de escolher o cliente: atualizam a consolidação salva dele, sem pergunta
       if (silencioso) return;
-      if (!confirm('Já existe uma consolidação salva para ' + CLI.nome + ' (gravada em ' + dataHoraBR(r.data.updated_at) + ').\\n\\nOK: abrir a consolidação salva (substitui a carteira carregada agora).\\nCancelar: manter a carteira carregada agora e substituir a salva.')) { agendarGravacao(); return; }
+      DONO = id; agendarGravacao();
+      st.style.color = 'var(--green)'; st.textContent = '✓ Arquivos carregados vinculados a ' + CLI.nome + '; a consolidação salva foi atualizada.';
+      atualizarRotuloCarregar();
+      return;
     }
     restaurarConsolidacao(dd);
-    var st = document.getElementById('status');
     st.style.color = 'var(--green)';
     st.textContent = '✓ Consolidação salva de ' + CLI.nome + ' aberta (gravada em ' + dataHoraBR(r.data.updated_at) + '). Atualizando cotações...';
     ESTADO_GRAV = { t: 'Consolidação salva de ' + CLI.nome + ' aberta (gravada em ' + dataHoraBR(r.data.updated_at) + ').', erro: false };
