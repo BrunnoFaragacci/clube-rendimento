@@ -15519,7 +15519,6 @@ body.modo-cliente .container > .sub{display:none;}
 <div class="container">
   <span class="eyebrow">Análise de carteira</span>
   <h1>Consolidação de Carteira</h1>
-  <p class="sub">Carregue os arquivos da carteira do cliente: relatório XPerformance (PDF), posição detalhada da XP (Excel), extratos de outras instituições (PDF, Excel ou CSV) e carteiras em dólar. É possível enviar vários arquivos de uma vez, ou arrastá-los para esta área: o sistema identifica o tipo de cada arquivo e a instituição de origem, e o nome de cada banco pode ser corrigido na aba Instituições. O painel consolida patrimônio, rentabilidade, alocação por estratégia, aderência aos perfis, concentração, vencimentos da renda fixa, liquidez, tributação e movimentações, com pontos de atenção. O arquivo é lido apenas neste navegador e não é enviado a nenhum servidor.</p>
 
   <div class="card" id="faixa-cliente" hidden></div>
 
@@ -17594,7 +17593,7 @@ function dataHoraBR(iso) { var d = new Date(iso); return isNaN(d.getTime()) ? ''
 function arred2(v) { return Math.round(v * 100) / 100; }
 function atualizarIndicadorGravacao() {
   var el = document.getElementById('ind-grav');
-  if (el) { el.textContent = ESTADO_GRAV.t; el.style.color = ESTADO_GRAV.erro ? 'var(--red)' : 'var(--ink-soft)'; }
+  if (el) { el.textContent = ESTADO_GRAV.erro ? ESTADO_GRAV.t : ''; el.style.color = ESTADO_GRAV.erro ? 'var(--red)' : 'var(--ink-soft)'; }
 }
 function agendarGravacao() {
   if (!D || !R || MODO_CLIENTE) return;
@@ -17756,9 +17755,9 @@ function htmlIndicadoresCab() {
   var h = '<div style="text-align:right;font-size:12.5px;line-height:1.55;max-width:520px;">';
   if (alvos.length) {
     h += '<button type="button" class="btn btn-peq" data-cot="1">↻ Atualizar cotações</button><br>';
-    h += '<span id="ind-cot" style="color:var(--ink-soft);">' + (D.cotacoesEm ? 'Ações, FIIs e ETFs atualizados em ' + esc(dataHoraBR(D.cotacoesEm)) + ' (' + (D.cotacoesN || 0) + ' ativos' + (vd.n ? '; variação desde a data-base: ' + (vd.v >= 0 ? '+' : '') + fmtBRL(vd.v) : '') + '). Renda fixa, fundos e previdência mantêm o valor da data-base.' : 'Valores na data-base do arquivo. Use "Atualizar cotações" para atualizar ações, FIIs e ETFs.') + '</span>' + (ULT_COT.t ? '<br><span style="color:' + (ULT_COT.erro ? 'var(--red)' : 'var(--ink-soft)') + ';">' + esc(ULT_COT.t) + '</span>' : '') + '<br>';
+    h += '<span id="ind-cot" style="display:none;">' + (D.cotacoesEm ? 'Ações, FIIs e ETFs atualizados em ' + esc(dataHoraBR(D.cotacoesEm)) + ' (' + (D.cotacoesN || 0) + ' ativos' + (vd.n ? '; variação desde a data-base: ' + (vd.v >= 0 ? '+' : '') + fmtBRL(vd.v) : '') + '). Renda fixa, fundos e previdência mantêm o valor da data-base.' : 'Valores na data-base do arquivo. Use "Atualizar cotações" para atualizar ações, FIIs e ETFs.') + '</span>' + (ULT_COT.t && ULT_COT.erro ? '<br><span style="color:' + (ULT_COT.erro ? 'var(--red)' : 'var(--ink-soft)') + ';">' + esc(ULT_COT.t) + '</span>' : '') + '<br>';
   }
-  h += '<span id="ind-grav" style="color:' + (ESTADO_GRAV.erro ? 'var(--red)' : 'var(--ink-soft)') + ';">' + esc(ESTADO_GRAV.t) + '</span></div>';
+  h += '<span id="ind-grav" style="color:' + (ESTADO_GRAV.erro ? 'var(--red)' : 'var(--ink-soft)') + ';">' + esc(ESTADO_GRAV.erro ? ESTADO_GRAV.t : '') + '</span></div>';
   return h;
 }
 function aplicarAcaoCotacao(t) {
@@ -18590,7 +18589,7 @@ function render() {
   if (!D || !R) return;
   var foco = document.activeElement && document.activeElement.id === 'in-busca' ? document.activeElement.selectionStart : null;
   var cliente = (document.getElementById('in-cliente').value || '').trim();
-  document.getElementById('cab').innerHTML = '<div><h2 id="tit-cliente">' + esc(cliente ? 'Carteira de ' + cliente : 'Carteira do cliente') + '</h2><small>Conta ' + esc(D.cab.conta || '') + (D.cab.assessor ? ' · Assessor ' + esc(D.cab.assessor) : '') + ' · Posições em ' + esc(D.cab.data || '') + ' · Fonte: ' + esc(nomesFontes()) + '</small></div>' + htmlIndicadoresCab();
+  document.getElementById('cab').innerHTML = '<div><h2 id="tit-cliente">' + esc(cliente ? 'Carteira de ' + cliente : 'Carteira do cliente') + '</h2></div>' + htmlIndicadoresCab();
   document.getElementById('abas').innerHTML = ABAS.map(function (a) { return '<button type="button" class="aba' + (ST.aba === a[0] ? ' on' : '') + '" data-aba="' + a[0] + '">' + a[1] + (a[0] === 'alertas' ? ' <span class="badge">' + R.alertas.filter(function (x) { return x.n === 'alto'; }).length + '</span>' : '') + '</button>'; }).join('');
   document.getElementById('filtros').innerHTML = (ST.imprimir || ['geral', 'alocacao', 'inst', 'posicoes', 'rf', 'credito'].indexOf(ST.aba) !== -1) ? htmlFiltros() : '';
   var paginas = ST.imprimir ? ABAS.map(function (a) { return a[0]; }) : [ST.aba];
