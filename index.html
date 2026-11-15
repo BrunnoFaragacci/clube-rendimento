@@ -15508,6 +15508,18 @@ body.modo-cliente #area-envio,body.modo-cliente #area-salvas,body.modo-cliente #
 body.modo-cliente .container > .sub{display:none;}
 #faixa-cliente .card-sub{max-width:900px;}
 #faixa-cliente select{padding:8px 11px;border:1.5px solid var(--line);border-radius:9px;font-family:inherit;font-size:13px;margin-right:10px;}
+
+/* edição de posições */
+.col-acoes{white-space:nowrap;text-align:right;width:70px;}
+.modal-pos{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:300;padding:16px;}
+.caixa-pos{background:#fff;border-radius:14px;padding:22px 24px;width:min(720px,94vw);max-height:90vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.35);}
+.grade-pos{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0 6px;}
+.grade-pos .campo input,.grade-pos .campo select{width:100%;}
+.erro-pos{color:var(--red);font-size:12.5px;margin-top:6px;}
+.rodape-pos{display:flex;justify-content:flex-end;gap:10px;margin-top:14px;}
+body.modo-cliente .col-acoes,body.modo-cliente [data-pos-novo],body.modo-cliente .modal-pos{display:none!important;}
+@media print{.modal-pos,.col-acoes{display:none!important;}}
+@media(max-width:700px){.grade-pos{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -15885,11 +15897,12 @@ function analisar(d) {
     if (e.chave === 'caixa') A.itens.push({ nome: /provento/i.test(e.nome) ? 'Proventos a receber' : 'Saldo em conta', estrategia: e.nome, chave: 'caixa', saldo: e.saldo, aloc: e.aloc, tipo: 'caixa', inst: d.inst || INST_PADRAO });
   });
   // extratos de outras instituições (consolidação)
-  OUTRAS.forEach(function (o) {
-    o.itens.forEach(function (it) {
+  OUTRAS.forEach(function (o, oi) {
+    o.itens.forEach(function (it, oj) {
       var v = Number(it.valor);
       if (!(v > 0)) return;
-      A.itens.push(itemOutro(o, it));
+      var xo = itemOutro(o, it); xo.ox = oi + '|' + oj;
+      A.itens.push(xo);
       A.total += v;
     });
   });
@@ -16313,6 +16326,7 @@ function itemOutro(o, it) {
   var est = it.estrategia || 'Outros (verificar)';
   var p = { nome: it.nome || 'Sem nome', estrategia: est, chave: chaveClasse(est) || 'outros', saldo: Number(it.valor), tipo: 'outro', instr: def[0], inst: o.inst, liq: def[1], trib: def[2], outra: true };
   if (it.qtd !== undefined && it.qtd !== null) p.qtd = it.qtd;
+  if (it.ticker) p.ticker = it.ticker;
   if (it.moeda) { p.moeda = it.moeda; p.valorMoeda = it.valorMoeda; p.cambio = it.cambio; }
   if (it.tipoPos && !it.papel) {   // posição de outra conta da XP: mantém o tipo original (ações, FII, fundos, COE, previdência)
     p.tipo = it.tipoPos; if (it.ticker) p.ticker = it.ticker; delete p.liq; delete p.trib;
@@ -17791,7 +17805,7 @@ if (window.setInterval) window.setInterval(function () { if (D && R && D.cotacoe
 // ── Estado, filtros cruzados e dimensões ──
 // Cada dimensão pode ter vários valores selecionados (união dentro da dimensão, interseção entre dimensões).
 // Os gráficos de uma dimensão mostram o cruzamento das DEMAIS dimensões e destacam os valores selecionados.
-var ABAS = [['geral', 'Visão geral'], ['alertas', 'Pontos de atenção'], ['rentab', 'Rentabilidade'], ['backtest', 'Backtest'], ['alocacao', 'Alocação e perfis'], ['inst', 'Instituições'], ['posicoes', 'Posições'], ['rf', 'Renda fixa'], ['credito', 'Análise de crédito']];
+var ABAS = [['geral', 'Visão geral'], ['alertas', 'Pontos de atenção'], ['rentab', 'Rentabilidade'], ['backtest', 'Backtest'], ['alocacao', 'Alocação e perfis'], ['inst', 'Instituições'], ['posicoes', 'Posições'], ['rv', 'Renda variável'], ['rf', 'Renda fixa'], ['credito', 'Análise de crédito']];
 var ST = { aba: 'geral', f: {}, periodo: 12, mesSel: null, busca: '', ordem: { col: 'saldo', dir: -1 }, movTipo: '', imprimir: false };
 var rotLiq = {}, rotTrib = {};
 LIQ.forEach(function (l) { rotLiq[l.k] = l.r; });
@@ -17976,25 +17990,272 @@ function tabelaPosicoes(lista, opc) {
   });
   var t = '<div class="tabela-wrap"><table class="tb"><thead><tr>' + COLS.map(function (c) {
     return '<th class="' + (c[2] ? 'e ' : '') + 'ord" data-ord="' + c[0] + '">' + c[1] + (col === c[0] ? (dir > 0 ? ' ▲' : ' ▼') : '') + '</th>';
-  }).join('') + '</tr></thead><tbody>';
+  }).join('') + (opc.acoes ? '<th></th>' : '') + '</tr></thead><tbody>';
   arr.forEach(function (p, i) {
     t += '<tr class="clic ' + (i % 2 ? 'zebra' : '') + (selecionado('ativo', p.nome) ? ' selrow' : '') + '"' + dF('ativo', p.nome) + '><td class="e">' + esc(p.nome) + '</td><td class="e">' + esc(p.inst || '') + '</td><td class="e">' + esc(p.estrategia) + '</td><td class="e">' + esc(p.instr) + '</td><td>' + (p.qtd !== undefined ? fmtQtd(p.qtd) : '') + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td>' +
-      '<td class="' + clsv(p.mes) + '">' + (p.mes === undefined ? '—' : fmtP(p.mes)) + '</td><td class="' + clsv(p.ano) + '">' + (p.ano === undefined ? '—' : fmtP(p.ano)) + '</td><td>' + (p.acdi === undefined ? '—' : fmtP(p.acdi)) + '</td><td class="' + clsv(p.m24) + '">' + (p.m24 === undefined ? '—' : fmtP(p.m24)) + '</td></tr>';
+      '<td class="' + clsv(p.mes) + '">' + (p.mes === undefined ? '—' : fmtP(p.mes)) + '</td><td class="' + clsv(p.ano) + '">' + (p.ano === undefined ? '—' : fmtP(p.ano)) + '</td><td>' + (p.acdi === undefined ? '—' : fmtP(p.acdi)) + '</td><td class="' + clsv(p.m24) + '">' + (p.m24 === undefined ? '—' : fmtP(p.m24)) + '</td>' + (opc.acoes ? celAcoesPos(p) : '') + '</tr>';
   });
   var tot = soma(arr, function (p) { return p.saldo; });
-  t += '<tr class="total"><td class="e">Total (' + arr.length + ')</td><td></td><td></td><td></td><td></td><td>' + fmtBRL(tot) + '</td><td>' + fmtP(R.total > 0 ? tot / R.total * 100 : 0) + '</td><td></td><td></td><td></td><td></td></tr></tbody></table></div>';
+  t += '<tr class="total"><td class="e">Total (' + arr.length + ')</td><td></td><td></td><td></td><td></td><td>' + fmtBRL(tot) + '</td><td>' + fmtP(R.total > 0 ? tot / R.total * 100 : 0) + '</td><td></td><td></td><td></td><td></td>' + (opc.acoes ? '<td></td>' : '') + '</tr></tbody></table></div>';
   return t;
 }
 
 // ── Páginas ──
 var PAGINAS = {};
+// ── Posições: editar, adicionar e remover (Posições, Renda fixa e Renda variável) ──
+var PAPEIS_RF = ['CDB', 'LCA', 'LCI', 'LCD', 'LC', 'LF', 'RDB', 'LIG', 'CRA', 'CRI', 'DEB', 'NTN-B', 'NTN-F', 'LTN', 'LFT', 'TESOURO'];
+var CLASSES_RF = ['Pós Fixado', 'Inflação', 'Prefixado', 'Outros (verificar)'];
+var EP = null;   // estado do editor aberto
+function fontePos(p) {
+  if (!p) return null;
+  if (p.ox) {
+    var a = p.ox.split('|'), o = OUTRAS[Number(a[0])];
+    return o && o.itens[Number(a[1])] ? { t: 'outra', o: o, it: o.itens[Number(a[1])] } : null;
+  }
+  if (p.tipo === 'caixa') return { t: 'caixa', est: D.estrategias.filter(function (e) { return e.chave === 'caixa' && e.nome === p.estrategia; })[0] || null };
+  return D.posicoes.indexOf(p) !== -1 ? { t: 'base', b: p } : null;
+}
+function celAcoesPos(p) {
+  var i = R.itens.indexOf(p);
+  return '<td class="col-acoes"><button type="button" class="rm" data-pe="' + i + '" title="Editar">✎</button>' + (p.tipo === 'caixa' ? '' : '<button type="button" class="rm" data-pr="' + i + '" title="Remover">×</button>') + '</td>';
+}
+function numTxt(v, d) { return v === undefined || v === null || v === '' ? '' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+function ajustarEstrategia(chave, delta, rot) {
+  var e = D.estrategias.filter(function (x) { return x.chave === chave; })[0];
+  if (!e) { e = { nome: rot || ROTULOS_CLASSE[chave] || chave, chave: chave, saldo: 0, aloc: 0 }; D.estrategias.push(e); }
+  e.saldo += delta;
+  D.kpi.patrimonio = (D.kpi.patrimonio || 0) + delta;
+  var tot = soma(D.estrategias, function (x) { return x.saldo; });
+  D.estrategias.forEach(function (x) { x.aloc = tot > 0 ? x.saldo / tot * 100 : 0; });
+}
+function parseVencPos(t) {
+  t = String(t || '').trim();
+  if (!t) return null;
+  var m = /^(\\d{1,2})\\/(\\d{4})$/.exec(t);
+  if (m && Number(m[1]) >= 1 && Number(m[1]) <= 12) return { m: Number(m[1]), a: Number(m[2]) };
+  m = /^(\\d{4})$/.exec(t);
+  return m ? { m: 12, a: Number(m[1]), aprox: true } : undefined;
+}
+function abrirEditorPos(modo, p, tipoNovo) {
+  var f = p ? fontePos(p) : null;
+  if (modo === 'editar' && !f) return;
+  var kind = p ? (p.tipo === 'rf' ? 'rf' : (p.tipo === 'caixa' ? 'caixa' : 'geral')) : (tipoNovo === 'rf' ? 'rf' : 'geral');
+  var v = { nome: '', inst: '', classe: 'Outros (verificar)', instr: 'Outros', qtd: '', saldo: '', ticker: '', papel: '', emissor: '', taxa: '', venc: '' };
+  if (p) {
+    v.nome = p.nome; v.classe = classeOutras(p.estrategia, p.chave); v.instr = p.instr; v.qtd = numTxt(p.qtd, 4); v.saldo = numTxt(p.saldo, 2); v.ticker = p.ticker || '';
+    v.papel = p.papel || ''; v.emissor = p.emissor || ''; v.taxa = p.taxa || ''; v.venc = p.venc ? (p.venc.aprox ? String(p.venc.a) : String(p.venc.m).padStart(2, '0') + '/' + p.venc.a) : '';
+  } else {
+    var insts = Object.keys(R.porInst);
+    v.inst = insts.length ? insts[0] : (D.inst || '');
+    if (tipoNovo === 'rv') { v.instr = 'Ações'; v.classe = 'Renda Variável Brasil'; }
+    if (tipoNovo === 'rf') { v.classe = 'Pós Fixado'; v.papel = 'CDB'; }
+  }
+  EP = { modo: modo, kind: kind, f: f, instr0: p ? p.instr : '', v: v, erro: '' };
+  renderEditorPos();
+}
+function campoPos(id, rot, valor, lista, ph) {
+  return '<div class="campo"><label for="mp-' + id + '">' + rot + '</label><input type="text" id="mp-' + id + '" class="in-crit" value="' + esc(valor) + '"' + (lista ? ' list="' + lista + '"' : '') + (ph ? ' placeholder="' + esc(ph) + '"' : '') + ' autocomplete="off"></div>';
+}
+function selectPos(id, rot, opcoes, valor) {
+  var ops = opcoes.slice();
+  if (valor && ops.indexOf(valor) === -1) ops.unshift(valor);
+  return '<div class="campo"><label for="mp-' + id + '">' + rot + '</label><select id="mp-' + id + '">' + ops.map(function (o) { return '<option value="' + esc(o) + '"' + (o === valor ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></div>';
+}
+function renderEditorPos() {
+  if (!EP) return;
+  var el = document.getElementById('modal-pos');
+  if (!el) { el = document.createElement('div'); el.id = 'modal-pos'; el.className = 'modal-pos'; el.setAttribute('data-mp-fechar', '1'); document.body.appendChild(el); }
+  var v = EP.v, k = EP.kind, novo = EP.modo === 'novo';
+  var classesBase = CLASSES_OUTRAS.filter(function (c) { return novo || EP.f.t !== 'base' || c !== 'Caixa'; });
+  var h = '<div class="caixa-pos"><div class="card-titulo">' + (novo ? 'Adicionar posição' : (k === 'caixa' ? 'Editar saldo' : 'Editar posição')) + '</div><div class="grade-pos">';
+  if (novo) {
+    h += '<div class="campo"><label for="mp-kind">Tipo de lançamento</label><select id="mp-kind"><option value="geral"' + (k === 'geral' ? ' selected' : '') + '>Ação, fundo ou outro ativo</option><option value="rf"' + (k === 'rf' ? ' selected' : '') + '>Título de renda fixa (emissor e vencimento)</option></select></div>';
+    h += campoPos('inst', 'Instituição', v.inst, 'lista-inst-pos');
+    h += '<datalist id="lista-inst-pos">' + Object.keys(R.porInst).concat(INSTITUICOES_COMUNS).filter(function (x, i, a) { return a.indexOf(x) === i; }).map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist>';
+  }
+  if (k === 'caixa') {
+    h += campoPos('saldo', 'Saldo (R$)', v.saldo);
+  } else if (k === 'rf') {
+    h += campoPos('papel', 'Tipo do título', v.papel, 'lista-papeis-pos', 'CDB, LCA, NTN-B...');
+    h += '<datalist id="lista-papeis-pos">' + PAPEIS_RF.map(function (n) { return '<option value="' + n + '">'; }).join('') + '</datalist>';
+    h += campoPos('emissor', 'Emissor', v.emissor);
+    h += campoPos('taxa', 'Taxa', v.taxa, '', 'Ex.: 95,50% CDI ou IPC-A + 7,43%');
+    h += campoPos('venc', 'Vencimento', v.venc, '', 'mm/aaaa ou aaaa');
+    h += selectPos('classe', 'Indexador (classe)', CLASSES_RF, v.classe);
+    h += campoPos('nome', 'Nome do título (opcional)', v.nome, '', 'Gerado a partir do título e do emissor');
+    h += campoPos('qtd', 'Quantidade', v.qtd);
+    h += campoPos('saldo', 'Saldo bruto (R$)', v.saldo);
+  } else {
+    h += campoPos('nome', 'Ativo', v.nome);
+    h += selectPos('classe', 'Classe (estratégia)', classesBase, v.classe);
+    h += selectPos('instr', 'Instrumento', INSTR_OUTRAS.map(function (x) { return x[0]; }), v.instr);
+    h += campoPos('ticker', 'Código de negociação (opcional)', v.ticker, '', 'Ex.: PETR4, HGLG11');
+    h += campoPos('qtd', 'Quantidade', v.qtd);
+    h += campoPos('saldo', 'Saldo bruto (R$)', v.saldo);
+  }
+  h += '</div>' + (EP.erro ? '<p class="erro-pos">' + esc(EP.erro) + '</p>' : '') +
+    '<p class="nota">' + (k === 'geral' ? 'Ações, fundos imobiliários e ETFs com código e quantidade têm o saldo recalculado pela cotação atual.' : 'As alterações valem para a análise, os gráficos e o diagnóstico e são salvas com a consolidação do cliente.') + '</p>' +
+    '<div class="rodape-pos"><button type="button" class="btn" data-mp-fechar="1">Cancelar</button><button type="button" class="btn btn-primary" data-mp-salvar="1">Salvar</button></div></div>';
+  el.innerHTML = h;
+  el.style.display = 'flex';
+}
+function lerEditorPos() {
+  if (!EP) return;
+  ['nome', 'inst', 'classe', 'instr', 'qtd', 'saldo', 'ticker', 'papel', 'emissor', 'taxa', 'venc'].forEach(function (c) {
+    var e = document.getElementById('mp-' + c);
+    if (e) EP.v[c] = e.value;
+  });
+}
+function fecharEditorPos() {
+  EP = null;
+  var el = document.getElementById('modal-pos');
+  if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+}
+function salvarEditorPos() {
+  lerEditorPos();
+  var v = EP.v, k = EP.kind, novo = EP.modo === 'novo', erro = '';
+  var saldo = numExtrato(v.saldo), qtd = String(v.qtd).trim() === '' ? null : numExtrato(v.qtd), venc = k === 'rf' ? parseVencPos(v.venc) : null;
+  if (saldo === null || (k === 'caixa' ? saldo < 0 : !(saldo > 0))) erro = 'Informe o saldo bruto' + (k === 'caixa' ? '.' : ' (valor maior que zero).');
+  else if (String(v.qtd).trim() !== '' && (qtd === null || qtd < 0)) erro = 'Quantidade inválida.';
+  else if (novo && !String(v.inst).trim()) erro = 'Informe a instituição.';
+  else if (k === 'geral' && !String(v.nome).trim()) erro = 'Informe o nome do ativo.';
+  else if (k === 'rf' && !String(v.papel).trim()) erro = 'Informe o tipo do título (por exemplo, CDB, LCA, NTN-B).';
+  else if (k === 'rf' && venc === undefined) erro = 'Vencimento inválido: use mm/aaaa ou aaaa.';
+  if (erro) { EP.erro = erro; renderEditorPos(); return; }
+  var papel = String(v.papel).trim().toUpperCase(), publico = /^(TESOURO|NTN|LTN|LFT)/.test(papel);
+  var nome = k === 'rf' ? (String(v.nome).trim() || (papel + ' ' + String(v.emissor).trim() + (venc ? ' - ' + fmtVenc({ venc: venc }) : '') + (String(v.taxa).trim() ? ' - ' + String(v.taxa).trim() : '')).replace(/\\s+/g, ' ').trim()) : String(v.nome).trim();
+  var chave = chaveClasse(v.classe) || 'outros', ticker = String(v.ticker).trim().toUpperCase();
+  function camposRF(o) { o.papel = papel; o.emissor = String(v.emissor).trim(); o.taxa = String(v.taxa).trim(); o.venc = venc; if (publico) o.publico = true; else delete o.publico; }
+  function semRF(o) { ['papel', 'emissor', 'venc', 'taxa', 'publico', 'isento', 'liqFixa'].forEach(function (c) { delete o[c]; }); }
+  if (novo) {
+    var it = { nome: nome, valor: saldo, estrategia: v.classe, instr: k === 'rf' ? adivinharInstr(papel + ' ' + nome) : v.instr };
+    if (qtd !== null) it.qtd = qtd;
+    if (k === 'rf') camposRF(it); else if (ticker) it.ticker = ticker;
+    addOutras(String(v.inst).trim(), '', [it], { fonte: 'manual', rotulo: 'Lançamento manual' });
+  } else if (EP.f.t === 'outra') {
+    var x = EP.f.it;
+    x.nome = nome; x.estrategia = v.classe; x.valor = saldo;
+    if (qtd !== null) x.qtd = qtd; else delete x.qtd;
+    if (x.moeda && x.cambio > 0) x.valorMoeda = saldo / x.cambio;
+    delete x.valorBase;
+    if (k === 'rf') { camposRF(x); x.instr = adivinharInstr(papel + ' ' + nome); delete x.tipoPos; }
+    else {
+      if (v.instr !== EP.instr0) delete x.tipoPos;
+      x.instr = v.instr; semRF(x);
+      if (ticker) x.ticker = ticker; else delete x.ticker;
+    }
+  } else if (EP.f.t === 'caixa') {
+    var e = EP.f.est, b0 = R.itens.filter(function (p) { return p.tipo === 'caixa' && p.estrategia === (e && e.nome); })[0];
+    if (e) { var d0 = saldo - (b0 ? b0.saldo : e.saldo); e.saldo += d0; D.kpi.patrimonio = (D.kpi.patrimonio || 0) + d0; }
+  } else {
+    var b = EP.f.b, saldoAnt = b.saldo, chaveAnt = b.chave;
+    b.nome = nome; b.estrategia = v.classe; b.chave = chave; b.saldo = saldo;
+    if (qtd !== null) b.qtd = qtd; else delete b.qtd;
+    delete b.saldoBase;
+    if (k === 'rf') camposRF(b);
+    else {
+      if (v.instr !== EP.instr0) {
+        var def = INSTR_OUTRAS.filter(function (z) { return z[0] === v.instr; })[0] || INSTR_OUTRAS[INSTR_OUTRAS.length - 1];
+        b.tipo = 'outro'; b.instr = def[0]; b.liq = def[1]; b.trib = def[2]; semRF(b);
+      }
+      if (ticker) b.ticker = ticker; else delete b.ticker;
+    }
+    ajustarEstrategia(chaveAnt, -saldoAnt);
+    ajustarEstrategia(chave, saldo, v.classe);
+  }
+  fecharEditorPos();
+  reanalisar();
+}
+function removerPos(p) {
+  var f = fontePos(p);
+  if (!f || f.t === 'caixa') return;
+  if (!confirm('Remover "' + p.nome + '" (' + fmtBRL(p.saldo) + ') da consolidação?')) return;
+  if (f.t === 'outra') {
+    f.o.itens.splice(f.o.itens.indexOf(f.it), 1);
+    if (!f.o.itens.length && !(f.o.arquivos && f.o.arquivos.length)) OUTRAS.splice(OUTRAS.indexOf(f.o), 1);
+  } else {
+    ajustarEstrategia(f.b.chave, -f.b.saldo);
+    D.posicoes.splice(D.posicoes.indexOf(f.b), 1);
+  }
+  reanalisar();
+}
+function aplicarAcaoPos(t) {
+  function ach(sel) { return t && t.closest ? t.closest(sel) : null; }
+  var el;
+  if (!R || MODO_CLIENTE) return false;
+  if ((el = ach('[data-pe]'))) { abrirEditorPos('editar', R.itens[Number(el.getAttribute('data-pe'))]); return true; }
+  if ((el = ach('[data-pr]'))) { removerPos(R.itens[Number(el.getAttribute('data-pr'))]); return true; }
+  if ((el = ach('[data-pos-novo]'))) { abrirEditorPos('novo', null, el.getAttribute('data-pos-novo')); return true; }
+  if (ach('[data-mp-salvar]')) { salvarEditorPos(); return true; }
+  if ((el = ach('[data-mp-fechar]'))) {
+    if (el.id === 'modal-pos' && t !== el) return false;   // clique dentro da caixa não fecha
+    fecharEditorPos(); return true;
+  }
+  return false;
+}
+document.addEventListener('change', function (ev) {
+  var t = ev.target;
+  if (EP && t && t.id === 'mp-kind') {
+    lerEditorPos();
+    EP.kind = t.value;
+    if (EP.kind === 'rf') { if (CLASSES_RF.indexOf(EP.v.classe) === -1) EP.v.classe = 'Pós Fixado'; if (!EP.v.papel) EP.v.papel = 'CDB'; }
+    renderEditorPos();
+  }
+});
+
+// ── Renda variável: ações, fundos imobiliários, ETFs e ativos internacionais listados ──
+function ehRV(p) { return p.tipo === 'acao' || p.tipo === 'fii' || p.tipo === 'etf' || (p.tipo === 'outro' && /^(Ações|Fundo imobiliário listado|ETF|Internacional)$/.test(p.instr || '')); }
+function catRV(p) {
+  if (p.chave === 'grv' || p.instr === 'Internacional' || p.moeda === 'USD') return 'Internacional';
+  if (p.tipo === 'fii' || /^Fundo imobiliário listado/.test(p.instr || '')) return 'Fundos imobiliários';
+  if (p.tipo === 'etf' || p.instr === 'ETF') return 'ETFs';
+  return 'Ações';
+}
+function donutLista(partes, rotCentro) {
+  var tot = soma(partes, function (x) { return x.v; }), raio = 76, circ = 2 * Math.PI * raio, acc = 0;
+  var s = '<svg viewBox="0 0 200 200" class="rosca">';
+  partes.forEach(function (p, i) {
+    var f = tot > 0 ? p.v / tot : 0;
+    if (f <= 0) return;
+    s += '<circle class="seg" data-tip="' + esc(p.r + ': ' + fmtBRL(p.v) + ' (' + fmtP(f * 100, 1) + ')') + '" cx="100" cy="100" r="' + raio + '" fill="none" stroke="' + CINZAS[i % CINZAS.length] + '" stroke-width="36" stroke-dasharray="' + (f * circ).toFixed(2) + ' ' + circ.toFixed(2) + '" stroke-dashoffset="' + (-acc * circ).toFixed(2) + '" transform="rotate(-90 100 100)"/>';
+    acc += f;
+  });
+  s += '<text x="100" y="96" text-anchor="middle" class="r">' + esc(rotCentro) + '</text><text x="100" y="116" text-anchor="middle" class="t">' + esc(fmtCompacto(tot)) + '</text></svg>';
+  return '<div class="centro">' + s + '</div>' + partes.map(function (p, i) { return '<div class="leg"><span><i style="background:' + CINZAS[i % CINZAS.length] + '"></i>' + esc(p.r) + '</span><b>' + fmtP(tot > 0 ? p.v / tot * 100 : 0, 1) + '</b></div>'; }).join('');
+}
+PAGINAS.rv = function () {
+  var todos = R.itens.filter(ehRV), lista = filtrados(null).filter(ehRV), q = compacto(ST.busca);
+  if (q) lista = lista.filter(function (p) { return compacto(p.nome).indexOf(q) !== -1 || compacto(p.ticker || '').indexOf(q) !== -1 || compacto(catRV(p)).indexOf(q) !== -1; });
+  var tot = soma(todos, function (p) { return p.saldo; }), pi = perfilAtualIdx();
+  var cats = ['Ações', 'Fundos imobiliários', 'ETFs', 'Internacional'].map(function (c) {
+    var arr = todos.filter(function (p) { return catRV(p) === c; });
+    return { r: c, v: soma(arr, function (p) { return p.saldo; }), n: arr.length };
+  });
+  var alvo = soma(R.linhas.filter(function (l) { return l.chave === 'rvb' || l.chave === 'listados' || l.chave === 'grv'; }), function (l) { return l.alvo[pi] || 0; });
+  var pctRV = R.total > 0 ? tot / R.total * 100 : 0;
+  var h = '<div class="barra-sl"><span class="rot-sl">Buscar</span><input type="text" id="in-busca" class="busca" placeholder="Ativo, código ou categoria" value="' + esc(ST.busca) + '" autocomplete="off"><button type="button" class="btn btn-peq" data-pos-novo="rv">+ Adicionar ativo</button></div>';
+  h += '<div class="kpis">' + kpi('Renda variável', fmtBRL(tot), todos.length + ' ativo(s) · ' + fmtP(pctRV, 1) + ' do patrimônio') +
+    kpi('Alvo do ' + esc(R.matriz.perfis[pi].nome), fmtP(alvo, 1), 'Renda variável Brasil, fundos listados e global') +
+    cats.filter(function (c) { return c.n > 0; }).slice(0, 3).map(function (c) { return kpi(esc(c.r), fmtRS(c.v), c.n + ' ativo(s) · ' + fmtP(R.total > 0 ? c.v / R.total * 100 : 0, 1) + ' do patrimônio'); }).join('') + '</div><div class="tiles">';
+  var top = todos.slice().sort(function (a, b) { return b.saldo - a.saldo; }).slice(0, 10).map(function (p) { return { r: p.nome, v: p.saldo }; });
+  h += tile('t5', 'Por categoria', cats.filter(function (c) { return c.v > 0; }).length ? donutLista(cats.filter(function (c) { return c.v > 0; }), 'renda variável') : '<p class="vazio">Nenhum ativo de renda variável.</p>');
+  h += tile('t7', 'Maiores posições', top.length ? top.map(function (it) { return '<div class="barra-linha"><span class="barra-rot">' + esc(it.r) + '</span><div class="trilho"><div class="fill" style="width:' + Math.max(it.v / top[0].v * 100, 1.2).toFixed(2) + '%"></div></div><span class="barra-val"><b>' + fmtP(tot > 0 ? it.v / tot * 100 : 0, 2) + '</b><small>' + fmtRS(it.v) + '</small></span></div>'; }).join('') : '<p class="vazio">Nenhum ativo de renda variável.</p>');
+  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Ativo</th><th class="e">Código</th><th class="e">Instituição</th><th class="e">Categoria</th><th>Quantidade</th><th>Preço</th><th>Saldo bruto</th><th>% carteira</th><th>Mês</th><th>Ano</th><th></th></tr></thead><tbody>';
+  lista.slice().sort(function (a, b) { return b.saldo - a.saldo; }).forEach(function (p, i) {
+    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(p.nome) + '</td><td class="e">' + esc(p.ticker || '') + '</td><td class="e">' + esc(p.inst || '') + '</td><td class="e">' + esc(catRV(p)) + '</td><td>' + (p.qtd !== undefined && p.qtd !== null ? fmtQtd(p.qtd) : '') + '</td><td>' + (p.qtd > 0 ? fmtBRL(p.saldo / p.qtd) : '') + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td>' +
+      '<td class="' + clsv(p.mes) + '">' + (p.mes === undefined ? '—' : fmtP(p.mes)) + '</td><td class="' + clsv(p.ano) + '">' + (p.ano === undefined ? '—' : fmtP(p.ano)) + '</td>' + celAcoesPos(p) + '</tr>';
+  });
+  t += '<tr class="total"><td class="e">Total (' + lista.length + ')</td><td></td><td></td><td></td><td></td><td></td><td>' + fmtBRL(soma(lista, function (p) { return p.saldo; })) + '</td><td>' + fmtP(R.total > 0 ? soma(lista, function (p) { return p.saldo; }) / R.total * 100 : 0) + '</td><td></td><td></td><td></td></tr></tbody></table></div>';
+  h += tile('t12', 'Ativos de renda variável', lista.length ? t : '<p class="vazio">Nenhum ativo de renda variável para a busca informada.</p>', 'use ✎ para editar e × para remover; o preço é o saldo dividido pela quantidade');
+  return h + '</div>';
+};
 PAGINAS.geral = function () {
   var k = D.kpi, pa = k.per.ano || {}, p12 = k.per.m12 || {};
   var qtd = R.itens.filter(function (p) { return p.tipo !== 'caixa'; }).length;
   var difBruto = k.patrimonio - soma(D.estrategias, function (e) { return e.saldo; });
   var resumo = fmtBRL(OUTRAS.length ? R.total : k.patrimonio) + (OUTRAS.length ? ' de patrimônio consolidado' : ' de patrimônio bruto') + ' em ' + qtd + ' ativos.' + (D.semRent ? ' O arquivo não traz histórico de rentabilidade.' : ' A carteira rendeu ' + fmtP(pa.rent) + ' no ano (' + fmtP(pa.pcdi) + ' do CDI)' + (typeof p12.rent === 'number' ? ' e ' + fmtP(p12.rent) + ' em 12 meses (' + fmtP(p12.pcdi) + ' do CDI)' : '') + '.') + (!D.semRent && D.evol.length < 12 ? ' A conta tem menos de 12 meses de histórico; as rentabilidades acumuladas refletem o início recente dos aportes e devem ser lidas com cautela.' : '') + ' A alocação é mais aderente ao ' + R.matriz.perfis[R.maisProximo].nome + ' (' + fmtP(100 - R.realocar[R.maisProximo], 1) + ').' + (Math.abs(difBruto) > 1 ? ' O patrimônio bruto informado no relatório difere em ' + fmtBRL(Math.abs(difBruto)) + ' da soma das estratégias; a diferença não está atribuída a ativos específicos e não foi considerada na análise.' : '');
   var top = agrupar('ativo');
-  var h = '<p class="resumo">' + esc(resumo) + '</p>' + kpisGeral() + '<div class="tiles">';
+  var h = kpisGeral() + '<div class="tiles">';
   h += tile('t4', 'Por estratégia', donutDim('est', 'total'), 'clique para filtrar');
   h += tile('t4', 'Por instrumento', barrasDim('instr'), 'clique para filtrar');
   h += tile('t4', 'Por tributação', donutDim('trib', 'total'), 'clique para filtrar');
@@ -18113,12 +18374,12 @@ PAGINAS.posicoes = function () {
   var lista = filtrados(null);
   var q = compacto(ST.busca);
   if (q) lista = lista.filter(function (p) { return compacto(p.nome).indexOf(q) !== -1 || compacto(p.estrategia).indexOf(q) !== -1; });
-  var h = '<div class="barra-sl"><span class="rot-sl">Buscar</span><input type="text" id="in-busca" class="busca" placeholder="Ativo ou estratégia" value="' + esc(ST.busca) + '" autocomplete="off"></div>';
+  var h = '<div class="barra-sl"><span class="rot-sl">Buscar</span><input type="text" id="in-busca" class="busca" placeholder="Ativo ou estratégia" value="' + esc(ST.busca) + '" autocomplete="off"><button type="button" class="btn btn-peq" data-pos-novo="geral">+ Adicionar posição</button></div>';
   h += kpisGeral() + '<div class="tiles">';
   h += tile('t4', 'Por estratégia', donutDim('est', 'total'), 'clique para filtrar');
   h += tile('t4', 'Por instrumento', barrasDim('instr'), 'clique para filtrar');
   h += tile('t4', 'Por disponibilidade', barrasDim('liq'), 'clique para filtrar');
-  h += tile('t12', 'Posição detalhada', tabelaPosicoes(lista), 'clique no título da coluna para ordenar');
+  h += tile('t12', 'Posição detalhada', tabelaPosicoes(lista, { acoes: true }), 'clique no título da coluna para ordenar; use ✎ para editar e × para remover');
   return h + '</div>';
 };
 PAGINAS.rf = function () {
@@ -18133,13 +18394,13 @@ PAGINAS.rf = function () {
   var emiF = {};
   F.forEach(function (p) { var k2 = p.emissor || p.nome; var e = emiF[k2] || (emiF[k2] = { fgc: 0, sem: 0 }); if (/^(LCA|LCI|LCD|CDB|LC|LF|RDB|LIG)$/.test(p.papel || '')) e.fgc += p.saldo; else e.sem += p.saldo; });
   var fgcNota = Object.keys(emiF).map(function (k2) { var e = emiF[k2]; return '<span class="chip' + (e.fgc > 250000 ? ' sel' : '') + '">' + esc(k2) + ': ' + (e.fgc > 0 ? (e.fgc > 250000 ? 'acima do teto do FGC' : 'dentro do teto do FGC') : '') + (e.sem > 0 ? (e.fgc > 0 ? ' · ' : '') + 'sem garantia do FGC' : '') + '</span>'; }).join(' ');
-  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Título</th><th class="e">Emissor</th><th class="e">Taxa</th><th class="e">Vencimento</th><th>Prazo</th><th>Saldo bruto</th><th>% carteira</th><th>Rent. ano</th><th>% CDI (ano)</th></tr></thead><tbody>';
+  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Título</th><th class="e">Emissor</th><th class="e">Taxa</th><th class="e">Vencimento</th><th>Prazo</th><th>Saldo bruto</th><th>% carteira</th><th>Rent. ano</th><th>% CDI (ano)</th><th></th></tr></thead><tbody>';
   F.forEach(function (p, i) {
     var prazo = p.meses === null ? '' : (p.meses < 0 ? 'vencido' : (p.meses === 0 ? 'este mês' : p.meses + ' m'));
-    t += '<tr class="clic ' + (i % 2 ? 'zebra' : '') + (selecionado('ativo', p.nome) ? ' selrow' : '') + '"' + dF('ativo', p.nome) + '><td class="e">' + esc(p.papel || '') + '</td><td class="e">' + esc(p.emissor || p.nome) + '</td><td class="e">' + esc(p.taxa || '') + '</td><td class="e">' + fmtVenc(p) + '</td><td>' + prazo + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td><td class="' + clsv(p.ano) + '">' + fmtP(p.ano) + '</td><td>' + fmtP(p.acdi) + '</td></tr>';
+    t += '<tr class="clic ' + (i % 2 ? 'zebra' : '') + (selecionado('ativo', p.nome) ? ' selrow' : '') + '"' + dF('ativo', p.nome) + '><td class="e">' + esc(p.papel || '') + '</td><td class="e">' + esc(p.emissor || p.nome) + '</td><td class="e">' + esc(p.taxa || '') + '</td><td class="e">' + fmtVenc(p) + '</td><td>' + prazo + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td><td class="' + clsv(p.ano) + '">' + fmtP(p.ano) + '</td><td>' + fmtP(p.acdi) + '</td>' + celAcoesPos(p) + '</tr>';
   });
   t += '</tbody></table></div>';
-  var h = k + '<div class="tiles">';
+  var h = k + '<div class="barra-sl" style="margin-top:12px;"><button type="button" class="btn btn-peq" data-pos-novo="rf">+ Adicionar título</button></div><div class="tiles">';
   h += tile('t6', 'Vencimentos por ano', barrasDim('ano'), 'clique para filtrar');
   h += tile('t6', 'Emissores', barrasDim('emi') + '<div style="margin-top:10px;">' + fgcNota + '</div><p class="nota">Teto do FGC: R$ 250.000 por CPF e por conglomerado financeiro, limitado a R$ 1 milhão a cada quatro anos. CRA, CRI e debêntures não contam com a garantia do FGC.</p>', 'clique para filtrar');
   h += tile('t12', 'Títulos', F.length ? t : '<p class="vazio">Nenhum título de renda fixa para os filtros selecionados.</p>');
@@ -18625,7 +18886,7 @@ document.addEventListener('click', function (ev) {
   var t = ev.target;
   function ach(sel) { return t && t.closest ? t.closest(sel) : null; }
   var el;
-  if (aplicarAcaoCriterio(t) || aplicarAcaoInst(t) || aplicarAcaoHist(t) || aplicarAcaoPerfil(t) || aplicarAcaoCotacao(t) || aplicarAcaoBT(t)) return;
+  if (aplicarAcaoCriterio(t) || aplicarAcaoInst(t) || aplicarAcaoHist(t) || aplicarAcaoPerfil(t) || aplicarAcaoCotacao(t) || aplicarAcaoBT(t) || aplicarAcaoPos(t)) return;
   if ((el = ach('[data-rm]'))) { var pr = el.getAttribute('data-rm'), ix = pr.indexOf('|'); alternar(pr.slice(0, ix), pr.slice(ix + 1)); render(); return; }
   if ((el = ach('[data-limpar]'))) { ST.f = {}; render(); return; }
   if ((el = ach('[data-aba]'))) { ST.aba = el.getAttribute('data-aba'); render(); return; }
