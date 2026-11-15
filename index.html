@@ -15885,6 +15885,7 @@ var MATRIZ_PADRAO = {
 };
 var PERFIL_CLI = { editados: {}, novos: [] };   // ajustes de percentuais e perfis criados para o cliente
 function carregarMatriz() {
+  vincularPerfis(CLI.id);   // perfis de outro cliente nunca entram na análise
   var perfis = MATRIZ_PADRAO.perfis.map(function (p, i) { return { nome: p.nome, editado: !!PERFIL_CLI.editados[i] }; });
   var classes = MATRIZ_PADRAO.classes.map(function (c) { return { nome: c.nome, alvo: c.alvo.slice() }; });
   Object.keys(PERFIL_CLI.editados).forEach(function (idx) {
@@ -16628,7 +16629,7 @@ function abrirRegistro(id) {
     DONO = CLI.id;
     document.getElementById('in-cliente').value = r.data.cliente_nome || '';
     renderSelCliente();
-    if (dd.perfis) aplicarPerfisSalvos(dd.perfis); else { PERFIL_CLI = perfisVazios(); perfilSel = null; PERFIL_SUJO = false; if (CLI.id) carregarPerfilCliente(CLI.id); }
+    if (dd.perfis) aplicarPerfisSalvos(dd.perfis); else { zerarPerfis(CLI.id); if (CLI.id) carregarPerfilCliente(CLI.id); }
     R = analisar(D); recalcularCredito();
     ST.f = {}; ST.aba = 'geral'; ST.mesSel = null; ST.busca = ''; ST.periodo = 12; ST.movTipo = '';
     document.getElementById('painel').hidden = false;
@@ -16694,6 +16695,7 @@ document.addEventListener('change', function (ev) {
         if (r.error) throw r.error;
         CLIENTES.push(r.data); CLIENTES.sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
         CLI = { id: r.data.id, nome: r.data.nome };
+        vincularPerfis(CLI.id);
         document.getElementById('in-cliente').value = CLI.nome;
         lembrarCliente(CLI.id);
         renderSelCliente(); if (D && R) { render(); agendarGravacao(); }
@@ -16709,6 +16711,7 @@ document.addEventListener('change', function (ev) {
       // os dados carregados pertencem a outro cliente: não são levados para o novo cliente
       if (D && DONO && DONO !== (c ? c.id : '')) limparCarteira();
       CLI = c ? { id: c.id, nome: c.nome } : { id: '', nome: '' };
+      vincularPerfis(CLI.id);
       lembrarCliente(c ? c.id : '');
       if (c) { document.getElementById('in-cliente').value = c.nome; carregarConsolidacaoCliente(c.id, false); }
       else if (!D) document.getElementById('in-cliente').value = '';
@@ -17153,6 +17156,14 @@ function removerBase() {
 // ── Perfis de investimento do cliente: pesos editáveis, perfis criados pelo usuário e gravação por cliente ──
 var PERFIL_SUJO = false, msgPerfil = { t: '', erro: false };
 function perfisVazios() { return { editados: {}, novos: [] }; }
+// Os perfis criados ou ajustados pertencem ao cliente em que foram cadastrados e nunca acompanham a carteira de outro cliente
+var PERFIL_DONO = '';   // cliente a que pertencem os perfis em memória ('' = ainda sem cliente vinculado)
+function zerarPerfis(dono) { PERFIL_CLI = perfisVazios(); perfilSel = null; PERFIL_SUJO = false; PERFIL_DONO = dono || ''; }
+function vincularPerfis(id) {
+  id = id || '';
+  if (PERFIL_DONO && PERFIL_DONO !== id) { zerarPerfis(id); msgPerfil = { t: '', erro: false }; }
+  else PERFIL_DONO = id;
+}
 function normalizarPerfis(p) { return { editados: (p && p.editados) || {}, novos: (p && p.novos) || [] }; }
 function perfilAtualIdx() { return perfilSel === null ? R.maisProximo : perfilSel; }
 function pesosDoPerfil(pi, zerar) {
@@ -17160,11 +17171,15 @@ function pesosDoPerfil(pi, zerar) {
   R.linhas.forEach(function (l) { o[l.chave] = zerar ? 0 : (l.alvo[pi] || 0); });
   return o;
 }
-function dadosPerfis() { return { editados: PERFIL_CLI.editados, novos: PERFIL_CLI.novos, sel: perfilSel }; }
+function dadosPerfis() {
+  if (PERFIL_DONO && PERFIL_DONO !== CLI.id) return { editados: {}, novos: [], sel: null };   // perfis de outro cliente nunca são gravados
+  return { editados: PERFIL_CLI.editados, novos: PERFIL_CLI.novos, sel: perfilSel };
+}
 function aplicarPerfisSalvos(dd) {
   PERFIL_CLI = normalizarPerfis(dd);
-  perfilSel = dd && typeof dd.sel === 'number' ? dd.sel : null;
+  perfilSel = dd && typeof dd.sel === 'number' && dd.sel < MATRIZ_PADRAO.perfis.length + PERFIL_CLI.novos.length ? dd.sel : null;
   PERFIL_SUJO = false;
+  PERFIL_DONO = CLI.id || '';
 }
 function carregarPerfilCliente(id) {
   if (!id || !sb || !logado) return;
@@ -17173,6 +17188,7 @@ function carregarPerfilCliente(id) {
     var dd = r.data && r.data.dados;
     if (dd) { aplicarPerfisSalvos(dd); msgPerfil = { t: 'Perfil salvo de ' + CLI.nome + ' carregado.', erro: false }; }
     else if (!PERFIL_SUJO) { PERFIL_CLI = perfisVazios(); msgPerfil = { t: '', erro: false }; }
+    PERFIL_DONO = id;
     if (D && R) reanalisar();
   });
 }
@@ -17660,6 +17676,7 @@ function sairModoCliente() {
   MODO_CLIENTE = false;
   document.body.classList.remove('modo-cliente');
   D = null; R = null; OUTRAS = []; ARQS = {}; TETOS = {}; CLI = { id: '', nome: '' };
+  zerarPerfis('');
   document.getElementById('in-cliente').value = '';
   document.getElementById('painel').hidden = true;
   var st = document.getElementById('status');
@@ -17696,7 +17713,7 @@ function atualizarRotuloCarregar() {
 function limparCarteira() {
   clearTimeout(tGravar);
   D = null; R = null; OUTRAS = []; ARQS = {}; DONO = ''; TETOS = {};
-  PERFIL_CLI = perfisVazios(); perfilSel = null; PERFIL_SUJO = false;
+  zerarPerfis('');
   msgInst = { t: '', erro: false }; ESTADO_GRAV = { t: '', erro: false };
   document.getElementById('painel').hidden = true;
   var st = document.getElementById('status');
@@ -17737,6 +17754,7 @@ function retomarUltimoCliente() {
   var c = CLIENTES.filter(function (x) { return x.id === id; })[0];
   if (!c || CLI.id || D) return;
   CLI = { id: c.id, nome: c.nome };
+  vincularPerfis(c.id);
   document.getElementById('in-cliente').value = c.nome;
   renderSelCliente();
   carregarConsolidacaoCliente(c.id, true);
@@ -17744,7 +17762,7 @@ function retomarUltimoCliente() {
 function restaurarConsolidacao(dd) {
   D = dd.D; OUTRAS = dd.outras || []; restaurarArquivos(dd.arquivos); TETOS = dd.tetos || {}; DONO = CLI.id || ''; msgInst = { t: '', erro: false };
   if (!D.vazia) D.inst = D.inst || INST_PADRAO;
-  if (dd.perfis) aplicarPerfisSalvos(dd.perfis); else { PERFIL_CLI = perfisVazios(); perfilSel = null; PERFIL_SUJO = false; if (CLI.id) carregarPerfilCliente(CLI.id); }
+  if (dd.perfis) aplicarPerfisSalvos(dd.perfis); else { zerarPerfis(CLI.id); if (CLI.id) carregarPerfilCliente(CLI.id); }
   if (dd.cambio) ST.cambio = dd.cambio;
   R = analisar(D); recalcularCredito();
   ST.f = {}; ST.aba = 'geral'; ST.mesSel = null; ST.busca = ''; ST.periodo = 12; ST.movTipo = '';
