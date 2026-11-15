@@ -19911,6 +19911,7 @@ tbody tr:nth-child(even) td{background:#FAFAFA;}
 .rm{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:16px;padding:0 6px;border-radius:6px;}
 .rm:hover{background:#FDECEC;color:var(--red);}
 #card-ativo{scroll-margin-top:60px;}
+.btn:disabled{opacity:.4;cursor:default;}
 .tb-acoes th:nth-child(2),.tb-acoes td:nth-child(2){text-align:right;}
 .tb-acoes tr.sel td{background:#EAEAEA!important;}
 @media print{.nav,.barra{display:none!important;}}
@@ -19952,7 +19953,7 @@ tbody tr:nth-child(even) td{background:#FAFAFA;}
   </div>
 
   <div class="card" id="card-ativo" hidden><div class="resumo" id="resumo"></div></div>
-  <div class="card" id="card-cart"><div class="sec"><span>Carteira teórica <span id="cart-n"></span></span><small id="cart-info"></small></div><div class="tabela" id="tab-cart"></div></div>
+  <div class="card" id="card-cart"><div class="sec"><span>Carteira teórica <span id="cart-n"></span></span><small id="cart-info"></small></div><div class="barra" style="margin-bottom:10px;"><div class="campo"><label for="sel-perfil">Perfil</label><select id="sel-perfil"></select></div><button type="button" class="btn" id="btn-novo-perfil">Novo perfil</button><button type="button" class="btn" id="btn-ren-perfil">Renomear</button><button type="button" class="btn" id="btn-exc-perfil">Excluir perfil</button></div><div class="tabela" id="tab-cart"></div></div>
   <div class="card" id="card-tab" hidden><div class="tabela" id="tabela"></div></div>
 
   <p class="nota">Fonte: Opcoes.net.br, com atraso em relação ao mercado; os dados são atualizados automaticamente a cada 60 segundos. Cotação atual é o último preço negociado da série. Distância do strike: diferença percentual entre o strike e a cotação do ativo-objeto. ITM: opção dentro do dinheiro; ATM: no dinheiro; OTM: fora do dinheiro. Venda coberta: considera lotes de 100 ações; prêmio total = lotes × 100 × último preço da call; yield sobre o prêmio = prêmio total ÷ valor das ações cobertas; valor se exercida = lotes × 100 × strike. Cálculo sem custos operacionais e sem considerar a liquidez da série. Informação sem caráter de recomendação.</p>
@@ -19964,51 +19965,136 @@ var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 var SESSAO_INICIAL = ${JSON.stringify(sessaoAtual)};
 var sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
 var FN = 'https://segeufywrjmstfmfscdi.supabase.co/functions/v1/opcoes-cadeia';
-var carteira = [], precosCart = {}, usaBanco = false, ULT_LINHAS = [];
-function lerLocalCart() { try { var v = JSON.parse(localStorage.getItem('cr_opcoes_carteira') || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
-function gravarLocalCart() { try { localStorage.setItem('cr_opcoes_carteira', JSON.stringify(usaBanco ? [] : carteira)); } catch (e) {} }
-function naCarteira(cod) { return carteira.some(function (x) { return x.codigo === cod; }); }
+var carteira = [], precosCart = {}, usaBanco = false, ULT_LINHAS = [], perfisExtra = [], perfilSel = 'Favoritos';
+var PERFIL_PADRAO = 'Favoritos', COLS_CART = 'id,codigo,ativo,tipo,strike,vencimento,preco_entrada,adicionado_em,perfil';
+function perfilDe(x) { return x.perfil || PERFIL_PADRAO; }
+function lerLocalLista(chave) { try { var v = JSON.parse(localStorage.getItem(chave) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+function lerLocalCart() { return lerLocalLista('cr_opcoes_carteira'); }
+function gravarLocalCart() { try { localStorage.setItem('cr_opcoes_carteira', JSON.stringify(usaBanco ? [] : carteira)); localStorage.setItem('cr_opcoes_perfis', JSON.stringify(usaBanco ? [] : perfisExtra)); } catch (e) {} }
+function gravarPerfilSel() { try { localStorage.setItem('cr_opcoes_perfil_sel', perfilSel); } catch (e) {} }
+function nomesPerfis() {
+  var n = [PERFIL_PADRAO];
+  perfisExtra.concat(carteira.map(perfilDe)).forEach(function (p) { if (n.indexOf(p) === -1) n.push(p); });
+  return n;
+}
+function itensPerfil() { return carteira.filter(function (x) { return perfilDe(x) === perfilSel; }); }
+function naCarteira(cod) { return itensPerfil().some(function (x) { return x.codigo === cod; }); }
+function erroNomePerfil(nome, atual) {
+  if (!nome) return 'Informe o nome do perfil.';
+  if (nome.length > 40) return 'O nome do perfil deve ter até 40 caracteres.';
+  if (nomesPerfis().some(function (p) { return p !== atual && p.toLowerCase() === nome.toLowerCase(); })) return 'Já existe um perfil com este nome.';
+  return '';
+}
 function iniciarCarteira() {
   carteira = lerLocalCart();
+  perfisExtra = lerLocalLista('cr_opcoes_perfis');
+  try { var ps = localStorage.getItem('cr_opcoes_perfil_sel'); if (ps) perfilSel = ps; } catch (e) {}
   renderCarteira();
   if (!sb || !SESSAO_INICIAL || !SESSAO_INICIAL.access_token) { atualizarPrecosCarteira(); return; }
-  var locais = carteira.slice();
+  var locais = carteira.slice(), locaisPerfis = perfisExtra.slice();
   sb.auth.setSession({ access_token: SESSAO_INICIAL.access_token, refresh_token: SESSAO_INICIAL.refresh_token }).then(function (r) {
     if (r.error) throw r.error;
-    return sb.from('opcoes_carteira').select('id,codigo,ativo,tipo,strike,vencimento,preco_entrada,adicionado_em').order('adicionado_em', { ascending: true });
-  }).then(function (r) {
-    if (r.error) throw r.error;
+    return Promise.all([
+      sb.from('opcoes_carteira').select(COLS_CART).order('adicionado_em', { ascending: true }),
+      sb.from('opcoes_perfis').select('nome').order('criado_em', { ascending: true })
+    ]);
+  }).then(function (rs) {
+    if (rs[0].error) throw rs[0].error;
     usaBanco = true;
-    carteira = r.data || [];
-    // opções adicionadas antes do login, somente neste navegador, passam para a conta
-    var novos = locais.filter(function (l) { return !carteira.some(function (x) { return x.codigo === l.codigo; }); }).map(function (l) { return { codigo: l.codigo, ativo: l.ativo, tipo: l.tipo, strike: l.strike, vencimento: l.vencimento, preco_entrada: l.preco_entrada }; });
+    carteira = rs[0].data || [];
+    perfisExtra = rs[1].error ? [] : (rs[1].data || []).map(function (x) { return x.nome; });
+    // perfis e opções criados antes do login, somente neste navegador, passam para a conta
+    var novosPerfis = locaisPerfis.filter(function (p) { return p !== PERFIL_PADRAO && perfisExtra.indexOf(p) === -1; });
+    var novos = locais.filter(function (l) { return !carteira.some(function (x) { return x.codigo === l.codigo && perfilDe(x) === perfilDe(l); }); }).map(function (l) { return { codigo: l.codigo, ativo: l.ativo, tipo: l.tipo, strike: l.strike, vencimento: l.vencimento, preco_entrada: l.preco_entrada, perfil: perfilDe(l) }; });
     gravarLocalCart();
-    if (!novos.length) return null;
-    return sb.from('opcoes_carteira').insert(novos).select('id,codigo,ativo,tipo,strike,vencimento,preco_entrada,adicionado_em').then(function (x) { if (!x.error && x.data) carteira = carteira.concat(x.data); });
+    var p1 = novosPerfis.length ? sb.from('opcoes_perfis').insert(novosPerfis.map(function (p) { return { nome: p }; })).then(function (x) { if (!x.error) perfisExtra = perfisExtra.concat(novosPerfis); }) : Promise.resolve();
+    return p1.then(function () {
+      if (!novos.length) return null;
+      return sb.from('opcoes_carteira').insert(novos).select(COLS_CART).then(function (x) { if (!x.error && x.data) carteira = carteira.concat(x.data); });
+    });
   }).catch(function () { usaBanco = false; }).then(function () { renderCarteira(); renderizar(); atualizarPrecosCarteira(); });
 }
 function adicionarCarteira(r) {
   if (!r || naCarteira(r.ticker)) return;
-  var item = { codigo: r.ticker, ativo: tickerAtual, tipo: r.tipo, strike: r.strike, vencimento: r.venc, preco_entrada: r.preco };
+  var item = { codigo: r.ticker, ativo: tickerAtual, tipo: r.tipo, strike: r.strike, vencimento: r.venc, preco_entrada: r.preco, perfil: perfilSel };
   function aposAdicionar() { renderCarteira(); renderizar(); atualizarPrecosCarteira(); }
   if (usaBanco) {
-    sb.from('opcoes_carteira').insert(item).select('id,codigo,ativo,tipo,strike,vencimento,preco_entrada,adicionado_em').single().then(function (res) {
+    sb.from('opcoes_carteira').insert(item).select(COLS_CART).single().then(function (res) {
       if (res.error) { dizer('Não foi possível adicionar à carteira: ' + res.error.message, true); return; }
       carteira.push(res.data); aposAdicionar();
     });
   } else { carteira.push(item); gravarLocalCart(); aposAdicionar(); }
 }
 function removerCarteira(cod) {
-  var it = carteira.filter(function (x) { return x.codigo === cod; })[0];
+  var it = itensPerfil().filter(function (x) { return x.codigo === cod; })[0];
   if (!it) return;
-  function ap() { carteira = carteira.filter(function (x) { return x.codigo !== cod; }); gravarLocalCart(); renderCarteira(); renderizar(); }
+  function ap() { carteira = carteira.filter(function (x) { return x !== it; }); gravarLocalCart(); renderCarteira(); renderizar(); }
   if (usaBanco && it.id) sb.from('opcoes_carteira').delete().eq('id', it.id).then(function (res) { if (res.error) { dizer('Não foi possível remover: ' + res.error.message, true); return; } ap(); });
   else ap();
 }
-// Cotação atual de cada opção da carteira: consulta a cadeia de cada ativo-objeto envolvido
+function aposTrocaPerfil() { gravarPerfilSel(); gravarLocalCart(); renderCarteira(); renderizar(); atualizarPrecosCarteira(); }
+function criarPerfil() {
+  var n = prompt('Nome do novo perfil (até 40 caracteres):');
+  if (n === null) return;
+  n = n.trim();
+  var e = erroNomePerfil(n, '');
+  if (e) { alert(e); return; }
+  function ap() { perfisExtra.push(n); perfilSel = n; aposTrocaPerfil(); }
+  if (usaBanco) sb.from('opcoes_perfis').insert({ nome: n }).then(function (res) { if (res.error) { alert('Não foi possível criar o perfil: ' + res.error.message); return; } ap(); });
+  else ap();
+}
+function renomearPerfil() {
+  var velho = perfilSel;
+  if (velho === PERFIL_PADRAO) return;
+  var n = prompt('Novo nome do perfil (até 40 caracteres):', velho);
+  if (n === null) return;
+  n = n.trim();
+  if (n === velho) return;
+  var e = erroNomePerfil(n, velho);
+  if (e) { alert(e); return; }
+  function ap() {
+    carteira.forEach(function (x) { if (perfilDe(x) === velho) x.perfil = n; });
+    perfisExtra = perfisExtra.map(function (p) { return p === velho ? n : p; });
+    if (perfisExtra.indexOf(n) === -1) perfisExtra.push(n);
+    perfilSel = n; aposTrocaPerfil();
+  }
+  if (!usaBanco) { ap(); return; }
+  sb.from('opcoes_carteira').update({ perfil: n }).eq('perfil', velho).then(function (r1) {
+    if (r1.error) { alert('Não foi possível renomear o perfil: ' + r1.error.message); return; }
+    return sb.from('opcoes_perfis').update({ nome: n }).eq('nome', velho).then(function (r2) {
+      if (r2.error) { alert('Não foi possível renomear o perfil: ' + r2.error.message); return; }
+      ap();
+    });
+  });
+}
+function excluirPerfil() {
+  var nome = perfilSel, qtd = itensPerfil().length;
+  if (nome === PERFIL_PADRAO) return;
+  if (!confirm('Excluir o perfil "' + nome + '" e as ' + qtd + ' opção(ões) salvas nele? Esta ação não pode ser desfeita.')) return;
+  function ap() {
+    carteira = carteira.filter(function (x) { return perfilDe(x) !== nome; });
+    perfisExtra = perfisExtra.filter(function (p) { return p !== nome; });
+    perfilSel = PERFIL_PADRAO; aposTrocaPerfil();
+  }
+  if (!usaBanco) { ap(); return; }
+  sb.from('opcoes_carteira').delete().eq('perfil', nome).then(function (r1) {
+    if (r1.error) { alert('Não foi possível excluir o perfil: ' + r1.error.message); return; }
+    return sb.from('opcoes_perfis').delete().eq('nome', nome).then(function (r2) {
+      if (r2.error) { alert('Não foi possível excluir o perfil: ' + r2.error.message); return; }
+      ap();
+    });
+  });
+}
+function iniciarPerfis() {
+  document.getElementById('sel-perfil').addEventListener('change', function () { perfilSel = this.value; aposTrocaPerfil(); });
+  document.getElementById('btn-novo-perfil').addEventListener('click', criarPerfil);
+  document.getElementById('btn-ren-perfil').addEventListener('click', renomearPerfil);
+  document.getElementById('btn-exc-perfil').addEventListener('click', excluirPerfil);
+}
+// Cotação atual de cada opção do perfil selecionado: consulta a cadeia de cada ativo-objeto envolvido
 function atualizarPrecosCarteira() {
   var ativos = [];
-  carteira.forEach(function (x) { if (ativos.indexOf(x.ativo) === -1) ativos.push(x.ativo); });
+  itensPerfil().forEach(function (x) { if (ativos.indexOf(x.ativo) === -1) ativos.push(x.ativo); });
   if (!ativos.length) { renderCarteira(); return Promise.resolve(); }
   return Promise.all(ativos.map(function (a) {
     return fetch(FN + '?ticker=' + encodeURIComponent(a) + '&todas=1').then(function (r) { return r.json(); }).catch(function () { return null; });
@@ -20024,11 +20110,23 @@ function atualizarPrecosCarteira() {
   });
 }
 function renderCarteira() {
-  document.getElementById('cart-n').textContent = '(' + carteira.length + ')';
+  var nomes = nomesPerfis();
+  if (nomes.indexOf(perfilSel) === -1) perfilSel = PERFIL_PADRAO;
+  var itens = itensPerfil(), sel = document.getElementById('sel-perfil');
+  while (sel.firstChild) sel.removeChild(sel.firstChild);
+  nomes.forEach(function (p) {
+    var o = document.createElement('option');
+    o.value = p; o.textContent = p + ' (' + carteira.filter(function (x) { return perfilDe(x) === p; }).length + ')';
+    if (p === perfilSel) o.selected = true;
+    sel.appendChild(o);
+  });
+  document.getElementById('btn-ren-perfil').disabled = perfilSel === PERFIL_PADRAO;
+  document.getElementById('btn-exc-perfil').disabled = perfilSel === PERFIL_PADRAO;
+  document.getElementById('cart-n').textContent = '(' + itens.length + ')';
   document.getElementById('cart-info').textContent = usaBanco ? 'Salva na sua conta' : 'Salva somente neste navegador (entre no site para salvar na conta)';
   var el = document.getElementById('tab-cart');
-  if (!carteira.length) { el.innerHTML = '<div class="vazio">Nenhuma opção na carteira. Use o botão + na tabela de opções para adicionar.</div>'; return; }
-  var ord = carteira.slice().sort(function (a, b) { return String(a.vencimento || '').localeCompare(String(b.vencimento || '')) || a.codigo.localeCompare(b.codigo); });
+  if (!itens.length) { el.innerHTML = '<div class="vazio">Nenhuma opção neste perfil. Use o botão + na tabela de opções para adicionar.</div>'; return; }
+  var ord = itens.slice().sort(function (a, b) { return String(a.vencimento || '').localeCompare(String(b.vencimento || '')) || a.codigo.localeCompare(b.codigo); });
   var t = '<table><thead><tr><th>Ticker</th><th>Tipo</th><th>Ativo-objeto</th><th>Vencimento</th><th>Strike</th><th>Preço de entrada</th><th>Cotação atual</th><th>Variação desde a entrada</th><th>ITM / ATM / OTM</th><th></th></tr></thead><tbody>';
   ord.forEach(function (x) {
     var c = precosCart[x.codigo], atual = c ? c.preco : null, ent = x.preco_entrada === null || x.preco_entrada === undefined ? null : Number(x.preco_entrada);
@@ -20232,6 +20330,7 @@ setInterval(function () { if (document.hidden) return; if (tickerAtual) buscar(f
 try { var uq = localStorage.getItem('cr_opcoes_qtd'); if (uq) document.getElementById('in-qtd').value = uq; } catch (e) {}
 try { var ult = localStorage.getItem('cr_opcoes_ticker'); if (ult) { document.getElementById('in-ticker').value = ult; buscar(true); } } catch (e) {}
 iniciarAcoes();
+iniciarPerfis();
 iniciarCarteira();
 <\/script>
 </body>
