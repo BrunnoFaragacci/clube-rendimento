@@ -20167,6 +20167,11 @@ tbody tr:nth-child(even) td{background:#FAFAFA;}
 .btn-mais.ok{background:var(--ink);color:#fff;cursor:default;}
 .sec{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-left:4px solid var(--ink);padding-left:10px;margin-bottom:10px;}
 .sec small{font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink-soft);}
+.sec-d{display:flex;align-items:center;gap:12px;}
+.sec[data-tg]{cursor:pointer;user-select:none;}
+.card.fechado .sec{margin-bottom:0;}
+.card.fechado>.corpo-sec{display:none;}
+.btn-tg{flex:none;}
 .rm{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:16px;padding:0 6px;border-radius:6px;}
 .rm:hover{background:#FDECEC;color:var(--red);}
 #card-ativo{scroll-margin-top:60px;}
@@ -20200,19 +20205,29 @@ tbody tr:nth-child(even) td{background:#FAFAFA;}
     <p class="msg" id="msg" style="margin-top:10px;"></p>
   </div>
 
-  <div class="card" id="card-acoes">
-    <div class="sec"><span>Carteira do cliente <span id="acoes-n"></span></span><small id="acoes-info"></small></div>
-    <div class="barra">
-      <button type="button" class="btn" id="btn-subir">Subir carteira em Excel</button>
-      <input type="file" id="in-arq" accept=".xlsx,.xls,.csv" hidden>
-      <button type="button" class="btn" id="btn-limpar-acoes" hidden>Remover carteira</button>
+  <div class="card fechado" id="card-acoes">
+    <div class="sec" data-tg="card-acoes"><span>Carteira do cliente <span id="acoes-n"></span></span><span class="sec-d"><small id="acoes-info"></small><button type="button" class="btn-mais btn-tg" aria-expanded="false" aria-controls="corpo-acoes" title="Expandir">+</button></span></div>
+    <div class="corpo-sec" id="corpo-acoes">
+      <div class="barra">
+        <button type="button" class="btn" id="btn-subir">Subir carteira em Excel</button>
+        <input type="file" id="in-arq" accept=".xlsx,.xls,.csv" hidden>
+        <button type="button" class="btn pri" id="btn-salvar-acoes" hidden>Salvar carteira</button>
+        <button type="button" class="btn" id="btn-limpar-acoes" hidden>Remover carteira</button>
+        <div class="campo" id="c-salvas" hidden><label for="sel-salvas" id="lbl-salvas">Carteiras salvas</label><select id="sel-salvas"></select></div>
+        <button type="button" class="btn" id="btn-exc-salva" hidden>Excluir carteira salva</button>
+      </div>
+      <div class="barra" id="form-salvar" hidden style="margin-top:12px;">
+        <div class="campo"><label for="in-nome-cart">Nome da carteira</label><input type="text" id="in-nome-cart" maxlength="60" placeholder="Ex.: Mauro, conta XP" autocomplete="off" style="text-transform:none;min-width:280px;"></div>
+        <button type="button" class="btn pri" id="btn-confirmar-salvar">Salvar</button>
+        <button type="button" class="btn" id="btn-cancelar-salvar">Cancelar</button>
+      </div>
+      <p class="msg" id="msg-arq" style="margin:10px 0;"></p>
+      <div class="tabela" id="tab-acoes"></div>
     </div>
-    <p class="msg" id="msg-arq" style="margin:10px 0;"></p>
-    <div class="tabela" id="tab-acoes"></div>
   </div>
 
   <div class="card" id="card-ativo" hidden><div class="resumo" id="resumo"></div></div>
-  <div class="card" id="card-cart"><div class="sec"><span>Carteira teórica <span id="cart-n"></span></span><small id="cart-info"></small></div><div class="barra" style="margin-bottom:10px;"><div class="campo"><label for="sel-perfil">Perfil</label><select id="sel-perfil"></select></div><button type="button" class="btn" id="btn-novo-perfil">Novo perfil</button><button type="button" class="btn" id="btn-ren-perfil">Renomear</button><button type="button" class="btn" id="btn-exc-perfil">Excluir perfil</button></div><div class="tabela" id="tab-cart"></div></div>
+  <div class="card fechado" id="card-cart"><div class="sec" data-tg="card-cart"><span>Carteira teórica <span id="cart-n"></span></span><span class="sec-d"><small id="cart-info"></small><button type="button" class="btn-mais btn-tg" aria-expanded="false" aria-controls="corpo-cart" title="Expandir">+</button></span></div><div class="corpo-sec" id="corpo-cart"><div class="barra" style="margin-bottom:10px;"><div class="campo"><label for="sel-perfil">Perfil</label><select id="sel-perfil"></select></div><button type="button" class="btn" id="btn-novo-perfil">Novo perfil</button><button type="button" class="btn" id="btn-ren-perfil">Renomear</button><button type="button" class="btn" id="btn-exc-perfil">Excluir perfil</button></div><div class="tabela" id="tab-cart"></div></div></div>
   <div class="card" id="card-tab" hidden><div class="tabela" id="tabela"></div></div>
 
   <p class="nota">Fonte: Opcoes.net.br, com atraso em relação ao mercado; os dados são atualizados automaticamente a cada 60 segundos. Cotação atual é o último preço negociado da série. Distância do strike: diferença percentual entre o strike e a cotação do ativo-objeto. ITM: opção dentro do dinheiro; ATM: no dinheiro; OTM: fora do dinheiro. Venda coberta: considera lotes de 100 ações; prêmio total = lotes × 100 × último preço da call; yield sobre o prêmio = prêmio total ÷ valor das ações cobertas; valor se exercida = lotes × 100 × strike. Cálculo sem custos operacionais e sem considerar a liquidez da série. Informação sem caráter de recomendação.</p>
@@ -20230,6 +20245,11 @@ function perfilDe(x) { return x.perfil || PERFIL_PADRAO; }
 function lerLocalLista(chave) { try { var v = JSON.parse(localStorage.getItem(chave) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
 function lerLocalCart() { return lerLocalLista('cr_opcoes_carteira'); }
 function gravarLocalCart() { try { localStorage.setItem('cr_opcoes_carteira', JSON.stringify(usaBanco ? [] : carteira)); localStorage.setItem('cr_opcoes_perfis', JSON.stringify(usaBanco ? [] : perfisExtra)); } catch (e) {} }
+var SESSAO_PROM = null;
+function sessaoSb() {
+  if (!SESSAO_PROM) SESSAO_PROM = sb.auth.setSession({ access_token: SESSAO_INICIAL.access_token, refresh_token: SESSAO_INICIAL.refresh_token });
+  return SESSAO_PROM;
+}
 function gravarPerfilSel() { try { localStorage.setItem('cr_opcoes_perfil_sel', perfilSel); } catch (e) {} }
 function nomesPerfis() {
   var n = [PERFIL_PADRAO];
@@ -20251,7 +20271,7 @@ function iniciarCarteira() {
   renderCarteira();
   if (!sb || !SESSAO_INICIAL || !SESSAO_INICIAL.access_token) { atualizarPrecosCarteira(); return; }
   var locais = carteira.slice(), locaisPerfis = perfisExtra.slice();
-  sb.auth.setSession({ access_token: SESSAO_INICIAL.access_token, refresh_token: SESSAO_INICIAL.refresh_token }).then(function (r) {
+  sessaoSb().then(function (r) {
     if (r.error) throw r.error;
     return Promise.all([
       sb.from('opcoes_carteira').select(COLS_CART).order('adicionado_em', { ascending: true }),
@@ -20489,7 +20509,7 @@ document.getElementById('tabela').addEventListener('click', function (e) {
 });
 document.getElementById('tab-cart').addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('[data-rm-cart]') : null; if (b) removerCarteira(b.getAttribute('data-rm-cart')); });
 // ── Carteira do cliente: leitura da planilha de posição consolidada e listagem das ações ──
-var ACOES = [], ACOES_ARQ = '', ACAO_SEL = '';
+var ACOES = [], ACOES_ARQ = '', ACAO_SEL = '', ACOES_NOME = '';
 function numBR(v) {
   if (typeof v === 'number') return isNaN(v) ? null : v;
   var t = String(v === undefined || v === null ? '' : v).split('R$').join('').split(' ').join('').trim();
@@ -20541,10 +20561,12 @@ function lerArquivoCarteira(arq) {
         achadas = extrairAcoes(XLSX.utils.sheet_to_json(pasta.Sheets[pasta.SheetNames[k]], { header: 1, raw: true, defval: '' }));
       }
       if (!achadas.length) { dizerArq('Nenhuma ação foi encontrada na planilha. Utilize a posição consolidada exportada pela XP.', true); return; }
-      ACOES = achadas; ACOES_ARQ = arq.name; ACAO_SEL = '';
-      try { localStorage.setItem('cr_opcoes_acoes', JSON.stringify({ arq: ACOES_ARQ, acoes: ACOES })); } catch (e) {}
+      ACOES = achadas; ACOES_ARQ = arq.name; ACAO_SEL = ''; ACOES_NOME = '';
+      gravarAcoesAtual();
       dizerArq('');
-      renderAcoes();
+      fecharFormSalvar();
+      definirSecao('card-acoes', true, false);
+      renderAcoes(); renderSalvas();
     } catch (e) { dizerArq('Não foi possível interpretar a planilha.', true); }
   };
   fr.readAsArrayBuffer(arq);
@@ -20552,8 +20574,10 @@ function lerArquivoCarteira(arq) {
 function renderAcoes() {
   var el = document.getElementById('tab-acoes'), btnL = document.getElementById('btn-limpar-acoes');
   document.getElementById('acoes-n').textContent = ACOES.length ? '(' + ACOES.length + ')' : '';
-  document.getElementById('acoes-info').textContent = ACOES.length ? ACOES_ARQ : '';
+  document.getElementById('acoes-info').textContent = ACOES.length ? (ACOES_NOME ? ACOES_NOME + ' (salva)' : ACOES_ARQ) : '';
   btnL.hidden = !ACOES.length;
+  document.getElementById('btn-salvar-acoes').hidden = !ACOES.length;
+  if (!ACOES.length) fecharFormSalvar();
   if (!ACOES.length) { el.innerHTML = '<p class="vazio">Nenhuma carteira carregada. Suba a planilha de posição consolidada para listar as ações do cliente.</p>'; return; }
   var ord = ACOES.slice().sort(function (a, b) { return b.pos - a.pos; }), tot = 0;
   var h = '<table class="tb-acoes"><thead><tr><th>Ativo</th><th>Quantidade</th><th>Preço médio</th><th>Última cotação</th><th>Posição (R$)</th><th></th></tr></thead><tbody>';
@@ -20577,18 +20601,140 @@ function analisarAcao(tk) {
   setTimeout(function () { var c = document.getElementById('card-ativo'); if (c && !c.hidden) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 1200);
 }
 function iniciarAcoes() {
-  try { var g = JSON.parse(localStorage.getItem('cr_opcoes_acoes') || 'null'); if (g && Array.isArray(g.acoes)) { ACOES = g.acoes; ACOES_ARQ = g.arq || ''; } } catch (e) {}
+  try { var g = JSON.parse(localStorage.getItem('cr_opcoes_acoes') || 'null'); if (g && Array.isArray(g.acoes)) { ACOES = g.acoes; ACOES_ARQ = g.arq || ''; ACOES_NOME = g.nome || ''; } } catch (e) {}
   renderAcoes();
   var inp = document.getElementById('in-arq');
   document.getElementById('btn-subir').addEventListener('click', function () { inp.value = ''; inp.click(); });
   inp.addEventListener('change', function () { lerArquivoCarteira(inp.files && inp.files[0]); });
-  document.getElementById('btn-limpar-acoes').addEventListener('click', function () { ACOES = []; ACOES_ARQ = ''; ACAO_SEL = ''; try { localStorage.removeItem('cr_opcoes_acoes'); } catch (e) {} dizerArq(''); renderAcoes(); });
+  document.getElementById('btn-limpar-acoes').addEventListener('click', function () { ACOES = []; ACOES_ARQ = ''; ACAO_SEL = ''; ACOES_NOME = ''; try { localStorage.removeItem('cr_opcoes_acoes'); } catch (e) {} dizerArq(''); renderAcoes(); renderSalvas(); });
   document.getElementById('tab-acoes').addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('[data-analisar]') : null; if (b) analisarAcao(b.getAttribute('data-analisar')); });
+}
+function gravarAcoesAtual() { try { localStorage.setItem('cr_opcoes_acoes', JSON.stringify({ arq: ACOES_ARQ, nome: ACOES_NOME, acoes: ACOES })); } catch (e) {} }
+// ── Seções recolhíveis: o botão (+) expande e o (−) recolhe; a escolha fica lembrada neste navegador ──
+function definirSecao(id, aberta, lembrar) {
+  var c = document.getElementById(id);
+  if (!c) return;
+  c.classList.toggle('fechado', !aberta);
+  var b = c.querySelector('.btn-tg');
+  if (b) { b.textContent = aberta ? '−' : '+'; b.setAttribute('aria-expanded', aberta ? 'true' : 'false'); b.title = aberta ? 'Recolher' : 'Expandir'; }
+  if (lembrar) { try { localStorage.setItem('cr_opcoes_sec_' + id, aberta ? '1' : '0'); } catch (e) {} }
+}
+function iniciarSecoes() {
+  ['card-acoes', 'card-cart'].forEach(function (id) {
+    var aberta = false;
+    try { aberta = localStorage.getItem('cr_opcoes_sec_' + id) === '1'; } catch (e) {}
+    definirSecao(id, aberta, false);
+  });
+  document.addEventListener('click', function (e) {
+    var h = e.target.closest ? e.target.closest('.sec[data-tg]') : null;
+    if (!h) return;
+    var id = h.getAttribute('data-tg'), c = document.getElementById(id);
+    if (c) definirSecao(id, c.classList.contains('fechado'), true);
+  });
+}
+// ── Carteiras do cliente salvas com nome: na conta (com sessão) ou somente neste navegador ──
+var SALVAS = [], usaBancoCli = false, COLS_SALVAS = 'id,nome,arquivo,acoes,atualizado_em';
+function gravarLocalSalvas() { try { localStorage.setItem('cr_opcoes_carteiras_salvas', JSON.stringify(usaBancoCli ? [] : SALVAS)); } catch (e) {} }
+function ordenarSalvas() { SALVAS.sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'pt-BR'); }); }
+function renderSalvas() {
+  var sel = document.getElementById('sel-salvas');
+  while (sel.firstChild) sel.removeChild(sel.firstChild);
+  var o0 = document.createElement('option');
+  o0.value = ''; o0.textContent = 'Selecione para abrir'; sel.appendChild(o0);
+  SALVAS.forEach(function (s) {
+    var o = document.createElement('option');
+    o.value = s.nome; o.textContent = s.nome;
+    if (s.nome === ACOES_NOME) o.selected = true;
+    sel.appendChild(o);
+  });
+  document.getElementById('c-salvas').hidden = !SALVAS.length;
+  document.getElementById('lbl-salvas').textContent = 'Carteiras salvas (' + SALVAS.length + ')';
+  document.getElementById('btn-exc-salva').hidden = !sel.value;
+}
+function abrirFormSalvar() {
+  if (!ACOES.length) return;
+  var i = document.getElementById('in-nome-cart'), n = ACOES_NOME || String(ACOES_ARQ || ''), p = n.lastIndexOf('.');
+  if (!ACOES_NOME && p > 0) n = n.slice(0, p);
+  i.value = n;
+  document.getElementById('form-salvar').hidden = false;
+  i.focus(); i.select();
+}
+function fecharFormSalvar() { document.getElementById('form-salvar').hidden = true; }
+function salvarCarteiraCliente() {
+  var n = String(document.getElementById('in-nome-cart').value || '').trim();
+  if (!n) { dizerArq('Informe o nome da carteira.', true); return; }
+  if (n.length > 60) { dizerArq('O nome da carteira deve ter até 60 caracteres.', true); return; }
+  if (!ACOES.length) return;
+  var ex = SALVAS.filter(function (s) { return String(s.nome).toLowerCase() === n.toLowerCase(); })[0];
+  if (ex && !confirm('Já existe uma carteira salva com o nome "' + ex.nome + '". Deseja substituí-la?')) return;
+  var copia = ACOES.map(function (x) { return { ticker: x.ticker, qtd: x.qtd, pm: x.pm, cot: x.cot, pos: x.pos }; });
+  function ap(salvo) {
+    if (ex) SALVAS = SALVAS.filter(function (s) { return s !== ex; });
+    SALVAS.push(salvo); ordenarSalvas();
+    ACOES_NOME = salvo.nome; gravarLocalSalvas(); gravarAcoesAtual();
+    fecharFormSalvar();
+    dizerArq('Carteira salva como "' + salvo.nome + '"' + (usaBancoCli ? ' na sua conta.' : ' somente neste navegador (entre no site para salvar na conta).'), false);
+    renderAcoes(); renderSalvas();
+  }
+  if (usaBancoCli) {
+    var q = ex && ex.id ? sb.from('opcoes_carteiras_cliente').update({ nome: n, arquivo: ACOES_ARQ || null, acoes: copia, atualizado_em: new Date().toISOString() }).eq('id', ex.id) : sb.from('opcoes_carteiras_cliente').insert({ nome: n, arquivo: ACOES_ARQ || null, acoes: copia });
+    q.select(COLS_SALVAS).single().then(function (res) {
+      if (res.error) { dizerArq('Não foi possível salvar a carteira: ' + res.error.message, true); return; }
+      ap(res.data);
+    });
+  } else ap({ nome: n, arquivo: ACOES_ARQ || null, acoes: copia, atualizado_em: new Date().toISOString() });
+}
+function abrirSalva(nome) {
+  var s = SALVAS.filter(function (x) { return x.nome === nome; })[0];
+  if (!s) { renderSalvas(); return; }
+  ACOES = (s.acoes || []).map(function (x) { return { ticker: x.ticker, qtd: x.qtd, pm: x.pm, cot: x.cot, pos: x.pos }; });
+  ACOES_ARQ = s.arquivo || ''; ACOES_NOME = s.nome; ACAO_SEL = '';
+  gravarAcoesAtual(); fecharFormSalvar(); dizerArq(''); renderAcoes(); renderSalvas();
+}
+function excluirSalva() {
+  var nome = document.getElementById('sel-salvas').value, s = SALVAS.filter(function (x) { return x.nome === nome; })[0];
+  if (!s) return;
+  if (!confirm('Excluir a carteira salva "' + s.nome + '"? Esta ação não pode ser desfeita.')) return;
+  function ap() {
+    SALVAS = SALVAS.filter(function (x) { return x !== s; });
+    if (ACOES_NOME === s.nome) { ACOES_NOME = ''; gravarAcoesAtual(); }
+    gravarLocalSalvas(); dizerArq('Carteira salva excluída.', false); renderAcoes(); renderSalvas();
+  }
+  if (usaBancoCli && s.id) sb.from('opcoes_carteiras_cliente').delete().eq('id', s.id).then(function (r) { if (r.error) { dizerArq('Não foi possível excluir a carteira: ' + r.error.message, true); return; } ap(); });
+  else ap();
+}
+function iniciarSalvas() {
+  document.getElementById('btn-salvar-acoes').addEventListener('click', abrirFormSalvar);
+  document.getElementById('btn-confirmar-salvar').addEventListener('click', salvarCarteiraCliente);
+  document.getElementById('btn-cancelar-salvar').addEventListener('click', fecharFormSalvar);
+  document.getElementById('in-nome-cart').addEventListener('keydown', function (e) { if (e.key === 'Enter') salvarCarteiraCliente(); else if (e.key === 'Escape') fecharFormSalvar(); });
+  document.getElementById('sel-salvas').addEventListener('change', function () { if (this.value) abrirSalva(this.value); else renderSalvas(); });
+  document.getElementById('btn-exc-salva').addEventListener('click', excluirSalva);
+  SALVAS = lerLocalLista('cr_opcoes_carteiras_salvas'); ordenarSalvas();
+  renderSalvas(); renderAcoes();
+  if (!sb || !SESSAO_INICIAL || !SESSAO_INICIAL.access_token) return;
+  var locais = SALVAS.slice();
+  sessaoSb().then(function (r) {
+    if (r.error) throw r.error;
+    return sb.from('opcoes_carteiras_cliente').select(COLS_SALVAS).order('nome', { ascending: true });
+  }).then(function (res) {
+    if (res.error) throw res.error;
+    var daConta = res.data || [];
+    // carteiras salvas antes do login, somente neste navegador, passam para a conta
+    var novas = locais.filter(function (l) { return !daConta.some(function (c) { return String(c.nome).toLowerCase() === String(l.nome).toLowerCase(); }); }).map(function (l) { return { nome: l.nome, arquivo: l.arquivo || null, acoes: l.acoes }; });
+    if (!novas.length) { SALVAS = daConta; usaBancoCli = true; gravarLocalSalvas(); return null; }
+    return sb.from('opcoes_carteiras_cliente').insert(novas).select(COLS_SALVAS).then(function (x) {
+      if (x.error) throw x.error;
+      SALVAS = daConta.concat(x.data || []); usaBancoCli = true; gravarLocalSalvas();
+    });
+  }).catch(function () { usaBancoCli = false; SALVAS = locais.slice(); }).then(function () { ordenarSalvas(); renderSalvas(); renderAcoes(); });
 }
 setInterval(function () { if (document.hidden) return; if (tickerAtual) buscar(false); if (carteira.length) atualizarPrecosCarteira(); }, 60000);
 try { var uq = localStorage.getItem('cr_opcoes_qtd'); if (uq) document.getElementById('in-qtd').value = uq; } catch (e) {}
 try { var ult = localStorage.getItem('cr_opcoes_ticker'); if (ult) { document.getElementById('in-ticker').value = ult; buscar(true); } } catch (e) {}
 iniciarAcoes();
+iniciarSecoes();
+iniciarSalvas();
 iniciarPerfis();
 iniciarCarteira();
 <\/script>
