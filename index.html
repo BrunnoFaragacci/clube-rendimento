@@ -17499,13 +17499,20 @@ function dgSlides(d) {
   var acoes = R.itens.filter(function (p) { return p.tipo === 'acao'; }), lst = R.itens.filter(function (p) { return p.tipo === 'fii' || p.tipo === 'etf'; });
   if (acoes.length || lst.length) {
     var vA = soma(acoes, function (p) { return p.saldo; }), vL = soma(lst, function (p) { return p.saldo; });
+    // preço (R$) com o potencial de valorização (%) logo abaixo, em relação ao preço atual do ativo
+    function celPreco(v, pr) {
+      if (typeof v !== 'number') return '—';
+      var up = pr ? (v / pr - 1) * 100 : null;
+      return fmtBRL(v) + (up === null ? '' : '<span class="pot-dg ' + (up >= 0 ? 'pos-dg' : 'neg-dg') + '">' + fmtPs(up, 1) + '</span>');
+    }
     function tabAtivos(arr, alvo) {
       if (!arr.length) return '<p class="vazio-dg">Nenhuma posição.</p>';
+      var lim = alvo ? 5 : 10;   // com o potencial abaixo do preço alvo cada linha ocupa duas linhas; a lista completa está nas páginas de preços alvo
       var cab = alvo ? '<th class="e">Ativo</th><th>Posição</th><th>% carteira</th><th>Preço alvo</th>' : '<th class="e">Ativo</th><th class="e">Tipo</th><th>Posição</th><th>% carteira</th>';
-      return '<table class="tab-dg"><thead><tr>' + cab + '</tr></thead><tbody>' + arr.slice(0, 10).map(function (p) {
+      return '<table class="tab-dg"><thead><tr>' + cab + '</tr></thead><tbody>' + arr.slice(0, lim).map(function (p) {
         var tk = tickerDe(p), x = tk ? XPALVO[tk] : null;
-        return '<tr><td class="e">' + esc(p.nome) + '</td>' + (alvo ? '' : '<td class="e">' + esc(p.instr) + '</td>') + '<td>' + fmtRS(p.saldo) + '</td><td>' + dgPct(p.pct, 2) + '</td>' + (alvo ? '<td>' + (x ? fmtBRL(x.alvo) : '—') + '</td>' : '') + '</tr>';
-      }).join('') + '</tbody></table>' + (arr.length > 10 ? '<div class="mais">+ ' + (arr.length - 10) + ' outros</div>' : '');
+        return '<tr><td class="e">' + esc(p.nome) + '</td>' + (alvo ? '' : '<td class="e">' + esc(p.instr) + '</td>') + '<td>' + fmtRS(p.saldo) + '</td><td>' + dgPct(p.pct, 2) + '</td>' + (alvo ? '<td>' + (x ? celPreco(x.alvo, precoDe(p)) : '—') + '</td>' : '') + '</tr>';
+      }).join('') + '</tbody></table>' + (arr.length > lim ? '<div class="mais">+ ' + (arr.length - lim) + ' outros</div>' : '');
     }
     // preços alvo: todas as ações e os demais ativos listados que tenham preço alvo da XP ou preço teto
     function temAlvoDe(p) { var tk = tickerDe(p); return !!tk && (!!XPALVO[tk] || typeof tetoDe(tk) === 'number'); }
@@ -17514,13 +17521,13 @@ function dgSlides(d) {
       dgKpis([{ r: 'Ações diretas', v: dgPct(tot > 0 ? vA / tot * 100 : 0, 1), s: fmtRS(vA) + ' · ' + acoes.length + ' papéis' }, { r: 'Ativos listados', v: dgPct(tot > 0 ? vL / tot * 100 : 0, 1), s: fmtRS(vL) + ' · ' + lst.length + ' ativos' }]) +
       '<div class="duas"><div>' + dgSecao('Ações diretas') + tabAtivos(acoes, true) + '</div><div>' + dgSecao('Ativos listados') + tabAtivos(lst, false) + '</div></div>', temAlvo ? 'os preços alvo dos ativos.' : 'a exposição fora do Brasil.');
     if (temAlvo) {
-      var POR_PAG = 12, npag = Math.ceil(linhasAlvo.length / POR_PAG);
+      var POR_PAG = 8, npag = Math.ceil(linhasAlvo.length / POR_PAG);
       for (var pgA = 0; pgA < npag; pgA++) {
         var fatia = linhasAlvo.slice(pgA * POR_PAG, (pgA + 1) * POR_PAG);
-        var corpoA = '<table class="tab-dg"><thead><tr><th class="e">Ativo</th><th class="e">Código</th><th>Posição</th><th>% carteira</th><th>Preço atual</th><th>Preço teto</th><th>Preço alvo XP</th><th>Potencial</th></tr></thead><tbody>' + fatia.map(function (p) {
-          var tk = tickerDe(p), x = XPALVO[tk], teto = tetoDe(tk), pr = precoDe(p), up = x && pr ? (x.alvo / pr - 1) * 100 : null;
-          return '<tr><td class="e">' + esc(p.nome) + '</td><td class="e">' + esc(tk) + '</td><td>' + fmtRS(p.saldo) + '</td><td>' + dgPct(p.pct, 2) + '</td><td>' + (pr ? fmtBRL(pr) : '—') + '</td><td>' + (typeof teto === 'number' ? fmtBRL(teto) : '—') + '</td><td>' + (x ? fmtBRL(x.alvo) : '—') + '</td><td' + (up === null ? '' : ' class="' + (up >= 0 ? 'pos-dg' : 'neg-dg') + '"') + '>' + (up === null ? '—' : fmtPs(up, 1)) + '</td></tr>';
-        }).join('') + '</tbody></table>' + (pgA === npag - 1 ? '<p class="nt">Ativos sem preço alvo não possuem cobertura na carteira recomendada da XP. O potencial compara o preço alvo da XP com o preço atual.</p>' : '');
+        var corpoA = '<table class="tab-dg"><thead><tr><th class="e">Ativo</th><th class="e">Empresa</th><th>Posição</th><th>% carteira</th><th>Preço atual</th><th>Preço teto</th><th>Preço alvo XP</th></tr></thead><tbody>' + fatia.map(function (p) {
+          var tk = tickerDe(p), x = XPALVO[tk], teto = tetoDe(tk), pr = precoDe(p);
+          return '<tr><td class="e">' + esc(p.nome) + '</td><td class="e">' + esc(nomeEmpresa(p) || '—') + '</td><td>' + fmtRS(p.saldo) + '</td><td>' + dgPct(p.pct, 2) + '</td><td>' + (pr ? fmtBRL(pr) : '—') + '</td><td>' + celPreco(teto, pr) + '</td><td>' + (x ? celPreco(x.alvo, pr) : '—') + '</td></tr>';
+        }).join('') + '</tbody></table>' + (pgA === npag - 1 ? '<p class="nt">Ativos sem preço alvo não possuem cobertura na carteira recomendada da XP. O percentual indicado abaixo de cada preço é o potencial de valorização em relação ao preço atual do ativo.</p>' : '');
         add('PREÇOS ALVO DA RENDA VARIÁVEL' + (npag > 1 ? ' · ' + (pgA + 1) + ' DE ' + npag : ''), 'Preço alvo da carteira recomendada da XP' + (XPALVO_EM ? ', atualizada em ' + fmtDataISO(XPALVO_EM) : '') + ', e preço teto definido pelo assessor para os ativos da carteira.', corpoA, 'a exposição fora do Brasil.');
       }
     }
@@ -17607,7 +17614,7 @@ function dgCss() {
     '.tab-dg{width:100%;border-collapse:collapse;font-size:9pt}.tab-dg th{font-size:7.1pt;letter-spacing:.12em;text-transform:uppercase;color:#8E8E8E;font-weight:600;text-align:right;padding:2.2mm 2.4mm;border-bottom:1px solid #1A1A1A}',
     '.tab-dg td{text-align:right;padding:2.3mm 2.4mm;border-bottom:1px solid #EAEAEA;white-space:nowrap}.tab-dg td.e{white-space:normal}.tab-dg .e{text-align:left}.tab-dg .dest{background:#FDF8F0;font-weight:700}.tab-dg th.dest{color:#8A5F26}.tab-dg tr.tot td{font-weight:700;border-top:1px solid #1A1A1A}',
     '.nt{font-size:8pt;color:#8E8E8E;margin-top:3mm}.vazio-dg{font-size:9pt;color:#8E8E8E}',
-    '.tab-dg td.pos-dg{color:#2F6B3A;font-weight:600}.tab-dg td.neg-dg{color:#9B2C1E;font-weight:600}',
+    '.tab-dg .pot-dg{display:block;font-size:7.4pt;font-weight:600;margin-top:.7mm}.tab-dg .pot-dg.pos-dg{color:#2F6B3A}.tab-dg .pot-dg.neg-dg{color:#9B2C1E}',
     '.grade-al{display:grid;grid-template-columns:repeat(3,1fr);gap:7mm}.card-al{border:1px solid #E6E6E6;border-left:1.2mm solid #3D3936;padding:5mm 5.5mm;height:59mm;position:relative;overflow:hidden}',
     '.card-al.alto{border-left-color:#9B2C1E}.card-al.medio{border-left-color:#BC863E}.card-al h4{font-size:11.5pt;font-weight:600;margin-bottom:2.4mm}.card-al p{font-size:9.7pt;line-height:1.6}',
     '.card-al .nv{position:absolute;left:5.5mm;bottom:4mm;font-size:7.8pt;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#3D3936}.card-al.alto .nv{color:#9B2C1E}.card-al.medio .nv{color:#BC863E}',
@@ -18543,6 +18550,7 @@ document.addEventListener('change', function (ev) {
     if (campo) { campo.placeholder = listada ? 'Código (ex.: PETR4)' : 'Nome do ativo (ex.: Tesouro IPCA+ 2035)'; campo.style.textTransform = listada ? 'uppercase' : 'none'; campo.style.maxWidth = listada ? '150px' : '300px'; campo.style.minWidth = listada ? '' : '220px'; }
   }
 });
+var EMPRESAS = {};   // nome da empresa por código (cobertura da XP)
 var TETOS = {}, XPALVO = {}, XPALVO_EM = '';   // preço teto informado pelo usuário (por código) e preço alvo da carteira recomendada da XP
 // O preço teto é o mesmo da aba Ações (e Ações Internacionais) da carteira recomendada: o valor gravado em uma tela aparece na outra
 var RECOM = {}, RECOM_EM = 0, RECOM_CARREGANDO = false;
@@ -18552,14 +18560,15 @@ function tetoDe(tk) { var o = RECOM[tk]; return o && typeof o.teto === 'number' 
 function carregarTetosRecom(forcar) {
   if (!sb || RECOM_CARREGANDO || (!forcar && Date.now() - RECOM_EM < 15000)) return;
   RECOM_CARREGANDO = true;
-  sb.from('carteira_recomendada').select('ticker,preco_teto').in('classe', CLASSES_TETO).eq('ativo', true).range(0, 1999).then(function (r) {
+  sb.from('carteira_recomendada').select('ticker,nome,preco_teto').in('classe', CLASSES_TETO).eq('ativo', true).range(0, 1999).then(function (r) {
     RECOM_CARREGANDO = false; RECOM_EM = Date.now();
     if (r.error || !r.data) return;
     var m = {};
     r.data.forEach(function (x) {
       var tk = String(x.ticker || '').toUpperCase();
       if (!tk) return;
-      var o = m[tk] || (m[tk] = { teto: null });
+      var o = m[tk] || (m[tk] = { teto: null, nome: '' });
+      if (!o.nome && x.nome && String(x.nome).trim().toUpperCase() !== tk) o.nome = String(x.nome).trim();
       if (o.teto === null && x.preco_teto !== null && x.preco_teto !== undefined) o.teto = Number(x.preco_teto);
     });
     var mudou = JSON.stringify(m) !== JSON.stringify(RECOM), foco = document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('in-teto');
@@ -18599,6 +18608,13 @@ function carregarAlvosXP() {
     r.data.forEach(function (x) {
       if (x.ticker && x.preco_alvo !== null && x.preco_alvo !== undefined && x.atualizado_em && new Date(x.atualizado_em).toDateString() === dia) m[String(x.ticker).toUpperCase()] = { alvo: Number(x.preco_alvo), upside: x.upside, empresa: x.empresa, setor: x.setor };
     });
+    var nomes = {}, nomesEm = {};
+    r.data.forEach(function (x) {
+      var tk = String(x.ticker || '').toUpperCase(), n = String(x.empresa || '').trim();
+      if (!tk || !n || n.toUpperCase() === tk) return;
+      if (!nomesEm[tk] || (x.atualizado_em || '') > nomesEm[tk]) { nomes[tk] = n; nomesEm[tk] = x.atualizado_em || ''; }
+    });
+    EMPRESAS = nomes;
     XPALVO = m; XPALVO_EM = em;
     if (D && R && ST.aba === 'rv') render();
   });
@@ -18610,6 +18626,11 @@ function tickerDe(p) {
   return RE_TICKER_BR.test(w) ? w : '';
 }
 function precoDe(p) { return p.qtd > 0 ? p.saldo / p.qtd : null; }
+// nome da empresa (cobertura da XP ou carteira recomendada), exibido no lugar do código nas tabelas de renda variável
+function nomeEmpresa(p) {
+  var tk = tickerDe(p);
+  return tk ? (EMPRESAS[tk] || (RECOM[tk] && RECOM[tk].nome) || '') : '';
+}
 function celTeto(p) {
   var tk = tickerDe(p);
   if (!tk) return '<span title="Informe o código do ativo (✎) para cadastrar o preço teto">—</span>';
@@ -18646,9 +18667,9 @@ var GRUPOS_RV = [
 function tabelaRV(lista, titulo, novoTipo) {
   var t = '<div class="barra-sl" style="margin-bottom:10px;"><button type="button" class="btn btn-peq" data-pos-novo="' + novoTipo + '">+ Adicionar ativo</button></div>';
   if (!lista.length) return t + '<p class="vazio">Nenhum ativo em ' + esc(titulo) + '.</p>';
-  t += '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Ativo</th><th class="e">Código</th><th class="e">Instituição</th><th class="e">Categoria</th><th>Quantidade</th><th>Preço</th><th>Preço teto</th><th>Preço alvo XP</th><th>Saldo bruto</th><th>% carteira</th><th>Mês</th><th>Ano</th><th></th></tr></thead><tbody>';
+  t += '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Ativo</th><th class="e">Empresa</th><th class="e">Instituição</th><th class="e">Categoria</th><th>Quantidade</th><th>Preço</th><th>Preço teto</th><th>Preço alvo XP</th><th>Saldo bruto</th><th>% carteira</th><th>Mês</th><th>Ano</th><th></th></tr></thead><tbody>';
   lista.slice().sort(function (a, b) { return b.saldo - a.saldo; }).forEach(function (p, i) {
-    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(p.nome) + '</td><td class="e">' + esc(p.ticker || '') + '</td><td class="e">' + esc(p.inst || '') + '</td><td class="e">' + esc(catRV(p)) + '</td><td>' + (p.qtd !== undefined && p.qtd !== null ? fmtQtd(p.qtd) : '') + '</td><td>' + (p.qtd > 0 ? fmtBRL(p.saldo / p.qtd) : '') + '</td><td>' + celTeto(p) + '</td><td>' + celAlvoXP(p) + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td>' +
+    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(p.nome) + '</td><td class="e">' + (nomeEmpresa(p) ? esc(nomeEmpresa(p)) : '—') + '</td><td class="e">' + esc(p.inst || '') + '</td><td class="e">' + esc(catRV(p)) + '</td><td>' + (p.qtd !== undefined && p.qtd !== null ? fmtQtd(p.qtd) : '') + '</td><td>' + (p.qtd > 0 ? fmtBRL(p.saldo / p.qtd) : '') + '</td><td>' + celTeto(p) + '</td><td>' + celAlvoXP(p) + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td>' +
       '<td class="' + clsv(p.mes) + '">' + (p.mes === undefined ? '—' : fmtP(p.mes)) + '</td><td class="' + clsv(p.ano) + '">' + (p.ano === undefined ? '—' : fmtP(p.ano)) + '</td>' + celAcoesPos(p) + '</tr>';
   });
   var tot = soma(lista, function (p) { return p.saldo; });
@@ -18657,7 +18678,7 @@ function tabelaRV(lista, titulo, novoTipo) {
 PAGINAS.rv = function () {
   carregarTetosRecom();
   var todos = R.itens.filter(ehRV), lista = filtrados(null).filter(ehRV), q = compacto(ST.busca);
-  if (q) lista = lista.filter(function (p) { return compacto(p.nome).indexOf(q) !== -1 || compacto(p.ticker || '').indexOf(q) !== -1 || compacto(catRV(p)).indexOf(q) !== -1; });
+  if (q) lista = lista.filter(function (p) { return compacto(p.nome).indexOf(q) !== -1 || compacto(p.ticker || '').indexOf(q) !== -1 || compacto(nomeEmpresa(p)).indexOf(q) !== -1 || compacto(catRV(p)).indexOf(q) !== -1; });
   var tot = soma(todos, function (p) { return p.saldo; }), pi = perfilAtualIdx();
   var grupos = GRUPOS_RV.map(function (g) {
     var arr = todos.filter(g[2]);
