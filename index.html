@@ -16138,6 +16138,8 @@ function acharChaveEmissor(mapa, nome) {
   return null;
 }
 function acharEmissor(mapa, nome) { var k = acharChaveEmissor(mapa, nome); return k ? mapa[k] : null; }
+// Limites de exposição por emissor: bancos, valor máximo (cobertura do FGC); crédito privado, percentual do patrimônio total
+var LIMITE_BANCO = 250000, LIMITE_PRIVADO_PCT = 2;
 function avaliarCredito(p, expo) {
   if (p.tipo !== 'rf') return null;
   if (p.publico) return { st: 'ok', tipo: 'Título público', seg: '', motivo: 'Título público federal' };
@@ -16155,9 +16157,14 @@ function avaliarCredito(p, expo) {
     if (!c || c.aprovado === null || c.aprovado === undefined) res = { st: 'pend', tipo: 'Crédito privado', seg: '', motivo: 'Sem análise de crédito cadastrada' };
     else res = { st: c.aprovado ? 'ok' : 'nao', tipo: 'Crédito privado', seg: '', motivo: (c.aprovado ? 'Aprovado' : 'Reprovado') + ' na análise de crédito' + (c.obs ? ': ' + c.obs : '') };
   }
-  if (CRIT.limite && res.st === 'ok' && R.total > 0) {
-    var pe = (expo[ch] || 0) / R.total * 100;
-    if (pe > CRIT.limite) { res.st = 'nao'; res.motivo = 'Exposição de ' + fmtP(pe, 1) + ' ao emissor, acima do limite de ' + fmtP(CRIT.limite, 1) + ' do patrimônio'; }
+  var ex = expo[ch] || 0;
+  if (res.st !== 'nao' && R.total > 0) {
+    if (res.tipo === 'Banco') {
+      if (ex > LIMITE_BANCO) { res.st = 'nao'; res.motivo = 'Exposição de ' + fmtBRL(ex) + ' ao emissor bancário, acima do limite de ' + fmtRS(LIMITE_BANCO) + ' (garantia do FGC)'; }
+    } else if (res.tipo === 'Crédito privado') {
+      var pe = ex / R.total * 100;
+      if (pe > LIMITE_PRIVADO_PCT) { res.st = 'nao'; res.motivo = 'Exposição de ' + fmtP(pe, 2) + ' do patrimônio total (' + fmtBRL(ex) + ') ao emissor, acima do limite de ' + fmtP(LIMITE_PRIVADO_PCT, 0); }
+    }
   }
   return res;
 }
@@ -18625,7 +18632,7 @@ PAGINAS.credito = function () {
     var v = soma(G[st], function (p) { return p.saldo; });
     return kpi(rot, fmtRS(v), G[st].length + ' título(s) · ' + fmtP(tot > 0 ? v / tot * 100 : 0, 1) + ' da renda fixa direta');
   }
-  var h = '<p class="resumo">Títulos de renda fixa direta avaliados pelos critérios cadastrados: bancos pelo segmento (' + esc(CRIT.seg.join(', ') || 'nenhum segmento aceito') + ')' + (CRIT.limite ? ', com limite de ' + fmtP(CRIT.limite, 1) + ' do patrimônio por emissor' : '') + ' e crédito privado pela análise de crédito do emissor. ' +
+  var h = '<p class="resumo">Títulos de renda fixa direta avaliados pelos critérios cadastrados: bancos pelo segmento (' + esc(CRIT.seg.join(', ') || 'nenhum segmento aceito') + ')' + ', com limite de ' + fmtRS(LIMITE_BANCO) + ' por emissor, e crédito privado pela análise de crédito do emissor, com limite de ' + fmtP(LIMITE_PRIVADO_PCT, 0) + ' do patrimônio total por emissor. ' +
     '<button type="button" class="btn btn-peq" data-abrir-crit="1">Atualizar critérios</button></p>';
   h += '<div class="kpis">' + k('Passam nos critérios', 'ok') + k('Não passam', 'nao') + k('Sem classificação', 'pend') + kpi('Renda fixa direta', fmtRS(tot), rf.length + ' título(s) avaliado(s)') + '</div><div class="tiles">';
   h += tile('t4', 'Resultado da análise', donutDim('cred', 'renda fixa'), 'clique para filtrar');
