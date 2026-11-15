@@ -10517,7 +10517,7 @@ tbody tr:hover td{background:var(--bg-soft);}
 <div class="container">
   <span class="eyebrow">Área do assessor</span>
   <h1>Meus Clientes</h1>
-  <p class="sub">Cadastre os clientes que você acompanha. Clique no nome de um cliente para cadastrar os preços-alvo de venda dos ativos dele. Cada cliente cadastrado é visível apenas para você. Ao informar o e-mail do cliente, ele passa a visualizar a própria carteira, somente para leitura, em "Consolidação de Carteira", assim que criar uma conta no site com esse e-mail e confirmá-lo.</p>
+  <p class="sub">Cadastre os clientes que você acompanha. Clique no nome de um cliente para cadastrar os preços-alvo de venda dos ativos dele. Cada cliente cadastrado é visível apenas para você. Ao informar o e-mail do cliente, ele passa a visualizar a própria carteira, somente para leitura, em "Consolidação de Carteira", assim que criar uma conta no site com esse e-mail.</p>
 
   <div class="card">
     <div class="form-row">
@@ -10570,14 +10570,14 @@ function escHtml(t) { return String(t === undefined || t === null ? '' : t).repl
 function rotuloAcesso(c) {
   if (!c.email) return '<span class="sel-acesso fraco">Sem e-mail</span>';
   var a = acessoCache[c.id];
-  if (a && (a.verificado || a.liberado)) return '<span class="sel-acesso on">Acesso liberado</span>';
-  if (a && a.tem_conta) return '<span class="sel-acesso">Conta criada: aguardando liberação</span>';
+  if (a && a.bloqueado) return '<span class="sel-acesso">Acesso bloqueado</span>';
+  if (a && a.liberado) return '<span class="sel-acesso on">Acesso liberado</span>' + (a.verificado ? '' : '<br><small style="color:var(--ink-soft);">e-mail da conta não verificado</small>');
   return '<span class="sel-acesso fraco">Aguardando cadastro do cliente</span>';
 }
 function botaoAcesso(c) {
   var a = acessoCache[c.id];
-  if (a && a.liberado) return '<button type="button" class="btn btn-outline btn-sm" data-acao="revogar" data-id="' + c.id + '">Revogar acesso</button>';
-  if (a && a.tem_conta && !a.verificado) return '<button type="button" class="btn btn-sm" data-acao="liberar" data-id="' + c.id + '">Liberar acesso</button>';
+  if (a && a.bloqueado) return '<button type="button" class="btn btn-sm" data-acao="liberar" data-id="' + c.id + '">Liberar acesso</button>';
+  if (a && a.liberado) return '<button type="button" class="btn btn-outline btn-sm" data-acao="revogar" data-id="' + c.id + '">Bloquear acesso</button>';
   return '';
 }
 function emailValido(e) { return /^[^ @]+@[^ @]+[.][^ @]+$/.test(e); }
@@ -10612,9 +10612,9 @@ function renderizarLista() {
     btn.addEventListener('click', function() {
       var c = clientesCache.find(function(x) { return String(x.id) === btn.getAttribute('data-id'); });
       if (!c) return;
-      if (!confirm('Liberar a visualização da carteira de ' + c.nome + ' para a conta criada com o e-mail ' + c.email + '?\\n\\nO e-mail desta conta não foi confirmado por mensagem. Libere somente se tiver certeza de que a conta foi criada pelo próprio cliente.')) return;
+      if (!confirm('Liberar novamente o acesso de ' + c.nome + ' à própria carteira?')) return;
       sb.rpc('liberar_acesso_cliente', { p_cliente: c.id }).then(function(r) {
-        if (r.error || !r.data) { alert('Não foi possível liberar o acesso' + (r.error ? ': ' + r.error.message : '. Confira se a conta foi criada com o e-mail cadastrado.')); return; }
+        if (r.error) { alert('Não foi possível liberar o acesso: ' + r.error.message); return; }
         carregarClientes();
       });
     });
@@ -10622,8 +10622,8 @@ function renderizarLista() {
   Array.prototype.forEach.call(cont.querySelectorAll('[data-acao="revogar"]'), function(btn) {
     btn.addEventListener('click', function() {
       var c = clientesCache.find(function(x) { return String(x.id) === btn.getAttribute('data-id'); });
-      if (!c || !confirm('Revogar o acesso de ' + c.nome + ' à própria carteira?')) return;
-      sb.from('clientes').update({ usuario_id: null }).eq('id', c.id).then(function(r) {
+      if (!c || !confirm('Bloquear o acesso de ' + c.nome + ' à própria carteira? A conta deixará de ver a carteira até que o acesso seja liberado novamente.')) return;
+      sb.from('clientes').update({ usuario_id: null, acesso_bloqueado: true }).eq('id', c.id).then(function(r) {
         if (r.error) { alert('Não foi possível revogar o acesso: ' + r.error.message); return; }
         carregarClientes();
       });
@@ -10637,7 +10637,7 @@ function renderizarLista() {
       if (novo === null) return;
       novo = novo.trim().toLowerCase();
       if (novo && !emailValido(novo)) { alert('Informe um e-mail válido.'); return; }
-      sb.from('clientes').update({ email: novo || null, usuario_id: null }).eq('id', c.id).then(function(r) {
+      sb.from('clientes').update({ email: novo || null, usuario_id: null, acesso_bloqueado: false }).eq('id', c.id).then(function(r) {
         if (r.error) { alert('Erro ao salvar o e-mail: ' + r.error.message); return; }
         carregarClientes();
       });
@@ -17603,7 +17603,7 @@ function renderFaixaCliente() {
   if (!MODO_CLIENTE) { el.hidden = true; el.innerHTML = ''; return; }
   if (!MINHAS.length) {
     el.hidden = false;
-    el.innerHTML = '<div class="card-titulo">Minha carteira</div><p class="card-sub">' + (MINHAS_OK ? 'Nenhuma carteira está vinculada ao e-mail desta conta' + (EMAIL_CONTA ? ' (' + esc(EMAIL_CONTA) + ')' : '') + '. Solicite ao seu assessor o cadastro deste e-mail e a liberação do acesso.' : 'Carregando a sua carteira...') + '</p>';
+    el.innerHTML = '<div class="card-titulo">Minha carteira</div><p class="card-sub">' + (MINHAS_OK ? 'Nenhuma carteira está vinculada ao e-mail desta conta' + (EMAIL_CONTA ? ' (' + esc(EMAIL_CONTA) + ')' : '') + '. Solicite ao seu assessor o cadastro deste e-mail.' : 'Carregando a sua carteira...') + '</p>';
     return;
   }
   var row = MINHAS[MINHA_IDX] || {};
