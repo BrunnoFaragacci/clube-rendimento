@@ -15520,6 +15520,15 @@ body.modo-cliente .container > .sub{display:none;}
 body.modo-cliente .col-acoes,body.modo-cliente [data-pos-novo],body.modo-cliente .modal-pos{display:none!important;}
 @media print{.modal-pos,.col-acoes{display:none!important;}}
 @media(max-width:700px){.grade-pos{grid-template-columns:1fr;}}
+
+/* ordem das abas */
+.aba[draggable]{cursor:grab;}
+.aba.arrastando{opacity:.4;}
+.aba.alvo-esq{box-shadow:inset 3px 0 0 var(--ink);}
+.aba.alvo-dir{box-shadow:inset -3px 0 0 var(--ink);}
+.aba-reset{background:none;border:none;padding:10px 12px;font-family:inherit;font-size:11.5px;color:var(--ink-mute);cursor:pointer;margin-left:auto;}
+.aba-reset:hover{color:var(--ink);text-decoration:underline;}
+@media print{.aba-reset{display:none!important;}}
 </style>
 </head>
 <body>
@@ -17806,6 +17815,56 @@ if (window.setInterval) window.setInterval(function () { if (D && R && D.cotacoe
 // Cada dimensão pode ter vários valores selecionados (união dentro da dimensão, interseção entre dimensões).
 // Os gráficos de uma dimensão mostram o cruzamento das DEMAIS dimensões e destacam os valores selecionados.
 var ABAS = [['geral', 'Visão geral'], ['alertas', 'Pontos de atenção'], ['rentab', 'Rentabilidade'], ['backtest', 'Backtest'], ['alocacao', 'Alocação e perfis'], ['inst', 'Instituições'], ['posicoes', 'Posições'], ['rv', 'Renda variável'], ['rf', 'Renda fixa'], ['credito', 'Análise de crédito']];
+var ABAS_DEF = ABAS.slice();
+function salvarOrdemAbas() { try { localStorage.setItem('cons_ordem_abas', JSON.stringify(ABAS.map(function (a) { return a[0]; }))); } catch (e) {} }
+function aplicarOrdemAbas(ord) {
+  var mapa = {}, nova = [];
+  ABAS_DEF.forEach(function (a) { mapa[a[0]] = a; });
+  (ord || []).forEach(function (k) { if (mapa[k] && nova.indexOf(mapa[k]) === -1) nova.push(mapa[k]); });
+  // abas que não constam da ordem salva entram logo após a aba que as precede na ordem padrão
+  ABAS_DEF.forEach(function (a, i) { if (nova.indexOf(a) === -1) nova.splice((i > 0 ? nova.indexOf(ABAS_DEF[i - 1]) : -1) + 1, 0, a); });
+  ABAS.length = 0;
+  nova.forEach(function (a) { ABAS.push(a); });
+}
+(function () { var o = null; try { o = JSON.parse(localStorage.getItem('cons_ordem_abas') || 'null'); } catch (e) {} if (Array.isArray(o)) aplicarOrdemAbas(o); })();
+function moverAba(origem, alvo, antes) {
+  if (origem === alvo) return;
+  var a = ABAS.filter(function (x) { return x[0] === origem; })[0];
+  if (!a) return;
+  ABAS.splice(ABAS.indexOf(a), 1);
+  var k = ABAS.map(function (x) { return x[0]; }).indexOf(alvo);
+  ABAS.splice(antes ? k : k + 1, 0, a);
+  salvarOrdemAbas();
+}
+var abaArrasto = null;
+function abaDoEvento(ev) { return ev.target && ev.target.closest ? ev.target.closest('.aba[data-aba]') : null; }
+function limparMarcasAbas() { Array.prototype.forEach.call(document.querySelectorAll('.aba.alvo-esq, .aba.alvo-dir, .aba.arrastando'), function (e) { e.classList.remove('alvo-esq', 'alvo-dir', 'arrastando'); }); }
+document.addEventListener('dragstart', function (ev) {
+  var b = abaDoEvento(ev);
+  if (!b) return;
+  abaArrasto = b.getAttribute('data-aba');
+  try { ev.dataTransfer.setData('text/plain', abaArrasto); ev.dataTransfer.effectAllowed = 'move'; } catch (e) {}
+  b.classList.add('arrastando');
+});
+document.addEventListener('dragover', function (ev) {
+  var b = abaDoEvento(ev);
+  if (!abaArrasto || !b) return;
+  ev.preventDefault();
+  var r = b.getBoundingClientRect();
+  Array.prototype.forEach.call(document.querySelectorAll('.aba.alvo-esq, .aba.alvo-dir'), function (e) { e.classList.remove('alvo-esq', 'alvo-dir'); });
+  b.classList.add(ev.clientX < r.left + r.width / 2 ? 'alvo-esq' : 'alvo-dir');
+});
+document.addEventListener('drop', function (ev) {
+  var b = abaDoEvento(ev);
+  if (!abaArrasto || !b) return;
+  ev.preventDefault();
+  var r = b.getBoundingClientRect();
+  moverAba(abaArrasto, b.getAttribute('data-aba'), ev.clientX < r.left + r.width / 2);
+  abaArrasto = null;
+  limparMarcasAbas();
+  if (D && R) render();
+});
+document.addEventListener('dragend', function () { abaArrasto = null; limparMarcasAbas(); });
 var ST = { aba: 'geral', f: {}, periodo: 12, mesSel: null, busca: '', ordem: { col: 'saldo', dir: -1 }, movTipo: '', imprimir: false };
 var rotLiq = {}, rotTrib = {};
 LIQ.forEach(function (l) { rotLiq[l.k] = l.r; });
@@ -18182,6 +18241,7 @@ function removerPos(p) {
 function aplicarAcaoPos(t) {
   function ach(sel) { return t && t.closest ? t.closest(sel) : null; }
   var el;
+  if (ach('[data-aba-reset]')) { aplicarOrdemAbas(null); salvarOrdemAbas(); if (D && R) render(); return true; }
   if (!R || MODO_CLIENTE) return false;
   if ((el = ach('[data-pe]'))) { abrirEditorPos('editar', R.itens[Number(el.getAttribute('data-pe'))]); return true; }
   if ((el = ach('[data-pr]'))) { removerPos(R.itens[Number(el.getAttribute('data-pr'))]); return true; }
@@ -18873,7 +18933,7 @@ function render() {
   var foco = document.activeElement && document.activeElement.id === 'in-busca' ? document.activeElement.selectionStart : null;
   var cliente = (document.getElementById('in-cliente').value || '').trim();
   document.getElementById('cab').innerHTML = '<div><h2 id="tit-cliente">' + esc(cliente ? 'Carteira de ' + cliente : 'Carteira do cliente') + '</h2></div>' + htmlIndicadoresCab();
-  document.getElementById('abas').innerHTML = ABAS.map(function (a) { return '<button type="button" class="aba' + (ST.aba === a[0] ? ' on' : '') + '" data-aba="' + a[0] + '">' + a[1] + (a[0] === 'alertas' ? ' <span class="badge">' + R.alertas.filter(function (x) { return x.n === 'alto'; }).length + '</span>' : '') + '</button>'; }).join('');
+  document.getElementById('abas').innerHTML = ABAS.map(function (a) { return '<button type="button" class="aba' + (ST.aba === a[0] ? ' on' : '') + '" data-aba="' + a[0] + '" draggable="true" title="Arraste para reordenar">' + a[1] + (a[0] === 'alertas' ? ' <span class="badge">' + R.alertas.filter(function (x) { return x.n === 'alto'; }).length + '</span>' : '') + '</button>'; }).join('') + '<button type="button" class="aba-reset" data-aba-reset="1" title="Restaurar a ordem padrão das abas">↺ Ordem padrão</button>';
   document.getElementById('filtros').innerHTML = (ST.imprimir || ['geral', 'alocacao', 'inst', 'posicoes', 'rf', 'credito'].indexOf(ST.aba) !== -1) ? htmlFiltros() : '';
   var paginas = ST.imprimir ? ABAS.map(function (a) { return a[0]; }) : [ST.aba];
   document.getElementById('conteudo').innerHTML = paginas.map(function (p) { return (ST.imprimir ? '<h3 class="tit-pagina">' + ABAS.filter(function (a) { return a[0] === p; })[0][1] + '</h3>' : '') + PAGINAS[p](); }).join('') +
