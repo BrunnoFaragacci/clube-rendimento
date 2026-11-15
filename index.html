@@ -18499,12 +18499,12 @@ PAGINAS.alocacao = function () {
     '<button type="button" class="btn btn-primary btn-peq" data-perfil-salvar="1">💾 Salvar perfil para o cliente</button></div>';
   var statusPerfil = '<p class="card-sub" style="margin:0 0 10px;">' + (CLI.id ? 'Cliente: <b>' + esc(CLI.nome) + '</b>' : 'Nenhum cliente cadastrado selecionado: escolha um no campo "Cliente cadastrado", no topo da página, para vincular os perfis criados ao cliente.') + (PERFIL_SUJO ? (CLI.id ? ' · <b>salvando...</b>' : ' · <b>perfil ainda sem cliente vinculado</b>') : '') + (editado ? ' · perfil padrão com percentuais ajustados' : '') + (ehCustom ? ' · perfil criado pelo usuário' : '') + '</p>' +
     (msgPerfil.t ? '<p class="card-sub" style="color:' + (msgPerfil.erro ? 'var(--red)' : 'var(--green)') + ';">' + esc(msgPerfil.t) + '</p>' : '');
-  t = barra + statusPerfil + t + avisoSoma + '<p class="nota">Ajuste positivo indica compra e negativo indica venda para atingir a alocação-alvo do perfil. Caixa e proventos estão incluídos em RF Pós-fixado. Pesos dos perfis: matriz padrão das carteiras recomendadas; os percentuais podem ser editados e o perfil pode ser salvo para cada cliente.</p>';
+  t = barra + statusPerfil + t + avisoSoma;
   var aus = ausentes.length ? '<p class="nota"><b>Classes ausentes na carteira:</b> ' + ausentes.map(function (a) { return esc(a.nome) + ' (alvo de ' + fmtP(a.alvo, 1) + ', ' + fmtRS(a.alvo / 100 * R.total) + ')'; }).join('; ') + '.</p>' : '';
-  var h = '<p class="resumo">O perfil do cliente não consta do relatório XPerformance. Clique em um perfil da régua para compará-lo classe a classe.</p><div class="tiles">';
+  var h = '<div class="tiles">';
   h += tile('t5', 'Régua de perfis', reg, 'clique para comparar');
   h += tile('t7', 'Atual x alvo do ' + esc(perfis[pi].nome), cmp);
-  h += tile('t12', 'Carteira comparada ao ' + esc(perfis[pi].nome), t + aus);
+  h += tile('t12', 'Carteira comparada ao ' + esc(perfis[pi].nome), t);
   h += tile('t12', 'Novo aporte', htmlAporte(pi), 'distribui o valor nas classes abaixo do alvo do perfil');
   h += tile('t6', 'Por estratégia', donutDim('est', 'total'), 'clique para filtrar');
   h += tile('t6', 'Por instrumento', barrasDim('instr'), 'clique para filtrar');
@@ -18633,8 +18633,7 @@ PAGINAS.inst = function () {
   var form = '<div class="form-crit" style="margin-top:12px;"><input type="text" id="in-nova-inst" list="lista-inst" class="in-crit" placeholder="Instituição dos arquivos não identificados (opcional)" value="' + esc(ST.novaInst || '') + '" autocomplete="off"><datalist id="lista-inst">' + opcoesInst + '</datalist>' +
     '<label style="font-size:12.5px;" for="in-cambio">Cotação do dólar (R$)</label><input type="text" id="in-cambio" class="in-crit" style="max-width:100px;" value="' + esc(ST.cambio || '') + '" placeholder="automática">' +
     '<label for="arq-extrato" class="btn btn-primary btn-peq" style="cursor:pointer;">⬆ Adicionar arquivos (PDF, Excel ou CSV)</label><input type="file" id="arq-extrato" accept=".pdf,.xlsx,.xls,.csv" multiple hidden>' +
-    '<button type="button" class="btn btn-peq" data-oxnovo="1">+ Adicionar instituição manualmente</button></div>' + aviso +
-    '<p class="nota">Cada arquivo é lido neste navegador e o sistema identifica o tipo e a instituição de origem (arquivos de bancos diferentes podem ser enviados juntos). Corrija o nome de qualquer instituição na coluna indicada; arquivos com o mesmo nome de instituição são somados nos gráficos de diversificação. A cotação do dólar é usada apenas em planilhas em US$. A rentabilidade continua a do arquivo-base.</p>';
+    '<button type="button" class="btn btn-peq" data-oxnovo="1">+ Adicionar instituição manualmente</button></div>' + aviso;
   h += tile('t12', 'Arquivos carregados e instituições', tabArq + form, 'edite o nome de cada instituição');
 
   // ativos de cada arquivo (editáveis)
@@ -18880,10 +18879,6 @@ PAGINAS.backtest = function () {
     if (pf) h += '<p class="resumo">Para referência, a alocação-alvo do ' + esc(nomePerfil) + ' implementada em ETFs renderia ' + fmtP(pf.m.ret, 1) + ' no período.</p>';
   } else {
     var dif = sg ? sg.m.ret - at.m.ret : null;
-    h += '<p class="resumo" style="margin-top:14px;">Entre ' + fmtMesLongoBT(B.meses[0]) + ' e ' + fmtMesLongoBT(B.meses[N]) + ', a carteira atual, com os pesos de hoje por classe, rendeu ' + fmtP(at.m.ret, 1) + '. ' +
-      (sg ? (modo === 'perfil' ? 'A alocação-alvo do ' + esc(nomePerfil) + ', implementada em ETFs, teria rendido ' : 'Substituindo ' + sg.nEtf + (sg.nEtf === 1 ? ' classe' : ' classes') + ' por ETFs, o retorno seria de ') + fmtP(sg.m.ret, 1) + ' (' + (dif >= 0 ? '+' : '') + fmtP(dif, 1).replace('%', ' p.p.') + ', cerca de ' + (dif >= 0 ? '+' : '-') + 'R$ ' + fmtMilBT(Math.abs(dif) / 100 * R.total) + ' sobre o patrimônio de R$ ' + fmtMilBT(R.total) + ').'
-        : (modo === 'perfil' ? 'A alocação-alvo do ' + esc(nomePerfil) + ' não pode ser simulada neste período: ' + esc(B.perfilFalta || 'histórico insuficiente dos ETFs') + '. Escolha um período menor.' : 'Nenhum ETF comparável tem histórico consistente neste período para substituir as classes da carteira.')) +
-      (B.coberturaPct < 99 ? ' O retorno por classe da carteira atual cobre ' + fmtP(B.coberturaPct, 0) + ' do patrimônio consolidado (a parte restante, como saldo em conta e instituições sem relatório XPerformance, não entra na comparação).' : '') + '</p>';
     var extras = [];
     if (modo === 'perfil' && ca && ca.nEtf) extras.push({ id: 'atualetf', rot: 'Mesma alocação atual com ETFs', idx: ca.idx });
     if (modo === 'atual' && pf) extras.push({ id: 'perfil', rot: nomePerfil + ' com ETFs', idx: pf.idx });
@@ -18923,7 +18918,6 @@ PAGINAS.backtest = function () {
   var semHist = B.etfs.filter(function (e) { return !e.m && !e.incons; }).map(function (e) { return e.rot; }), incons = B.etfs.filter(function (e) { return e.incons; }).map(function (e) { return e.rot; });
   tb += '</tbody></table></div>' + (semHist.length ? '<p class="nota">Sem histórico suficiente para ' + N + ' meses: ' + esc(semHist.join(', ')) + '.</p>' : '') + (incons.length ? '<p class="nota">Excluídos por dados de cotação inconsistentes na fonte no período (salto incompatível com a classe ou cotação parada): ' + esc(incons.join(', ')) + '.</p>' : '');
   h += '<div class="tiles">' + tile('t12', 'ETFs comparados', tb, 'clique em uma linha para incluí-la no gráfico') + '</div>';
-  h += '<p class="nota"><b>Como ler.</b> A carteira atual usa os pesos de hoje por classe e o retorno de cada classe informado pelo relatório XPerformance (com proventos), distribuído de forma uniforme ao longo dos meses, pois o relatório traz apenas o retorno acumulado por classe. A sugestão padrão é a alocação-alvo do perfil selecionado em \\"Alocação e perfis\\", implementada em ETFs (pós-fixado: LFTS11; inflação: IMAB11; prefixado: IRFM11; renda variável Brasil: BOVA11; renda variável global: IVVB11; fundos imobiliários: XFIX11; alternativos: GOLD11); multimercados e renda fixa global não têm ETF equivalente e usam o Tesouro Selic como referência. A opção \\"Mesma alocação atual\\" troca por ETFs apenas as classes de renda fixa e de renda variável, mantendo as demais com o retorno da própria carteira. As posições iniciais não são rebalanceadas. Os ETFs usam o preço de fechamento na B3, sem proventos, impostos ou custos de negociação. Se um ETF não tem histórico consistente no período, a classe correspondente é mantida. Rentabilidade passada não representa garantia de rentabilidade futura; material informativo, que não constitui recomendação de investimento.</p>';
   return h;
 };
 function aplicarAcaoBT(t) {
@@ -19016,8 +19010,7 @@ function render() {
   document.getElementById('abas').innerHTML = ABAS.map(function (a) { return '<button type="button" class="aba' + (ST.aba === a[0] ? ' on' : '') + '" data-aba="' + a[0] + '" draggable="true" title="Arraste para reordenar">' + a[1] + (a[0] === 'alertas' ? ' <span class="badge">' + R.alertas.filter(function (x) { return x.n === 'alto'; }).length + '</span>' : '') + '</button>'; }).join('') + '<button type="button" class="aba-reset" data-aba-reset="1" title="Restaurar a ordem padrão das abas">↺ Ordem padrão</button>';
   document.getElementById('filtros').innerHTML = (ST.imprimir || ['geral', 'alocacao', 'inst', 'posicoes', 'rf', 'credito'].indexOf(ST.aba) !== -1) ? htmlFiltros() : '';
   var paginas = ST.imprimir ? ABAS.map(function (a) { return a[0]; }) : [ST.aba];
-  document.getElementById('conteudo').innerHTML = paginas.map(function (p) { return (ST.imprimir ? '<h3 class="tit-pagina">' + ABAS.filter(function (a) { return a[0] === p; })[0][1] + '</h3>' : '') + PAGINAS[p](); }).join('') +
-    '<p class="nota">Material de caráter meramente informativo, elaborado com base nos arquivos carregados. Não constitui oferta, solicitação ou recomendação de compra ou venda de qualquer ativo. Rentabilidade passada não representa garantia de rentabilidade futura.</p>';
+  document.getElementById('conteudo').innerHTML = paginas.map(function (p) { return (ST.imprimir ? '<h3 class="tit-pagina">' + ABAS.filter(function (a) { return a[0] === p; })[0][1] + '</h3>' : '') + PAGINAS[p](); }).join('');
   if (foco !== null) { var b = document.getElementById('in-busca'); if (b) { b.focus(); try { b.setSelectionRange(foco, foco); } catch (e) {} } }
 }
 function recalcularAlertas() { R.alertas = montarAlertas(R, D); }
