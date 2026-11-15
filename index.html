@@ -18058,7 +18058,7 @@ function mediaPond(lista, campo) {
   lista.forEach(function (p) { if (typeof p[campo] === 'number' && !isNaN(p[campo])) { num += p[campo] * p.saldo; den += p.saldo; } });
   return den > 0 ? num / den : null;
 }
-function kpisGeral() {
+function kpisGeral(opc) {
   var F = filtrados(null), ativos = F.filter(function (p) { return p.tipo !== 'caixa'; });
   var saldo = soma(F, function (p) { return p.saldo; });
   var ativo = filtroAtivo();
@@ -18067,11 +18067,17 @@ function kpisGeral() {
   var mes = ativo ? mediaPond(F, 'mes') : D.kpi.rentMes;
   var maior = F.slice().sort(function (a, b) { return b.saldo - a.saldo; })[0];
   var d0 = soma(F.filter(function (p) { return p.liq === 'd0'; }), function (p) { return p.saldo; });
+  var divs = null;
+  if (opc && opc.divs) {
+    var cred = (D.movs || []).filter(function (m) { return tipoMov(m) === 'Proventos' && m.valor > 0; });
+    divs = kpi('Dividendos pagos', fmtBRL(soma(cred, function (m) { return m.valor; })), D.movs && D.movs.length ? cred.length + ' crédito(s) no mês · dividendos, JCP e rendimentos' : 'Sem movimentações no arquivo');
+  }
   return '<div class="kpis">' +
     kpi(ativo ? 'Patrimônio filtrado' : 'Patrimônio bruto', fmtBRL(ativo ? saldo : (OUTRAS.length ? R.total : D.kpi.patrimonio)), ativo ? fmtP(R.total > 0 ? saldo / R.total * 100 : 0, 1) + ' do patrimônio · ref. ' + esc(D.cab.data) : 'Ref. ' + esc(D.cab.data)) +
     kpi('Ativos', String(ativos.length), ativo ? 'de ' + R.itens.filter(function (p) { return p.tipo !== 'caixa'; }).length + ' na carteira' : 'Posições distintas') +
     kpi('Rentabilidade no ano', '<span class="' + clsv(ano) + '">' + fmtP(ano) + '</span>', (D.semRent && !ativo ? 'Sem histórico no arquivo' : (ativo ? 'Média ponderada · ' : '') + fmtP(pcdi) + ' do CDI')) +
     kpi('Rentabilidade no mês', '<span class="' + clsv(mes) + '">' + fmtP(mes) + '</span>', ativo ? 'Média ponderada pelo saldo' : (D.semRent ? 'Sem histórico no arquivo' : 'Mês até ' + esc(D.cab.data))) +
+    (divs || '') +
     kpi('Liquidez imediata', fmtRS(d0), fmtP(saldo > 0 ? d0 / saldo * 100 : 0, 1) + ' do filtrado') +
     kpi('Maior posição', maior ? fmtP(maior.saldo / (saldo || 1) * 100, 1) : '—', maior ? esc(maior.nome) : '') + '</div>';
 }
@@ -18449,7 +18455,7 @@ PAGINAS.geral = function () {
   var difBruto = k.patrimonio - soma(D.estrategias, function (e) { return e.saldo; });
   var resumo = fmtBRL(OUTRAS.length ? R.total : k.patrimonio) + (OUTRAS.length ? ' de patrimônio consolidado' : ' de patrimônio bruto') + ' em ' + qtd + ' ativos.' + (D.semRent ? ' O arquivo não traz histórico de rentabilidade.' : ' A carteira rendeu ' + fmtP(pa.rent) + ' no ano (' + fmtP(pa.pcdi) + ' do CDI)' + (typeof p12.rent === 'number' ? ' e ' + fmtP(p12.rent) + ' em 12 meses (' + fmtP(p12.pcdi) + ' do CDI)' : '') + '.') + (!D.semRent && D.evol.length < 12 ? ' A conta tem menos de 12 meses de histórico; as rentabilidades acumuladas refletem o início recente dos aportes e devem ser lidas com cautela.' : '') + ' A alocação é mais aderente ao ' + R.matriz.perfis[R.maisProximo].nome + ' (' + fmtP(100 - R.realocar[R.maisProximo], 1) + ').' + (Math.abs(difBruto) > 1 ? ' O patrimônio bruto informado no relatório difere em ' + fmtBRL(Math.abs(difBruto)) + ' da soma das estratégias; a diferença não está atribuída a ativos específicos e não foi considerada na análise.' : '');
   var top = agrupar('ativo');
-  var h = kpisGeral() + '<div class="tiles">';
+  var h = kpisGeral({ divs: true }) + '<div class="tiles">';
   h += tile('t4', 'Por estratégia', donutDim('est', 'total'), 'clique para filtrar');
   h += tile('t4', 'Por instrumento', barrasDim('instr'), 'clique para filtrar');
   h += tile('t4', 'Por tributação', donutDim('trib', 'total'), 'clique para filtrar');
