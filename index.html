@@ -17601,7 +17601,7 @@ document.getElementById('btn-diagnostico').addEventListener('click', abrirDiagno
 // ── Visão do cliente: o cliente cadastrado pelo assessor (conta com e-mail verificado) vê, somente para leitura, a própria consolidação ──
 var MODO_CLIENTE = false, MINHAS = [], MINHA_IDX = 0;
 function bloquearEdicao() {
-  Array.prototype.forEach.call(document.querySelectorAll('#conteudo input, #conteudo select, #conteudo textarea'), function (e) { if (e.id !== 'in-busca' && e.id !== 'in-aporte') e.disabled = true; });
+  Array.prototype.forEach.call(document.querySelectorAll('#conteudo input, #conteudo select, #conteudo textarea'), function (e) { if (e.id !== 'in-busca' && e.id !== 'in-aporte' && e.id !== 'in-int-ticker' && e.id !== 'in-int-obs') e.disabled = true; });
 }
 function renderFaixaCliente() {
   var el = document.getElementById('faixa-cliente'), bt = document.getElementById('btn-minha-carteira');
@@ -18373,6 +18373,71 @@ document.addEventListener('change', function (ev) {
 document.addEventListener('keydown', function (ev) {
   if (ev.key === 'Enter' && ev.target && ev.target.id === 'in-aporte') ev.target.blur();
 });
+// ── Ativos de interesse: lista por cliente, alimentada pelo assessor e pelo próprio cliente (tabela ativos_interesse) ──
+var INTERESSES = [], INT_ID = '', INT_COT = {}, INT_CARREGANDO = false, INT_MSG = '';
+function clienteInteresse() { return MODO_CLIENTE ? ((MINHAS[MINHA_IDX] || {}).cliente_id || '') : (CLI.id || ''); }
+function simboloYahoo(tk) { return RE_TICKER_BR.test(tk) ? tk + '.SA' : tk; }
+function carregarInteresses() {
+  var id = clienteInteresse();
+  if (!sb || !logado || !id) return;
+  INT_CARREGANDO = true; INT_ID = id;
+  sb.from('ativos_interesse').select('id,ticker,observacao,origem,criado_em').eq('cliente_id', id).order('criado_em', { ascending: true }).then(function (r) {
+    INT_CARREGANDO = false;
+    if (clienteInteresse() !== id) return;
+    if (r.error) { INT_MSG = 'Não foi possível carregar os ativos de interesse: ' + r.error.message; INTERESSES = []; if (D && R && ST.aba === 'alocacao') render(); return; }
+    INTERESSES = r.data || [];
+    var syms = INTERESSES.map(function (x) { return simboloYahoo(x.ticker); });
+    (syms.length ? buscarCotacoes(syms) : Promise.resolve({})).then(function (cot) { INT_COT = cot || {}; if (D && R && ST.aba === 'alocacao') render(); });
+  });
+}
+function htmlInteresses() {
+  var id = clienteInteresse();
+  if (!logado || !id) return '<p class="vazio">' + (logado ? 'Selecione um cliente no topo da página para cadastrar os ativos de interesse.' : 'Entre no site com a sua conta para cadastrar ativos de interesse.') + '</p>';
+  if (INT_ID !== id && !INT_CARREGANDO) carregarInteresses();
+  var lista = INT_ID === id ? INTERESSES : [];
+  var h = '<div class="barra-sl" style="gap:8px;margin-bottom:10px;"><input type="text" id="in-int-ticker" class="in-crit" style="max-width:150px;text-transform:uppercase;" placeholder="Código (ex.: PETR4)" autocomplete="off"><input type="text" id="in-int-obs" class="in-crit" style="min-width:220px;flex:1;max-width:420px;" placeholder="Observação (opcional)" autocomplete="off"><button type="button" class="btn btn-peq" data-int-add="1">+ Adicionar</button></div>';
+  if (INT_MSG) h += '<p class="card-sub" style="color:var(--red);margin:0 0 8px;">' + esc(INT_MSG) + '</p>';
+  if (!lista.length) return h + '<p class="vazio">' + (INT_CARREGANDO ? 'Carregando...' : 'Nenhum ativo de interesse cadastrado.') + '</p>';
+  h += '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Ativo</th><th>Cotação</th><th>Preço alvo XP</th><th>Potencial</th><th class="e">Observação</th><th class="e">Adicionado por</th><th></th></tr></thead><tbody>';
+  lista.forEach(function (x, i) {
+    var c = INT_COT[simboloYahoo(x.ticker)], pr = c && typeof c.preco === 'number' ? c.preco : null, xp = XPALVO[x.ticker], up = pr && xp ? (xp.alvo / pr - 1) * 100 : null;
+    var pode = !MODO_CLIENTE || x.origem === 'cliente';
+    h += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e"><b>' + esc(x.ticker) + '</b>' + (c && c.nome ? '<br><small>' + esc(c.nome) + '</small>' : '') + '</td><td>' + (pr !== null ? fmtBRL(pr) : '—') + '</td><td>' + (xp ? fmtBRL(xp.alvo) : '—') + '</td><td class="' + clsv(up) + '">' + (up !== null ? fmtPs(up, 1) : '—') + '</td><td class="e">' + esc(x.observacao || '') + '</td><td class="e">' + (x.origem === 'cliente' ? 'Cliente' : 'Assessor') + '</td><td>' + (pode ? '<button type="button" class="btn btn-peq" data-int-rm="' + esc(x.id) + '">Remover</button>' : '') + '</td></tr>';
+  });
+  return h + '</tbody></table></div>';
+}
+function adicionarInteresse() {
+  var id = clienteInteresse(), campo = document.getElementById('in-int-ticker'), obs = document.getElementById('in-int-obs');
+  if (!sb || !logado || !id || !campo) return;
+  var tk = String(campo.value || '').trim().toUpperCase();
+  function dizer(m) { INT_MSG = m; render(); }
+  if (!/^[A-Z0-9.\\-]{1,12}$/.test(tk)) { dizer('Informe um código válido, por exemplo PETR4 ou AAPL.'); return; }
+  if (INTERESSES.some(function (x) { return x.ticker === tk; })) { dizer(tk + ' já consta na lista.'); return; }
+  buscarCotacoes([simboloYahoo(tk)]).then(function (cot) {
+    if (!cot || !cot[simboloYahoo(tk)]) { dizer('Ativo "' + tk + '" não encontrado.'); return; }
+    return sb.from('ativos_interesse').insert({ cliente_id: id, ticker: tk, observacao: String(obs.value || '').trim() || null }).then(function (r) {
+      if (r.error) { dizer(r.error.code === '23505' ? tk + ' já consta na lista.' : 'Não foi possível adicionar: ' + r.error.message); return; }
+      INT_MSG = ''; INT_ID = ''; carregarInteresses();
+    });
+  });
+}
+function removerInteresse(rid) {
+  if (!sb || !logado) return;
+  sb.from('ativos_interesse').delete().eq('id', rid).then(function (r) {
+    INT_MSG = r.error ? 'Não foi possível remover: ' + r.error.message : '';
+    INT_ID = ''; carregarInteresses();
+    if (r.error && D && R) render();
+  });
+}
+function aplicarAcaoInteresse(t) {
+  var el = t && t.closest ? t.closest('[data-int-add],[data-int-rm]') : null;
+  if (!el) return false;
+  if (el.hasAttribute('data-int-add')) adicionarInteresse(); else removerInteresse(el.getAttribute('data-int-rm'));
+  return true;
+}
+document.addEventListener('keydown', function (ev) {
+  if (ev.key === 'Enter' && ev.target && (ev.target.id === 'in-int-ticker' || ev.target.id === 'in-int-obs')) adicionarInteresse();
+});
 var TETOS = {}, XPALVO = {}, XPALVO_EM = '';   // preço teto informado pelo usuário (por código) e preço alvo da carteira recomendada da XP
 function carregarAlvosXP() {
   if (!sb) return;
@@ -18574,6 +18639,7 @@ PAGINAS.alocacao = function () {
   h += tile('t7', 'Atual x alvo do ' + esc(perfis[pi].nome), cmp);
   h += tile('t12', 'Carteira comparada ao ' + esc(perfis[pi].nome), t);
   h += tile('t12', 'Novo aporte', htmlAporte(pi), 'distribui o valor nas classes abaixo do alvo do perfil');
+  h += tile('t12', 'Ativos de interesse', htmlInteresses(), 'o assessor e o cliente podem adicionar ativos');
   h += tile('t6', 'Por estratégia', donutDim('est', 'total'), 'clique para filtrar');
   h += tile('t6', 'Por instrumento', barrasDim('instr'), 'clique para filtrar');
   return h + '</div>';
@@ -19079,7 +19145,7 @@ document.addEventListener('click', function (ev) {
   var t = ev.target;
   function ach(sel) { return t && t.closest ? t.closest(sel) : null; }
   var el;
-  if (aplicarAcaoCriterio(t) || aplicarAcaoInst(t) || aplicarAcaoHist(t) || aplicarAcaoPerfil(t) || aplicarAcaoCotacao(t) || aplicarAcaoBT(t) || aplicarAcaoPos(t)) return;
+  if (aplicarAcaoCriterio(t) || aplicarAcaoInst(t) || aplicarAcaoHist(t) || aplicarAcaoPerfil(t) || aplicarAcaoCotacao(t) || aplicarAcaoBT(t) || aplicarAcaoPos(t) || aplicarAcaoInteresse(t)) return;
   if ((el = ach('[data-rm]'))) { var pr = el.getAttribute('data-rm'), ix = pr.indexOf('|'); alternar(pr.slice(0, ix), pr.slice(ix + 1)); render(); return; }
   if ((el = ach('[data-limpar]'))) { ST.f = {}; render(); return; }
   if ((el = ach('[data-aba]'))) { ST.aba = el.getAttribute('data-aba'); render(); return; }
