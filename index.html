@@ -15557,6 +15557,10 @@ body.modo-cliente .col-acoes,body.modo-cliente [data-pos-novo],body.modo-cliente
 .aba-reset{background:none;border:none;padding:10px 12px;font-family:inherit;font-size:11.5px;color:var(--ink-mute);cursor:pointer;margin-left:auto;}
 .aba-reset:hover{color:var(--ink);text-decoration:underline;}
 @media print{.aba-reset{display:none!important;}}
+
+/* ativos sugeridos de cada classe no novo aporte */
+.sub-aporte td{background:#F7F7F7;font-size:12.5px;}
+.sub-aporte small{color:var(--ink-soft);}
 </style>
 </head>
 <body>
@@ -18351,22 +18355,60 @@ function calcAporte(valor, pi) {
   });
   return { total: T, linhas: linhas, n: linhas.filter(function (x) { return x.aporte > 0.005; }).length };
 }
+// Percentual de cada ativo de interesse dentro da classe: valores definidos pelo assessor; os ainda não definidos dividem igualmente o restante
+function pctsClasse(itens) {
+  var m = {}, def = itens.filter(function (x) { return x.percentual !== null && x.percentual !== undefined; }), sem = itens.filter(function (x) { return x.percentual === null || x.percentual === undefined; });
+  var resto = Math.max(0, 100 - soma(def, function (x) { return Number(x.percentual); }));
+  def.forEach(function (x) { m[x.id] = Number(x.percentual); });
+  sem.forEach(function (x) { m[x.id] = resto / sem.length; });
+  return m;
+}
 function htmlAporte(pi) {
-  var perfil = R.matriz.perfis[pi].nome, bruto = String(ST.aporte || '').trim(), v = bruto === '' ? null : numExtrato(bruto);
+  var perfil = R.matriz.perfis[pi].nome, bruto = String(ST.aporte || '').trim(), v = bruto === '' ? null : numExtrato(bruto), cid = clienteInteresse();
+  if (cid && logado && INT_ID !== cid && !INT_CARREGANDO) carregarInteresses();
   var h = '<div class="barra-sl" style="gap:10px;margin-bottom:10px;"><label for="in-aporte" class="rot-sl">Valor do novo aporte (R$)</label><input type="text" id="in-aporte" class="in-crit" style="max-width:170px;text-align:right;" value="' + esc(bruto) + '" placeholder="Ex.: 50.000,00" autocomplete="off"><span style="font-size:12.5px;color:var(--ink-soft);">Referência: ' + esc(perfil) + '</span></div>';
   if (bruto === '') return h;
   if (v === null || !(v > 0)) return h + '<p class="nota" style="color:var(--red);">Informe um valor maior que zero.</p>';
-  var c = calcAporte(v, pi);
+  var c = calcAporte(v, pi), abertas = ST.aporteAbertas || (ST.aporteAbertas = {});
   var ord = c.linhas.slice().sort(function (a, b) { return b.aporte - a.aporte || b.def - a.def; });
-  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Classe</th><th>Atual (R$)</th><th>Atual (%)</th><th>Alvo (%)</th><th>Aporte sugerido (R$)</th><th>% do aporte</th><th>Após o aporte (%)</th><th>Diferença para o alvo (p.p.)</th></tr></thead><tbody>';
+  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th></th><th class="e">Classe</th><th>Atual (R$)</th><th>Atual (%)</th><th>Alvo (%)</th><th>% na classe</th><th>Aporte sugerido (R$)</th><th>% do aporte</th><th>Após o aporte (%)</th><th>Diferença para o alvo (p.p.)</th></tr></thead><tbody>';
   ord.forEach(function (x, i) {
-    var dif = x.aposPct - x.alvo;
-    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(x.nome) + '</td><td>' + fmtBRL(x.valor) + '</td><td>' + fmtP(x.atual) + '</td><td>' + fmtP(x.alvo) + '</td><td>' + (x.aporte > 0.005 ? '<b>' + fmtBRL(x.aporte) + '</b>' : '—') + '</td><td>' + (x.aporte > 0.005 ? fmtP(x.aporte / v * 100, 1) : '—') + '</td><td>' + fmtP(x.aposPct) + '</td><td class="' + clsv(dif) + '">' + fmtPs(dif, 2) + '</td></tr>';
+    var dif = x.aposPct - x.alvo, itens = interessesDaClasse(x.nome), aberta = !!abertas[x.nome];
+    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="col-acoes" style="text-align:left;width:42px;"><button type="button" class="btn btn-peq" data-aporte-toggle="' + esc(x.nome) + '" title="' + itens.length + ' ativo(s) de interesse nesta classe">' + (aberta ? '−' : '+') + '</button></td><td class="e">' + esc(x.nome) + '</td><td>' + fmtBRL(x.valor) + '</td><td>' + fmtP(x.atual) + '</td><td>' + fmtP(x.alvo) + '</td><td>' + (itens.length ? '100,00%' : '—') + '</td><td>' + (x.aporte > 0.005 ? '<b>' + fmtBRL(x.aporte) + '</b>' : '—') + '</td><td>' + (x.aporte > 0.005 ? fmtP(x.aporte / v * 100, 1) : '—') + '</td><td>' + fmtP(x.aposPct) + '</td><td class="' + clsv(dif) + '">' + fmtPs(dif, 2) + '</td></tr>';
+    if (!aberta) return;
+    if (!itens.length) { t += '<tr class="sub-aporte"><td></td><td class="e" colspan="9"><small>Nenhum ativo de interesse cadastrado nesta classe. Adicione em "Ativos de interesse".</small></td></tr>'; return; }
+    var pcts = pctsClasse(itens);
+    itens.forEach(function (a) {
+      var val = x.aporte * pcts[a.id] / 100, cot = interesseListado(a) ? INT_COT[simboloYahoo(a.ticker)] : null, cotas = cot && typeof cot.preco === 'number' && cot.moeda !== 'USD' && val > 0 ? Math.floor(val / cot.preco) : null;
+      t += '<tr class="sub-aporte"><td></td><td class="e">↳ <b>' + esc(a.ticker) + '</b>' + (cot && cot.nome ? ' <small>' + esc(cot.nome) + '</small>' : '') + (cotas !== null ? '<br><small>≈ ' + fmtQtd(cotas) + ' cota(s) a ' + fmtBRL(cot.preco) + '</small>' : '') + '</td><td></td><td></td><td></td><td>' +
+        (itens.length > 1 ? '<input type="text" class="in-crit" style="max-width:84px;text-align:right;" data-pct-int="' + esc(a.id) + '" value="' + numTxt(pcts[a.id], 2) + '" title="Percentual sugerido deste ativo dentro da classe; os demais são ajustados proporcionalmente">%' : '100,00%') + '</td><td>' + (x.aporte > 0.005 ? '<b>' + fmtBRL(val) + '</b>' : '—') + '</td><td>' + (val > 0.005 ? fmtP(val / v * 100, 1) : '—') + '</td><td></td><td></td></tr>';
+    });
   });
-  t += '<tr class="total"><td class="e">Total</td><td>' + fmtBRL(R.total) + '</td><td>' + fmtP(soma(c.linhas, function (x) { return x.atual; })) + '</td><td>' + fmtP(soma(c.linhas, function (x) { return x.alvo; })) + '</td><td>' + fmtBRL(v) + '</td><td>100,0%</td><td>' + fmtP(soma(c.linhas, function (x) { return x.aposPct; })) + '</td><td></td></tr></tbody></table></div>';
+  t += '<tr class="total"><td></td><td class="e">Total</td><td>' + fmtBRL(R.total) + '</td><td>' + fmtP(soma(c.linhas, function (x) { return x.atual; })) + '</td><td>' + fmtP(soma(c.linhas, function (x) { return x.alvo; })) + '</td><td></td><td>' + fmtBRL(v) + '</td><td>100,0%</td><td>' + fmtP(soma(c.linhas, function (x) { return x.aposPct; })) + '</td><td></td></tr></tbody></table></div>';
   var res = c.n ? '' : '<p class="resumo">Nenhuma classe está abaixo do alvo do ' + esc(perfil) + '; não há defasagem para direcionar o aporte.</p>';
   return h + res + t;
 }
+function interessesDaClasse(nome) { return (INT_ID === clienteInteresse() ? INTERESSES : []).filter(function (x) { return x.classe === nome; }); }
+// Alterar o percentual de um ativo: os demais da classe são ajustados proporcionalmente para que a soma permaneça em 100%
+document.addEventListener('change', function (ev) {
+  var t = ev.target, rid = t && t.getAttribute ? t.getAttribute('data-pct-int') : null;
+  if (!rid || MODO_CLIENTE) return;
+  var alvo = INTERESSES.filter(function (x) { return x.id === rid; })[0], novo = numExtrato(t.value);
+  if (!alvo) return;
+  if (novo === null || novo < 0 || novo > 100) { if (D && R) render(); return; }
+  var grupo = INTERESSES.filter(function (x) { return x.classe === alvo.classe; }), outros = grupo.filter(function (x) { return x !== alvo; }), atuais = pctsClasse(grupo);
+  var somaOut = soma(outros, function (x) { return atuais[x.id]; }), restante = 100 - novo, novos = {};
+  novos[alvo.id] = Math.round(novo * 100) / 100;
+  outros.forEach(function (x) { novos[x.id] = Math.round((somaOut > 0 ? atuais[x.id] / somaOut * restante : restante / outros.length) * 100) / 100; });
+  var dif = 100 - soma(Object.keys(novos), function (k) { return novos[k]; });
+  if (outros.length) { var ult = outros[outros.length - 1]; novos[ult.id] = Math.round((novos[ult.id] + dif) * 100) / 100; }
+  grupo.forEach(function (x) { x.percentual = novos[x.id]; });
+  if (D && R) render();
+  Promise.all(grupo.map(function (x) { return sb.from('ativos_interesse').update({ percentual: x.percentual }).eq('id', x.id); })).then(function (rs) {
+    var e = rs.filter(function (r) { return r && r.error; })[0];
+    if (e) { INT_MSG = 'Não foi possível salvar o percentual: ' + e.error.message; if (D && R) render(); }
+  });
+});
 document.addEventListener('change', function (ev) {
   if (ev.target && ev.target.id === 'in-aporte') { ST.aporte = ev.target.value; if (D && R) render(); }
 });
@@ -18384,7 +18426,7 @@ function carregarInteresses() {
   var id = clienteInteresse();
   if (!sb || !logado || !id) return;
   INT_CARREGANDO = true; INT_ID = id;
-  sb.from('ativos_interesse').select('id,ticker,classe,observacao,origem,criado_em').eq('cliente_id', id).order('criado_em', { ascending: true }).then(function (r) {
+  sb.from('ativos_interesse').select('id,ticker,classe,observacao,origem,criado_em,percentual').eq('cliente_id', id).order('criado_em', { ascending: true }).then(function (r) {
     INT_CARREGANDO = false;
     if (clienteInteresse() !== id) return;
     if (r.error) { INT_MSG = 'Não foi possível carregar os ativos de interesse: ' + r.error.message; INTERESSES = []; if (D && R && ST.aba === 'alocacao') render(); return; }
@@ -18446,8 +18488,9 @@ function removerInteresse(rid) {
   });
 }
 function aplicarAcaoInteresse(t) {
-  var el = t && t.closest ? t.closest('[data-int-add],[data-int-rm]') : null;
+  var el = t && t.closest ? t.closest('[data-int-add],[data-int-rm],[data-aporte-toggle]') : null;
   if (!el) return false;
+  if (el.hasAttribute('data-aporte-toggle')) { var ab = ST.aporteAbertas || (ST.aporteAbertas = {}), k = el.getAttribute('data-aporte-toggle'); ab[k] = !ab[k]; if (D && R) render(); return true; }
   if (el.hasAttribute('data-int-add')) adicionarInteresse(); else removerInteresse(el.getAttribute('data-int-rm'));
   return true;
 }
