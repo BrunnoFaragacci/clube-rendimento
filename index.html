@@ -18145,7 +18145,9 @@ function abrirEditorPos(modo, p, tipoNovo) {
   } else {
     var insts = Object.keys(R.porInst);
     v.inst = insts.length ? insts[0] : (D.inst || '');
-    if (tipoNovo === 'rv') { v.instr = 'Ações'; v.classe = 'Renda Variável Brasil'; }
+    if (tipoNovo === 'rv' || tipoNovo === 'rv-br') { v.instr = 'Ações'; v.classe = 'Renda Variável Brasil'; }
+    if (tipoNovo === 'rv-fii') { v.instr = 'Fundo imobiliário listado'; v.classe = 'Fundos Listados'; }
+    if (tipoNovo === 'rv-int') { v.instr = 'Internacional'; v.classe = 'Global Renda Variável'; }
     if (tipoNovo === 'rf') { v.classe = 'Pós Fixado'; v.papel = 'CDB'; }
   }
   EP = { modo: modo, kind: kind, f: f, instr0: p ? p.instr : '', v: v, erro: '' };
@@ -18401,30 +18403,44 @@ document.addEventListener('change', function (ev) {
   agendarGravacao();
   if (D && R) render();
 });
-PAGINAS.rv = function () {
-  var todos = R.itens.filter(ehRV), lista = filtrados(null).filter(ehRV), q = compacto(ST.busca);
-  if (q) lista = lista.filter(function (p) { return compacto(p.nome).indexOf(q) !== -1 || compacto(p.ticker || '').indexOf(q) !== -1 || compacto(catRV(p)).indexOf(q) !== -1; });
-  var tot = soma(todos, function (p) { return p.saldo; }), pi = perfilAtualIdx();
-  var cats = ['Ações', 'Fundos imobiliários', 'ETFs', 'Internacional'].map(function (c) {
-    var arr = todos.filter(function (p) { return catRV(p) === c; });
-    return { r: c, v: soma(arr, function (p) { return p.saldo; }), n: arr.length };
-  });
-  var alvo = soma(R.linhas.filter(function (l) { return l.chave === 'rvb' || l.chave === 'listados' || l.chave === 'grv'; }), function (l) { return l.alvo[pi] || 0; });
-  var pctRV = R.total > 0 ? tot / R.total * 100 : 0;
-  var h = '<div class="barra-sl"><span class="rot-sl">Buscar</span><input type="text" id="in-busca" class="busca" placeholder="Ativo, código ou categoria" value="' + esc(ST.busca) + '" autocomplete="off"><button type="button" class="btn btn-peq" data-pos-novo="rv">+ Adicionar ativo</button></div>';
-  h += '<div class="kpis">' + kpi('Renda variável', fmtBRL(tot), todos.length + ' ativo(s) · ' + fmtP(pctRV, 1) + ' do patrimônio') +
-    kpi('Alvo do ' + esc(R.matriz.perfis[pi].nome), fmtP(alvo, 1), 'Renda variável Brasil, fundos listados e global') +
-    cats.filter(function (c) { return c.n > 0; }).slice(0, 3).map(function (c) { return kpi(esc(c.r), fmtRS(c.v), c.n + ' ativo(s) · ' + fmtP(R.total > 0 ? c.v / R.total * 100 : 0, 1) + ' do patrimônio'); }).join('') + '</div><div class="tiles">';
-  var top = todos.slice().sort(function (a, b) { return b.saldo - a.saldo; }).slice(0, 10).map(function (p) { return { r: p.nome, v: p.saldo }; });
-  h += tile('t5', 'Por categoria', cats.filter(function (c) { return c.v > 0; }).length ? donutLista(cats.filter(function (c) { return c.v > 0; }), 'renda variável') : '<p class="vazio">Nenhum ativo de renda variável.</p>');
-  h += tile('t7', 'Maiores posições', top.length ? top.map(function (it) { return '<div class="barra-linha"><span class="barra-rot">' + esc(it.r) + '</span><div class="trilho"><div class="fill" style="width:' + Math.max(it.v / top[0].v * 100, 1.2).toFixed(2) + '%"></div></div><span class="barra-val"><b>' + fmtP(tot > 0 ? it.v / tot * 100 : 0, 2) + '</b><small>' + fmtRS(it.v) + '</small></span></div>'; }).join('') : '<p class="vazio">Nenhum ativo de renda variável.</p>');
-  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Ativo</th><th class="e">Código</th><th class="e">Instituição</th><th class="e">Categoria</th><th>Quantidade</th><th>Preço</th><th>Preço teto</th><th>Preço alvo XP</th><th>Saldo bruto</th><th>% carteira</th><th>Mês</th><th>Ano</th><th></th></tr></thead><tbody>';
+var GRUPOS_RV = [
+  ['Fundos imobiliários', 'rv-fii', function (p) { return catRV(p) === 'Fundos imobiliários'; }],
+  ['Ações Brasil', 'rv-br', function (p) { var c = catRV(p); return c === 'Ações' || c === 'ETFs'; }],
+  ['Ações Internacionais', 'rv-int', function (p) { return catRV(p) === 'Internacional'; }]
+];
+function tabelaRV(lista, titulo, novoTipo) {
+  var t = '<div class="barra-sl" style="margin-bottom:10px;"><button type="button" class="btn btn-peq" data-pos-novo="' + novoTipo + '">+ Adicionar ativo</button></div>';
+  if (!lista.length) return t + '<p class="vazio">Nenhum ativo em ' + esc(titulo) + '.</p>';
+  t += '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Ativo</th><th class="e">Código</th><th class="e">Instituição</th><th class="e">Categoria</th><th>Quantidade</th><th>Preço</th><th>Preço teto</th><th>Preço alvo XP</th><th>Saldo bruto</th><th>% carteira</th><th>Mês</th><th>Ano</th><th></th></tr></thead><tbody>';
   lista.slice().sort(function (a, b) { return b.saldo - a.saldo; }).forEach(function (p, i) {
     t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(p.nome) + '</td><td class="e">' + esc(p.ticker || '') + '</td><td class="e">' + esc(p.inst || '') + '</td><td class="e">' + esc(catRV(p)) + '</td><td>' + (p.qtd !== undefined && p.qtd !== null ? fmtQtd(p.qtd) : '') + '</td><td>' + (p.qtd > 0 ? fmtBRL(p.saldo / p.qtd) : '') + '</td><td>' + celTeto(p) + '</td><td>' + celAlvoXP(p) + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td>' +
       '<td class="' + clsv(p.mes) + '">' + (p.mes === undefined ? '—' : fmtP(p.mes)) + '</td><td class="' + clsv(p.ano) + '">' + (p.ano === undefined ? '—' : fmtP(p.ano)) + '</td>' + celAcoesPos(p) + '</tr>';
   });
-  t += '<tr class="total"><td class="e">Total (' + lista.length + ')</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>' + fmtBRL(soma(lista, function (p) { return p.saldo; })) + '</td><td>' + fmtP(R.total > 0 ? soma(lista, function (p) { return p.saldo; }) / R.total * 100 : 0) + '</td><td></td><td></td><td></td></tr></tbody></table></div>';
-  h += tile('t12', 'Ativos de renda variável', lista.length ? t : '<p class="vazio">Nenhum ativo de renda variável para a busca informada.</p>', 'use ✎ para editar e × para remover; o preço é o saldo dividido pela quantidade; o preço alvo vem da carteira recomendada da XP' + (XPALVO_EM ? ' (atualizado em ' + fmtDataISO(XPALVO_EM) + ')' : ''));
+  var tot = soma(lista, function (p) { return p.saldo; });
+  return t + '<tr class="total"><td class="e">Total (' + lista.length + ')</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>' + fmtBRL(tot) + '</td><td>' + fmtP(R.total > 0 ? tot / R.total * 100 : 0) + '</td><td></td><td></td><td></td></tr></tbody></table></div>';
+}
+PAGINAS.rv = function () {
+  var todos = R.itens.filter(ehRV), lista = filtrados(null).filter(ehRV), q = compacto(ST.busca);
+  if (q) lista = lista.filter(function (p) { return compacto(p.nome).indexOf(q) !== -1 || compacto(p.ticker || '').indexOf(q) !== -1 || compacto(catRV(p)).indexOf(q) !== -1; });
+  var tot = soma(todos, function (p) { return p.saldo; }), pi = perfilAtualIdx();
+  var grupos = GRUPOS_RV.map(function (g) {
+    var arr = todos.filter(g[2]);
+    return { r: g[0], tipo: g[1], fn: g[2], v: soma(arr, function (p) { return p.saldo; }), n: arr.length };
+  });
+  var alvo = soma(R.linhas.filter(function (l) { return l.chave === 'rvb' || l.chave === 'listados' || l.chave === 'grv'; }), function (l) { return l.alvo[pi] || 0; });
+  var pctRV = R.total > 0 ? tot / R.total * 100 : 0;
+  var h = '<div class="barra-sl"><span class="rot-sl">Buscar</span><input type="text" id="in-busca" class="busca" placeholder="Ativo, código ou categoria" value="' + esc(ST.busca) + '" autocomplete="off"></div>';
+  h += '<div class="kpis">' + kpi('Renda variável', fmtBRL(tot), todos.length + ' ativo(s) · ' + fmtP(pctRV, 1) + ' do patrimônio') +
+    kpi('Alvo do ' + esc(R.matriz.perfis[pi].nome), fmtP(alvo, 1), 'Renda variável Brasil, fundos listados e global') +
+    grupos.map(function (g) { return kpi(esc(g.r), fmtRS(g.v), g.n + ' ativo(s) · ' + fmtP(R.total > 0 ? g.v / R.total * 100 : 0, 1) + ' do patrimônio'); }).join('') + '</div><div class="tiles">';
+  var top = todos.slice().sort(function (a, b) { return b.saldo - a.saldo; }).slice(0, 10).map(function (p) { return { r: p.nome, v: p.saldo }; });
+  var comValor = grupos.filter(function (g) { return g.v > 0; });
+  h += tile('t5', 'Por categoria', comValor.length ? donutLista(comValor, 'renda variável') : '<p class="vazio">Nenhum ativo de renda variável.</p>');
+  h += tile('t7', 'Maiores posições', top.length ? top.map(function (it) { return '<div class="barra-linha"><span class="barra-rot">' + esc(it.r) + '</span><div class="trilho"><div class="fill" style="width:' + Math.max(it.v / top[0].v * 100, 1.2).toFixed(2) + '%"></div></div><span class="barra-val"><b>' + fmtP(tot > 0 ? it.v / tot * 100 : 0, 2) + '</b><small>' + fmtRS(it.v) + '</small></span></div>'; }).join('') : '<p class="vazio">Nenhum ativo de renda variável.</p>');
+  grupos.forEach(function (g) {
+    var arr = lista.filter(g.fn);
+    h += tile('t12', g.r + ' (' + arr.length + ')', tabelaRV(arr, g.r, g.tipo), g.tipo === 'rv-br' && XPALVO_EM ? 'preço alvo XP: carteira recomendada, atualizada em ' + fmtDataISO(XPALVO_EM) : '');
+  });
   return h + '</div>';
 };
 PAGINAS.geral = function () {
