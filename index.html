@@ -18608,22 +18608,14 @@ PAGINAS.credito = function () {
   h += '<div class="kpis">' + k('Passam nos critérios', 'ok') + k('Não passam', 'nao') + k('Sem classificação', 'pend') + kpi('Renda fixa direta', fmtRS(tot), rf.length + ' título(s) avaliado(s)') + '</div><div class="tiles">';
   h += tile('t4', 'Resultado da análise', donutDim('cred', 'renda fixa'), 'clique para filtrar');
   h += tile('t8', 'Por emissor', barrasDim('emi'), 'clique para filtrar');
-  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Título</th><th class="e">Emissor</th><th class="e">Tipo</th><th>Saldo bruto</th><th>% carteira</th><th class="e">Classificação</th><th class="e">Resultado</th><th class="e">Motivo</th></tr></thead><tbody>';
-  var ord = { nao: 0, pend: 1, ok: 2 };
+  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Título</th><th class="e">Emissor</th><th class="e">Tipo</th><th>Saldo bruto</th><th>% carteira</th><th class="e">Classificação</th><th class="e">Motivo</th></tr></thead><tbody>';
+  var ord = { nao: 0, pend: 1, ok: 2 }, rotClass = { ok: 'Aprovado', nao: 'Reprovado', pend: 'Sem análise' };
   rf.slice().sort(function (a, b) { return ord[a.cred.st] - ord[b.cred.st] || b.saldo - a.saldo; }).forEach(function (p, i) {
-    var c = p.cred, ctl;
-    var nome = p.emissor || p.nome;
-    if (c.tipo === 'Banco') {
-      ctl = ehMaster ? '<select data-ibanco="' + esc(nome) + '"><option value="">Segmento…</option>' + SEGMENTOS.map(function (s) { return '<option value="' + s[0] + '"' + (c.seg === s[0] ? ' selected' : '') + '>' + s[0] + '</option>'; }).join('') + '</select>' : esc(c.seg || '—');
-    } else {
-      var at = acharEmissor(CRIT.privado, nome);
-      var ap = at ? at.aprovado : null;
-      ctl = ehMaster ? '<span class="seg-btns"><button type="button" class="' + (ap === true ? 'on' : '') + '" data-priv="' + esc(nome) + '|1">Aprovar</button><button type="button" class="' + (ap === false ? 'on' : '') + '" data-priv="' + esc(nome) + '|0">Reprovar</button></span>' : (ap === null || ap === undefined ? '—' : (ap ? 'Aprovado' : 'Reprovado'));
-    }
-    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(p.papel + ' ' + fmtVenc(p)) + '</td><td class="e">' + esc(nome) + '</td><td class="e">' + c.tipo + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td><td class="e">' + ctl + '</td><td class="e"><span class="res res-' + c.st + '"' + dF('cred', CREDLAB[c.st]) + '>' + CREDLAB[c.st] + '</span></td><td class="e">' + esc(c.motivo) + '</td></tr>';
+    var c = p.cred, nome = p.emissor || p.nome;
+    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(p.papel + ' ' + fmtVenc(p)) + '</td><td class="e">' + esc(nome) + '</td><td class="e">' + c.tipo + '</td><td>' + fmtBRL(p.saldo) + '</td><td>' + fmtP(p.pct) + '</td><td class="e"><b>' + rotClass[c.st] + '</b></td><td class="e">' + esc(c.motivo) + '</td></tr>';
   });
   t += '</tbody></table></div>';
-  h += tile('t12', 'Títulos avaliados', rf.length ? t : '<p class="vazio">Nenhum título de renda fixa direta para os filtros selecionados.</p>', ehMaster ? 'classifique direto na tabela; a alteração vale para todos' : 'somente o usuário master altera a classificação');
+  h += tile('t12', 'Títulos avaliados', rf.length ? t : '<p class="vazio">Nenhum título de renda fixa direta para os filtros selecionados.</p>');
   return h + '</div>';
 };
 PAGINAS.inst = function () {
