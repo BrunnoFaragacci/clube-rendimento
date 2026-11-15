@@ -19853,6 +19853,7 @@ setInterval(function () { if (!document.hidden) atualizar(); }, INTERVALO_MS);
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Opções — Clube do Rendimento</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/dist/umd/supabase.min.js" referrerpolicy="no-referrer"><\/script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -19901,6 +19902,13 @@ tbody tr:nth-child(even) td{background:#FAFAFA;}
 .aio.OTM{background:#EAEAEA;color:var(--ink-soft);}
 .vazio{padding:40px 10px;text-align:center;color:#8a8a8a;font-size:13px;}
 .nota{font-size:12px;color:var(--ink-soft);margin-top:10px;line-height:1.55;max-width:1000px;}
+.btn-mais{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--ink);background:#fff;color:var(--ink);font-weight:700;font-size:16px;line-height:1;cursor:pointer;}
+.btn-mais:hover{background:var(--ink);color:#fff;}
+.btn-mais.ok{background:var(--ink);color:#fff;cursor:default;}
+.sec{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-left:4px solid var(--ink);padding-left:10px;margin-bottom:10px;}
+.sec small{font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink-soft);}
+.rm{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:16px;padding:0 6px;border-radius:6px;}
+.rm:hover{background:#FDECEC;color:var(--red);}
 @media print{.nav,.barra{display:none!important;}}
 </style>
 </head>
@@ -19929,13 +19937,91 @@ tbody tr:nth-child(even) td{background:#FAFAFA;}
   </div>
 
   <div class="card" id="card-ativo" hidden><div class="resumo" id="resumo"></div></div>
+  <div class="card" id="card-cart"><div class="sec"><span>Carteira teórica <span id="cart-n"></span></span><small id="cart-info"></small></div><div class="tabela" id="tab-cart"></div></div>
   <div class="card" id="card-tab" hidden><div class="tabela" id="tabela"></div></div>
 
   <p class="nota">Fonte: Opcoes.net.br, com atraso em relação ao mercado; os dados são atualizados automaticamente a cada 60 segundos. Cotação atual é o último preço negociado da série. Distância do strike: diferença percentual entre o strike e a cotação do ativo-objeto. ITM: opção dentro do dinheiro; ATM: no dinheiro; OTM: fora do dinheiro. Venda coberta: considera lotes de 100 ações; prêmio total = lotes × 100 × último preço da call; yield sobre o prêmio = prêmio total ÷ valor das ações cobertas; valor se exercida = lotes × 100 × strike. Cálculo sem custos operacionais e sem considerar a liquidez da série. Informação sem caráter de recomendação.</p>
 </div>
 
 <script>
+var SB_URL = 'https://segeufywrjmstfmfscdi.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZ2V1Znl3cmptc3RmbWZzY2RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzY0OTgsImV4cCI6MjA5ODQxMjQ5OH0.TUrp35SEI2NXdU1ZY7IEcdRm8VLLfLwAVWUtqjafElI';
+var SESSAO_INICIAL = ${JSON.stringify(sessaoAtual)};
+var sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
 var FN = 'https://segeufywrjmstfmfscdi.supabase.co/functions/v1/opcoes-cadeia';
+var carteira = [], precosCart = {}, usaBanco = false, ULT_LINHAS = [];
+function lerLocalCart() { try { var v = JSON.parse(localStorage.getItem('cr_opcoes_carteira') || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+function gravarLocalCart() { try { localStorage.setItem('cr_opcoes_carteira', JSON.stringify(usaBanco ? [] : carteira)); } catch (e) {} }
+function naCarteira(cod) { return carteira.some(function (x) { return x.codigo === cod; }); }
+function iniciarCarteira() {
+  carteira = lerLocalCart();
+  renderCarteira();
+  if (!sb || !SESSAO_INICIAL || !SESSAO_INICIAL.access_token) { atualizarPrecosCarteira(); return; }
+  var locais = carteira.slice();
+  sb.auth.setSession({ access_token: SESSAO_INICIAL.access_token, refresh_token: SESSAO_INICIAL.refresh_token }).then(function (r) {
+    if (r.error) throw r.error;
+    return sb.from('opcoes_carteira').select('id,codigo,ativo,tipo,strike,vencimento,preco_entrada,adicionado_em').order('adicionado_em', { ascending: true });
+  }).then(function (r) {
+    if (r.error) throw r.error;
+    usaBanco = true;
+    carteira = r.data || [];
+    // opções adicionadas antes do login, somente neste navegador, passam para a conta
+    var novos = locais.filter(function (l) { return !carteira.some(function (x) { return x.codigo === l.codigo; }); }).map(function (l) { return { codigo: l.codigo, ativo: l.ativo, tipo: l.tipo, strike: l.strike, vencimento: l.vencimento, preco_entrada: l.preco_entrada }; });
+    gravarLocalCart();
+    if (!novos.length) return null;
+    return sb.from('opcoes_carteira').insert(novos).select('id,codigo,ativo,tipo,strike,vencimento,preco_entrada,adicionado_em').then(function (x) { if (!x.error && x.data) carteira = carteira.concat(x.data); });
+  }).catch(function () { usaBanco = false; }).then(function () { renderCarteira(); renderizar(); atualizarPrecosCarteira(); });
+}
+function adicionarCarteira(r) {
+  if (!r || naCarteira(r.ticker)) return;
+  var item = { codigo: r.ticker, ativo: tickerAtual, tipo: r.tipo, strike: r.strike, vencimento: r.venc, preco_entrada: r.preco };
+  function aposAdicionar() { renderCarteira(); renderizar(); atualizarPrecosCarteira(); }
+  if (usaBanco) {
+    sb.from('opcoes_carteira').insert(item).select('id,codigo,ativo,tipo,strike,vencimento,preco_entrada,adicionado_em').single().then(function (res) {
+      if (res.error) { dizer('Não foi possível adicionar à carteira: ' + res.error.message, true); return; }
+      carteira.push(res.data); aposAdicionar();
+    });
+  } else { carteira.push(item); gravarLocalCart(); aposAdicionar(); }
+}
+function removerCarteira(cod) {
+  var it = carteira.filter(function (x) { return x.codigo === cod; })[0];
+  if (!it) return;
+  function ap() { carteira = carteira.filter(function (x) { return x.codigo !== cod; }); gravarLocalCart(); renderCarteira(); renderizar(); }
+  if (usaBanco && it.id) sb.from('opcoes_carteira').delete().eq('id', it.id).then(function (res) { if (res.error) { dizer('Não foi possível remover: ' + res.error.message, true); return; } ap(); });
+  else ap();
+}
+// Cotação atual de cada opção da carteira: consulta a cadeia de cada ativo-objeto envolvido
+function atualizarPrecosCarteira() {
+  var ativos = [];
+  carteira.forEach(function (x) { if (ativos.indexOf(x.ativo) === -1) ativos.push(x.ativo); });
+  if (!ativos.length) { renderCarteira(); return Promise.resolve(); }
+  return Promise.all(ativos.map(function (a) {
+    return fetch(FN + '?ticker=' + encodeURIComponent(a) + '&todas=1').then(function (r) { return r.json(); }).catch(function () { return null; });
+  })).then(function (rs) {
+    var mapa = {}, ok = false;
+    rs.forEach(function (j) {
+      if (!j || !j.vencimentos) return;
+      ok = true;
+      j.vencimentos.forEach(function (v) { v.calls.concat(v.puts).forEach(function (s) { mapa[s[0]] = { preco: s[4], aio: s[2] === 'I' ? 'ITM' : (s[2] === 'A' ? 'ATM' : 'OTM'), dist: s[3] === null ? null : s[3] * 100 }; }); });
+    });
+    if (ok) precosCart = mapa;
+    renderCarteira();
+  });
+}
+function renderCarteira() {
+  document.getElementById('cart-n').textContent = '(' + carteira.length + ')';
+  document.getElementById('cart-info').textContent = usaBanco ? 'Salva na sua conta' : 'Salva somente neste navegador (entre no site para salvar na conta)';
+  var el = document.getElementById('tab-cart');
+  if (!carteira.length) { el.innerHTML = '<div class="vazio">Nenhuma opção na carteira. Use o botão + na tabela de opções para adicionar.</div>'; return; }
+  var ord = carteira.slice().sort(function (a, b) { return String(a.vencimento || '').localeCompare(String(b.vencimento || '')) || a.codigo.localeCompare(b.codigo); });
+  var t = '<table><thead><tr><th>Ticker</th><th>Tipo</th><th>Ativo-objeto</th><th>Vencimento</th><th>Strike</th><th>Preço de entrada</th><th>Cotação atual</th><th>Variação desde a entrada</th><th>ITM / ATM / OTM</th><th></th></tr></thead><tbody>';
+  ord.forEach(function (x) {
+    var c = precosCart[x.codigo], atual = c ? c.preco : null, ent = x.preco_entrada === null || x.preco_entrada === undefined ? null : Number(x.preco_entrada);
+    var v = atual !== null && atual !== undefined && ent > 0 ? (atual / ent - 1) * 100 : null;
+    t += '<tr><td><b>' + esc(x.codigo) + '</b></td><td><span class="tp ' + x.tipo + '">' + (x.tipo === 'call' ? 'Call' : 'Put') + '</span></td><td>' + esc(x.ativo) + '</td><td>' + fmtData(x.vencimento) + '</td><td>R$ ' + fmt(Number(x.strike), 2) + '</td><td>' + (ent === null ? '—' : 'R$ ' + fmt(ent, 2)) + '</td><td>' + (atual === null || atual === undefined ? '—' : 'R$ ' + fmt(atual, 2)) + '</td><td class="' + (v > 0 ? 'pos' : (v < 0 ? 'neg' : '')) + '">' + fmtPs(v) + '</td><td>' + (c ? '<span class="aio ' + c.aio + '">' + c.aio + '</span>' : '—') + '</td><td><button type="button" class="rm" data-rm-cart="' + esc(x.codigo) + '" title="Remover da carteira">×</button></td></tr>';
+  });
+  el.innerHTML = t + '</tbody></table>';
+}
 var dados = null, ordem = { col: 'strike', dir: 1 }, tickerAtual = '', carregando = false, timer = null;
 function esc(t) { return String(t === undefined || t === null ? '' : t).split('&').join('&amp;').split('<').join('&lt;'); }
 function fmt(v, d) { return v === null || v === undefined || isNaN(v) ? '—' : v.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }); }
@@ -19981,7 +20067,7 @@ function linhas() {
   if (!v) return [];
   var tipo = document.getElementById('f-tipo').value, aio = document.getElementById('f-aio').value, out = [];
   var lotes = Math.floor(qtdAcoes() / 100);
-  function add(arr, t) { arr.forEach(function (s) { var call = t === 'call'; out.push({ ticker: s[0], tipo: t, strike: s[1], aio: s[2] === 'I' ? 'ITM' : (s[2] === 'A' ? 'ATM' : 'OTM'), dist: s[3] === null ? null : s[3] * 100, preco: s[4], n: s[7], lotes: call ? lotes : null, premio: call && s[4] !== null ? lotes * 100 * s[4] : null, yld: call && s[4] !== null && lotes > 0 && dados.ativo.preco > 0 ? (lotes * 100 * s[4]) / (lotes * 100 * dados.ativo.preco) * 100 : null, exerc: call ? lotes * 100 * s[1] : null }); }); }
+  function add(arr, t) { arr.forEach(function (s) { var call = t === 'call'; out.push({ ticker: s[0], tipo: t, strike: s[1], aio: s[2] === 'I' ? 'ITM' : (s[2] === 'A' ? 'ATM' : 'OTM'), dist: s[3] === null ? null : s[3] * 100, preco: s[4], n: s[7], venc: v.data, lotes: call ? lotes : null, premio: call && s[4] !== null ? lotes * 100 * s[4] : null, yld: call && s[4] !== null && lotes > 0 && dados.ativo.preco > 0 ? (lotes * 100 * s[4]) / (lotes * 100 * dados.ativo.preco) * 100 : null, exerc: call ? lotes * 100 * s[1] : null }); }); }
   if (tipo !== 'put') add(v.calls, 'call');
   if (tipo !== 'call') add(v.puts, 'put');
   if (aio) out = out.filter(function (r) { return r.aio === aio; });
@@ -20003,12 +20089,14 @@ function renderizar() {
   ca.hidden = false; ct.hidden = false;
   document.getElementById('resumo').innerHTML = '<div><div class="r">Ativo-objeto</div><div class="n">' + esc(a.ticker) + '</div></div><div><div class="r">Cotação atual</div><div class="n">R$ ' + fmt(a.preco, 2) + '</div></div><div><div class="r">Variação no dia</div><div class="m ' + (a.variacao > 0 ? 'pos' : (a.variacao < 0 ? 'neg' : '')) + '">' + fmtPs(a.variacao === null ? null : a.variacao * 100) + '</div></div>' +
     (venc ? '<div><div class="r">Vencimento</div><div class="m">' + fmtData(venc.data) + ' <small style="font-weight:500;color:var(--ink-soft);">(' + venc.diasCorridos + ' dias corridos)</small></div></div>' : '') + '<div><div class="r">Cotação em</div><div class="m">' + esc(a.data || '—') + '</div></div>' + (qa > 0 ? '<div><div class="r">Posição</div><div class="m">' + fmt(qa, 0) + ' ações <small style="font-weight:500;color:var(--ink-soft);">(' + fmt(lt, 0) + ' lote(s) de 100' + (qa % 100 ? '; sobram ' + (qa % 100) : '') + ')</small></div></div><div><div class="r">Valor da posição</div><div class="m">R$ ' + fmt(qa * (a.preco || 0), 2) + '</div></div>' : '');
-  var rs = linhas(), cab = [['ticker', 'Ticker'], ['tipo', 'Tipo'], ['preco', 'Cotação atual'], ['strike', 'Strike'], ['dist', 'Distância do strike (%)'], ['n', 'Nº de negociações'], ['aio', 'ITM / ATM / OTM']];
+  var rs = linhas(); ULT_LINHAS = rs;
+  var cab = [['ticker', 'Ticker'], ['tipo', 'Tipo'], ['preco', 'Cotação atual'], ['strike', 'Strike'], ['dist', 'Distância do strike (%)'], ['n', 'Nº de negociações'], ['aio', 'ITM / ATM / OTM']];
   var qa = qtdAcoes(), lt = Math.floor(qa / 100);
   if (qa > 0) cab = cab.concat([['premio', 'Prêmio total da venda coberta (R$)'], ['yld', 'Yield sobre o prêmio (%)'], ['exerc', 'Valor se exercida (R$)']]);
+  cab.push(['add', '']);
   var t = '<table><thead><tr>' + cab.map(function (c) { return '<th data-ord="' + c[0] + '">' + c[1] + (ordem.col === c[0] ? (ordem.dir > 0 ? ' ▲' : ' ▼') : '') + '</th>'; }).join('') + '</tr></thead><tbody>';
   rs.forEach(function (r) {
-    t += '<tr><td><b>' + esc(r.ticker) + '</b></td><td><span class="tp ' + r.tipo + '">' + (r.tipo === 'call' ? 'Call' : 'Put') + '</span></td><td>' + (r.preco === null ? '—' : 'R$ ' + fmt(r.preco, 2)) + '</td><td>R$ ' + fmt(r.strike, 2) + '</td><td class="' + (r.dist > 0 ? 'pos' : (r.dist < 0 ? 'neg' : '')) + '">' + fmtPs(r.dist) + '</td><td>' + (r.n === null || r.n === undefined ? '—' : fmt(r.n, 0)) + '</td><td><span class="aio ' + r.aio + '">' + r.aio + '</span></td>' + (qa > 0 ? '<td>' + (r.premio === null ? '—' : '<b>R$ ' + fmt(r.premio, 2) + '</b>') + '</td><td>' + (r.yld === null ? '—' : fmt(r.yld, 2) + '%') + '</td><td>' + (r.exerc === null ? '—' : 'R$ ' + fmt(r.exerc, 2)) + '</td>' : '') + '</tr>';
+    t += '<tr><td><b>' + esc(r.ticker) + '</b></td><td><span class="tp ' + r.tipo + '">' + (r.tipo === 'call' ? 'Call' : 'Put') + '</span></td><td>' + (r.preco === null ? '—' : 'R$ ' + fmt(r.preco, 2)) + '</td><td>R$ ' + fmt(r.strike, 2) + '</td><td class="' + (r.dist > 0 ? 'pos' : (r.dist < 0 ? 'neg' : '')) + '">' + fmtPs(r.dist) + '</td><td>' + (r.n === null || r.n === undefined ? '—' : fmt(r.n, 0)) + '</td><td><span class="aio ' + r.aio + '">' + r.aio + '</span></td>' + (qa > 0 ? '<td>' + (r.premio === null ? '—' : '<b>R$ ' + fmt(r.premio, 2) + '</b>') + '</td><td>' + (r.yld === null ? '—' : fmt(r.yld, 2) + '%') + '</td><td>' + (r.exerc === null ? '—' : 'R$ ' + fmt(r.exerc, 2)) + '</td>' : '') + '<td>' + (naCarteira(r.ticker) ? '<button type="button" class="btn-mais ok" disabled title="Já está na carteira teórica">✓</button>' : '<button type="button" class="btn-mais" data-add="' + esc(r.ticker) + '" title="Adicionar à carteira teórica">+</button>') + '</td></tr>';
   });
   t += '</tbody></table>';
   document.getElementById('tabela').innerHTML = rs.length ? '<div class="msg" style="margin-bottom:8px;">' + rs.length + ' série(s) exibida(s). Clique no título de uma coluna para ordenar.</div>' + t : '<div class="vazio">Nenhuma série para os filtros selecionados.' + (document.getElementById('f-todas').checked ? '' : ' Marque "Incluir séries sem negociação" para ver todas as séries listadas.') + '</div>';
@@ -20019,15 +20107,19 @@ document.getElementById('in-ticker').addEventListener('keydown', function (e) { 
 document.getElementById('in-qtd').addEventListener('input', function () { try { localStorage.setItem('cr_opcoes_qtd', this.value); } catch (e) {} renderizar(); });
 document.getElementById('f-todas').addEventListener('change', function () { if (tickerAtual) buscar(true); });
 document.getElementById('tabela').addEventListener('click', function (e) {
+  var bt = e.target.closest ? e.target.closest('[data-add]') : null;
+  if (bt) { adicionarCarteira(ULT_LINHAS.filter(function (r) { return r.ticker === bt.getAttribute('data-add'); })[0]); return; }
   var th = e.target.closest ? e.target.closest('th[data-ord]') : null;
-  if (!th) return;
+  if (!th || th.getAttribute('data-ord') === 'add') return;
   var c = th.getAttribute('data-ord');
   ordem = { col: c, dir: ordem.col === c ? -ordem.dir : 1 };
   renderizar();
 });
-setInterval(function () { if (!document.hidden && tickerAtual) buscar(false); }, 60000);
+document.getElementById('tab-cart').addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('[data-rm-cart]') : null; if (b) removerCarteira(b.getAttribute('data-rm-cart')); });
+setInterval(function () { if (document.hidden) return; if (tickerAtual) buscar(false); if (carteira.length) atualizarPrecosCarteira(); }, 60000);
 try { var uq = localStorage.getItem('cr_opcoes_qtd'); if (uq) document.getElementById('in-qtd').value = uq; } catch (e) {}
 try { var ult = localStorage.getItem('cr_opcoes_ticker'); if (ult) { document.getElementById('in-ticker').value = ult; buscar(true); } } catch (e) {}
+iniciarCarteira();
 <\/script>
 </body>
 </html>`);
