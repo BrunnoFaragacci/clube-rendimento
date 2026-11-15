@@ -19854,6 +19854,7 @@ setInterval(function () { if (!document.hidden) atualizar(); }, INTERVALO_MS);
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Opções — Clube do Rendimento</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/dist/umd/supabase.min.js" referrerpolicy="no-referrer"><\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -19909,6 +19910,9 @@ tbody tr:nth-child(even) td{background:#FAFAFA;}
 .sec small{font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink-soft);}
 .rm{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:16px;padding:0 6px;border-radius:6px;}
 .rm:hover{background:#FDECEC;color:var(--red);}
+#card-ativo{scroll-margin-top:60px;}
+.tb-acoes th:nth-child(2),.tb-acoes td:nth-child(2){text-align:right;}
+.tb-acoes tr.sel td{background:#EAEAEA!important;}
 @media print{.nav,.barra{display:none!important;}}
 </style>
 </head>
@@ -19934,6 +19938,17 @@ tbody tr:nth-child(even) td{background:#FAFAFA;}
       <label class="chk" id="c-todas" hidden><input type="checkbox" id="f-todas"> Incluir séries sem negociação</label>
     </div>
     <p class="msg" id="msg" style="margin-top:10px;"></p>
+  </div>
+
+  <div class="card" id="card-acoes">
+    <div class="sec"><span>Carteira do cliente <span id="acoes-n"></span></span><small id="acoes-info"></small></div>
+    <div class="barra">
+      <button type="button" class="btn" id="btn-subir">Subir carteira em Excel</button>
+      <input type="file" id="in-arq" accept=".xlsx,.xls,.csv" hidden>
+      <button type="button" class="btn" id="btn-limpar-acoes" hidden>Remover carteira</button>
+    </div>
+    <p class="msg" id="msg-arq" style="margin:10px 0;"></p>
+    <div class="tabela" id="tab-acoes"></div>
   </div>
 
   <div class="card" id="card-ativo" hidden><div class="resumo" id="resumo"></div></div>
@@ -20116,9 +20131,107 @@ document.getElementById('tabela').addEventListener('click', function (e) {
   renderizar();
 });
 document.getElementById('tab-cart').addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('[data-rm-cart]') : null; if (b) removerCarteira(b.getAttribute('data-rm-cart')); });
+// ── Carteira do cliente: leitura da planilha de posição consolidada e listagem das ações ──
+var ACOES = [], ACOES_ARQ = '', ACAO_SEL = '';
+function numBR(v) {
+  if (typeof v === 'number') return isNaN(v) ? null : v;
+  var t = String(v === undefined || v === null ? '' : v).split('R$').join('').split(' ').join('').trim();
+  if (!t) return null;
+  if (t.indexOf(',') !== -1) t = t.split('.').join('').replace(',', '.');
+  var n = Number(t);
+  return isNaN(n) ? null : n;
+}
+function extrairAcoes(linhas) {
+  var secao = '', achouSecao = false, cab = null, mapa = {};
+  linhas.forEach(function (r) {
+    var a = String(r[0] === undefined || r[0] === null ? '' : r[0]).trim();
+    if (a.indexOf('%|') !== -1) { secao = a.split('%|')[1].trim(); achouSecao = true; cab = null; return; }
+    if (a.toLowerCase() === 'ativo') {
+      cab = {};
+      r.forEach(function (c, k) {
+        var h = String(c === undefined || c === null ? '' : c).trim();
+        if (/^qtd[. ]*total$/i.test(h)) cab.qtd = k;
+        else if (/^pre.{1,3}o m.dio$/i.test(h)) cab.pm = k;
+        else if (/^.ltima cota/i.test(h)) cab.cot = k;
+        else if (/^posi/i.test(h)) cab.pos = k;
+      });
+      return;
+    }
+    if (!cab || cab.qtd === undefined) return;
+    if (achouSecao && !(/^a.{1,3}es$/i.test(secao) || /renda vari/i.test(secao))) return;
+    var tk = a.toUpperCase();
+    if (!/^[A-Z]{4}[0-9]{1,2}[A-Z]?$/.test(tk)) return;
+    var q = numBR(r[cab.qtd]);
+    if (q === null || !(q > 0)) return;
+    var x = mapa[tk] || (mapa[tk] = { ticker: tk, qtd: 0, pm: null, cot: null, pos: 0 });
+    x.qtd += q;
+    if (cab.pm !== undefined) x.pm = numBR(r[cab.pm]);
+    if (cab.cot !== undefined) x.cot = numBR(r[cab.cot]);
+    if (cab.pos !== undefined) x.pos += numBR(r[cab.pos]) || 0;
+  });
+  return Object.keys(mapa).map(function (k) { return mapa[k]; });
+}
+function dizerArq(t, erro) { var m = document.getElementById('msg-arq'); m.textContent = t || ''; m.className = 'msg' + (erro ? ' erro' : ''); }
+function lerArquivoCarteira(arq) {
+  if (!arq) return;
+  if (!window.XLSX) { dizerArq('Não foi possível carregar o leitor de planilhas. Verifique a conexão e tente novamente.', true); return; }
+  var fr = new FileReader();
+  fr.onerror = function () { dizerArq('Não foi possível ler o arquivo.', true); };
+  fr.onload = function () {
+    try {
+      var pasta = XLSX.read(new Uint8Array(fr.result), { type: 'array' }), achadas = [];
+      for (var k = 0; k < pasta.SheetNames.length && !achadas.length; k++) {
+        achadas = extrairAcoes(XLSX.utils.sheet_to_json(pasta.Sheets[pasta.SheetNames[k]], { header: 1, raw: true, defval: '' }));
+      }
+      if (!achadas.length) { dizerArq('Nenhuma ação foi encontrada na planilha. Utilize a posição consolidada exportada pela XP.', true); return; }
+      ACOES = achadas; ACOES_ARQ = arq.name; ACAO_SEL = '';
+      try { localStorage.setItem('cr_opcoes_acoes', JSON.stringify({ arq: ACOES_ARQ, acoes: ACOES })); } catch (e) {}
+      dizerArq('');
+      renderAcoes();
+    } catch (e) { dizerArq('Não foi possível interpretar a planilha.', true); }
+  };
+  fr.readAsArrayBuffer(arq);
+}
+function renderAcoes() {
+  var el = document.getElementById('tab-acoes'), btnL = document.getElementById('btn-limpar-acoes');
+  document.getElementById('acoes-n').textContent = ACOES.length ? '(' + ACOES.length + ')' : '';
+  document.getElementById('acoes-info').textContent = ACOES.length ? ACOES_ARQ : '';
+  btnL.hidden = !ACOES.length;
+  if (!ACOES.length) { el.innerHTML = '<p class="vazio">Nenhuma carteira carregada. Suba a planilha de posição consolidada para listar as ações do cliente.</p>'; return; }
+  var ord = ACOES.slice().sort(function (a, b) { return b.pos - a.pos; }), tot = 0;
+  var h = '<table class="tb-acoes"><thead><tr><th>Ativo</th><th>Quantidade</th><th>Preço médio</th><th>Última cotação</th><th>Posição (R$)</th><th></th></tr></thead><tbody>';
+  ord.forEach(function (x) {
+    tot += x.pos;
+    h += '<tr' + (x.ticker === ACAO_SEL ? ' class="sel"' : '') + '><td><b>' + esc(x.ticker) + '</b></td><td>' + fmt(x.qtd, 0) + '</td><td>' + (x.pm !== null ? 'R$ ' + fmt(x.pm, 2) : '—') + '</td><td>' + (x.cot !== null ? 'R$ ' + fmt(x.cot, 2) : '—') + '</td><td>' + (x.pos ? 'R$ ' + fmt(x.pos, 2) : '—') + '</td><td><button type="button" class="btn" data-analisar="' + esc(x.ticker) + '">Consultar opções</button></td></tr>';
+  });
+  h += '<tr><td><b>Total</b></td><td></td><td></td><td></td><td><b>R$ ' + fmt(tot, 2) + '</b></td><td></td></tr></tbody></table>';
+  el.innerHTML = h;
+}
+function analisarAcao(tk) {
+  var x = ACOES.filter(function (a) { return a.ticker === tk; })[0];
+  if (!x) return;
+  ACAO_SEL = tk;
+  document.getElementById('in-ticker').value = tk;
+  var q = document.getElementById('in-qtd');
+  q.value = Math.round(x.qtd).toLocaleString('pt-BR');
+  try { localStorage.setItem('cr_opcoes_qtd', q.value); } catch (e) {}
+  renderAcoes();
+  buscar(true);
+  setTimeout(function () { var c = document.getElementById('card-ativo'); if (c && !c.hidden) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 1200);
+}
+function iniciarAcoes() {
+  try { var g = JSON.parse(localStorage.getItem('cr_opcoes_acoes') || 'null'); if (g && Array.isArray(g.acoes)) { ACOES = g.acoes; ACOES_ARQ = g.arq || ''; } } catch (e) {}
+  renderAcoes();
+  var inp = document.getElementById('in-arq');
+  document.getElementById('btn-subir').addEventListener('click', function () { inp.value = ''; inp.click(); });
+  inp.addEventListener('change', function () { lerArquivoCarteira(inp.files && inp.files[0]); });
+  document.getElementById('btn-limpar-acoes').addEventListener('click', function () { ACOES = []; ACOES_ARQ = ''; ACAO_SEL = ''; try { localStorage.removeItem('cr_opcoes_acoes'); } catch (e) {} dizerArq(''); renderAcoes(); });
+  document.getElementById('tab-acoes').addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('[data-analisar]') : null; if (b) analisarAcao(b.getAttribute('data-analisar')); });
+}
 setInterval(function () { if (document.hidden) return; if (tickerAtual) buscar(false); if (carteira.length) atualizarPrecosCarteira(); }, 60000);
 try { var uq = localStorage.getItem('cr_opcoes_qtd'); if (uq) document.getElementById('in-qtd').value = uq; } catch (e) {}
 try { var ult = localStorage.getItem('cr_opcoes_ticker'); if (ult) { document.getElementById('in-ticker').value = ult; buscar(true); } } catch (e) {}
+iniciarAcoes();
 iniciarCarteira();
 <\/script>
 </body>
