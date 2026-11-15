@@ -17566,7 +17566,7 @@ document.getElementById('btn-diagnostico').addEventListener('click', abrirDiagno
 // ── Visão do cliente: o cliente cadastrado pelo assessor (conta com e-mail verificado) vê, somente para leitura, a própria consolidação ──
 var MODO_CLIENTE = false, MINHAS = [], MINHA_IDX = 0;
 function bloquearEdicao() {
-  Array.prototype.forEach.call(document.querySelectorAll('#conteudo input, #conteudo select, #conteudo textarea'), function (e) { if (e.id !== 'in-busca') e.disabled = true; });
+  Array.prototype.forEach.call(document.querySelectorAll('#conteudo input, #conteudo select, #conteudo textarea'), function (e) { if (e.id !== 'in-busca' && e.id !== 'in-aporte') e.disabled = true; });
 }
 function renderFaixaCliente() {
   var el = document.getElementById('faixa-cliente'), bt = document.getElementById('btn-minha-carteira');
@@ -18283,6 +18283,42 @@ function donutLista(partes, rotCentro) {
   s += '<text x="100" y="96" text-anchor="middle" class="r">' + esc(rotCentro) + '</text><text x="100" y="116" text-anchor="middle" class="t">' + esc(fmtCompacto(tot)) + '</text></svg>';
   return '<div class="centro">' + s + '</div>' + partes.map(function (p, i) { return '<div class="leg"><span><i style="background:' + CINZAS[i % CINZAS.length] + '"></i>' + esc(p.r) + '</span><b>' + fmtP(tot > 0 ? p.v / tot * 100 : 0, 1) + '</b></div>'; }).join('');
 }
+// ── Novo aporte: distribui o valor entre as classes abaixo do alvo do perfil, proporcionalmente à defasagem de cada uma ──
+function calcAporte(valor, pi) {
+  var T = R.total + valor;
+  var linhas = R.linhas.map(function (l) {
+    var alvo = l.alvo[pi] || 0, def = Math.max(0, alvo / 100 * T - l.valor);
+    return { nome: l.nome, valor: l.valor, atual: l.atual, alvo: alvo, def: def, aporte: 0 };
+  });
+  var sd = soma(linhas, function (x) { return x.def; });
+  linhas.forEach(function (x) {
+    x.aporte = sd > 0 ? valor * x.def / sd : 0;
+    x.aposPct = T > 0 ? (x.valor + x.aporte) / T * 100 : 0;
+  });
+  return { total: T, linhas: linhas, n: linhas.filter(function (x) { return x.aporte > 0.005; }).length };
+}
+function htmlAporte(pi) {
+  var perfil = R.matriz.perfis[pi].nome, bruto = String(ST.aporte || '').trim(), v = bruto === '' ? null : numExtrato(bruto);
+  var h = '<div class="barra-sl" style="gap:10px;margin-bottom:10px;"><label for="in-aporte" class="rot-sl">Valor do novo aporte (R$)</label><input type="text" id="in-aporte" class="in-crit" style="max-width:170px;text-align:right;" value="' + esc(bruto) + '" placeholder="Ex.: 50.000,00" autocomplete="off"><span style="font-size:12.5px;color:var(--ink-soft);">Referência: ' + esc(perfil) + '</span></div>';
+  if (bruto === '') return h + '<p class="nota">Informe o valor do aporte para ver como distribuí-lo entre as classes de ativos abaixo do alvo do perfil.</p>';
+  if (v === null || !(v > 0)) return h + '<p class="nota" style="color:var(--red);">Informe um valor maior que zero.</p>';
+  var c = calcAporte(v, pi);
+  var ord = c.linhas.slice().sort(function (a, b) { return b.aporte - a.aporte || b.def - a.def; });
+  var t = '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Classe</th><th>Atual (R$)</th><th>Atual (%)</th><th>Alvo (%)</th><th>Aporte sugerido (R$)</th><th>% do aporte</th><th>Após o aporte (%)</th><th>Diferença para o alvo (p.p.)</th></tr></thead><tbody>';
+  ord.forEach(function (x, i) {
+    var dif = x.aposPct - x.alvo;
+    t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(x.nome) + '</td><td>' + fmtBRL(x.valor) + '</td><td>' + fmtP(x.atual) + '</td><td>' + fmtP(x.alvo) + '</td><td>' + (x.aporte > 0.005 ? '<b>' + fmtBRL(x.aporte) + '</b>' : '—') + '</td><td>' + (x.aporte > 0.005 ? fmtP(x.aporte / v * 100, 1) : '—') + '</td><td>' + fmtP(x.aposPct) + '</td><td class="' + clsv(dif) + '">' + fmtPs(dif, 2) + '</td></tr>';
+  });
+  t += '<tr class="total"><td class="e">Total</td><td>' + fmtBRL(R.total) + '</td><td>' + fmtP(soma(c.linhas, function (x) { return x.atual; })) + '</td><td>' + fmtP(soma(c.linhas, function (x) { return x.alvo; })) + '</td><td>' + fmtBRL(v) + '</td><td>100,0%</td><td>' + fmtP(soma(c.linhas, function (x) { return x.aposPct; })) + '</td><td></td></tr></tbody></table></div>';
+  var res = c.n ? '<p class="resumo">O aporte de ' + fmtBRL(v) + ' é distribuído em ' + c.n + (c.n === 1 ? ' classe' : ' classes') + ' abaixo do alvo do ' + esc(perfil) + ', proporcionalmente à defasagem de cada uma. Patrimônio após o aporte: ' + fmtBRL(c.total) + '.</p>' : '<p class="resumo">Nenhuma classe está abaixo do alvo do ' + esc(perfil) + '; não há defasagem para direcionar o aporte.</p>';
+  return h + res + t + '<p class="nota">A defasagem de cada classe é calculada sobre o patrimônio após o aporte (valor-alvo menos o valor atual). Classes acima do alvo não recebem recursos. Valores de referência para a decisão do assessor; não consideram liquidez, tributação nem limites de concentração.</p>';
+}
+document.addEventListener('change', function (ev) {
+  if (ev.target && ev.target.id === 'in-aporte') { ST.aporte = ev.target.value; if (D && R) render(); }
+});
+document.addEventListener('keydown', function (ev) {
+  if (ev.key === 'Enter' && ev.target && ev.target.id === 'in-aporte') ev.target.blur();
+});
 var TETOS = {}, XPALVO = {}, XPALVO_EM = '';   // preço teto informado pelo usuário (por código) e preço alvo da carteira recomendada da XP
 function carregarAlvosXP() {
   if (!sb) return;
@@ -18469,6 +18505,7 @@ PAGINAS.alocacao = function () {
   h += tile('t5', 'Régua de perfis', reg, 'clique para comparar');
   h += tile('t7', 'Atual x alvo do ' + esc(perfis[pi].nome), cmp);
   h += tile('t12', 'Carteira comparada ao ' + esc(perfis[pi].nome), t + aus);
+  h += tile('t12', 'Novo aporte', htmlAporte(pi), 'distribui o valor nas classes abaixo do alvo do perfil');
   h += tile('t6', 'Por estratégia', donutDim('est', 'total'), 'clique para filtrar');
   h += tile('t6', 'Por instrumento', barrasDim('instr'), 'clique para filtrar');
   return h + '</div>';
