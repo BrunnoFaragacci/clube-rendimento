@@ -17231,7 +17231,7 @@ function celulaArquivo(nome) {
   return '<br><button type="button" class="btn btn-peq" data-baixar-arq="' + esc(nome) + '">⬇ Baixar original</button>' + est;
 }
 // ── Diagnóstico de carteira em PDF (formato paisagem, uma página por tema; gerado em nova janela para "Salvar como PDF") ──
-var DG_CORES = ['#111111', '#3D3D3D', '#6B6B6B', '#939393', '#B8B8B8', '#D6D6D6', '#EAEAEA'];
+var DG_CORES = ['#BC863E', '#BFBFBF', '#D9A566', '#757982', '#E6CEC4', '#8A5F26', '#3D3936'];
 var DG_BLOCOS = [['Renda Fixa', ['pos', 'infl', 'pre']], ['Internacional', ['grv', 'grf']], ['Renda Variável', ['rvb']], ['Fundos Listados', ['listados']], ['Alternativos', ['alt']], ['Multimercado', ['multi']]];
 var DG_MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 function dgDataExtenso(ref) { return ref.d + ' de ' + DG_MESES[ref.m - 1] + ' de ' + ref.a; }
@@ -17243,10 +17243,10 @@ function dgDonut(partes, rotCentro, valCentro) {
   partes.forEach(function (p, i) {
     var f = tot > 0 ? p.v / tot : 0;
     if (f <= 0) return;
-    s += '<circle cx="100" cy="100" r="' + raio + '" fill="none" stroke="' + DG_CORES[i % DG_CORES.length] + '" stroke-width="30" stroke-dasharray="' + (f * circ).toFixed(2) + ' ' + (circ - f * circ).toFixed(2) + '" stroke-dashoffset="' + (-acc * circ).toFixed(2) + '"/>';
+    s += '<circle cx="100" cy="100" r="' + raio + '" fill="none" stroke="' + DG_CORES[i % DG_CORES.length] + '" stroke-width="32" stroke-dasharray="' + (f * circ).toFixed(2) + ' ' + (circ - f * circ).toFixed(2) + '" stroke-dashoffset="' + (-acc * circ).toFixed(2) + '"/>';
     acc += f;
   });
-  s += '</g><text x="100" y="96" text-anchor="middle" class="rc">' + esc(rotCentro) + '</text><text x="100" y="116" text-anchor="middle" class="vc">' + esc(valCentro) + '</text></svg>';
+  s += '</g><text x="100" y="97" text-anchor="middle" class="rc">' + esc(rotCentro) + '</text><text x="100" y="114" text-anchor="middle" class="vc">' + esc(valCentro) + '</text></svg>';
   var leg = '<div class="leg-dg">' + partes.map(function (p, i) {
     return '<div><span><i style="background:' + DG_CORES[i % DG_CORES.length] + '"></i>' + esc(p.r) + '</span><b>' + dgPct(tot > 0 ? p.v / tot * 100 : 0, 1) + '</b></div>';
   }).join('') + '</div>';
@@ -17256,14 +17256,14 @@ function dgBarras(lista, total, max) {
   max = max || 10;
   var vis = lista.slice(0, max), resto = lista.slice(max), mx = Math.max.apply(null, vis.map(function (x) { return x.v; }).concat([1]));
   var h = '<div class="barras-dg">' + vis.map(function (x) {
-    return '<div class="lb"><div class="nm">' + esc(x.r) + '</div><div class="tr"><div class="fl" style="width:' + Math.max(x.v / mx * 100, 1.5).toFixed(1) + '%"></div></div><div class="vl"><b>' + dgPct(total > 0 ? x.v / total * 100 : 0, 2) + '</b><small>' + fmtRS(x.v) + '</small></div></div>';
+    return '<div class="lb"><div class="nm">' + esc(x.r) + '</div><div class="tr"><div class="fl" style="width:' + Math.max(x.v / mx * 100, 1.8).toFixed(1) + '%"></div></div><div class="vl"><b>' + dgPct(total > 0 ? x.v / total * 100 : 0, 2) + '</b><small>' + fmtRS(x.v) + '</small></div></div>';
   }).join('') + '</div>';
   if (resto.length) h += '<div class="mais">+ ' + resto.length + ' outros (' + dgPct(total > 0 ? soma(resto, function (x) { return x.v; }) / total * 100 : 0, 2) + ')</div>';
   return h;
 }
 function dgKpis(itens) {
   return '<div class="kpis-dg">' + itens.map(function (k, i) {
-    return '<div class="kp' + (i === 0 ? ' pri' : '') + '"><span class="kr">' + esc(k.r) + '</span><b>' + esc(k.v) + '</b><small>' + esc(k.s || '') + '</small></div>';
+    return '<div class="kp' + (i === 0 ? ' pri' : '') + '"><span class="kr">' + esc(k.r) + '</span><b' + (k.vm ? ' class="vm"' : '') + '>' + esc(k.v) + '</b><small>' + esc(k.s || '') + '</small>' + (i === 0 ? '<u></u>' : '') + '</div>';
   }).join('') + '</div>';
 }
 function dgAgrupar(itens, fn) {
@@ -17290,19 +17290,19 @@ function dgDados() {
   return d;
 }
 function dgSlide(o) {
-  return '<section class="slide"><header class="topo"><span>Diagnóstico de carteira</span><b>Clube do Rendimento</b></header>' +
+  return '<section class="slide"><header class="topo"><span>Assessoria de investimentos</span><span class="logo"><i>CR</i><b>Clube do Rendimento</b></span></header>' +
     '<h1>DIAGNÓSTICO</h1><h2>' + esc(o.sub) + '</h2>' + (o.resumo ? '<p class="resumo">' + o.resumo + '</p>' : '') +
     '<div class="corpo">' + o.corpo + '</div>' + (o.seguinte ? '<p class="seguinte">A seguir: ' + esc(o.seguinte) + '</p>' : '') +
     '<footer class="rodape"><span>' + esc(o.cliente) + ' · ' + fmtRS(o.tot) + ' · ' + esc(o.perfil) + '</span><span>Clube do Rendimento · ' + o.data + ' · página @@N@@ de @@T@@</span></footer></section>';
 }
-function dgSecao(t) { return '<div class="sec">' + esc(t) + '</div>'; }
+function dgSecao(t, dir) { return '<div class="sec"><span><i></i>' + esc(t) + '</span>' + (dir ? '<em>' + esc(dir) + '</em>' : '') + '</div>'; }
 function dgSlides(d) {
   var S = [], base = { cliente: d.cliente, tot: d.tot, perfil: d.rotPerfil, data: d.dataCurta };
   function add(sub, resumo, corpo, seguinte) { S.push(dgSlide({ sub: sub, resumo: resumo, corpo: corpo, seguinte: seguinte, cliente: base.cliente, tot: base.tot, perfil: base.perfil, data: base.data })); }
   var tot = d.tot, pi = d.pi, perfis = R.matriz.perfis;
 
   // capa
-  S.push('<section class="slide capa"><div class="faixa"></div><div class="cc"><div class="marca">Clube do Rendimento</div><h1 class="gr">DIAGNÓSTICO<br>DE CARTEIRA</h1><div class="cli">' + esc(d.cliente) + '</div>' +
+  S.push('<section class="slide capa"><div class="faixa"></div><div class="logo logo-capa"><i>CR</i><b>Clube do Rendimento</b></div><div class="cc"><h1 class="gr">DIAGNÓSTICO<br>DE CARTEIRA</h1><div class="cli">' + esc(d.cliente) + '</div>' +
     '<div class="lin-capa"><span>Patrimônio analisado</span> <b>' + fmtRS(tot) + '</b></div><div class="lin-capa"><span>Perfil de investimento</span> <b>' + esc(d.rotPerfil) + '</b></div>' +
     (d.assessor ? '<div class="lin-capa"><span>Assessor</span> <b>' + esc(d.assessor) + '</b></div>' : '') + '<div class="lin-capa"><span>Posições em</span> <b>' + esc(d.dataExt) + '</b></div></div></section>');
 
@@ -17310,20 +17310,21 @@ function dgSlides(d) {
   var maior = R.linhas.slice().sort(function (a, b) { return Math.abs((b.alvo[pi] || 0) - b.atual) - Math.abs((a.alvo[pi] || 0) - a.atual); })[0];
   var ajMaior = maior ? (maior.alvo[pi] || 0) - maior.atual : 0;
   add('CARTEIRA DE ' + d.cliente.toUpperCase(), esc(fmtRS(tot)) + ' em ' + d.n + ' posições, com ' + dgPct(d.ader, 0) + ' de aderência ao ' + esc(d.perfil) + '.' + (maior ? ' O maior ajuste está em ' + esc(maior.nome) + ' (' + (ajMaior > 0 ? '+' : '') + fmtP(ajMaior, 1) + ' p.p.).' : ''),
-    dgKpis([{ r: 'Patrimônio', v: fmtRS(tot), s: d.n + ' posições' }, { r: 'Aderência ao perfil', v: dgPct(d.ader, 1), s: 'desvio de ' + dgPct(100 - d.ader, 1) }, { r: 'Liquidez imediata', v: dgPct(tot > 0 ? d.liqD0 / tot * 100 : 0, 1), s: fmtRS(d.liqD0) },
+    dgKpis([{ r: 'Patrimônio', v: fmtRS(tot), s: d.n + ' posições' }, { r: 'Aderência ao perfil', v: dgPct(d.ader, 1), s: 'desvio de ' + dgPct(100 - d.ader, 1), vm: d.ader < 80 }, { r: 'Liquidez imediata', v: dgPct(tot > 0 ? d.liqD0 / tot * 100 : 0, 1), s: fmtRS(d.liqD0) },
       { r: 'Isento de IR', v: dgPct(tot > 0 ? d.isento / tot * 100 : 0, 1), s: fmtRS(d.isento) }, { r: 'Previdência', v: dgPct(tot > 0 ? d.prev / tot * 100 : 0, 1), s: fmtRS(d.prev) }, { r: 'Offshore', v: dgPct(tot > 0 ? d.off / tot * 100 : 0, 1), s: 'alvo ' + dgPct(R.linhas.filter(function (l) { return l.chave === 'grv' || l.chave === 'grf'; }).reduce(function (a, l) { return a + (l.alvo[pi] || 0); }, 0), 1) }]) +
-    dgSecao('Distribuição por classe') + dgDonut(d.blocos, 'total', fmtCompacto(tot)), 'alocação atual e régua de perfis, instrumentos, custódia e liquidez.');
+    dgSecao('Distribuição por classe', d.blocos.length + ' blocos de risco') + dgDonut(d.blocos, 'total', fmtCompacto(tot)), 'alocação atual e régua de perfis, instrumentos, custódia e liquidez.');
 
   // alocação atual e régua de perfis
   var mp = R.maisProximo, linhasOrd = R.linhas.slice().sort(function (a, b) { return b.atual - a.atual; });
   var adh = perfis.map(function (p, i) { return 100 - R.realocar[i]; });
-  var mnA = Math.min.apply(null, adh), mxA = Math.max.apply(null, adh), baseA = Math.max(0, mnA - 20), altura = 190;
-  var colunas = '<div class="cols-dg">' + perfis.map(function (p, i) {
-    var h = Math.max(6, (adh[i] - baseA) / ((mxA - baseA) || 1) * altura);
+  var mnA = Math.min.apply(null, adh), mxA = Math.max.apply(null, adh), baseA = Math.max(0, Math.floor((mnA - 8) / 5) * 5), topoA = Math.min(100, Math.ceil((mxA + 3) / 5) * 5), altura = 200;
+  var ticks = [0, 1, 2, 3].map(function (k) { return topoA - (topoA - baseA) * k / 3; });
+  var colunas = '<div class="cols-wrap"><div class="ejey" style="height:' + altura + 'px">' + ticks.map(function (v) { return '<span>' + Math.round(v) + '%</span>'; }).join('') + '</div><div class="cols-dg">' + perfis.map(function (p, i) {
+    var h = Math.max(8, (adh[i] - baseA) / ((topoA - baseA) || 1) * altura);
     return '<div class="col-dg' + (i === mp ? ' dest' : '') + (i === pi ? ' inf' : '') + '"><b>' + dgPct(adh[i], 1) + '</b><div class="bar" style="height:' + h.toFixed(0) + 'px"></div><span>' + esc(p.nome) + '</span><small>' + dgPct(R.realocar[i], 1) + ' a mudar</small>' + (i === pi ? '<em>' + (perfilSel === null ? 'MAIS PRÓXIMO' : 'INFORMADO') + '</em>' : (i === mp ? '<em>MAIS PRÓXIMO</em>' : '')) + '</div>';
-  }).join('') + '</div>';
+  }).join('') + '</div></div>';
   add('ALOCAÇÃO ATUAL E A RÉGUA DE PERFIS', 'Alinhar ao ' + esc(d.perfil) + ' exige realocar ' + dgPct(R.realocar[pi], 1) + ' do patrimônio (' + esc(fmtRS(R.realocar[pi] / 100 * tot)) + '). O perfil mais parecido com a carteira é o ' + esc(perfis[mp].nome) + ', com aderência de ' + dgPct(adh[mp], 1) + '.',
-    dgKpis([{ r: 'Mais parecida com', v: perfis[mp].nome, s: 'aderência de ' + dgPct(adh[mp], 1) }, { r: 'Aderência', v: dgPct(d.ader, 1), s: 'ao ' + d.perfil }, { r: 'Patrimônio a realocar', v: fmtRS(R.realocar[pi] / 100 * tot), s: dgPct(R.realocar[pi], 1) + ' da carteira' }]) +
+    dgKpis([{ r: 'Mais parecida com', v: perfis[mp].nome, s: 'aderência de ' + dgPct(adh[mp], 1) }, { r: 'Aderência', v: dgPct(d.ader, 1), s: 'ao ' + d.perfil, vm: d.ader < 80 }, { r: 'Patrimônio a realocar', v: fmtRS(R.realocar[pi] / 100 * tot), s: dgPct(R.realocar[pi], 1) + ' da carteira' }]) +
     '<div class="duas"><div>' + dgSecao('Distribuição atual por classe') + dgBarras(linhasOrd.map(function (l) { return { r: l.nome, v: l.valor }; }).filter(function (x) { return x.v > 0; }), tot, 10) + '</div><div>' + dgSecao('Aderência a cada perfil') + colunas + '</div></div>',
     'a mesma alocação comparada, classe a classe, com cada um dos perfis.');
 
@@ -17441,56 +17442,62 @@ function dgSlides(d) {
   var prio = al.filter(function (a) { return a.n !== 'baixo'; }).sort(function (a, b) { return ord[a.n] - ord[b.n]; }).slice(0, 4);
   var itensP = prio.map(function (a, i) { return '<div class="pr"><span class="num">' + (i + 1) + '</span><div><h3>' + esc(a.t) + '</h3><p>' + esc(a.x) + '</p></div></div>'; }).join('');
   itensP += '<div class="pr"><span class="num">' + (prio.length + 1) + '</span><div><h3>Acompanhamento periódico</h3><p>Revisões periódicas com relatório de posição e ajuste de rota conforme mudanças de cenário ou de circunstância.</p></div></div>';
-  S.push('<section class="slide capa fim"><div class="faixa"></div><div class="cc"><div class="marca">Próximos passos</div><h1 class="gr">PRIORIDADES<br>DE AJUSTE.</h1><div class="prs">' + itensP + '</div>' + (d.assessor ? '<div class="assin"><b>' + esc(d.assessor) + '</b><span>Clube do Rendimento · ' + esc(d.dataCurta) + '</span></div>' : '<div class="assin"><span>Clube do Rendimento · ' + esc(d.dataCurta) + '</span></div>') +
-    '<p class="aviso-dg">Material de caráter meramente informativo, elaborado com base nos arquivos carregados. Não constitui oferta, solicitação ou recomendação de compra ou venda de qualquer ativo.</p></div></section>');
+  S.push('<section class="slide capa fim"><div class="faixa"></div><div class="cc"><div class="marca">P R Ó X I M O S &nbsp; P A S S O S</div><h1 class="gr">PRIORIDADES<br>DE AJUSTE.</h1><div class="prs">' + itensP + '</div>' + (d.assessor ? '<div class="assin"><b>' + esc(d.assessor) + '</b><span>Clube do Rendimento</span></div>' : '<div class="assin"><span>Clube do Rendimento</span></div>') +
+    '<p class="aviso-dg">Material de caráter meramente informativo, elaborado com base nos arquivos carregados. Não constitui oferta, solicitação ou recomendação de compra ou venda de qualquer ativo.</p></div><div class="rod-fim">Clube do Rendimento · ' + esc(d.dataCurta) + '</div></section>');
   return S;
 }
 function dgCss() {
   return [
     '@page{size:A4 landscape;margin:0}',
     '*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}',
-    'body{font-family:Inter,"Segoe UI",Arial,sans-serif;background:#d9d9d9;color:#111;font-size:12px}',
+    'body{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;background:#d9d9d9;color:#1A1A1A;font-size:10pt}',
     '.barra-tela{position:sticky;top:0;z-index:9;background:#111;color:#fff;padding:10px 18px;display:flex;gap:14px;align-items:center;font-size:13px}',
     '.barra-tela button{background:#fff;color:#111;border:none;border-radius:8px;padding:8px 16px;font-weight:700;font-family:inherit;cursor:pointer}',
-    '.slide{width:297mm;height:210mm;background:#fff;margin:14px auto;padding:11mm 15mm 0;position:relative;overflow:hidden;page-break-after:always;break-after:page;box-shadow:0 2px 14px rgba(0,0,0,.25)}',
-    '.topo{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#5C5C5C;border-bottom:1px solid #D6D6D6;padding-bottom:6px}.topo b{font-size:13px;color:#111;letter-spacing:.02em}',
-    'h1{font-weight:300;font-size:30px;letter-spacing:.02em;margin-top:12px;color:#111;line-height:1}',
-    'h2{font-weight:700;font-size:10.5px;letter-spacing:.2em;color:#6B6B6B;margin:5px 0 12px}',
-    '.resumo{font-size:12.5px;line-height:1.5;max-width:250mm;margin-bottom:12px}',
+    '.slide{width:297mm;height:210mm;background:#fff;margin:14px auto;padding:12mm 15mm 0;position:relative;overflow:hidden;page-break-after:always;break-after:page;box-shadow:0 2px 14px rgba(0,0,0,.25)}',
+    '.topo{display:flex;justify-content:space-between;align-items:flex-end;font-size:7.5pt;color:#1A1A1A;border-bottom:2px solid #DCDCDC;padding-bottom:2.6mm;height:10mm}',
+    '.logo{display:flex;align-items:center;gap:2mm}.logo i{font-style:normal;background:#000;color:#fff;font-weight:700;font-size:7.5pt;width:5.4mm;height:5.4mm;border-radius:1.1mm;display:flex;align-items:center;justify-content:center;letter-spacing:-.02em}.logo b{font-weight:400;font-size:10.5pt;letter-spacing:-.01em;color:#000}',
+    'h1{font-weight:300;font-size:22pt;letter-spacing:.01em;color:#666;margin-top:3.2mm;line-height:1.05}',
+    'h2{font-weight:700;font-size:8.2pt;letter-spacing:.2em;color:#BC863E;margin:1mm 0 6mm}',
+    '.resumo{font-size:10pt;line-height:1.5;max-width:255mm;margin-bottom:6.5mm}',
     '.corpo{position:relative}',
-    '.seguinte{position:absolute;left:15mm;bottom:17mm;font-size:10px;font-style:italic;color:#6B6B6B}',
-    '.rodape{position:absolute;left:15mm;right:15mm;bottom:0;height:11mm;border-top:1px solid #D6D6D6;display:flex;justify-content:space-between;align-items:center;font-size:9.5px;color:#6B6B6B}',
-    '.kpis-dg{display:flex;border-top:1px solid #E2E2E2;border-bottom:1px solid #E2E2E2;margin-bottom:14px}',
-    '.kp{flex:1;padding:9px 12px;border-left:1px solid #E2E2E2}.kp:first-child{border-left:none;padding-left:0}',
-    '.kr{display:block;font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:#6B6B6B;font-weight:600}',
-    '.kp b{display:block;font-size:19px;font-weight:500;margin:4px 0 2px}.kp small{font-size:9.5px;color:#6B6B6B}.kp.pri b{color:#111}.kp.pri .kr{color:#111}',
-    '.sec{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-left:3px solid #111;padding-left:8px;margin:2px 0 10px}',
-    '.duas{display:grid;grid-template-columns:1fr 1fr;gap:10mm}',
-    '.donut-dg{display:flex;align-items:center;gap:6mm}.rosca{width:62mm;height:62mm;flex:none}.rc{font-size:8px;fill:#5C5C5C}.vc{font-size:13px;font-weight:600;fill:#111}',
-    '.leg-dg{flex:1;font-size:11px}.leg-dg div{display:flex;justify-content:space-between;gap:10px;padding:3.5px 0}.leg-dg i{display:inline-block;width:9px;height:9px;margin-right:7px;border:1px solid #bbb}.leg-dg b{font-weight:700}',
-    '.barras-dg .lb{display:grid;grid-template-columns:42% 1fr 22%;gap:8px;align-items:center;padding:3px 0}.nm{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
-    '.tr{height:10px;background:#F1F1F1;border-radius:5px}.fl{height:10px;background:#3D3D3D;border-radius:5px}',
-    '.vl{text-align:right;line-height:1.15}.vl b{display:block;font-size:11.5px}.vl small{font-size:8.5px;color:#6B6B6B}',
-    '.mais{font-size:10px;color:#6B6B6B;margin-top:5px}',
-    '.cols-dg{display:flex;align-items:flex-end;justify-content:space-around;height:245px;border-bottom:1px solid #ccc}',
-    '.col-dg{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;width:19%;text-align:center}.col-dg b{font-size:11.5px;margin-bottom:4px}.col-dg .bar{width:100%;background:#D6D6D6;border-radius:3px 3px 0 0}',
-    '.col-dg.dest .bar{background:#111}.col-dg.inf .bar{box-shadow:inset 0 0 0 2px #111;background:#fff}.col-dg.dest.inf .bar{background:#111}',
-    '.col-dg span{font-size:10.5px;margin-top:6px}.col-dg small{font-size:8.5px;color:#6B6B6B}.col-dg em{font-style:normal;font-size:8px;font-weight:700;letter-spacing:.08em;color:#111;margin-top:2px}',
-    '.tab-dg{width:100%;border-collapse:collapse;font-size:11px}.tab-dg th{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:#6B6B6B;font-weight:600;text-align:right;padding:6px 8px;border-bottom:1.5px solid #111}',
-    '.tab-dg td{text-align:right;padding:6px 8px;border-bottom:1px solid #E2E2E2;white-space:nowrap}.tab-dg td.e{white-space:normal}.tab-dg .e{text-align:left}.tab-dg .dest{background:#EDEDED;font-weight:700}.tab-dg tr.tot td{font-weight:700;border-top:1.5px solid #111}',
-    '.nt{font-size:9.5px;color:#6B6B6B;margin-top:8px}.vazio-dg{font-size:11px;color:#6B6B6B}',
-    '.grade-al{display:grid;grid-template-columns:repeat(3,1fr);gap:8mm}.card-al{border:1px solid #DADADA;border-left:4px solid #B8B8B8;padding:12px 14px;height:62mm;position:relative;overflow:hidden}',
-    '.card-al.alto{border-left-color:#111}.card-al.medio{border-left-color:#6B6B6B}.card-al h4{font-size:13.5px;margin-bottom:6px}.card-al p{font-size:10.5px;line-height:1.45;color:#333}.card-al .nv{position:absolute;left:14px;bottom:10px;font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}',
-    '.graf-dg{width:100%;height:auto;max-width:250mm}',
-    '.capa{background:#0b0b0b;color:#fff;padding:0;box-shadow:none}.capa .faixa{position:absolute;left:0;top:0;bottom:0;width:6mm;background:#939393}',
-    '.capa .cc{position:absolute;left:34mm;top:48mm;right:30mm}.capa .marca{font-size:15px;letter-spacing:.06em;font-weight:600;margin-bottom:22mm;color:#fff}',
-    '.capa h1.gr{font-size:44px;color:#fff;line-height:1.08;margin:0 0 7mm;font-weight:300}.capa .cli{font-size:19px;font-weight:700;color:#D6D6D6;margin-bottom:12mm}',
-    '.lin-capa{font-size:12px;color:#B8B8B8;margin:4mm 0}.lin-capa b{color:#fff}',
-    '.fim .marca{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:#B8B8B8;margin-bottom:10mm;font-weight:600}.fim .cc{top:30mm}',
-    '.prs{display:grid;grid-template-columns:1fr 1fr;gap:7mm 14mm;margin-top:6mm}.pr{display:flex;gap:10px}.pr .num{flex:none;width:22px;height:22px;border-radius:50%;background:#D6D6D6;color:#111;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;margin-top:1px}',
-    '.pr h3{font-size:14px;margin-bottom:4px;color:#fff}.pr p{font-size:10.5px;line-height:1.5;color:#B8B8B8}',
-    '.assin{margin-top:12mm;border-top:1px solid #444;width:70mm;padding-top:5mm}.assin b{display:block;font-size:14px;color:#fff}.assin span{font-size:10.5px;color:#B8B8B8}',
-    '.aviso-dg{margin-top:10mm;font-size:9px;color:#8a8a8a;max-width:200mm}',
+    '.seguinte{position:absolute;left:15mm;bottom:15mm;font-size:8.5pt;font-style:italic;color:#8E8E8E}',
+    '.rodape{position:absolute;left:15mm;right:15mm;bottom:0;height:12mm;border-top:1px solid #E2E2E2;display:flex;justify-content:space-between;align-items:center;font-size:8.5pt;color:#9A9A9A}',
+    '.kpis-dg{display:flex;border-top:2px solid #EFEFEF;border-bottom:2px solid #EFEFEF;margin-bottom:6mm}',
+    '.kp{flex:1;padding:3.4mm 4mm 4.4mm;border-left:2px solid #EFEFEF;position:relative}.kp:first-child{border-left:none;padding-left:0}',
+    '.kr{display:block;font-size:7.2pt;letter-spacing:.16em;text-transform:uppercase;color:#8E8E8E;font-weight:600}.kp.pri .kr{color:#8A5F26}',
+    '.kp b{display:block;font-size:16pt;font-weight:400;margin:1.4mm 0 .6mm;color:#1A1A1A}.kp b.vm{color:#9B2C1E}.kp small{font-size:8pt;color:#8E8E8E}',
+    '.kp u{position:absolute;left:0;bottom:1.6mm;width:9mm;height:.7mm;background:#BC863E}',
+    '.sec{display:flex;justify-content:space-between;align-items:center;font-size:8.6pt;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin:0 0 4.5mm}',
+    '.sec i{display:inline-block;width:1.4mm;height:3.4mm;background:#BC863E;border-radius:.6mm;margin-right:2.4mm;vertical-align:-.6mm}.sec em{font-style:normal;font-weight:400;color:#8E8E8E;letter-spacing:.08em}',
+    '.duas{display:grid;grid-template-columns:1fr 1fr;gap:12mm}',
+    '.donut-dg{display:flex;align-items:center;gap:10mm}.rosca{width:76mm;height:76mm;flex:none}.duas .rosca{width:58mm;height:58mm}.rc{font-size:7.5pt;fill:#555}.vc{font-size:10.5pt;font-weight:700;fill:#1A1A1A}',
+    '.leg-dg{flex:1;font-size:9.2pt}.leg-dg div{display:flex;justify-content:space-between;gap:10px;padding:2.4mm 0}.duas .leg-dg div{padding:1.7mm 0}.leg-dg i{display:inline-block;width:3mm;height:3mm;margin-right:2.4mm;border-radius:.6mm;vertical-align:-.4mm}.leg-dg b{font-weight:700}',
+    '.barras-dg .lb{display:grid;grid-template-columns:36% 1fr 17%;gap:3mm;align-items:center;padding:.9mm 0}.nm{font-size:9.2pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.tr{height:3mm}.fl{height:3mm;background:#BC863E;border-radius:1.6mm}',
+    '.vl{text-align:right;line-height:1.1}.vl b{display:block;font-size:9pt}.vl small{font-size:7.1pt;color:#8E8E8E}',
+    '.mais{font-size:8pt;color:#8E8E8E;margin-top:2mm}',
+    '.cols-wrap{display:flex;gap:3mm;align-items:flex-end}.ejey{display:flex;flex-direction:column;justify-content:space-between;font-size:7.5pt;color:#8E8E8E;padding-bottom:12mm;width:9mm;text-align:right}',
+    '.cols-dg{flex:1;display:flex;align-items:flex-end;justify-content:space-around}',
+    '.col-dg{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;width:19%;text-align:center}.col-dg b{font-size:9.4pt;margin-bottom:1.5mm;color:#1A1A1A}.col-dg .bar{width:100%;background:#D8D8D8;border-radius:1mm 1mm 0 0}',
+    '.col-dg.dest .bar{background:#BC863E}.col-dg.dest b{color:#8A5F26}.col-dg.inf .bar{background:#fff;border:.35mm dashed #1A1A1A}.col-dg.dest.inf .bar{background:#BC863E;border:none}',
+    '.col-dg span{font-size:8.6pt;margin-top:2mm}.col-dg small{font-size:7pt;color:#8E8E8E}.col-dg em{font-style:normal;font-size:6.8pt;font-weight:700;letter-spacing:.08em;color:#8A5F26;margin-top:.8mm}',
+    '.tab-dg{width:100%;border-collapse:collapse;font-size:9pt}.tab-dg th{font-size:7.1pt;letter-spacing:.12em;text-transform:uppercase;color:#8E8E8E;font-weight:600;text-align:right;padding:2.2mm 2.4mm;border-bottom:1px solid #1A1A1A}',
+    '.tab-dg td{text-align:right;padding:2.3mm 2.4mm;border-bottom:1px solid #EAEAEA;white-space:nowrap}.tab-dg td.e{white-space:normal}.tab-dg .e{text-align:left}.tab-dg .dest{background:#FDF8F0;font-weight:700}.tab-dg th.dest{color:#8A5F26}.tab-dg tr.tot td{font-weight:700;border-top:1px solid #1A1A1A}',
+    '.nt{font-size:8pt;color:#8E8E8E;margin-top:3mm}.vazio-dg{font-size:9pt;color:#8E8E8E}',
+    '.grade-al{display:grid;grid-template-columns:repeat(3,1fr);gap:7mm}.card-al{border:1px solid #E6E6E6;border-left:1.2mm solid #3D3936;padding:5mm 5.5mm;height:59mm;position:relative;overflow:hidden}',
+    '.card-al.alto{border-left-color:#9B2C1E}.card-al.medio{border-left-color:#BC863E}.card-al h4{font-size:11.5pt;font-weight:600;margin-bottom:2.4mm}.card-al p{font-size:9.7pt;line-height:1.6}',
+    '.card-al .nv{position:absolute;left:5.5mm;bottom:4mm;font-size:7.8pt;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#3D3936}.card-al.alto .nv{color:#9B2C1E}.card-al.medio .nv{color:#BC863E}',
+    '.graf-dg{width:100%;height:auto;max-width:215mm}',
+    '.capa{background:#000;color:#fff;padding:0;box-shadow:none}.capa .faixa{position:absolute;left:0;top:0;bottom:0;width:5mm;background:#BC863E}',
+    '.logo-capa{position:absolute;left:29mm;top:50mm}.logo-capa i{background:#fff;color:#000}.logo-capa b{color:#fff;font-size:12pt}',
+    '.capa .cc{position:absolute;left:29mm;top:72mm;right:30mm}',
+    '.capa h1.gr{font-size:30pt;color:#fff;line-height:1.05;margin:0 0 6mm;font-weight:300;letter-spacing:.02em}.capa .cli{font-size:12.5pt;font-weight:700;color:#BC863E;margin-bottom:11mm}',
+    '.lin-capa{font-size:8.5pt;color:#9A9A9A;margin:3.4mm 0}.lin-capa b{color:#fff}',
+    '.fim .marca{font-size:7.6pt;letter-spacing:.1em;color:#BC863E;margin-bottom:8mm;font-weight:600}.fim .cc{top:36mm}',
+    '.prs{display:grid;grid-template-columns:1fr 1fr;gap:8mm 18mm;margin-top:9mm}.pr{display:flex;gap:3.2mm}.pr .num{flex:none;width:6.2mm;height:6.2mm;border-radius:50%;background:#BC863E;color:#fff;font-weight:700;font-size:8pt;display:flex;align-items:center;justify-content:center;margin-top:.4mm}',
+    '.pr h3{font-size:11pt;font-weight:600;margin-bottom:1.6mm;color:#fff}.pr p{font-size:8.6pt;line-height:1.55;color:#A8A8A8}',
+    '.assin{margin-top:12mm;border-top:1px solid #444;width:50mm;padding-top:4mm}.assin b{display:block;font-size:11pt;color:#BC863E}.assin span{font-size:8.5pt;color:#9A9A9A}',
+    '.aviso-dg{margin-top:9mm;font-size:7.6pt;color:#777;max-width:200mm}.rod-fim{position:absolute;left:29mm;bottom:11mm;font-size:7.6pt;color:#777}',
     '@media print{body{background:#fff}.barra-tela{display:none}.slide{margin:0;box-shadow:none}}'
   ].join('\\n');
 }
@@ -17501,7 +17508,7 @@ function abrirDiagnostico() {
   var d = dgDados(), slides = dgSlides(d), n = slides.length;
   var corpo = slides.map(function (s, i) { return s.split('@@N@@').join(String(i + 1)).split('@@T@@').join(String(n)); }).join('\\n');
   var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Diagnóstico — ' + esc(d.cliente) + '</title>' +
-    '<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"><style>' + dgCss() + '</' + 'style></head><body>' +
+    '<style>' + dgCss() + '</' + 'style></head><body>' +
     '<div class="barra-tela"><span>Diagnóstico de carteira · ' + n + ' páginas. Na janela de impressão, escolha <b>Salvar como PDF</b>, orientação <b>paisagem</b>, margens <b>nenhuma</b> e ative <b>Gráficos de segundo plano</b>.</span><button type="button" onclick="window.print()">Imprimir / Salvar como PDF</button></div>' + corpo + '</body></html>';
   w.document.open(); w.document.write(html); w.document.close();
   setTimeout(function () { try { w.focus(); w.print(); } catch (e) {} }, 1500);
