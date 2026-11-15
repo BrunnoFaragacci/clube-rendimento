@@ -18300,7 +18300,7 @@ function calcAporte(valor, pi) {
 function htmlAporte(pi) {
   var perfil = R.matriz.perfis[pi].nome, bruto = String(ST.aporte || '').trim(), v = bruto === '' ? null : numExtrato(bruto);
   var h = '<div class="barra-sl" style="gap:10px;margin-bottom:10px;"><label for="in-aporte" class="rot-sl">Valor do novo aporte (R$)</label><input type="text" id="in-aporte" class="in-crit" style="max-width:170px;text-align:right;" value="' + esc(bruto) + '" placeholder="Ex.: 50.000,00" autocomplete="off"><span style="font-size:12.5px;color:var(--ink-soft);">Referência: ' + esc(perfil) + '</span></div>';
-  if (bruto === '') return h + '<p class="nota">Informe o valor do aporte para ver como distribuí-lo entre as classes de ativos abaixo do alvo do perfil.</p>';
+  if (bruto === '') return h;
   if (v === null || !(v > 0)) return h + '<p class="nota" style="color:var(--red);">Informe um valor maior que zero.</p>';
   var c = calcAporte(v, pi);
   var ord = c.linhas.slice().sort(function (a, b) { return b.aporte - a.aporte || b.def - a.def; });
@@ -18310,8 +18310,8 @@ function htmlAporte(pi) {
     t += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(x.nome) + '</td><td>' + fmtBRL(x.valor) + '</td><td>' + fmtP(x.atual) + '</td><td>' + fmtP(x.alvo) + '</td><td>' + (x.aporte > 0.005 ? '<b>' + fmtBRL(x.aporte) + '</b>' : '—') + '</td><td>' + (x.aporte > 0.005 ? fmtP(x.aporte / v * 100, 1) : '—') + '</td><td>' + fmtP(x.aposPct) + '</td><td class="' + clsv(dif) + '">' + fmtPs(dif, 2) + '</td></tr>';
   });
   t += '<tr class="total"><td class="e">Total</td><td>' + fmtBRL(R.total) + '</td><td>' + fmtP(soma(c.linhas, function (x) { return x.atual; })) + '</td><td>' + fmtP(soma(c.linhas, function (x) { return x.alvo; })) + '</td><td>' + fmtBRL(v) + '</td><td>100,0%</td><td>' + fmtP(soma(c.linhas, function (x) { return x.aposPct; })) + '</td><td></td></tr></tbody></table></div>';
-  var res = c.n ? '<p class="resumo">O aporte de ' + fmtBRL(v) + ' é distribuído em ' + c.n + (c.n === 1 ? ' classe' : ' classes') + ' abaixo do alvo do ' + esc(perfil) + ', proporcionalmente à defasagem de cada uma. Patrimônio após o aporte: ' + fmtBRL(c.total) + '.</p>' : '<p class="resumo">Nenhuma classe está abaixo do alvo do ' + esc(perfil) + '; não há defasagem para direcionar o aporte.</p>';
-  return h + res + t + '<p class="nota">A defasagem de cada classe é calculada sobre o patrimônio após o aporte (valor-alvo menos o valor atual). Classes acima do alvo não recebem recursos. Valores de referência para a decisão do assessor; não consideram liquidez, tributação nem limites de concentração.</p>';
+  var res = c.n ? '' : '<p class="resumo">Nenhuma classe está abaixo do alvo do ' + esc(perfil) + '; não há defasagem para direcionar o aporte.</p>';
+  return h + res + t;
 }
 document.addEventListener('change', function (ev) {
   if (ev.target && ev.target.id === 'in-aporte') { ST.aporte = ev.target.value; if (D && R) render(); }
