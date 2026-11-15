@@ -15534,8 +15534,6 @@ body.modo-cliente .container > .sub{display:none;}
       <span id="status" style="font-size:12.5px;color:var(--ink-soft);">Nenhum arquivo carregado.</span>
       <span style="flex:1"></span>
       <button type="button" class="btn" id="btn-minha-carteira" data-minha-carteira="0" hidden>Ver minha carteira (como cliente)</button>
-      <button type="button" class="btn" id="btn-salvas">Carteiras salvas</button>
-      <button type="button" class="btn" id="btn-criterios">Critérios de crédito</button>
     </div>
   </div>
 
@@ -15560,8 +15558,6 @@ body.modo-cliente .container > .sub{display:none;}
       <button type="button" class="btn btn-primary" data-salvar="1">💾 Salvar carteira</button>
       <button type="button" class="btn btn-primary" id="btn-excel">⬇ Exportar Excel</button>
       <button type="button" class="btn btn-primary" id="btn-diagnostico" title="Gera o diagnóstico da carteira em formato de apresentação (paisagem), pronto para salvar em PDF">📄 Diagnóstico em PDF</button>
-      <button type="button" class="btn" id="btn-imprimir">Imprimir / salvar em PDF</button>
-      <button type="button" class="btn" data-aba="inst" id="btn-arquivos" title="Abre a aba Instituições, onde cada arquivo enviado pode ser baixado novamente">⬇ Arquivos enviados</button>
       <span class="msg-salvar" style="font-size:12.5px;"></span>
     </div>
     <div class="cab-rel" id="cab"></div>
@@ -18660,9 +18656,6 @@ document.getElementById('arq-carteira').addEventListener('change', function (ev)
 // impressão: todas as páginas do painel, em sequência
 window.addEventListener('beforeprint', function () { if (D && R) { ST.imprimir = true; render(); } });
 window.addEventListener('afterprint', function () { if (D && R) { ST.imprimir = false; render(); } });
-document.getElementById('btn-imprimir').addEventListener('click', function () { window.print(); });
-document.getElementById('btn-criterios').addEventListener('click', function () { abrirCriterios(); });
-document.getElementById('btn-salvas').addEventListener('click', function () { abrirSalvas(); });
 document.getElementById('btn-fechar-salvas').addEventListener('click', function () { abrirSalvas(false); });
 document.getElementById('btn-fechar-crit').addEventListener('click', function () { abrirCriterios(false); });
 iniciarCriterios();
