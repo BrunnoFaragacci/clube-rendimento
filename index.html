@@ -19864,7 +19864,7 @@ setInterval(function () { if (!document.hidden) atualizar(); }, INTERVALO_MS);
 body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-soft);color:var(--ink);min-height:100vh;font-size:14px;}
 .nav{background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;}
 .nav-brand{font-weight:700;font-size:15px;text-decoration:none;color:var(--ink);}
-.container{max-width:1180px;margin:0 auto;padding:22px 20px 40px;}
+.container{max-width:none;margin:0 auto;padding:22px 24px 40px;}
 .eyebrow{display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:600;margin-bottom:10px;}
 .eyebrow::before{content:"";width:18px;height:2px;background:var(--ink);display:inline-block;}
 h1{font-size:24px;font-weight:700;margin-bottom:4px;}
@@ -19887,11 +19887,11 @@ h1{font-size:24px;font-weight:700;margin-bottom:4px;}
 .resumo .n{font-size:26px;font-weight:700;line-height:1;}
 .resumo .m{font-size:16px;font-weight:600;line-height:1.1;}
 .pos{color:var(--green);}.neg{color:var(--red);}
-.tabela{overflow-x:auto;}
+.tabela{overflow:visible;}
 table{width:100%;border-collapse:collapse;font-size:13px;}
 th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;}
 th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left;}
-th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);font-weight:700;cursor:pointer;user-select:none;border-bottom:1.5px solid var(--ink);}
+th{position:sticky;top:48px;z-index:5;background:#fff;box-shadow:0 1.5px 0 var(--ink);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);font-weight:700;cursor:pointer;user-select:none;border-bottom:1.5px solid var(--ink);}
 th:hover{color:var(--ink);}
 tbody tr:nth-child(even) td{background:#FAFAFA;}
 .tp{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700;border:1.5px solid var(--ink);}
