@@ -19918,6 +19918,7 @@ tbody tr:nth-child(even) td{background:#FAFAFA;}
   <div class="card">
     <div class="barra">
       <div class="campo"><label for="in-ticker">Ticker do ativo</label><input type="text" id="in-ticker" placeholder="Ex.: BBAS3" autocomplete="off" maxlength="6"></div>
+      <div class="campo"><label for="in-qtd">Quantidade de ações</label><input type="text" id="in-qtd" placeholder="Ex.: 1.000" autocomplete="off" style="text-transform:none;min-width:130px;max-width:150px;"></div>
       <button type="button" class="btn pri" id="btn-buscar">Buscar</button>
       <div class="campo" id="c-venc" hidden><label for="f-venc">Vencimento</label><select id="f-venc"></select></div>
       <div class="campo" id="c-tipo" hidden><label for="f-tipo">Tipo</label><select id="f-tipo"><option value="">Call e put</option><option value="call">Call</option><option value="put">Put</option></select></div>
@@ -19930,7 +19931,7 @@ tbody tr:nth-child(even) td{background:#FAFAFA;}
   <div class="card" id="card-ativo" hidden><div class="resumo" id="resumo"></div></div>
   <div class="card" id="card-tab" hidden><div class="tabela" id="tabela"></div></div>
 
-  <p class="nota">Fonte: Opcoes.net.br, com atraso em relação ao mercado; os dados são atualizados automaticamente a cada 60 segundos. Cotação atual é o último preço negociado da série. Distância do strike: diferença percentual entre o strike e a cotação do ativo-objeto. ITM: opção dentro do dinheiro; ATM: no dinheiro; OTM: fora do dinheiro. Informação sem caráter de recomendação.</p>
+  <p class="nota">Fonte: Opcoes.net.br, com atraso em relação ao mercado; os dados são atualizados automaticamente a cada 60 segundos. Cotação atual é o último preço negociado da série. Distância do strike: diferença percentual entre o strike e a cotação do ativo-objeto. ITM: opção dentro do dinheiro; ATM: no dinheiro; OTM: fora do dinheiro. Venda coberta: considera lotes de 100 ações; prêmio total = lotes × 100 × último preço da call; valor se exercida = lotes × 100 × strike. Cálculo sem custos operacionais e sem considerar a liquidez da série. Informação sem caráter de recomendação.</p>
 </div>
 
 <script>
@@ -19969,12 +19970,18 @@ function montarVencimentos(manter) {
   sel.value = lista.some(function (v) { return v.data === manter; }) ? manter : (lista[0] ? lista[0].data : '');
   ['c-venc', 'c-tipo', 'c-aio', 'c-todas'].forEach(function (id) { document.getElementById(id).hidden = false; });
 }
+function qtdAcoes() {
+  var v = String(document.getElementById('in-qtd').value || '').split('.').join('').split(' ').join('').replace(',', '.');
+  var n = Number(v);
+  return isNaN(n) || n < 0 ? 0 : Math.floor(n);
+}
 function linhas() {
   if (!dados) return [];
   var v = dados.vencimentos.filter(function (x) { return x.data === document.getElementById('f-venc').value; })[0];
   if (!v) return [];
   var tipo = document.getElementById('f-tipo').value, aio = document.getElementById('f-aio').value, out = [];
-  function add(arr, t) { arr.forEach(function (s) { out.push({ ticker: s[0], tipo: t, strike: s[1], aio: s[2] === 'I' ? 'ITM' : (s[2] === 'A' ? 'ATM' : 'OTM'), dist: s[3] === null ? null : s[3] * 100, preco: s[4], n: s[7] }); }); }
+  var lotes = Math.floor(qtdAcoes() / 100);
+  function add(arr, t) { arr.forEach(function (s) { var call = t === 'call'; out.push({ ticker: s[0], tipo: t, strike: s[1], aio: s[2] === 'I' ? 'ITM' : (s[2] === 'A' ? 'ATM' : 'OTM'), dist: s[3] === null ? null : s[3] * 100, preco: s[4], n: s[7], lotes: call ? lotes : null, premio: call && s[4] !== null ? lotes * 100 * s[4] : null, exerc: call ? lotes * 100 * s[1] : null }); }); }
   if (tipo !== 'put') add(v.calls, 'call');
   if (tipo !== 'call') add(v.puts, 'put');
   if (aio) out = out.filter(function (r) { return r.aio === aio; });
@@ -19991,14 +19998,17 @@ function linhas() {
 function renderizar() {
   var ca = document.getElementById('card-ativo'), ct = document.getElementById('card-tab');
   if (!dados) { ca.hidden = true; ct.hidden = true; return; }
+  var qa = qtdAcoes(), lt = Math.floor(qa / 100);
   var a = dados.ativo, venc = dados.vencimentos.filter(function (x) { return x.data === document.getElementById('f-venc').value; })[0];
   ca.hidden = false; ct.hidden = false;
   document.getElementById('resumo').innerHTML = '<div><div class="r">Ativo-objeto</div><div class="n">' + esc(a.ticker) + '</div></div><div><div class="r">Cotação atual</div><div class="n">R$ ' + fmt(a.preco, 2) + '</div></div><div><div class="r">Variação no dia</div><div class="m ' + (a.variacao > 0 ? 'pos' : (a.variacao < 0 ? 'neg' : '')) + '">' + fmtPs(a.variacao === null ? null : a.variacao * 100) + '</div></div>' +
-    '<div><div class="r">Mínima · máxima</div><div class="m">' + fmt(a.minima, 2) + ' · ' + fmt(a.maxima, 2) + '</div></div>' + (venc ? '<div><div class="r">Vencimento</div><div class="m">' + fmtData(venc.data) + ' <small style="font-weight:500;color:var(--ink-soft);">(' + venc.diasCorridos + ' dias corridos)</small></div></div>' : '') + '<div><div class="r">Cotação em</div><div class="m">' + esc(a.data || '—') + '</div></div>';
+    '<div><div class="r">Mínima · máxima</div><div class="m">' + fmt(a.minima, 2) + ' · ' + fmt(a.maxima, 2) + '</div></div>' + (venc ? '<div><div class="r">Vencimento</div><div class="m">' + fmtData(venc.data) + ' <small style="font-weight:500;color:var(--ink-soft);">(' + venc.diasCorridos + ' dias corridos)</small></div></div>' : '') + '<div><div class="r">Cotação em</div><div class="m">' + esc(a.data || '—') + '</div></div>' + (qa > 0 ? '<div><div class="r">Posição</div><div class="m">' + fmt(qa, 0) + ' ações <small style="font-weight:500;color:var(--ink-soft);">(' + fmt(lt, 0) + ' lote(s) de 100' + (qa % 100 ? '; sobram ' + (qa % 100) : '') + ')</small></div></div><div><div class="r">Valor da posição</div><div class="m">R$ ' + fmt(qa * (a.preco || 0), 2) + '</div></div>' : '');
   var rs = linhas(), cab = [['ticker', 'Ticker'], ['tipo', 'Tipo'], ['preco', 'Cotação atual'], ['strike', 'Strike'], ['dist', 'Distância do strike (%)'], ['n', 'Nº de negociações'], ['aio', 'ITM / ATM / OTM']];
+  var qa = qtdAcoes(), lt = Math.floor(qa / 100);
+  if (qa > 0) cab = cab.concat([['lotes', 'Lotes de 100'], ['premio', 'Prêmio total da venda coberta (R$)'], ['exerc', 'Valor se exercida (R$)']]);
   var t = '<table><thead><tr>' + cab.map(function (c) { return '<th data-ord="' + c[0] + '">' + c[1] + (ordem.col === c[0] ? (ordem.dir > 0 ? ' ▲' : ' ▼') : '') + '</th>'; }).join('') + '</tr></thead><tbody>';
   rs.forEach(function (r) {
-    t += '<tr><td><b>' + esc(r.ticker) + '</b></td><td><span class="tp ' + r.tipo + '">' + (r.tipo === 'call' ? 'Call' : 'Put') + '</span></td><td>' + (r.preco === null ? '—' : 'R$ ' + fmt(r.preco, 2)) + '</td><td>R$ ' + fmt(r.strike, 2) + '</td><td class="' + (r.dist > 0 ? 'pos' : (r.dist < 0 ? 'neg' : '')) + '">' + fmtPs(r.dist) + '</td><td>' + (r.n === null || r.n === undefined ? '—' : fmt(r.n, 0)) + '</td><td><span class="aio ' + r.aio + '">' + r.aio + '</span></td></tr>';
+    t += '<tr><td><b>' + esc(r.ticker) + '</b></td><td><span class="tp ' + r.tipo + '">' + (r.tipo === 'call' ? 'Call' : 'Put') + '</span></td><td>' + (r.preco === null ? '—' : 'R$ ' + fmt(r.preco, 2)) + '</td><td>R$ ' + fmt(r.strike, 2) + '</td><td class="' + (r.dist > 0 ? 'pos' : (r.dist < 0 ? 'neg' : '')) + '">' + fmtPs(r.dist) + '</td><td>' + (r.n === null || r.n === undefined ? '—' : fmt(r.n, 0)) + '</td><td><span class="aio ' + r.aio + '">' + r.aio + '</span></td>' + (qa > 0 ? '<td>' + (r.lotes === null ? '—' : fmt(r.lotes, 0)) + '</td><td>' + (r.premio === null ? '—' : '<b>R$ ' + fmt(r.premio, 2) + '</b>') + '</td><td>' + (r.exerc === null ? '—' : 'R$ ' + fmt(r.exerc, 2)) + '</td>' : '') + '</tr>';
   });
   t += '</tbody></table>';
   document.getElementById('tabela').innerHTML = rs.length ? '<div class="msg" style="margin-bottom:8px;">' + rs.length + ' série(s) exibida(s). Clique no título de uma coluna para ordenar.</div>' + t : '<div class="vazio">Nenhuma série para os filtros selecionados.' + (document.getElementById('f-todas').checked ? '' : ' Marque "Incluir séries sem negociação" para ver todas as séries listadas.') + '</div>';
@@ -20006,6 +20016,7 @@ function renderizar() {
 document.getElementById('btn-buscar').addEventListener('click', function () { buscar(true); });
 document.getElementById('in-ticker').addEventListener('keydown', function (e) { if (e.key === 'Enter') buscar(true); });
 ['f-venc', 'f-tipo', 'f-aio'].forEach(function (id) { document.getElementById(id).addEventListener('change', renderizar); });
+document.getElementById('in-qtd').addEventListener('input', function () { try { localStorage.setItem('cr_opcoes_qtd', this.value); } catch (e) {} renderizar(); });
 document.getElementById('f-todas').addEventListener('change', function () { if (tickerAtual) buscar(true); });
 document.getElementById('tabela').addEventListener('click', function (e) {
   var th = e.target.closest ? e.target.closest('th[data-ord]') : null;
@@ -20015,6 +20026,7 @@ document.getElementById('tabela').addEventListener('click', function (e) {
   renderizar();
 });
 setInterval(function () { if (!document.hidden && tickerAtual) buscar(false); }, 60000);
+try { var uq = localStorage.getItem('cr_opcoes_qtd'); if (uq) document.getElementById('in-qtd').value = uq; } catch (e) {}
 try { var ult = localStorage.getItem('cr_opcoes_ticker'); if (ult) { document.getElementById('in-ticker').value = ult; buscar(true); } } catch (e) {}
 <\/script>
 </body>
