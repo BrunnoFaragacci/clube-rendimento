@@ -17601,7 +17601,7 @@ document.getElementById('btn-diagnostico').addEventListener('click', abrirDiagno
 // ── Visão do cliente: o cliente cadastrado pelo assessor (conta com e-mail verificado) vê, somente para leitura, a própria consolidação ──
 var MODO_CLIENTE = false, MINHAS = [], MINHA_IDX = 0;
 function bloquearEdicao() {
-  Array.prototype.forEach.call(document.querySelectorAll('#conteudo input, #conteudo select, #conteudo textarea'), function (e) { if (e.id !== 'in-busca' && e.id !== 'in-aporte' && e.id !== 'in-int-ticker' && e.id !== 'in-int-obs') e.disabled = true; });
+  Array.prototype.forEach.call(document.querySelectorAll('#conteudo input, #conteudo select, #conteudo textarea'), function (e) { if (e.id !== 'in-busca' && e.id !== 'in-aporte' && e.id !== 'in-int-ticker' && e.id !== 'in-int-obs' && e.id !== 'sel-int-classe') e.disabled = true; });
 }
 function renderFaixaCliente() {
   var el = document.getElementById('faixa-cliente'), bt = document.getElementById('btn-minha-carteira');
@@ -18373,20 +18373,23 @@ document.addEventListener('change', function (ev) {
 document.addEventListener('keydown', function (ev) {
   if (ev.key === 'Enter' && ev.target && ev.target.id === 'in-aporte') ev.target.blur();
 });
-// ── Ativos de interesse: lista por cliente, alimentada pelo assessor e pelo próprio cliente (tabela ativos_interesse) ──
-var INTERESSES = [], INT_ID = '', INT_COT = {}, INT_CARREGANDO = false, INT_MSG = '';
+// ── Ativos de interesse: lista por cliente e por classe, alimentada pelo assessor e pelo próprio cliente (tabela ativos_interesse) ──
+var INTERESSES = [], INT_ID = '', INT_COT = {}, INT_CARREGANDO = false, INT_MSG = '', INT_CLASSE = 'Renda Variável Brasil';
+var CLASSES_LISTADAS = ['Renda Variável Brasil', 'Fundos Listados', 'Global Renda Variável'];   // classes negociadas em bolsa (código de negociação e cotação)
 function clienteInteresse() { return MODO_CLIENTE ? ((MINHAS[MINHA_IDX] || {}).cliente_id || '') : (CLI.id || ''); }
 function simboloYahoo(tk) { return RE_TICKER_BR.test(tk) ? tk + '.SA' : tk; }
+function classesInteresse() { return R ? R.matriz.classes.map(function (c) { return c.nome; }) : []; }
+function interesseListado(x) { return CLASSES_LISTADAS.indexOf(x.classe) !== -1 || (!x.classe && /^[A-Z0-9.\\-]{1,12}$/.test(x.ticker)); }
 function carregarInteresses() {
   var id = clienteInteresse();
   if (!sb || !logado || !id) return;
   INT_CARREGANDO = true; INT_ID = id;
-  sb.from('ativos_interesse').select('id,ticker,observacao,origem,criado_em').eq('cliente_id', id).order('criado_em', { ascending: true }).then(function (r) {
+  sb.from('ativos_interesse').select('id,ticker,classe,observacao,origem,criado_em').eq('cliente_id', id).order('criado_em', { ascending: true }).then(function (r) {
     INT_CARREGANDO = false;
     if (clienteInteresse() !== id) return;
     if (r.error) { INT_MSG = 'Não foi possível carregar os ativos de interesse: ' + r.error.message; INTERESSES = []; if (D && R && ST.aba === 'alocacao') render(); return; }
     INTERESSES = r.data || [];
-    var syms = INTERESSES.map(function (x) { return simboloYahoo(x.ticker); });
+    var syms = INTERESSES.filter(interesseListado).map(function (x) { return simboloYahoo(x.ticker); });
     (syms.length ? buscarCotacoes(syms) : Promise.resolve({})).then(function (cot) { INT_COT = cot || {}; if (D && R && ST.aba === 'alocacao') render(); });
   });
 }
@@ -18394,31 +18397,44 @@ function htmlInteresses() {
   var id = clienteInteresse();
   if (!logado || !id) return '<p class="vazio">' + (logado ? 'Selecione um cliente no topo da página para cadastrar os ativos de interesse.' : 'Entre no site com a sua conta para cadastrar ativos de interesse.') + '</p>';
   if (INT_ID !== id && !INT_CARREGANDO) carregarInteresses();
-  var lista = INT_ID === id ? INTERESSES : [];
-  var h = '<div class="barra-sl" style="gap:8px;margin-bottom:10px;"><input type="text" id="in-int-ticker" class="in-crit" style="max-width:150px;text-transform:uppercase;" placeholder="Código (ex.: PETR4)" autocomplete="off"><input type="text" id="in-int-obs" class="in-crit" style="min-width:220px;flex:1;max-width:420px;" placeholder="Observação (opcional)" autocomplete="off"><button type="button" class="btn btn-peq" data-int-add="1">+ Adicionar</button></div>';
+  var classes = classesInteresse(), lista = INT_ID === id ? INTERESSES : [];
+  if (classes.indexOf(INT_CLASSE) === -1) INT_CLASSE = classes[0];
+  var listadaSel = CLASSES_LISTADAS.indexOf(INT_CLASSE) !== -1;
+  var h = '<div class="barra-sl" style="gap:8px;margin-bottom:10px;"><select id="sel-int-classe" title="Classe do ativo">' + classes.map(function (c) { return '<option value="' + esc(c) + '"' + (c === INT_CLASSE ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select>' +
+    '<input type="text" id="in-int-ticker" class="in-crit" style="' + (listadaSel ? 'max-width:150px;text-transform:uppercase;' : 'min-width:220px;max-width:300px;') + '" placeholder="' + (listadaSel ? 'Código (ex.: PETR4)' : 'Nome do ativo (ex.: Tesouro IPCA+ 2035)') + '" autocomplete="off">' +
+    '<input type="text" id="in-int-obs" class="in-crit" style="min-width:220px;flex:1;max-width:420px;" placeholder="Observação (opcional)" autocomplete="off"><button type="button" class="btn btn-peq" data-int-add="1">+ Adicionar</button></div>';
   if (INT_MSG) h += '<p class="card-sub" style="color:var(--red);margin:0 0 8px;">' + esc(INT_MSG) + '</p>';
   if (!lista.length) return h + '<p class="vazio">' + (INT_CARREGANDO ? 'Carregando...' : 'Nenhum ativo de interesse cadastrado.') + '</p>';
-  h += '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Ativo</th><th>Cotação</th><th>Preço alvo XP</th><th>Potencial</th><th class="e">Observação</th><th class="e">Adicionado por</th><th></th></tr></thead><tbody>';
-  lista.forEach(function (x, i) {
-    var c = INT_COT[simboloYahoo(x.ticker)], pr = c && typeof c.preco === 'number' ? c.preco : null, xp = XPALVO[x.ticker], up = pr && xp ? (xp.alvo / pr - 1) * 100 : null;
+  var ordem = lista.slice().sort(function (a, b) { var ia = classes.indexOf(a.classe), ib = classes.indexOf(b.classe); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });
+  h += '<div class="tabela-wrap"><table class="tb"><thead><tr><th class="e">Classe</th><th class="e">Ativo</th><th>Cotação</th><th>Preço alvo XP</th><th>Potencial</th><th class="e">Observação</th><th class="e">Adicionado por</th><th></th></tr></thead><tbody>';
+  ordem.forEach(function (x, i) {
+    var listado = interesseListado(x), c = listado ? INT_COT[simboloYahoo(x.ticker)] : null, pr = c && typeof c.preco === 'number' ? c.preco : null, xp = listado ? XPALVO[x.ticker] : null, up = pr && xp ? (xp.alvo / pr - 1) * 100 : null;
     var pode = !MODO_CLIENTE || x.origem === 'cliente';
-    h += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e"><b>' + esc(x.ticker) + '</b>' + (c && c.nome ? '<br><small>' + esc(c.nome) + '</small>' : '') + '</td><td>' + (pr !== null ? fmtBRL(pr) : '—') + '</td><td>' + (xp ? fmtBRL(xp.alvo) : '—') + '</td><td class="' + clsv(up) + '">' + (up !== null ? fmtPs(up, 1) : '—') + '</td><td class="e">' + esc(x.observacao || '') + '</td><td class="e">' + (x.origem === 'cliente' ? 'Cliente' : 'Assessor') + '</td><td>' + (pode ? '<button type="button" class="btn btn-peq" data-int-rm="' + esc(x.id) + '">Remover</button>' : '') + '</td></tr>';
+    h += '<tr class="' + (i % 2 ? 'zebra' : '') + '"><td class="e">' + esc(x.classe || '—') + '</td><td class="e"><b>' + esc(x.ticker) + '</b>' + (c && c.nome ? '<br><small>' + esc(c.nome) + '</small>' : '') + '</td><td>' + (pr !== null ? (c.moeda === 'USD' ? 'US$ ' + pr.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : fmtBRL(pr)) : '—') + '</td><td>' + (xp ? fmtBRL(xp.alvo) : '—') + '</td><td class="' + clsv(up) + '">' + (up !== null ? fmtPs(up, 1) : '—') + '</td><td class="e">' + esc(x.observacao || '') + '</td><td class="e">' + (x.origem === 'cliente' ? 'Cliente' : 'Assessor') + '</td><td>' + (pode ? '<button type="button" class="btn btn-peq" data-int-rm="' + esc(x.id) + '">Remover</button>' : '') + '</td></tr>';
   });
   return h + '</tbody></table></div>';
 }
 function adicionarInteresse() {
-  var id = clienteInteresse(), campo = document.getElementById('in-int-ticker'), obs = document.getElementById('in-int-obs');
-  if (!sb || !logado || !id || !campo) return;
-  var tk = String(campo.value || '').trim().toUpperCase();
+  var id = clienteInteresse(), campo = document.getElementById('in-int-ticker'), obs = document.getElementById('in-int-obs'), sel = document.getElementById('sel-int-classe');
+  if (!sb || !logado || !id || !campo || !sel) return;
+  var classe = sel.value, listada = CLASSES_LISTADAS.indexOf(classe) !== -1, bruto = String(campo.value || '').trim();
+  var tk = listada ? bruto.toUpperCase() : bruto;
+  INT_CLASSE = classe;
   function dizer(m) { INT_MSG = m; render(); }
-  if (!/^[A-Z0-9.\\-]{1,12}$/.test(tk)) { dizer('Informe um código válido, por exemplo PETR4 ou AAPL.'); return; }
-  if (INTERESSES.some(function (x) { return x.ticker === tk; })) { dizer(tk + ' já consta na lista.'); return; }
-  buscarCotacoes([simboloYahoo(tk)]).then(function (cot) {
-    if (!cot || !cot[simboloYahoo(tk)]) { dizer('Ativo "' + tk + '" não encontrado.'); return; }
-    return sb.from('ativos_interesse').insert({ cliente_id: id, ticker: tk, observacao: String(obs.value || '').trim() || null }).then(function (r) {
-      if (r.error) { dizer(r.error.code === '23505' ? tk + ' já consta na lista.' : 'Não foi possível adicionar: ' + r.error.message); return; }
+  if (classesInteresse().indexOf(classe) === -1) { dizer('Escolha uma das classes existentes.'); return; }
+  if (listada && !/^[A-Z0-9.\\-]{1,12}$/.test(tk)) { dizer('Informe um código válido, por exemplo PETR4 ou AAPL.'); return; }
+  if (!listada && (tk.length < 2 || tk.length > 80)) { dizer('Informe o nome do ativo (de 2 a 80 caracteres).'); return; }
+  if (INTERESSES.some(function (x) { return (x.classe || '') === classe && x.ticker.toLowerCase() === tk.toLowerCase(); })) { dizer(tk + ' já consta em ' + classe + '.'); return; }
+  function gravar() {
+    return sb.from('ativos_interesse').insert({ cliente_id: id, ticker: tk, classe: classe, observacao: String(obs.value || '').trim() || null }).then(function (r) {
+      if (r.error) { dizer(r.error.code === '23505' ? tk + ' já consta em ' + classe + '.' : 'Não foi possível adicionar: ' + r.error.message); return; }
       INT_MSG = ''; INT_ID = ''; carregarInteresses();
     });
+  }
+  if (!listada) { gravar(); return; }
+  buscarCotacoes([simboloYahoo(tk)]).then(function (cot) {
+    if (!cot || !cot[simboloYahoo(tk)]) { dizer('Ativo "' + tk + '" não encontrado.'); return; }
+    return gravar();
   });
 }
 function removerInteresse(rid) {
@@ -18437,6 +18453,13 @@ function aplicarAcaoInteresse(t) {
 }
 document.addEventListener('keydown', function (ev) {
   if (ev.key === 'Enter' && ev.target && (ev.target.id === 'in-int-ticker' || ev.target.id === 'in-int-obs')) adicionarInteresse();
+});
+document.addEventListener('change', function (ev) {
+  if (ev.target && ev.target.id === 'sel-int-classe') {
+    INT_CLASSE = ev.target.value;
+    var campo = document.getElementById('in-int-ticker'), listada = CLASSES_LISTADAS.indexOf(INT_CLASSE) !== -1;
+    if (campo) { campo.placeholder = listada ? 'Código (ex.: PETR4)' : 'Nome do ativo (ex.: Tesouro IPCA+ 2035)'; campo.style.textTransform = listada ? 'uppercase' : 'none'; campo.style.maxWidth = listada ? '150px' : '300px'; campo.style.minWidth = listada ? '' : '220px'; }
+  }
 });
 var TETOS = {}, XPALVO = {}, XPALVO_EM = '';   // preço teto informado pelo usuário (por código) e preço alvo da carteira recomendada da XP
 function carregarAlvosXP() {
