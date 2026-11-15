@@ -15559,6 +15559,7 @@ body.modo-cliente .container > .sub{display:none;}
     <div class="barra-acoes" style="margin:0 0 14px;">
       <button type="button" class="btn btn-primary" data-salvar="1">💾 Salvar carteira</button>
       <button type="button" class="btn btn-primary" id="btn-excel">⬇ Exportar Excel</button>
+      <button type="button" class="btn btn-primary" id="btn-diagnostico" title="Gera o diagnóstico da carteira em formato de apresentação (paisagem), pronto para salvar em PDF">📄 Diagnóstico em PDF</button>
       <button type="button" class="btn" id="btn-imprimir">Imprimir / salvar em PDF</button>
       <button type="button" class="btn" data-aba="inst" id="btn-arquivos" title="Abre a aba Instituições, onde cada arquivo enviado pode ser baixado novamente">⬇ Arquivos enviados</button>
       <span class="msg-salvar" style="font-size:12.5px;"></span>
@@ -17229,6 +17230,284 @@ function celulaArquivo(nome) {
   var est = e.erroEnvio ? '<small style="color:var(--red);"> Não armazenado: ' + esc(e.erroEnvio) + '</small>' : (e.caminho ? '<small style="color:var(--ink-soft);"> Armazenado</small>' : (CLI.id ? '<small style="color:var(--ink-soft);"> Armazenando...</small>' : '<small style="color:var(--ink-soft);"> Não armazenado: selecione um cliente no topo da página</small>'));
   return '<br><button type="button" class="btn btn-peq" data-baixar-arq="' + esc(nome) + '">⬇ Baixar original</button>' + est;
 }
+// ── Diagnóstico de carteira em PDF (formato paisagem, uma página por tema; gerado em nova janela para "Salvar como PDF") ──
+var DG_CORES = ['#111111', '#3D3D3D', '#6B6B6B', '#939393', '#B8B8B8', '#D6D6D6', '#EAEAEA'];
+var DG_BLOCOS = [['Renda Fixa', ['pos', 'infl', 'pre']], ['Internacional', ['grv', 'grf']], ['Renda Variável', ['rvb']], ['Fundos Listados', ['listados']], ['Alternativos', ['alt']], ['Multimercado', ['multi']]];
+var DG_MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+function dgDataExtenso(ref) { return ref.d + ' de ' + DG_MESES[ref.m - 1] + ' de ' + ref.a; }
+function dgPct(v, d) { return fmtP(v, d === undefined ? 1 : d); }
+function dgTitulo(t) { return String(t || '').toLowerCase().replace(/(^|\\s)([a-zà-ÿ])/g, function (m, a, b) { return a + b.toUpperCase(); }); }
+function dgDonut(partes, rotCentro, valCentro) {
+  var tot = soma(partes, function (x) { return x.v; }), raio = 74, circ = 2 * Math.PI * raio, acc = 0;
+  var s = '<svg viewBox="0 0 200 200" class="rosca"><g transform="rotate(-90 100 100)">';
+  partes.forEach(function (p, i) {
+    var f = tot > 0 ? p.v / tot : 0;
+    if (f <= 0) return;
+    s += '<circle cx="100" cy="100" r="' + raio + '" fill="none" stroke="' + DG_CORES[i % DG_CORES.length] + '" stroke-width="30" stroke-dasharray="' + (f * circ).toFixed(2) + ' ' + (circ - f * circ).toFixed(2) + '" stroke-dashoffset="' + (-acc * circ).toFixed(2) + '"/>';
+    acc += f;
+  });
+  s += '</g><text x="100" y="96" text-anchor="middle" class="rc">' + esc(rotCentro) + '</text><text x="100" y="116" text-anchor="middle" class="vc">' + esc(valCentro) + '</text></svg>';
+  var leg = '<div class="leg-dg">' + partes.map(function (p, i) {
+    return '<div><span><i style="background:' + DG_CORES[i % DG_CORES.length] + '"></i>' + esc(p.r) + '</span><b>' + dgPct(tot > 0 ? p.v / tot * 100 : 0, 1) + '</b></div>';
+  }).join('') + '</div>';
+  return '<div class="donut-dg">' + s + leg + '</div>';
+}
+function dgBarras(lista, total, max) {
+  max = max || 10;
+  var vis = lista.slice(0, max), resto = lista.slice(max), mx = Math.max.apply(null, vis.map(function (x) { return x.v; }).concat([1]));
+  var h = '<div class="barras-dg">' + vis.map(function (x) {
+    return '<div class="lb"><div class="nm">' + esc(x.r) + '</div><div class="tr"><div class="fl" style="width:' + Math.max(x.v / mx * 100, 1.5).toFixed(1) + '%"></div></div><div class="vl"><b>' + dgPct(total > 0 ? x.v / total * 100 : 0, 2) + '</b><small>' + fmtRS(x.v) + '</small></div></div>';
+  }).join('') + '</div>';
+  if (resto.length) h += '<div class="mais">+ ' + resto.length + ' outros (' + dgPct(total > 0 ? soma(resto, function (x) { return x.v; }) / total * 100 : 0, 2) + ')</div>';
+  return h;
+}
+function dgKpis(itens) {
+  return '<div class="kpis-dg">' + itens.map(function (k, i) {
+    return '<div class="kp' + (i === 0 ? ' pri' : '') + '"><span class="kr">' + esc(k.r) + '</span><b>' + esc(k.v) + '</b><small>' + esc(k.s || '') + '</small></div>';
+  }).join('') + '</div>';
+}
+function dgAgrupar(itens, fn) {
+  var m = {}, ord = [];
+  itens.forEach(function (p) { var k = fn(p); if (k === '' || k === null || k === undefined) return; if (!m[k]) { m[k] = { r: k, v: 0 }; ord.push(k); } m[k].v += p.saldo; });
+  return ord.map(function (k) { return m[k]; }).sort(function (a, b) { return b.v - a.v; });
+}
+function dgDados() {
+  var pi = perfilAtualIdx(), perfis = R.matriz.perfis, tot = R.total;
+  var d = { pi: pi, perfil: perfis[pi] ? perfis[pi].nome : 'Perfil', tot: tot, n: R.itens.filter(function (p) { return p.tipo !== 'caixa'; }).length };
+  d.cliente = (document.getElementById('in-cliente').value || '').trim() || (CLI && CLI.nome) || 'Cliente';
+  d.rotPerfil = perfilSel === null ? d.perfil + ' (mais próximo)' : d.perfil;
+  d.ader = 100 - (R.realocar[pi] || 0);
+  d.dataExt = dgDataExtenso(R.ref);
+  d.dataCurta = String(R.ref.d).padStart(2, '0') + '/' + String(R.ref.m).padStart(2, '0') + '/' + R.ref.a;
+  d.assessor = dgTitulo((D.cab && D.cab.assessor) || '');
+  d.liqD0 = R.liq.d0 || 0; d.isento = R.trib.isento || 0;
+  d.prev = soma(R.itens.filter(function (p) { return p.tipo === 'prev'; }), function (p) { return p.saldo; });
+  d.off = (R.porChave.grv || 0) + (R.porChave.grf || 0);
+  var blocos = DG_BLOCOS.map(function (b) { return { r: b[0], v: soma(b[1], function (k) { return R.porChave[k] || 0; }) }; });
+  var somaB = soma(blocos, function (b) { return b.v; });
+  if (tot - somaB > tot * 0.0005) blocos.push({ r: 'Outros', v: tot - somaB });
+  d.blocos = blocos.filter(function (b) { return b.v > 0; }).sort(function (a, b) { return b.v - a.v; });
+  return d;
+}
+function dgSlide(o) {
+  return '<section class="slide"><header class="topo"><span>Diagnóstico de carteira</span><b>Clube do Rendimento</b></header>' +
+    '<h1>DIAGNÓSTICO</h1><h2>' + esc(o.sub) + '</h2>' + (o.resumo ? '<p class="resumo">' + o.resumo + '</p>' : '') +
+    '<div class="corpo">' + o.corpo + '</div>' + (o.seguinte ? '<p class="seguinte">A seguir: ' + esc(o.seguinte) + '</p>' : '') +
+    '<footer class="rodape"><span>' + esc(o.cliente) + ' · ' + fmtRS(o.tot) + ' · ' + esc(o.perfil) + '</span><span>Clube do Rendimento · ' + o.data + ' · página @@N@@ de @@T@@</span></footer></section>';
+}
+function dgSecao(t) { return '<div class="sec">' + esc(t) + '</div>'; }
+function dgSlides(d) {
+  var S = [], base = { cliente: d.cliente, tot: d.tot, perfil: d.rotPerfil, data: d.dataCurta };
+  function add(sub, resumo, corpo, seguinte) { S.push(dgSlide({ sub: sub, resumo: resumo, corpo: corpo, seguinte: seguinte, cliente: base.cliente, tot: base.tot, perfil: base.perfil, data: base.data })); }
+  var tot = d.tot, pi = d.pi, perfis = R.matriz.perfis;
+
+  // capa
+  S.push('<section class="slide capa"><div class="faixa"></div><div class="cc"><div class="marca">Clube do Rendimento</div><h1 class="gr">DIAGNÓSTICO<br>DE CARTEIRA</h1><div class="cli">' + esc(d.cliente) + '</div>' +
+    '<div class="lin-capa"><span>Patrimônio analisado</span> <b>' + fmtRS(tot) + '</b></div><div class="lin-capa"><span>Perfil de investimento</span> <b>' + esc(d.rotPerfil) + '</b></div>' +
+    (d.assessor ? '<div class="lin-capa"><span>Assessor</span> <b>' + esc(d.assessor) + '</b></div>' : '') + '<div class="lin-capa"><span>Posições em</span> <b>' + esc(d.dataExt) + '</b></div></div></section>');
+
+  // carteira
+  var maior = R.linhas.slice().sort(function (a, b) { return Math.abs((b.alvo[pi] || 0) - b.atual) - Math.abs((a.alvo[pi] || 0) - a.atual); })[0];
+  var ajMaior = maior ? (maior.alvo[pi] || 0) - maior.atual : 0;
+  add('CARTEIRA DE ' + d.cliente.toUpperCase(), esc(fmtRS(tot)) + ' em ' + d.n + ' posições, com ' + dgPct(d.ader, 0) + ' de aderência ao ' + esc(d.perfil) + '.' + (maior ? ' O maior ajuste está em ' + esc(maior.nome) + ' (' + (ajMaior > 0 ? '+' : '') + fmtP(ajMaior, 1) + ' p.p.).' : ''),
+    dgKpis([{ r: 'Patrimônio', v: fmtRS(tot), s: d.n + ' posições' }, { r: 'Aderência ao perfil', v: dgPct(d.ader, 1), s: 'desvio de ' + dgPct(100 - d.ader, 1) }, { r: 'Liquidez imediata', v: dgPct(tot > 0 ? d.liqD0 / tot * 100 : 0, 1), s: fmtRS(d.liqD0) },
+      { r: 'Isento de IR', v: dgPct(tot > 0 ? d.isento / tot * 100 : 0, 1), s: fmtRS(d.isento) }, { r: 'Previdência', v: dgPct(tot > 0 ? d.prev / tot * 100 : 0, 1), s: fmtRS(d.prev) }, { r: 'Offshore', v: dgPct(tot > 0 ? d.off / tot * 100 : 0, 1), s: 'alvo ' + dgPct(R.linhas.filter(function (l) { return l.chave === 'grv' || l.chave === 'grf'; }).reduce(function (a, l) { return a + (l.alvo[pi] || 0); }, 0), 1) }]) +
+    dgSecao('Distribuição por classe') + dgDonut(d.blocos, 'total', fmtCompacto(tot)), 'alocação atual e régua de perfis, instrumentos, custódia e liquidez.');
+
+  // alocação atual e régua de perfis
+  var mp = R.maisProximo, linhasOrd = R.linhas.slice().sort(function (a, b) { return b.atual - a.atual; });
+  var adh = perfis.map(function (p, i) { return 100 - R.realocar[i]; });
+  var mnA = Math.min.apply(null, adh), mxA = Math.max.apply(null, adh), baseA = Math.max(0, mnA - 20), altura = 190;
+  var colunas = '<div class="cols-dg">' + perfis.map(function (p, i) {
+    var h = Math.max(6, (adh[i] - baseA) / ((mxA - baseA) || 1) * altura);
+    return '<div class="col-dg' + (i === mp ? ' dest' : '') + (i === pi ? ' inf' : '') + '"><b>' + dgPct(adh[i], 1) + '</b><div class="bar" style="height:' + h.toFixed(0) + 'px"></div><span>' + esc(p.nome) + '</span><small>' + dgPct(R.realocar[i], 1) + ' a mudar</small>' + (i === pi ? '<em>' + (perfilSel === null ? 'MAIS PRÓXIMO' : 'INFORMADO') + '</em>' : (i === mp ? '<em>MAIS PRÓXIMO</em>' : '')) + '</div>';
+  }).join('') + '</div>';
+  add('ALOCAÇÃO ATUAL E A RÉGUA DE PERFIS', 'Alinhar ao ' + esc(d.perfil) + ' exige realocar ' + dgPct(R.realocar[pi], 1) + ' do patrimônio (' + esc(fmtRS(R.realocar[pi] / 100 * tot)) + '). O perfil mais parecido com a carteira é o ' + esc(perfis[mp].nome) + ', com aderência de ' + dgPct(adh[mp], 1) + '.',
+    dgKpis([{ r: 'Mais parecida com', v: perfis[mp].nome, s: 'aderência de ' + dgPct(adh[mp], 1) }, { r: 'Aderência', v: dgPct(d.ader, 1), s: 'ao ' + d.perfil }, { r: 'Patrimônio a realocar', v: fmtRS(R.realocar[pi] / 100 * tot), s: dgPct(R.realocar[pi], 1) + ' da carteira' }]) +
+    '<div class="duas"><div>' + dgSecao('Distribuição atual por classe') + dgBarras(linhasOrd.map(function (l) { return { r: l.nome, v: l.valor }; }).filter(function (x) { return x.v > 0; }), tot, 10) + '</div><div>' + dgSecao('Aderência a cada perfil') + colunas + '</div></div>',
+    'a mesma alocação comparada, classe a classe, com cada um dos perfis.');
+
+  // carteira comparada a cada perfil
+  var th = '<tr><th class="e">Classe</th><th>Atual</th>' + perfis.map(function (p, i) { return '<th class="' + (i === mp ? 'dest' : '') + '">' + esc(p.nome) + (i === pi ? ' ·' : '') + '</th>'; }).join('') + '</tr>';
+  var tb = R.linhas.map(function (l) { return '<tr><td class="e">' + esc(l.nome) + '</td><td>' + fmtP(l.atual, 1) + '</td>' + perfis.map(function (p, i) { return '<td class="' + (i === mp ? 'dest' : '') + '">' + fmtP(l.alvo[i] || 0, 1) + '</td>'; }).join('') + '</tr>'; }).join('');
+  tb += '<tr class="tot"><td class="e">Patrimônio a realocar</td><td>—</td>' + perfis.map(function (p, i) { return '<td class="' + (i === mp ? 'dest' : '') + '">' + fmtP(R.realocar[i], 1) + '</td>'; }).join('') + '</tr>';
+  add('A CARTEIRA COMPARADA A CADA PERFIL', 'A mesma alocação comparada classe a classe com as carteiras de referência de cada perfil. A coluna destacada é a do perfil mais próximo; o perfil considerado é o ' + esc(d.perfil) + '.',
+    '<table class="tab-dg"><thead>' + th + '</thead><tbody>' + tb + '</tbody></table>', 'os fatores de risco e os instrumentos por trás dessa alocação.');
+
+  // fatores de risco e instrumentos
+  var instr = Object.keys(R.instr).map(function (k) { return { r: k, v: R.instr[k] }; }).sort(function (a, b) { return b.v - a.v; });
+  add('FATORES DE RISCO E INSTRUMENTOS', (linhasOrd[0] ? esc(linhasOrd[0].nome) + ' responde por ' + dgPct(linhasOrd[0].atual, 1) + ' da carteira. ' : '') + instr.length + ' tipos de instrumento em uso' + (instr[0] ? ', com destaque para ' + esc(instr[0].r) + ' (' + dgPct(tot > 0 ? instr[0].v / tot * 100 : 0, 1) + ').' : '.'),
+    '<div class="duas"><div>' + dgSecao('Por fator de risco') + dgBarras(linhasOrd.map(function (l) { return { r: l.nome, v: l.valor }; }).filter(function (x) { return x.v > 0; }), tot, 10) + '</div><div>' + dgSecao('Por instrumento') + dgBarras(instr, tot, 10) + '</div></div>',
+    'custódia e estrutura jurídica.');
+
+  // custódia e estrutura
+  var inst = Object.keys(R.porInst).map(function (k) { return { r: k, v: R.porInst[k] }; }).sort(function (a, b) { return b.v - a.v; });
+  var pfBr = Math.max(0, tot - d.off - d.prev);
+  var estrut = [{ r: 'Pessoa física, Brasil', v: pfBr }, { r: 'Offshore', v: d.off }, { r: 'Previdência', v: d.prev }].filter(function (x) { return x.v > 0; });
+  add('CUSTÓDIA E ESTRUTURA JURÍDICA', 'O patrimônio está distribuído em ' + inst.length + (inst.length === 1 ? ' custodiante' : ' custodiantes') + (inst[0] ? ', com ' + dgPct(tot > 0 ? inst[0].v / tot * 100 : 0, 0) + ' em ' + esc(inst[0].r) : '') + '. ' + dgPct(tot > 0 ? d.liqD0 / tot * 100 : 0, 1) + ' tem liquidez imediata e ' + dgPct(tot > 0 ? d.isento / tot * 100 : 0, 1) + ' é isento de Imposto de Renda.',
+    '<div class="duas"><div>' + dgSecao('Por instituição') + dgDonut(inst.slice(0, 7), 'total', fmtCompacto(tot)) + '</div><div>' + dgSecao('Por estrutura jurídica') + dgDonut(estrut, 'total', fmtCompacto(tot)) + '</div></div>');
+
+  // liquidez e tributação
+  var liq = LIQ.map(function (l) { return { r: l.r, v: R.liq[l.k] || 0 }; }).filter(function (x) { return x.v > 0; });
+  var trib = TRIB.map(function (l) { return { r: l.r, v: R.trib[l.k] || 0 }; }).filter(function (x) { return x.v > 0; });
+  add('LIQUIDEZ E TRIBUTAÇÃO', dgPct(tot > 0 ? d.liqD0 / tot * 100 : 0, 1) + ' do patrimônio tem liquidez imediata (D+0) e ' + dgPct(tot > 0 ? d.isento / tot * 100 : 0, 1) + ' está em ativos isentos de Imposto de Renda.',
+    '<div class="duas"><div>' + dgSecao('Por disponibilidade') + dgDonut(liq, 'total', fmtCompacto(tot)) + '</div><div>' + dgSecao('Por tributação') + dgDonut(trib, 'total', fmtCompacto(tot)) + '</div></div>', 'renda fixa, renda variável e exposição internacional em detalhe.');
+
+  // renda fixa
+  var rf = R.rf, totRF = soma(rf, function (p) { return p.saldo; });
+  if (rf.length) {
+    var indx = dgAgrupar(rf, function (p) { return ROTULOS_CLASSE[p.chave] || p.estrategia || 'Outros'; });
+    var anos = dgAgrupar(rf.filter(function (p) { return p.venc; }), function (p) { return String(p.venc.a); }).sort(function (a, b) { return a.r < b.r ? -1 : 1; });
+    var prox = rf.filter(function (p) { return p.meses !== null && p.meses >= 0 && p.meses <= 12; });
+    add('RENDA FIXA POR INDEXADOR E VENCIMENTO', 'A renda fixa direta soma ' + fmtRS(totRF) + ' (' + dgPct(tot > 0 ? totRF / tot * 100 : 0, 1) + ' da carteira) em ' + rf.length + ' títulos' + (prox.length ? '; ' + fmtRS(soma(prox, function (p) { return p.saldo; })) + ' vencem em até 12 meses.' : '; nenhum título vence nos próximos 12 meses.'),
+      '<div class="duas"><div>' + dgSecao('Por indexador') + dgDonut(indx, 'renda fixa', fmtCompacto(totRF)) + '</div><div>' + dgSecao('Por vencimento') + dgBarras(anos, totRF, 11) + '</div></div>', 'qualidade de crédito da renda fixa.');
+
+    // qualidade de crédito
+    var G = { ok: 0, nao: 0, pend: 0 };
+    rf.forEach(function (p) { if (p.cred) G[p.cred.st] += p.saldo; });
+    var emis = {};
+    rf.forEach(function (p) {
+      var k = p.emissor || p.nome, e = emis[k] || (emis[k] = { r: k, v: 0, fgc: 0, st: p.cred ? p.cred.st : 'pend', tipo: p.cred ? p.cred.tipo : '', seg: p.cred ? p.cred.seg : '' });
+      e.v += p.saldo;
+      if (/^(LCA|LCI|LCD|CDB|LC|LF|RDB|LIG)$/.test(p.papel || '')) e.fgc += p.saldo;
+      if (p.cred && p.cred.st === 'nao') e.st = 'nao'; else if (p.cred && p.cred.st === 'pend' && e.st === 'ok') e.st = 'pend';
+    });
+    var lemis = Object.keys(emis).map(function (k) { return emis[k]; }).sort(function (a, b) { return b.v - a.v; });
+    var priv = soma(rf.filter(function (p) { return !p.publico && !/^(LCA|LCI|LCD|CDB|LC|LF|RDB|LIG)$/.test(p.papel || ''); }), function (p) { return p.saldo; });
+    var sit = [{ r: 'Passa nos critérios', v: G.ok }, { r: 'Não passa', v: G.nao }, { r: 'Sem classificação', v: G.pend }].filter(function (x) { return x.v > 0; });
+    add('QUALIDADE DE CRÉDITO DA RENDA FIXA', dgPct(tot > 0 ? priv / tot * 100 : 0, 1) + ' do patrimônio está em crédito privado, sem garantia do FGC. A renda fixa está distribuída em ' + lemis.length + ' emissores, o maior com ' + dgPct(tot > 0 && lemis[0] ? lemis[0].v / tot * 100 : 0, 1) + ' do patrimônio.',
+      '<div class="duas"><div>' + dgSecao('Situação na análise de crédito') + dgDonut(sit, 'renda fixa', fmtCompacto(totRF)) + '</div><div>' + dgSecao('Top emissores da renda fixa') + dgBarras(lemis.map(function (e) { return { r: e.r, v: e.v }; }), tot, 11) + '</div></div>', 'ações e ativos listados.');
+
+    // concentração por emissor e FGC
+    var rotSt = { ok: 'Passa', nao: 'Não passa', pend: 'Sem classificação' };
+    var linhasF = lemis.filter(function (e) { return e.tipo === 'Banco'; });
+    var tf = linhasF.length ? '<table class="tab-dg"><thead><tr><th class="e">Emissor</th><th>Posição</th><th>% carteira</th><th>Acima do FGC</th><th class="e">Segmento</th><th class="e">Análise</th></tr></thead><tbody>' + linhasF.slice(0, 12).map(function (e) {
+      var acima = /^S[12]$/.test(e.seg || '') ? 'dispensa' : (e.fgc > 250000 ? fmtRS(e.fgc - 250000) : 'coberto');
+      return '<tr><td class="e">' + esc(e.r) + '</td><td>' + fmtRS(e.v) + '</td><td>' + dgPct(tot > 0 ? e.v / tot * 100 : 0, 1) + '</td><td>' + acima + '</td><td class="e">' + esc(e.seg || '—') + '</td><td class="e">' + rotSt[e.st] + '</td></tr>';
+    }).join('') + '</tbody></table><p class="nt">Teto do FGC: R$ 250.000 por CPF e por conglomerado financeiro. Emissores dos segmentos S1 e S2 dispensam o limite nesta análise.</p>' : '<p class="vazio-dg">Nenhuma emissão bancária identificada.</p>';
+    var acimaN = linhasF.filter(function (e) { return !/^S[12]$/.test(e.seg || '') && e.fgc > 250000; }).length;
+    add('CONCENTRAÇÃO POR EMISSOR E COBERTURA DO FGC', lemis.length + ' emissores na carteira, o maior com ' + dgPct(tot > 0 && lemis[0] ? lemis[0].v / tot * 100 : 0, 1) + ' do patrimônio. ' + (acimaN ? acimaN + (acimaN === 1 ? ' emissor bancário' : ' emissores bancários') + ' acima do teto do FGC.' : 'Nenhuma emissão bancária acima do teto do FGC.'),
+      '<div class="duas"><div>' + dgSecao('Top emissores e conglomerados') + dgBarras(lemis.map(function (e) { return { r: e.r, v: e.v }; }), tot, 11) + '</div><div>' + dgSecao('Emissões bancárias e FGC') + tf + '</div></div>', 'ações e ativos listados.');
+  }
+
+  // ações e ativos listados
+  var acoes = R.itens.filter(function (p) { return p.tipo === 'acao'; }), lst = R.itens.filter(function (p) { return p.tipo === 'fii' || p.tipo === 'etf'; });
+  if (acoes.length || lst.length) {
+    var vA = soma(acoes, function (p) { return p.saldo; }), vL = soma(lst, function (p) { return p.saldo; });
+    function tabAtivos(arr) {
+      return arr.length ? '<table class="tab-dg"><thead><tr><th class="e">Ativo</th><th class="e">Tipo</th><th>Posição</th><th>% carteira</th></tr></thead><tbody>' + arr.slice(0, 10).map(function (p) { return '<tr><td class="e">' + esc(p.nome) + '</td><td class="e">' + esc(p.instr) + '</td><td>' + fmtRS(p.saldo) + '</td><td>' + dgPct(p.pct, 2) + '</td></tr>'; }).join('') + '</tbody></table>' + (arr.length > 10 ? '<div class="mais">+ ' + (arr.length - 10) + ' outros</div>' : '') : '<p class="vazio-dg">Nenhuma posição.</p>';
+    }
+    add('AÇÕES E ATIVOS LISTADOS', 'As ações diretas somam ' + dgPct(tot > 0 ? vA / tot * 100 : 0, 1) + ' da carteira em ' + acoes.length + ' papéis e os ativos listados (fundos imobiliários e ETFs), ' + dgPct(tot > 0 ? vL / tot * 100 : 0, 1) + ', em ' + lst.length + ' ativos.',
+      dgKpis([{ r: 'Ações diretas', v: dgPct(tot > 0 ? vA / tot * 100 : 0, 1), s: fmtRS(vA) + ' · ' + acoes.length + ' papéis' }, { r: 'Ativos listados', v: dgPct(tot > 0 ? vL / tot * 100 : 0, 1), s: fmtRS(vL) + ' · ' + lst.length + ' ativos' }]) +
+      '<div class="duas"><div>' + dgSecao('Ações diretas') + tabAtivos(acoes) + '</div><div>' + dgSecao('Ativos listados') + tabAtivos(lst) + '</div></div>', 'a exposição fora do Brasil.');
+  }
+
+  // exposição internacional
+  var intl = R.itens.filter(function (p) { return p.chave === 'grv' || p.chave === 'grf'; });
+  var altoInt = R.linhas.filter(function (l) { return l.chave === 'grv' || l.chave === 'grf'; }).reduce(function (a, l) { return a + (l.alvo[pi] || 0); }, 0);
+  var pOff = tot > 0 ? d.off / tot * 100 : 0;
+  add('EXPOSIÇÃO INTERNACIONAL', dgPct(pOff, 1) + ' do patrimônio está fora do Brasil, contra alvo de ' + dgPct(altoInt, 1) + ' no ' + esc(d.perfil) + (pOff > altoInt ? ' — ' + esc(fmtRS((pOff - altoInt) / 100 * tot)) + ' acima do alvo' : '') + (intl.length ? ', distribuídos em ' + intl.length + ' posições.' : '.'),
+    '<div class="duas"><div>' + dgSecao('Onshore x offshore') + dgDonut([{ r: 'Onshore', v: Math.max(0, tot - d.off) }, { r: 'Offshore', v: d.off }].filter(function (x) { return x.v > 0; }), 'total', fmtCompacto(tot)) + '</div><div>' + dgSecao('Global por veículo') + (intl.length ? dgBarras(dgAgrupar(intl, function (p) { return p.chave === 'grv' ? 'Global renda variável' : 'Global renda fixa'; }).concat(dgAgrupar(intl, function (p) { return p.nome; }).slice(0, 6).map(function (x) { return { r: '· ' + x.r, v: x.v }; })), tot, 10) : '<p class="vazio-dg">Sem exposição internacional.</p>') + '</div></div>', 'rentabilidade e pontos de atenção.');
+
+  // rentabilidade
+  if (!D.semRent && D.evol && D.evol.length) {
+    var ev = D.evol.slice().reverse().slice(-12), pa = D.kpi.per.ano || {}, p12 = D.kpi.per.m12 || {};
+    var W = 560, H = 190, mE = 34, mB = 26, mT = 14, vals = [];
+    ev.forEach(function (e) { vals.push(e.rent); vals.push(e.pcdi ? e.rent / (e.pcdi / 100) : 0); });
+    var mx = Math.max.apply(null, vals.concat([0.5])), mn = Math.min.apply(null, vals.concat([0])), esc2 = (H - mT - mB) / (mx - mn), y0 = mT + mx * esc2, bw = (W - mE) / ev.length;
+    var g = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="graf-dg"><line x1="' + mE + '" y1="' + y0.toFixed(1) + '" x2="' + W + '" y2="' + y0.toFixed(1) + '" stroke="#999" stroke-width="1"/>';
+    ev.forEach(function (e, i) {
+      var a = e.rent, b = e.pcdi ? e.rent / (e.pcdi / 100) : 0, x = mE + i * bw + bw * 0.12, w = bw * 0.36;
+      g += '<rect x="' + x.toFixed(1) + '" y="' + (a >= 0 ? y0 - a * esc2 : y0).toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + Math.max(Math.abs(a) * esc2, 0.5).toFixed(1) + '" fill="#111"/>';
+      g += '<rect x="' + (x + w + 1).toFixed(1) + '" y="' + (b >= 0 ? y0 - b * esc2 : y0).toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + Math.max(Math.abs(b) * esc2, 0.5).toFixed(1) + '" fill="#B8B8B8"/>';
+      g += '<text x="' + (mE + i * bw + bw / 2).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="9" fill="#5C5C5C">' + esc(String(e.rot).replace('.', '')) + '</text>';
+    });
+    g += '<text x="2" y="' + (mT + 8) + '" font-size="9" fill="#5C5C5C">' + fmtP(mx, 1) + '</text><text x="2" y="' + y0.toFixed(1) + '" font-size="9" fill="#5C5C5C">0</text></svg>';
+    var linP = [['No ano', pa], ['12 meses', p12]].filter(function (x) { return typeof x[1].rent === 'number'; });
+    add('RENTABILIDADE', (typeof pa.rent === 'number' ? 'A carteira rendeu ' + fmtP(pa.rent) + ' no ano (' + fmtP(pa.pcdi, 0) + ' do CDI)' : '') + (typeof p12.rent === 'number' ? (typeof pa.rent === 'number' ? ' e ' : 'A carteira rendeu ') + fmtP(p12.rent) + ' em 12 meses (' + fmtP(p12.pcdi, 0) + ' do CDI)' : '') + '. Rentabilidade informada pelo relatório da conta principal; as demais instituições não entram no cálculo.',
+      dgKpis(linP.map(function (x) { return { r: x[0], v: fmtP(x[1].rent), s: fmtP(x[1].pcdi, 0) + ' do CDI' }; })) + dgSecao('Rentabilidade mensal · carteira (preto) x CDI (cinza)') + g, 'os pontos de atenção.');
+  }
+
+  // resumo do diagnóstico (pontos de atenção)
+  var al = R.alertas || [], nAlto = al.filter(function (a) { return a.n === 'alto'; }).length, nMed = al.filter(function (a) { return a.n === 'medio'; }).length;
+  var rotN = { alto: 'Nível de atenção · alto', medio: 'Nível de atenção · médio', baixo: 'Nível de atenção · baixo' };
+  for (var pg = 0; pg < al.length; pg += 6) {
+    var cards = al.slice(pg, pg + 6).map(function (a) { return '<div class="card-al ' + a.n + '"><h4>' + esc(a.t) + '</h4><p>' + esc(a.x) + '</p><span class="nv">● ' + rotN[a.n] + '</span></div>'; }).join('');
+    add('RESUMO DO DIAGNÓSTICO' + (al.length > 6 ? ' · ' + (Math.floor(pg / 6) + 1) + ' DE ' + Math.ceil(al.length / 6) : ''), pg === 0 ? nAlto + (nAlto === 1 ? ' ponto em nível alto' : ' pontos em nível alto') + ' de atenção e ' + nMed + ' em nível médio, sobre ' + al.length + ' temas avaliados. Critérios automáticos e ilustrativos; a avaliação final cabe ao assessor.' : '', '<div class="grade-al">' + cards + '</div>', pg + 6 >= al.length ? 'as prioridades de ajuste, em ordem de execução.' : '');
+  }
+
+  // próximos passos
+  var ord = { alto: 0, medio: 1, baixo: 2 };
+  var prio = al.filter(function (a) { return a.n !== 'baixo'; }).sort(function (a, b) { return ord[a.n] - ord[b.n]; }).slice(0, 4);
+  var itensP = prio.map(function (a, i) { return '<div class="pr"><span class="num">' + (i + 1) + '</span><div><h3>' + esc(a.t) + '</h3><p>' + esc(a.x) + '</p></div></div>'; }).join('');
+  itensP += '<div class="pr"><span class="num">' + (prio.length + 1) + '</span><div><h3>Acompanhamento periódico</h3><p>Revisões periódicas com relatório de posição e ajuste de rota conforme mudanças de cenário ou de circunstância.</p></div></div>';
+  S.push('<section class="slide capa fim"><div class="faixa"></div><div class="cc"><div class="marca">Próximos passos</div><h1 class="gr">PRIORIDADES<br>DE AJUSTE.</h1><div class="prs">' + itensP + '</div>' + (d.assessor ? '<div class="assin"><b>' + esc(d.assessor) + '</b><span>Clube do Rendimento · ' + esc(d.dataCurta) + '</span></div>' : '<div class="assin"><span>Clube do Rendimento · ' + esc(d.dataCurta) + '</span></div>') +
+    '<p class="aviso-dg">Material de caráter meramente informativo, elaborado com base nos arquivos carregados. Não constitui oferta, solicitação ou recomendação de compra ou venda de qualquer ativo.</p></div></section>');
+  return S;
+}
+function dgCss() {
+  return [
+    '@page{size:A4 landscape;margin:0}',
+    '*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}',
+    'body{font-family:Inter,"Segoe UI",Arial,sans-serif;background:#d9d9d9;color:#111;font-size:12px}',
+    '.barra-tela{position:sticky;top:0;z-index:9;background:#111;color:#fff;padding:10px 18px;display:flex;gap:14px;align-items:center;font-size:13px}',
+    '.barra-tela button{background:#fff;color:#111;border:none;border-radius:8px;padding:8px 16px;font-weight:700;font-family:inherit;cursor:pointer}',
+    '.slide{width:297mm;height:210mm;background:#fff;margin:14px auto;padding:11mm 15mm 0;position:relative;overflow:hidden;page-break-after:always;break-after:page;box-shadow:0 2px 14px rgba(0,0,0,.25)}',
+    '.topo{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#5C5C5C;border-bottom:1px solid #D6D6D6;padding-bottom:6px}.topo b{font-size:13px;color:#111;letter-spacing:.02em}',
+    'h1{font-weight:300;font-size:30px;letter-spacing:.02em;margin-top:12px;color:#111;line-height:1}',
+    'h2{font-weight:700;font-size:10.5px;letter-spacing:.2em;color:#6B6B6B;margin:5px 0 12px}',
+    '.resumo{font-size:12.5px;line-height:1.5;max-width:250mm;margin-bottom:12px}',
+    '.corpo{position:relative}',
+    '.seguinte{position:absolute;left:15mm;bottom:17mm;font-size:10px;font-style:italic;color:#6B6B6B}',
+    '.rodape{position:absolute;left:15mm;right:15mm;bottom:0;height:11mm;border-top:1px solid #D6D6D6;display:flex;justify-content:space-between;align-items:center;font-size:9.5px;color:#6B6B6B}',
+    '.kpis-dg{display:flex;border-top:1px solid #E2E2E2;border-bottom:1px solid #E2E2E2;margin-bottom:14px}',
+    '.kp{flex:1;padding:9px 12px;border-left:1px solid #E2E2E2}.kp:first-child{border-left:none;padding-left:0}',
+    '.kr{display:block;font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:#6B6B6B;font-weight:600}',
+    '.kp b{display:block;font-size:19px;font-weight:500;margin:4px 0 2px}.kp small{font-size:9.5px;color:#6B6B6B}.kp.pri b{color:#111}.kp.pri .kr{color:#111}',
+    '.sec{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-left:3px solid #111;padding-left:8px;margin:2px 0 10px}',
+    '.duas{display:grid;grid-template-columns:1fr 1fr;gap:10mm}',
+    '.donut-dg{display:flex;align-items:center;gap:6mm}.rosca{width:62mm;height:62mm;flex:none}.rc{font-size:8px;fill:#5C5C5C}.vc{font-size:13px;font-weight:600;fill:#111}',
+    '.leg-dg{flex:1;font-size:11px}.leg-dg div{display:flex;justify-content:space-between;gap:10px;padding:3.5px 0}.leg-dg i{display:inline-block;width:9px;height:9px;margin-right:7px;border:1px solid #bbb}.leg-dg b{font-weight:700}',
+    '.barras-dg .lb{display:grid;grid-template-columns:42% 1fr 22%;gap:8px;align-items:center;padding:3px 0}.nm{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.tr{height:10px;background:#F1F1F1;border-radius:5px}.fl{height:10px;background:#3D3D3D;border-radius:5px}',
+    '.vl{text-align:right;line-height:1.15}.vl b{display:block;font-size:11.5px}.vl small{font-size:8.5px;color:#6B6B6B}',
+    '.mais{font-size:10px;color:#6B6B6B;margin-top:5px}',
+    '.cols-dg{display:flex;align-items:flex-end;justify-content:space-around;height:245px;border-bottom:1px solid #ccc}',
+    '.col-dg{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;width:19%;text-align:center}.col-dg b{font-size:11.5px;margin-bottom:4px}.col-dg .bar{width:100%;background:#D6D6D6;border-radius:3px 3px 0 0}',
+    '.col-dg.dest .bar{background:#111}.col-dg.inf .bar{box-shadow:inset 0 0 0 2px #111;background:#fff}.col-dg.dest.inf .bar{background:#111}',
+    '.col-dg span{font-size:10.5px;margin-top:6px}.col-dg small{font-size:8.5px;color:#6B6B6B}.col-dg em{font-style:normal;font-size:8px;font-weight:700;letter-spacing:.08em;color:#111;margin-top:2px}',
+    '.tab-dg{width:100%;border-collapse:collapse;font-size:11px}.tab-dg th{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:#6B6B6B;font-weight:600;text-align:right;padding:6px 8px;border-bottom:1.5px solid #111}',
+    '.tab-dg td{text-align:right;padding:6px 8px;border-bottom:1px solid #E2E2E2;white-space:nowrap}.tab-dg td.e{white-space:normal}.tab-dg .e{text-align:left}.tab-dg .dest{background:#EDEDED;font-weight:700}.tab-dg tr.tot td{font-weight:700;border-top:1.5px solid #111}',
+    '.nt{font-size:9.5px;color:#6B6B6B;margin-top:8px}.vazio-dg{font-size:11px;color:#6B6B6B}',
+    '.grade-al{display:grid;grid-template-columns:repeat(3,1fr);gap:8mm}.card-al{border:1px solid #DADADA;border-left:4px solid #B8B8B8;padding:12px 14px;height:62mm;position:relative;overflow:hidden}',
+    '.card-al.alto{border-left-color:#111}.card-al.medio{border-left-color:#6B6B6B}.card-al h4{font-size:13.5px;margin-bottom:6px}.card-al p{font-size:10.5px;line-height:1.45;color:#333}.card-al .nv{position:absolute;left:14px;bottom:10px;font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}',
+    '.graf-dg{width:100%;height:auto;max-width:250mm}',
+    '.capa{background:#0b0b0b;color:#fff;padding:0;box-shadow:none}.capa .faixa{position:absolute;left:0;top:0;bottom:0;width:6mm;background:#939393}',
+    '.capa .cc{position:absolute;left:34mm;top:48mm;right:30mm}.capa .marca{font-size:15px;letter-spacing:.06em;font-weight:600;margin-bottom:22mm;color:#fff}',
+    '.capa h1.gr{font-size:44px;color:#fff;line-height:1.08;margin:0 0 7mm;font-weight:300}.capa .cli{font-size:19px;font-weight:700;color:#D6D6D6;margin-bottom:12mm}',
+    '.lin-capa{font-size:12px;color:#B8B8B8;margin:4mm 0}.lin-capa b{color:#fff}',
+    '.fim .marca{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:#B8B8B8;margin-bottom:10mm;font-weight:600}.fim .cc{top:30mm}',
+    '.prs{display:grid;grid-template-columns:1fr 1fr;gap:7mm 14mm;margin-top:6mm}.pr{display:flex;gap:10px}.pr .num{flex:none;width:22px;height:22px;border-radius:50%;background:#D6D6D6;color:#111;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;margin-top:1px}',
+    '.pr h3{font-size:14px;margin-bottom:4px;color:#fff}.pr p{font-size:10.5px;line-height:1.5;color:#B8B8B8}',
+    '.assin{margin-top:12mm;border-top:1px solid #444;width:70mm;padding-top:5mm}.assin b{display:block;font-size:14px;color:#fff}.assin span{font-size:10.5px;color:#B8B8B8}',
+    '.aviso-dg{margin-top:10mm;font-size:9px;color:#8a8a8a;max-width:200mm}',
+    '@media print{body{background:#fff}.barra-tela{display:none}.slide{margin:0;box-shadow:none}}'
+  ].join('\\n');
+}
+function abrirDiagnostico() {
+  if (!D || !R) { alert('Carregue a carteira antes de gerar o diagnóstico.'); return; }
+  var w = window.open('', '_blank');
+  if (!w) { alert('Permita pop-ups para este site e tente novamente.'); return; }
+  var d = dgDados(), slides = dgSlides(d), n = slides.length;
+  var corpo = slides.map(function (s, i) { return s.split('@@N@@').join(String(i + 1)).split('@@T@@').join(String(n)); }).join('\\n');
+  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Diagnóstico — ' + esc(d.cliente) + '</title>' +
+    '<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"><style>' + dgCss() + '</' + 'style></head><body>' +
+    '<div class="barra-tela"><span>Diagnóstico de carteira · ' + n + ' páginas. Na janela de impressão, escolha <b>Salvar como PDF</b>, orientação <b>paisagem</b>, margens <b>nenhuma</b> e ative <b>Gráficos de segundo plano</b>.</span><button type="button" onclick="window.print()">Imprimir / Salvar como PDF</button></div>' + corpo + '</body></html>';
+  w.document.open(); w.document.write(html); w.document.close();
+  setTimeout(function () { try { w.focus(); w.print(); } catch (e) {} }, 1500);
+}
+document.getElementById('btn-diagnostico').addEventListener('click', abrirDiagnostico);
+
 // ── Visão do cliente: o cliente cadastrado pelo assessor (conta com e-mail verificado) vê, somente para leitura, a própria consolidação ──
 var MODO_CLIENTE = false, MINHAS = [], MINHA_IDX = 0;
 function bloquearEdicao() {
