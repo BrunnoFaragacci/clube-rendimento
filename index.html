@@ -10570,9 +10570,15 @@ function escHtml(t) { return String(t === undefined || t === null ? '' : t).repl
 function rotuloAcesso(c) {
   if (!c.email) return '<span class="sel-acesso fraco">Sem e-mail</span>';
   var a = acessoCache[c.id];
-  if (a && a.verificado) return '<span class="sel-acesso on">Acesso liberado</span>';
-  if (a && a.tem_conta) return '<span class="sel-acesso">Conta criada: e-mail não confirmado</span>';
+  if (a && (a.verificado || a.liberado)) return '<span class="sel-acesso on">Acesso liberado</span>';
+  if (a && a.tem_conta) return '<span class="sel-acesso">Conta criada: aguardando liberação</span>';
   return '<span class="sel-acesso fraco">Aguardando cadastro do cliente</span>';
+}
+function botaoAcesso(c) {
+  var a = acessoCache[c.id];
+  if (a && a.liberado) return '<button type="button" class="btn btn-outline btn-sm" data-acao="revogar" data-id="' + c.id + '">Revogar acesso</button>';
+  if (a && a.tem_conta && !a.verificado) return '<button type="button" class="btn btn-sm" data-acao="liberar" data-id="' + c.id + '">Liberar acesso</button>';
+  return '';
 }
 function emailValido(e) { return /^[^ @]+@[^ @]+[.][^ @]+$/.test(e); }
 function renderizarLista() {
@@ -10587,6 +10593,7 @@ function renderizarLista() {
       '<td class="email-cel">' + (c.email ? escHtml(c.email) : '—') + '</td>' +
       '<td>' + rotuloAcesso(c) + '</td>' +
       '<td><div class="acoes-cel">' +
+      botaoAcesso(c) +
       '<button type="button" class="btn btn-outline btn-sm" data-acao="email" data-id="' + c.id + '">' + (c.email ? 'Alterar e-mail' : 'Cadastrar e-mail') + '</button>' +
       '<button type="button" class="btn btn-outline btn-sm" data-acao="renomear" data-id="' + c.id + '">Renomear</button>' +
       '<button type="button" class="btn btn-excluir btn-sm" data-acao="excluir" data-id="' + c.id + '">Excluir</button>' +
@@ -10601,6 +10608,27 @@ function renderizarLista() {
       if (c) abrirPaginaCliente(c.id, c.nome);
     });
   });
+  Array.prototype.forEach.call(cont.querySelectorAll('[data-acao="liberar"]'), function(btn) {
+    btn.addEventListener('click', function() {
+      var c = clientesCache.find(function(x) { return String(x.id) === btn.getAttribute('data-id'); });
+      if (!c) return;
+      if (!confirm('Liberar a visualização da carteira de ' + c.nome + ' para a conta criada com o e-mail ' + c.email + '?\\n\\nO e-mail desta conta não foi confirmado por mensagem. Libere somente se tiver certeza de que a conta foi criada pelo próprio cliente.')) return;
+      sb.rpc('liberar_acesso_cliente', { p_cliente: c.id }).then(function(r) {
+        if (r.error || !r.data) { alert('Não foi possível liberar o acesso' + (r.error ? ': ' + r.error.message : '. Confira se a conta foi criada com o e-mail cadastrado.')); return; }
+        carregarClientes();
+      });
+    });
+  });
+  Array.prototype.forEach.call(cont.querySelectorAll('[data-acao="revogar"]'), function(btn) {
+    btn.addEventListener('click', function() {
+      var c = clientesCache.find(function(x) { return String(x.id) === btn.getAttribute('data-id'); });
+      if (!c || !confirm('Revogar o acesso de ' + c.nome + ' à própria carteira?')) return;
+      sb.from('clientes').update({ usuario_id: null }).eq('id', c.id).then(function(r) {
+        if (r.error) { alert('Não foi possível revogar o acesso: ' + r.error.message); return; }
+        carregarClientes();
+      });
+    });
+  });
   Array.prototype.forEach.call(cont.querySelectorAll('[data-acao="email"]'), function(btn) {
     btn.addEventListener('click', function() {
       var c = clientesCache.find(function(x) { return String(x.id) === btn.getAttribute('data-id'); });
@@ -10609,7 +10637,7 @@ function renderizarLista() {
       if (novo === null) return;
       novo = novo.trim().toLowerCase();
       if (novo && !emailValido(novo)) { alert('Informe um e-mail válido.'); return; }
-      sb.from('clientes').update({ email: novo || null }).eq('id', c.id).then(function(r) {
+      sb.from('clientes').update({ email: novo || null, usuario_id: null }).eq('id', c.id).then(function(r) {
         if (r.error) { alert('Erro ao salvar o e-mail: ' + r.error.message); return; }
         carregarClientes();
       });
@@ -17573,9 +17601,14 @@ function renderFaixaCliente() {
   if (bt) bt.hidden = !MINHAS.length || MODO_CLIENTE;
   if (!el) return;
   if (!MODO_CLIENTE) { el.hidden = true; el.innerHTML = ''; return; }
+  if (!MINHAS.length) {
+    el.hidden = false;
+    el.innerHTML = '<div class="card-titulo">Minha carteira</div><p class="card-sub">' + (MINHAS_OK ? 'Nenhuma carteira está vinculada ao e-mail desta conta' + (EMAIL_CONTA ? ' (' + esc(EMAIL_CONTA) + ')' : '') + '. Solicite ao seu assessor o cadastro deste e-mail e a liberação do acesso.' : 'Carregando a sua carteira...') + '</p>';
+    return;
+  }
   var row = MINHAS[MINHA_IDX] || {};
   var sel = MINHAS.length > 1 ? '<div style="margin-top:10px;"><select id="sel-minha">' + MINHAS.map(function (m, i) { return '<option value="' + i + '"' + (i === MINHA_IDX ? ' selected' : '') + '>' + esc(m.cliente_nome || 'Carteira') + ' (atualizada em ' + dataHoraBR(m.updated_at) + ')</option>'; }).join('') + '</select></div>' : '';
-  var sair = (ehMaster || CLIENTES.length) ? '<div style="margin-top:10px;"><button type="button" class="btn btn-peq" data-sair-cliente="1">Sair da visão do cliente</button></div>' : '';
+  var sair = ehMaster ? '<div style="margin-top:10px;"><button type="button" class="btn btn-peq" data-sair-cliente="1">Sair da visão do cliente</button></div>' : '';
   el.hidden = false;
   el.innerHTML = '<div class="card-titulo">Minha carteira' + (row.cliente_nome ? ' · ' + esc(row.cliente_nome) : '') + '</div><p class="card-sub">Visualização somente para leitura da carteira acompanhada pelo seu assessor. Dados atualizados pelo assessor em ' + esc(dataHoraBR(row.updated_at)) + '. As cotações de ações, fundos imobiliários e ETFs são atualizadas automaticamente; os demais valores correspondem à data-base dos arquivos.</p>' + sel + sair;
 }
@@ -17602,13 +17635,18 @@ function sairModoCliente() {
   renderSelCliente();
   renderFaixaCliente();
 }
+var EMAIL_CONTA = '', MINHAS_OK = false;
 function carregarMinhaCarteira() {
   if (!sb || !logado) return Promise.resolve();
-  return sb.rpc('minha_consolidacao').then(function (r) {
-    MINHAS = r && !r.error && Array.isArray(r.data) ? r.data.filter(function (m) { return m && m.dados && m.dados.D; }) : [];
-    renderFaixaCliente();
-    if (MINHAS.length && !ehMaster && !CLIENTES.length && !D) entrarModoCliente(MINHAS[0]);
-  }).catch(function () {});
+  if (!ehMaster) { MODO_CLIENTE = true; document.body.classList.add('modo-cliente'); renderFaixaCliente(); }
+  return Promise.resolve(sb.auth.getUser()).then(function (res) { EMAIL_CONTA = (res && res.data && res.data.user && res.data.user.email) || ''; }).catch(function () {})
+    .then(function () { return sb.rpc('minha_consolidacao'); })
+    .then(function (r) {
+      MINHAS_OK = !!r && !r.error;
+      MINHAS = MINHAS_OK && Array.isArray(r.data) ? r.data.filter(function (m) { return m && m.dados && m.dados.D; }) : [];
+      if (MINHAS.length && !ehMaster && !D) entrarModoCliente(MINHAS[0]);
+      renderFaixaCliente();
+    }).catch(function () { renderFaixaCliente(); });
 }
 document.addEventListener('change', function (ev) {
   var t = ev.target;
@@ -17661,6 +17699,7 @@ function gravarConsolidacao() {
 }
 function lembrarCliente(id) { try { localStorage.setItem('cons_ultimo_cliente', id || ''); } catch (e) {} }
 function retomarUltimoCliente() {
+  if (!ehMaster) return;
   var id = '';
   try { id = localStorage.getItem('cons_ultimo_cliente') || ''; } catch (e) {}
   var c = CLIENTES.filter(function (x) { return x.id === id; })[0];
