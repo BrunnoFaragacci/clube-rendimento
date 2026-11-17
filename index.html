@@ -20293,6 +20293,34 @@ function iniciarCarteira() {
     });
   }).catch(function () { usaBanco = false; }).then(function () { renderCarteira(); renderizar(); atualizarPrecosCarteira(); });
 }
+function escolherDestino(r) {
+  if (!r) return;
+  if (!ACOES.length) { adicionarCarteira(r); return; }
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;display:flex;align-items:center;justify-content:center;';
+  ov.innerHTML = '<div class="card" style="max-width:440px;margin:0;"><div class="sec">Adicionar ' + esc(r.ticker) + '</div><p class="msg" style="margin-bottom:14px;">Onde deseja adicionar esta opção (cotação R$ ' + fmt(r.preco, 2) + ')?</p><div class="barra"><button type="button" class="btn pri" data-d="t">Carteira teórica</button><button type="button" class="btn" data-d="c">Carteira do cliente' + (ACOES_NOME ? ' (' + esc(ACOES_NOME) + ')' : '') + '</button><button type="button" class="btn" data-d="x">Cancelar</button></div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-d]') : null;
+    if (!b && e.target !== ov) return;
+    var d = b ? b.getAttribute('data-d') : 'x';
+    document.body.removeChild(ov);
+    if (d === 't') adicionarCarteira(r); else if (d === 'c') adicionarAoCliente(r);
+  });
+}
+function adicionarAoCliente(r) {
+  if (ACOES.some(function (x) { return x.ticker === r.ticker; })) { dizerArq('A opção ' + r.ticker + ' já consta na carteira do cliente.', true); definirSecao('card-acoes', true, false); return; }
+  var q = parseInt(String(document.getElementById('in-qtd').value || '').split('.').join(''), 10);
+  var padrao = q > 0 ? Math.floor(q / 100) * 100 : 100;
+  var n = prompt('Quantidade de opções de ' + r.ticker + ':', String(padrao || 100));
+  if (n === null) return;
+  var qtd = parseInt(String(n).split('.').join('').trim(), 10);
+  if (!(qtd > 0)) { alert('Informe uma quantidade válida.'); return; }
+  ACOES.push({ ticker: r.ticker, qtd: qtd, pm: r.preco, cot: r.preco, pos: qtd * r.preco, opcao: { ativo: tickerAtual, tipo: r.tipo, strike: r.strike, venc: r.venc } });
+  gravarAcoesAtual(); definirSecao('card-acoes', true, false);
+  dizerArq('Opção ' + r.ticker + ' adicionada à carteira do cliente' + (ACOES_NOME ? '. Use "Salvar carteira" para gravar a alteração em "' + ACOES_NOME + '".' : '.'), false);
+  renderAcoes();
+}
 function adicionarCarteira(r) {
   if (!r || naCarteira(r.ticker)) return;
   var item = { codigo: r.ticker, ativo: tickerAtual, tipo: r.tipo, strike: r.strike, vencimento: r.venc, preco_entrada: r.preco, perfil: perfilSel };
@@ -20500,7 +20528,7 @@ document.getElementById('in-qtd').addEventListener('input', function () { try { 
 document.getElementById('f-todas').addEventListener('change', function () { if (tickerAtual) buscar(true); });
 document.getElementById('tabela').addEventListener('click', function (e) {
   var bt = e.target.closest ? e.target.closest('[data-add]') : null;
-  if (bt) { adicionarCarteira(ULT_LINHAS.filter(function (r) { return r.ticker === bt.getAttribute('data-add'); })[0]); return; }
+  if (bt) { escolherDestino(ULT_LINHAS.filter(function (r) { return r.ticker === bt.getAttribute('data-add'); })[0]); return; }
   var th = e.target.closest ? e.target.closest('th[data-ord]') : null;
   if (!th || th.getAttribute('data-ord') === 'add') return;
   var c = th.getAttribute('data-ord');
@@ -20583,7 +20611,7 @@ function renderAcoes() {
   var h = '<table class="tb-acoes"><thead><tr><th>Ativo</th><th>Quantidade</th><th>Preço médio</th><th>Última cotação</th><th>Posição (R$)</th><th></th></tr></thead><tbody>';
   ord.forEach(function (x) {
     tot += x.pos;
-    h += '<tr' + (x.ticker === ACAO_SEL ? ' class="sel"' : '') + '><td><b>' + esc(x.ticker) + '</b></td><td>' + fmt(x.qtd, 0) + '</td><td>' + (x.pm !== null ? 'R$ ' + fmt(x.pm, 2) : '—') + '</td><td>' + (x.cot !== null ? 'R$ ' + fmt(x.cot, 2) : '—') + '</td><td>' + (x.pos ? 'R$ ' + fmt(x.pos, 2) : '—') + '</td><td><button type="button" class="btn" data-analisar="' + esc(x.ticker) + '">Consultar opções</button></td></tr>';
+    h += '<tr' + (x.ticker === ACAO_SEL ? ' class="sel"' : '') + '><td><b>' + esc(x.ticker) + '</b>' + (x.opcao ? ' <small>' + (x.opcao.tipo === 'call' ? 'Call' : 'Put') + ' ' + esc(x.opcao.ativo) + ' · strike R$ ' + fmt(Number(x.opcao.strike), 2) + ' · venc. ' + fmtData(x.opcao.venc) + '</small>' : '') + '</td><td>' + fmt(x.qtd, 0) + '</td><td>' + (x.pm !== null ? 'R$ ' + fmt(x.pm, 2) : '—') + '</td><td>' + (x.cot !== null ? 'R$ ' + fmt(x.cot, 2) : '—') + '</td><td>' + (x.pos ? 'R$ ' + fmt(x.pos, 2) : '—') + '</td><td>' + (x.opcao ? '<button type="button" class="rm" data-rm-opc="' + esc(x.ticker) + '" title="Remover da carteira do cliente">×</button>' : '<button type="button" class="btn" data-analisar="' + esc(x.ticker) + '">Consultar opções</button>') + '</td></tr>';
   });
   h += '<tr><td><b>Total</b></td><td></td><td></td><td></td><td><b>R$ ' + fmt(tot, 2) + '</b></td><td></td></tr></tbody></table>';
   el.innerHTML = h;
@@ -20607,7 +20635,7 @@ function iniciarAcoes() {
   document.getElementById('btn-subir').addEventListener('click', function () { inp.value = ''; inp.click(); });
   inp.addEventListener('change', function () { lerArquivoCarteira(inp.files && inp.files[0]); });
   document.getElementById('btn-limpar-acoes').addEventListener('click', function () { ACOES = []; ACOES_ARQ = ''; ACAO_SEL = ''; ACOES_NOME = ''; try { localStorage.removeItem('cr_opcoes_acoes'); } catch (e) {} dizerArq(''); renderAcoes(); renderSalvas(); });
-  document.getElementById('tab-acoes').addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('[data-analisar]') : null; if (b) analisarAcao(b.getAttribute('data-analisar')); });
+  document.getElementById('tab-acoes').addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('[data-analisar]') : null; if (b) { analisarAcao(b.getAttribute('data-analisar')); return; } var m = e.target.closest ? e.target.closest('[data-rm-opc]') : null; if (m) { ACOES = ACOES.filter(function (x) { return x.ticker !== m.getAttribute('data-rm-opc'); }); gravarAcoesAtual(); renderAcoes(); } });
 }
 function gravarAcoesAtual() { try { localStorage.setItem('cr_opcoes_acoes', JSON.stringify({ arq: ACOES_ARQ, nome: ACOES_NOME, acoes: ACOES })); } catch (e) {} }
 // ── Seções recolhíveis: o botão (+) expande e o (−) recolhe; a escolha fica lembrada neste navegador ──
@@ -20667,7 +20695,7 @@ function salvarCarteiraCliente() {
   if (!ACOES.length) return;
   var ex = SALVAS.filter(function (s) { return String(s.nome).toLowerCase() === n.toLowerCase(); })[0];
   if (ex && !confirm('Já existe uma carteira salva com o nome "' + ex.nome + '". Deseja substituí-la?')) return;
-  var copia = ACOES.map(function (x) { return { ticker: x.ticker, qtd: x.qtd, pm: x.pm, cot: x.cot, pos: x.pos }; });
+  var copia = ACOES.map(function (x) { return { ticker: x.ticker, qtd: x.qtd, pm: x.pm, cot: x.cot, pos: x.pos, opcao: x.opcao || null }; });
   function ap(salvo) {
     if (ex) SALVAS = SALVAS.filter(function (s) { return s !== ex; });
     SALVAS.push(salvo); ordenarSalvas();
@@ -20687,7 +20715,7 @@ function salvarCarteiraCliente() {
 function abrirSalva(nome) {
   var s = SALVAS.filter(function (x) { return x.nome === nome; })[0];
   if (!s) { renderSalvas(); return; }
-  ACOES = (s.acoes || []).map(function (x) { return { ticker: x.ticker, qtd: x.qtd, pm: x.pm, cot: x.cot, pos: x.pos }; });
+  ACOES = (s.acoes || []).map(function (x) { return { ticker: x.ticker, qtd: x.qtd, pm: x.pm, cot: x.cot, pos: x.pos, opcao: x.opcao || null }; });
   ACOES_ARQ = s.arquivo || ''; ACOES_NOME = s.nome; ACAO_SEL = '';
   gravarAcoesAtual(); fecharFormSalvar(); dizerArq(''); renderAcoes(); renderSalvas();
 }
