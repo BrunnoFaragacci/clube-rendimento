@@ -283,6 +283,7 @@ h2{font-size:32px;letter-spacing:-.02em;}
           <button type="button" class="nav-dropdown-item" id="btn-nav-seguros">Seguros e Previdência ↗</button>
           <button type="button" class="nav-dropdown-item" id="btn-nav-consorcio">Consórcio ↗</button>
           <button type="button" class="nav-dropdown-item" id="btn-nav-cartoes">Comparar Cartões ↗</button>
+          <button type="button" class="nav-dropdown-item" id="btn-nav-inflacao">Inflação Pessoal ↗</button>
         </div>
       </div>
       <!-- "Pesquisar ativo" ocultado do menu; a ferramenta permanece no código. Para reativar, remova o atributo hidden do botão abaixo. -->
@@ -20103,6 +20104,524 @@ setInterval(function () { if (!document.hidden) atualizar(); }, INTERVALO_MS);
 </html>`);
   }
 
+  function abrirInflacaoPessoal() {
+    var win = window.open('', '_blank');
+    if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
+    escreverConteudoJanela(win, `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inflação pessoal — Clube do Rendimento</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"><\/script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--bg-soft:#F4F4F4;--ink:#111111;--ink-soft:#5C5C5C;--line:#E2E2E2;--green:#16A34A;--red:#DC2626;--radius:16px;--shadow-sm:0 2px 10px rgba(0,0,0,.05);}
+*{box-sizing:border-box;margin:0;padding:0;}
+[hidden]{display:none!important;}
+body{font-family:'Inter','Poppins','Segoe UI',sans-serif;background:var(--bg-soft);color:var(--ink);min-height:100vh;font-size:15px;}
+.nav{background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50;}
+.nav-brand{font-weight:700;font-size:15px;text-decoration:none;color:var(--ink);}
+.container{max-width:1180px;margin:0 auto;padding:28px 24px 60px;}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:600;margin-bottom:10px;}
+.eyebrow::before{content:"";width:18px;height:2px;background:var(--ink);display:inline-block;}
+h1{font-size:38px;font-weight:800;letter-spacing:-.02em;margin-bottom:8px;}
+.sub{font-size:16px;color:var(--ink-soft);margin-bottom:22px;line-height:1.55;max-width:820px;}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px 24px;margin-bottom:18px;box-shadow:var(--shadow-sm);}
+.passo{display:flex;align-items:center;gap:12px;font-size:18px;font-weight:700;margin-bottom:14px;}
+.passo i{font-style:normal;width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:14px;flex:none;}
+.passo small{font-weight:500;color:var(--ink-soft);font-size:13px;margin-left:auto;}
+.drop{display:block;border:2px dashed #B8B8B8;border-radius:16px;padding:34px 20px;text-align:center;cursor:pointer;background:#FAFAFA;font-size:16px;line-height:1.6;transition:background .15s,border-color .15s;}
+.drop:hover,.drop.sobre{background:#F0F0F0;border-color:var(--ink);}
+.drop strong{font-size:18px;}
+.drop small{display:block;color:var(--ink-soft);font-size:12.5px;margin-top:6px;}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;}
+.chip{display:inline-flex;align-items:center;gap:10px;border:1.5px solid var(--ink);border-radius:999px;padding:6px 8px 6px 14px;font-size:13px;font-weight:600;}
+.chip small{font-weight:500;color:var(--ink-soft);}
+.chip button{border:none;background:var(--bg-soft);border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:14px;line-height:1;}
+.chip button:hover{background:#FDECEC;color:var(--red);}
+.msg{font-size:13px;color:var(--ink-soft);line-height:1.5;margin-top:10px;}
+.msg.erro{color:var(--red);}
+.grade{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.campo label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:5px;}
+.campo small{display:block;font-size:11.5px;color:#8a8a8a;margin-top:4px;line-height:1.35;}
+.campo input,.campo select{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:14px;background:#fff;color:var(--ink);}
+.campo input:focus,.campo select:focus{outline:none;border-color:var(--ink);}
+.btn{padding:10px 18px;border-radius:9px;font-weight:600;font-size:13.5px;border:1.5px solid var(--ink);background:#fff;color:var(--ink);cursor:pointer;font-family:inherit;}
+.btn:hover{background:var(--bg-soft);}
+.btn.pri{background:var(--ink);color:#fff;}
+.btn.pri:hover{background:#2a2a2a;}
+.btn-mais{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--ink);background:#fff;color:var(--ink);font-weight:700;font-size:17px;line-height:1;cursor:pointer;flex:none;}
+.btn-mais:hover{background:var(--ink);color:#fff;}
+.hero{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:18px;align-items:stretch;}
+.hero .bloco{border-radius:16px;padding:20px 22px;background:#FAFAFA;border:1px solid var(--line);}
+.hero .bloco.dest{background:var(--ink);color:#fff;border-color:var(--ink);}
+.hero .r{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:10px;}
+.hero .dest .r{color:#BDBDBD;}
+.hero .n{font-size:58px;font-weight:800;letter-spacing:-.03em;line-height:1;}
+.hero .m{font-size:13px;color:var(--ink-soft);margin-top:10px;line-height:1.45;}
+.hero .dest .m{color:#CFCFCF;}
+.pos{color:var(--green);}.neg{color:var(--red);}
+.frase{font-size:18px;line-height:1.55;margin:20px 2px 6px;max-width:940px;}
+.linhas{margin-top:8px;}
+.lin{display:grid;grid-template-columns:230px 1fr 150px 120px;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);}
+.lin.cab{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);padding:8px 0;border-bottom:1.5px solid var(--ink);}
+.lin .g{font-weight:600;font-size:15px;}
+.lin .g small{display:block;font-weight:500;color:var(--ink-soft);font-size:12px;margin-top:2px;}
+.bar{position:relative;height:18px;background:#F1F1F1;border-radius:9px;}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--ink);border-radius:9px;min-width:3px;}
+.bar b{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--red);border-radius:2px;}
+.lin .v{text-align:right;font-variant-numeric:tabular-nums;font-size:14px;}
+.lin .v b{display:block;font-size:16px;}
+.lin .v small{color:var(--ink-soft);font-size:11.5px;}
+.legenda{display:flex;gap:22px;font-size:12.5px;color:var(--ink-soft);margin:6px 0 4px;flex-wrap:wrap;}
+.legenda span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--ink);margin-right:7px;vertical-align:-1px;}
+.legenda span.of::before{width:3px;height:14px;border-radius:2px;background:var(--red);margin-right:9px;vertical-align:-3px;}
+.impacto{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:6px;}
+.impacto .it{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:#FAFAFA;}
+.impacto .r{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);}
+.impacto .n{font-size:26px;font-weight:800;margin:8px 0 4px;letter-spacing:-.02em;}
+.impacto .m{font-size:12.5px;color:var(--ink-soft);line-height:1.45;}
+.aviso{font-size:12px;color:var(--ink-soft);line-height:1.6;margin-top:14px;max-width:980px;}
+.alerta{background:#FFF8E6;border:1px solid #F1DFA6;border-radius:12px;padding:12px 16px;font-size:13.5px;line-height:1.5;margin-top:14px;}
+.tabela{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--line);}
+th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);font-weight:700;border-bottom:1.5px solid var(--ink);}
+td.d,th.d{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+tbody tr:nth-child(even) td{background:#FAFAFA;}
+td select{padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;max-width:240px;}
+td select.pend{border-color:var(--red);}
+.sec{display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;user-select:none;}
+.sec .passo{margin-bottom:0;}
+.card.fechado .corpo-sec{display:none;}
+.card:not(.fechado) .sec{margin-bottom:14px;}
+.tag{display:inline-block;font-size:11px;font-weight:700;border:1.5px solid var(--ink);border-radius:999px;padding:1px 9px;margin-left:8px;}
+.tag.al{border-color:var(--red);color:var(--red);}
+@media(max-width:900px){.hero,.impacto,.grade{grid-template-columns:1fr;}.lin{grid-template-columns:1fr;gap:6px;}.hero .n{font-size:44px;}}
+@media print{.noprint{display:none!important;}body{background:#fff;}.card{box-shadow:none;break-inside:avoid;}.nav{display:none;}}
+</style>
+</head>
+<body>
+<header class="nav noprint"><a href="javascript:window.close()" class="nav-brand">← Clube do Rendimento</a></header>
+<div class="container">
+  <span class="eyebrow">Planejamento financeiro</span>
+  <h1 id="titulo">Inflação pessoal</h1>
+  <p class="sub">O IPCA divulgado é uma média nacional. A inflação que cada pessoa sente depende do que ela compra. Envie as faturas do cartão e veja a inflação do seu próprio custo de vida, comparada com o IPCA oficial do IBGE.</p>
+
+  <div class="card noprint" id="c-fat">
+    <div class="passo"><i>1</i>Envie as faturas do cartão<small id="ipca-info">Consultando o IPCA no IBGE...</small></div>
+    <label class="drop" id="drop" for="in-arq"><strong>Arraste as faturas aqui</strong> ou clique para selecionar<small>PDF ou CSV, de um ou de vários meses. Os arquivos são lidos neste navegador e não são enviados a nenhum servidor.</small></label>
+    <input type="file" id="in-arq" accept=".pdf,.csv" multiple hidden>
+    <div class="chips" id="chips"></div>
+    <p class="msg" id="msg-arq"></p>
+  </div>
+
+  <div class="card noprint" id="c-man">
+    <div class="passo"><i>2</i>Gastos fora do cartão<small>opcional, valores mensais em R$</small></div>
+    <div class="grade" id="grade-man"></div>
+    <p class="msg">Aluguel, condomínio, energia, plano de saúde e mensalidades escolares costumam ser pagos por boleto ou débito e, por isso, não aparecem na fatura. Informe-os aqui para um resultado completo.</p>
+  </div>
+
+  <div class="card" id="c-res" hidden>
+    <div class="passo"><i>3</i>Resultado<small id="res-info"></small></div>
+    <div class="hero">
+      <div class="bloco dest"><div class="r">Sua inflação pessoal · 12 meses</div><div class="n" id="h-pessoal">—</div><div class="m" id="h-pessoal-m"></div></div>
+      <div class="bloco"><div class="r">IPCA oficial · IBGE</div><div class="n" id="h-oficial">—</div><div class="m" id="h-oficial-m"></div></div>
+      <div class="bloco"><div class="r">Diferença</div><div class="n" id="h-dif">—</div><div class="m" id="h-dif-m"></div></div>
+    </div>
+    <p class="frase" id="frase"></p>
+    <div id="alerta-cls" class="alerta noprint" hidden></div>
+  </div>
+
+  <div class="card" id="c-grupos" hidden>
+    <div class="passo">Para onde vai o seu dinheiro<small id="tot-mes"></small></div>
+    <div class="legenda"><span>Seu gasto (% do total)</span><span class="of">Peso no IPCA oficial</span></div>
+    <div class="linhas" id="linhas"></div>
+  </div>
+
+  <div class="card" id="c-imp" hidden>
+    <div class="passo">O que isso significa na prática</div>
+    <div class="impacto" id="impacto"></div>
+    <p class="aviso">Estimativa com base nos gastos informados e na variação acumulada em 12 meses de cada grupo do IPCA (IBGE, SIDRA, tabela 7060), mantidas as proporções de gastos atuais. O retorno bruto considera Imposto de Renda de 15%. Informação sem caráter de recomendação.</p>
+    <div class="noprint" style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;"><button type="button" class="btn pri" id="btn-imprimir">Imprimir ou salvar em PDF</button><button type="button" class="btn" id="btn-limpar">Limpar tudo</button></div>
+  </div>
+
+  <div class="card fechado noprint" id="c-rev" hidden>
+    <div class="sec" data-tg="c-rev"><div class="passo">Conferir a classificação dos lançamentos <span class="tag" id="rev-tag"></span></div><button type="button" class="btn-mais" aria-expanded="false" title="Expandir">+</button></div>
+    <div class="corpo-sec">
+      <p class="msg" style="margin:0 0 12px;">Cada estabelecimento foi classificado automaticamente em um grupo do IPCA. Ajuste o que estiver incorreto: a mudança vale para todos os lançamentos do mesmo estabelecimento.</p>
+      <div class="tabela" id="tab-rev"></div>
+    </div>
+  </div>
+
+  <div class="card noprint" id="c-nome" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;">
+    <div class="campo" style="min-width:280px;"><label for="in-nome">Nome do cliente (aparece no título e na impressão)</label><input type="text" id="in-nome" maxlength="60" autocomplete="off" placeholder="Ex.: Maria Silva"></div>
+    <div class="campo" style="min-width:180px;max-width:220px;"><label for="in-meses">Meses considerados</label><input type="text" id="in-meses" inputmode="numeric" autocomplete="off" placeholder="1"></div>
+  </div>
+</div>
+
+<script>
+var GRUPOS = [
+  { c: '7170', k: 'alim', n: 'Alimentação e bebidas', d: 'Mercado, restaurantes, delivery' },
+  { c: '7445', k: 'hab', n: 'Habitação', d: 'Aluguel, condomínio, energia, água, gás, reformas' },
+  { c: '7486', k: 'art', n: 'Artigos de residência', d: 'Móveis, eletrodomésticos, utensílios' },
+  { c: '7558', k: 'vest', n: 'Vestuário', d: 'Roupas, calçados e acessórios' },
+  { c: '7625', k: 'transp', n: 'Transportes', d: 'Combustível, aplicativos, transporte público, veículo' },
+  { c: '7660', k: 'saude', n: 'Saúde e cuidados pessoais', d: 'Plano de saúde, farmácia, consultas, barbearia' },
+  { c: '7712', k: 'desp', n: 'Despesas pessoais', d: 'Lazer, viagens, academia, streaming, jogos' },
+  { c: '7766', k: 'edu', n: 'Educação', d: 'Escola, faculdade, cursos' },
+  { c: '7786', k: 'com', n: 'Comunicação', d: 'Telefone, internet, assinaturas digitais' }
+];
+var MES_ABR = { jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12 };
+var IPCA = null, LANC = [], ARQS = [], MANUAL = {}, OVR = {}, MESES_USER = null;
+
+function esc(t) { return String(t === undefined || t === null ? '' : t).split('&').join('&amp;').split('"').join('&quot;').split('<').join('&lt;'); }
+function fmtRS(v) { return 'R$ ' + Math.round(v).toLocaleString('pt-BR'); }
+function fmtRS2(v) { return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtP(v, d) { d = d === undefined ? 1 : d; return v.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }) + '%'; }
+function parseBR(s) {
+  var t = String(s === undefined || s === null ? '' : s).split('R$').join('').split(' ').join('').trim();
+  if (!t) return null;
+  if (t.indexOf(',') !== -1) t = t.split('.').join('').replace(',', '.');
+  var n = Number(t);
+  return isNaN(n) ? null : n;
+}
+function norm(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+
+// ── IPCA do IBGE (SIDRA, tabela 7060): variação acumulada em 12 meses e peso de cada grupo ──
+function carregarIPCA() {
+  var info = document.getElementById('ipca-info');
+  info.textContent = 'Consultando o IPCA no IBGE...';
+  var cods = '7169,' + GRUPOS.map(function (g) { return g.c; }).join(',');
+  return fetch('https://apisidra.ibge.gov.br/values/t/7060/n1/all/v/2265,66/p/last%201/c315/' + cods + '?formato=json').then(function (r) { return r.json(); }).then(function (j) {
+    var o = { mes: '', geral: null, g: {} };
+    j.slice(1).forEach(function (x) {
+      var v = parseFloat(x.V);
+      if (isNaN(v)) return;
+      o.mes = x.D3N;
+      if (x.D4C === '7169') { if (x.D2C === '2265') o.geral = v; return; }
+      var g = GRUPOS.filter(function (y) { return y.c === x.D4C; })[0];
+      if (!g) return;
+      var e = o.g[g.k] || (o.g[g.k] = {});
+      if (x.D2C === '2265') e.v12 = v; else e.peso = v;
+    });
+    var ok = o.geral !== null && GRUPOS.every(function (g) { return o.g[g.k] && typeof o.g[g.k].v12 === 'number' && typeof o.g[g.k].peso === 'number'; });
+    if (!ok) throw new Error('dados incompletos');
+    IPCA = o;
+    info.textContent = 'IPCA de ' + o.mes + ' · fonte: IBGE';
+    renderTudo();
+  }).catch(function () {
+    IPCA = null;
+    info.innerHTML = 'Não foi possível consultar o IBGE. <a href="#" id="lnk-tentar" style="color:inherit;font-weight:700;">Tentar novamente</a>';
+    var l = document.getElementById('lnk-tentar');
+    if (l) l.addEventListener('click', function (e) { e.preventDefault(); carregarIPCA(); });
+  });
+}
+
+// ── Classificação dos estabelecimentos nos grupos do IPCA ──
+var R_FORA = [' pagamento ', ' iof ', 'anuidade', ' juros ', ' multa', 'encargo', 'tarifa', ' saque ', ' pix ', 'transferencia', 'aplicacao', 'investimento', 'seguro fatura'];
+var REGRAS = [
+  { g: 'transp', k: ['autopeca'] },
+  { g: 'desp', k: ['amazonprime', 'prime video'] },
+  { g: 'hab', k: ['aluguel', 'condominio', 'iptu', 'energia', 'enel ', 'cpfl', 'cemig', 'light ', 'sabesp', 'copasa', 'sanepar', 'comgas', 'naturgy', 'imobiliaria', 'leroy', 'telhanorte', 'c&c', 'reforma', 'eletricista', 'encanador', 'faxina', 'diarista', 'seguro residencial'] },
+  { g: 'edu', k: ['escola', 'colegio', 'faculdade', 'universidade', 'curso', 'udemy', 'alura', 'hotmart', 'coursera', 'livraria', 'saraiva', 'kumon', 'wizard', 'cultura inglesa', 'duolingo', 'papelaria', 'kalunga'] },
+  { g: 'saude', k: ['farmacia', 'drogaria', 'drogasil', 'droga raia', 'pacheco', 'pague menos', 'panvel', 'unimed', 'amil', 'hapvida', 'notredame', 'hospital', 'clinica', 'laboratorio', 'dasa', 'fleury', 'dentista', 'odonto', 'otica', 'optica', 'barbearia', 'barbeiro', 'salao', 'cabeleireiro', 'manicure', 'perfumaria', 'boticario', 'natura ', 'sephora', 'cosmetic', 'psicolog', 'fisioterap', 'nutricion'] },
+  { g: 'transp', k: ['uber', '99negocia', '99pop', '99app', '99 app', ' pop ', 'cabify', 'indrive', 'posto ', 'shell', 'ipiranga', 'combust', 'estapar', 'estacionamento', 'pedagio', 'sem parar', 'conectcar', 'cptm', 'metro', 'bilhete unico', 'sptrans', 'emv ', 'onibus', 'patinete', 'mecanica', 'oficina', 'pneu', 'ipva', 'detran', 'localiza', 'movida', 'latam', 'gol linhas', 'azul linhas', 'passagem', 'rodoviaria', 'buser', 'clickbus', 'autoescola', 'seguro auto'] },
+  { g: 'alim', k: ['ifd*', 'ifood', 'rappi', 'restaurante', ' rest ', 'lanchonete', 'padaria', 'supermerc', 'mercadinho', 'mercado ', 'carrefour', 'atacad', 'assai', 'pao de acucar', 'burger', 'pizza', 'churrasc', 'galeteria', 'cafe', 'starbucks', 'mcdonald', 'habib', 'outback', 'sorvet', 'acougue', 'hortifruti', 'emporio', 'doceria', 'choperia', ' bar ', 'cervej', 'confeitaria', 'sushi', 'lanches', 'dunkin', 'spoleto', 'madero'] },
+  { g: 'vest', k: ['renner', 'c&a', 'riachuelo', 'zara', 'marisa', 'centauro', 'netshoes', 'dafiti', 'shein', 'nike', 'adidas', 'havaianas', 'calcados', 'hering', 'arezzo', 'osklen'] },
+  { g: 'art', k: ['magazine luiza', 'magalu', 'casas bahia', 'tok&stok', 'tok stok', 'etna', 'fast shop', 'ponto frio', 'ikea', 'mobly', 'kabum', 'colchoes', 'camicado', 'eletrodomestico'] },
+  { g: 'com', k: ['claro', 'vivo', ' tim ', ' oi ', 'internet', 'google', 'apple.com', 'icloud', 'microsoft', 'adobe', 'anthropic', 'openai', 'chatgpt', 'github', 'dropbox', 'zoom', 'canva', 'notion', 'telefone', 'celular'] },
+  { g: 'desp', k: ['ingresso', 'cinema', 'steam', 'playstation', 'xbox', 'nintendo', 'netflix', 'spotify', 'disney', 'hbo', 'youtube', 'globoplay', 'deezer', 'apple tv', 'wellhub', 'gympass', 'academia', 'smartfit', 'bluefit', 'viagem', 'hotel', 'airbnb', 'booking', 'decolar', 'petz', 'cobasi', 'veterinar', 'jogos', 'lavanderia', 'tabacaria'] },
+  { g: 'art', rev: true, k: ['mercadolivre', 'aliexpress', 'shopee', 'amazon', 'americanas', 'temu', 'olx'] }
+];
+function chaveDe(desc) {
+  var s = norm(desc).replace(/\\*\\d+/g, '').replace(/[^a-z0-9*&. ]/g, ' ');
+  var t = s.split(' ').filter(function (x) {
+    if (!x) return false;
+    if (/^\\d+$/.test(x)) return false;
+    if (/^\\d{1,2}(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)$/.test(x)) return false;
+    if (/^\\d{1,2}h\\d{0,2}(m|min)?$/.test(x)) return false;
+    return true;
+  });
+  return t.slice(0, 3).join(' ') || s.trim();
+}
+function classificar(desc) {
+  var d = norm(desc);
+  if (d.indexOf('estorno') === 0) {
+    var m = /["“”]([^"“”]+)["“”]/.exec(desc);
+    if (m) d = norm(m[1]);
+  }
+  d = ' ' + d.split('mercado livre').join('mercadolivre') + ' ';
+  var i, j;
+  for (i = 0; i < R_FORA.length; i++) if (d.indexOf(R_FORA[i]) !== -1) return { g: 'x', rev: false };
+  for (i = 0; i < REGRAS.length; i++) for (j = 0; j < REGRAS[i].k.length; j++) if (d.indexOf(REGRAS[i].k[j]) !== -1) return { g: REGRAS[i].g, rev: !!REGRAS[i].rev };
+  return { g: '?', rev: false };
+}
+function aplicarClasse(l) {
+  var k = chaveDe(l.desc);
+  l.chave = k;
+  if (OVR[k]) { l.g = OVR[k]; l.rev = false; return; }
+  var c = classificar(l.desc);
+  l.g = c.g; l.rev = c.rev;
+}
+
+// ── Leitura das faturas (PDF no formato do Nubank e de outros emissores; CSV) ──
+function extrairLinhasPDF(pdf) {
+  var paginas = [];
+  for (var i = 1; i <= pdf.numPages; i++) {
+    paginas.push(pdf.getPage(i).then(function (page) {
+      return page.getTextContent().then(function (content) {
+        var itens = content.items.map(function (it) { return { x: it.transform[4], y: it.transform[5], t: it.str }; }).sort(function (a, b) { return b.y - a.y || a.x - b.x; });
+        var grupos = [];
+        itens.forEach(function (it) {
+          var g = grupos[grupos.length - 1];
+          if (g && Math.abs(g.y - it.y) <= 2.5) g.itens.push(it); else grupos.push({ y: it.y, itens: [it] });
+        });
+        return grupos.map(function (g) { return g.itens.sort(function (a, b) { return a.x - b.x; }).map(function (o) { return o.t; }).join(' ').replace(/\\s+/g, ' ').trim(); });
+      });
+    }));
+  }
+  return Promise.all(paginas).then(function (ps) { return [].concat.apply([], ps); });
+}
+function valorDe(sinal, num) { var v = parseBR(num); if (v === null) return null; return (sinal === '−' || sinal === '-') ? -v : v; }
+function parseFaturaLinhas(linhas) {
+  var out = [], m;
+  var reNu = /^(\\d{1,2}) (JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)\\s+(?:[•*·.]{2,}\\s*\\d{4}\\s+)?(.+?)\\s+([−-])?R\\$\\s*([\\d.]+,\\d{2})$/i;
+  linhas.forEach(function (ln) {
+    if ((m = reNu.exec(ln))) { var v = valorDe(m[4], m[5]); if (v !== null) out.push({ data: m[1] + ' ' + m[2].toUpperCase(), desc: m[3].trim(), valor: v }); }
+  });
+  if (out.length) return out;
+  var reGen = /^(\\d{2}\\/\\d{2})(?:\\/\\d{2,4})?\\s+(.+?)\\s+([−-])?(?:R\\$\\s*)?([\\d.]+,\\d{2})$/;
+  linhas.forEach(function (ln) {
+    if ((m = reGen.exec(ln))) { var v = valorDe(m[3], m[4]); if (v !== null) out.push({ data: m[1], desc: m[2].trim(), valor: v }); }
+  });
+  return out;
+}
+function dividirCsv(linha, sep) {
+  var campos = [], atual = '', asp = false, i, c;
+  for (i = 0; i < linha.length; i++) {
+    c = linha.charAt(i);
+    if (c === '"') { if (asp && linha.charAt(i + 1) === '"') { atual += '"'; i++; } else asp = !asp; }
+    else if (c === sep && !asp) { campos.push(atual); atual = ''; }
+    else atual += c;
+  }
+  campos.push(atual);
+  return campos;
+}
+function parseFaturaCsv(texto) {
+  var ls = texto.split(/\\r?\\n/).filter(function (x) { return x.trim(); });
+  if (ls.length < 2) return { itens: [], meses: 1 };
+  var sep = ls[0].split(';').length > ls[0].split(',').length ? ';' : ',';
+  var cab = dividirCsv(ls[0], sep).map(function (x) { return norm(x).trim(); });
+  function col(nomes) { for (var i = 0; i < cab.length; i++) if (nomes.indexOf(cab[i]) !== -1) return i; return -1; }
+  var cd = col(['date', 'data']), ct = col(['title', 'descricao', 'estabelecimento', 'lancamento', 'historico']), cv = col(['amount', 'valor']);
+  if (ct < 0 || cv < 0) return { itens: [], meses: 1 };
+  var itens = [], meses = {};
+  ls.slice(1).forEach(function (ln) {
+    var c = dividirCsv(ln, sep), v = parseBR(c[cv]);
+    if (v === null) return;
+    var data = cd >= 0 ? String(c[cd] || '') : '';
+    meses[data.slice(0, 7)] = 1;
+    itens.push({ data: data, desc: String(c[ct] || '').trim(), valor: v });
+  });
+  return { itens: itens, meses: Math.max(1, Object.keys(meses).length) };
+}
+function lerArquivo(arq) {
+  if (ARQS.some(function (a) { return a.nome === arq.name; })) return Promise.resolve({ erro: arq.name + ': arquivo já carregado.' });
+  var ehPdf = /\\.pdf$/i.test(arq.name);
+  return new Promise(function (ok) {
+    var fr = new FileReader();
+    fr.onerror = function () { ok({ erro: arq.name + ': não foi possível ler o arquivo.' }); };
+    fr.onload = function () {
+      try {
+        if (ehPdf) {
+          if (!window.pdfjsLib) { ok({ erro: 'Não foi possível carregar o leitor de PDF. Verifique a conexão e tente novamente.' }); return; }
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          pdfjsLib.getDocument({ data: new Uint8Array(fr.result) }).promise.then(extrairLinhasPDF).then(function (ls) { ok({ itens: parseFaturaLinhas(ls), meses: 1 }); }).catch(function () { ok({ erro: arq.name + ': não foi possível interpretar o PDF.' }); });
+        } else ok(parseFaturaCsv(String(fr.result)));
+      } catch (e) { ok({ erro: arq.name + ': não foi possível interpretar o arquivo.' }); }
+    };
+    if (ehPdf) fr.readAsArrayBuffer(arq); else fr.readAsText(arq, 'utf-8');
+  });
+}
+function receberArquivos(lista) {
+  var arqs = Array.prototype.slice.call(lista || []);
+  if (!arqs.length) return;
+  dizer('Lendo ' + arqs.length + (arqs.length > 1 ? ' arquivos' : ' arquivo') + '...', false);
+  var seq = Promise.resolve(), erros = [];
+  arqs.forEach(function (a) {
+    seq = seq.then(function () { return lerArquivo(a); }).then(function (r) {
+      if (r.erro) { erros.push(r.erro); return; }
+      if (!r.itens.length) { erros.push(a.name + ': nenhum lançamento reconhecido. Utilize a fatura em PDF ou CSV do cartão.'); return; }
+      var total = 0;
+      r.itens.forEach(function (it) { var l = { arq: a.name, data: it.data, desc: it.desc, valor: it.valor }; aplicarClasse(l); LANC.push(l); if (l.g !== 'x') total += it.valor; });
+      ARQS.push({ nome: a.name, n: r.itens.length, meses: r.meses, total: total });
+    });
+  });
+  seq.then(function () { dizer(erros.join(' '), erros.length > 0); renderTudo(); });
+}
+function dizer(t, erro) { var m = document.getElementById('msg-arq'); m.textContent = t || ''; m.className = 'msg' + (erro ? ' erro' : ''); }
+
+// ── Cálculo e apresentação ──
+function mesesConsiderados() {
+  if (MESES_USER) return MESES_USER;
+  return Math.max(1, ARQS.reduce(function (a, x) { return a + x.meses; }, 0));
+}
+function calcular() {
+  var por = {}, semClass = 0, i;
+  GRUPOS.forEach(function (g) { por[g.k] = 0; });
+  LANC.forEach(function (l) { if (l.g === '?') semClass += l.valor; else if (l.g !== 'x') por[l.g] += l.valor; });
+  var meses = mesesConsiderados(), tot = 0;
+  var rows = GRUPOS.map(function (g) { var v = Math.max(0, por[g.k] / meses + (MANUAL[g.k] || 0)); tot += v; return { g: g, v: v }; });
+  var pessoal = 0;
+  rows.forEach(function (r) {
+    var ip = IPCA.g[r.g.k];
+    r.w = tot > 0 ? r.v / tot * 100 : 0; r.wo = ip.peso; r.i = ip.v12; r.c = r.w * r.i / 100;
+    r.efeito = (r.w - r.wo) * (r.i - IPCA.geral) / 100;
+    pessoal += r.c;
+  });
+  return { rows: rows, tot: tot, pessoal: pessoal, semClass: semClass / meses, meses: meses };
+}
+function renderManual() {
+  var h = '';
+  GRUPOS.forEach(function (g) { h += '<div class="campo"><label for="m-' + g.k + '">' + esc(g.n) + '</label><input type="text" inputmode="decimal" id="m-' + g.k + '" data-k="' + g.k + '" placeholder="0,00" autocomplete="off"><small>' + esc(g.d) + '</small></div>'; });
+  document.getElementById('grade-man').innerHTML = h;
+}
+function renderArqs() {
+  document.getElementById('chips').innerHTML = ARQS.map(function (a) { return '<span class="chip">' + esc(a.nome) + ' <small>' + a.n + ' lançamentos · ' + fmtRS(a.total) + '</small><button type="button" data-rm="' + esc(a.nome) + '" title="Remover" aria-label="Remover">×</button></span>'; }).join('');
+}
+function renderResultado() {
+  var temDados = IPCA && (LANC.length || Object.keys(MANUAL).some(function (k) { return MANUAL[k] > 0; }));
+  ['c-res', 'c-grupos', 'c-imp'].forEach(function (id) { document.getElementById(id).hidden = true; });
+  if (!temDados) return;
+  var r = calcular();
+  if (!(r.tot > 0)) return;
+  ['c-res', 'c-grupos', 'c-imp'].forEach(function (id) { document.getElementById(id).hidden = false; });
+  var dif = r.pessoal - IPCA.geral;
+  document.getElementById('h-pessoal').textContent = fmtP(r.pessoal, 2);
+  document.getElementById('h-pessoal-m').textContent = 'Média ponderada pelos seus gastos de ' + fmtRS(r.tot) + ' por mês.';
+  document.getElementById('h-oficial').textContent = fmtP(IPCA.geral, 2);
+  document.getElementById('h-oficial-m').textContent = 'Acumulado em 12 meses até ' + IPCA.mes + '.';
+  var el = document.getElementById('h-dif');
+  el.textContent = (dif > 0 ? '+' : '') + dif.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' p.p.';
+  el.className = 'n ' + (dif > 0.005 ? 'neg' : (dif < -0.005 ? 'pos' : ''));
+  document.getElementById('h-dif-m').textContent = dif > 0.005 ? 'O seu custo de vida sobe mais que a média do país.' : (dif < -0.005 ? 'O seu custo de vida sobe menos que a média do país.' : 'Em linha com a média do país.');
+  var ord = r.rows.slice().sort(function (a, b) { return Math.abs(b.efeito) - Math.abs(a.efeito); }), top = ord[0];
+  var motivo = '';
+  if (top && Math.abs(dif) > 0.005) {
+    var cand = r.rows.slice().sort(function (a, b) { return dif > 0 ? b.efeito - a.efeito : a.efeito - b.efeito; })[0];
+    motivo = ' O principal motivo é ' + cand.g.n.toLowerCase() + ': representa ' + fmtP(cand.w, 0) + ' dos seus gastos, contra ' + fmtP(cand.wo, 0) + ' no IPCA oficial, e esse grupo variou ' + fmtP(cand.i, 2) + ' em 12 meses.';
+  }
+  document.getElementById('frase').textContent = 'Em 12 meses, os preços dos itens que compõem o seu consumo subiram ' + fmtP(r.pessoal, 2) + ', contra ' + fmtP(IPCA.geral, 2) + ' do IPCA oficial.' + motivo;
+  document.getElementById('res-info').textContent = r.meses + (r.meses === 1 ? ' mês' : ' meses') + ' de faturas';
+  document.getElementById('tot-mes').textContent = 'Total: ' + fmtRS(r.tot) + ' por mês';
+  var al = document.getElementById('alerta-cls'), msgs = [];
+  if (r.semClass > 0.5) msgs.push(fmtRS(r.semClass) + ' por mês em lançamentos sem classificação não entraram no cálculo.');
+  if (LANC.some(function (l) { return l.rev; })) msgs.push('Compras em lojas variadas (Mercado Livre, Shopee, Amazon e similares) foram colocadas em Artigos de residência. Confira em "Conferir a classificação dos lançamentos".');
+  if (!Object.keys(MANUAL).some(function (k) { return MANUAL[k] > 0; })) msgs.push('Nenhum gasto fora do cartão foi informado. Aluguel, condomínio, plano de saúde e mensalidades alteram o resultado.');
+  al.hidden = !msgs.length; al.innerHTML = msgs.map(esc).join('<br>');
+  var linhas = '<div class="lin cab"><div>Grupo</div><div>Seu gasto × peso no IPCA</div><div style="text-align:right;">Gasto mensal</div><div style="text-align:right;">IPCA 12 meses</div></div>';
+  r.rows.filter(function (x) { return x.v > 0; }).sort(function (a, b) { return b.v - a.v; }).forEach(function (x) {
+    linhas += '<div class="lin"><div class="g">' + esc(x.g.n) + '<small>' + esc(x.g.d) + '</small></div><div><div class="bar"><i style="width:' + Math.min(100, x.w).toFixed(1) + '%"></i><b style="left:calc(' + Math.min(100, x.wo).toFixed(1) + '% - 1px)"></b></div><div style="font-size:12px;color:var(--ink-soft);margin-top:6px;">' + fmtP(x.w, 1) + ' dos seus gastos · ' + fmtP(x.wo, 1) + ' no IPCA</div></div><div class="v"><b>' + fmtRS(x.v) + '</b><small>' + fmtP(x.w, 1) + '</small></div><div class="v"><b>' + fmtP(x.i, 2) + '</b><small>contribui ' + x.c.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' p.p.</small></div></div>';
+  });
+  document.getElementById('linhas').innerHTML = linhas;
+  var pi = r.pessoal / 100, em12 = r.tot * (1 + pi), em10 = r.tot * Math.pow(1 + pi, 10), bruto = r.pessoal / 0.85;
+  document.getElementById('impacto').innerHTML =
+    '<div class="it"><div class="r">Custo de vida hoje</div><div class="n">' + fmtRS(r.tot) + '</div><div class="m">por mês, nos grupos considerados.</div></div>' +
+    '<div class="it"><div class="r">Em 12 meses</div><div class="n">' + fmtRS(em12) + '</div><div class="m">' + fmtRS(em12 - r.tot) + ' a mais por mês para manter o mesmo padrão.</div></div>' +
+    '<div class="it"><div class="r">Em 10 anos</div><div class="n">' + fmtRS(em10) + '</div><div class="m">por mês, se a inflação pessoal se mantiver em ' + fmtP(r.pessoal, 2) + ' ao ano.</div></div>' +
+    '<div class="it"><div class="r">Retorno mínimo</div><div class="n">' + fmtP(bruto, 2) + '</div><div class="m">ao ano, bruto de Imposto de Renda, apenas para o patrimônio não perder poder de compra.</div></div>';
+}
+function renderRevisao() {
+  var mapa = {}, ordem = [];
+  LANC.forEach(function (l) {
+    var m = mapa[l.chave];
+    if (!m) { m = mapa[l.chave] = { chave: l.chave, nome: l.desc, n: 0, total: 0, g: l.g, rev: l.rev }; ordem.push(m); }
+    m.n++; m.total += l.valor;
+  });
+  var pend = ordem.filter(function (m) { return m.g === '?'; }).length;
+  document.getElementById('c-rev').hidden = !LANC.length;
+  var tag = document.getElementById('rev-tag');
+  tag.textContent = pend ? pend + (pend === 1 ? ' para classificar' : ' para classificar') : ordem.length + ' estabelecimentos';
+  tag.className = 'tag' + (pend ? ' al' : '');
+  ordem.sort(function (a, b) { return (a.g === '?' ? 0 : 1) - (b.g === '?' ? 0 : 1) || Math.abs(b.total) - Math.abs(a.total); });
+  var opts = function (sel) {
+    return '<option value="?"' + (sel === '?' ? ' selected' : '') + '>A classificar</option>' + GRUPOS.map(function (g) { return '<option value="' + g.k + '"' + (sel === g.k ? ' selected' : '') + '>' + esc(g.n) + '</option>'; }).join('') + '<option value="x"' + (sel === 'x' ? ' selected' : '') + '>Fora do IPCA (não é consumo)</option>';
+  };
+  var h = '<table><thead><tr><th>Estabelecimento</th><th class="d">Lançamentos</th><th class="d">Total</th><th>Grupo do IPCA</th></tr></thead><tbody>';
+  ordem.forEach(function (m) { h += '<tr><td>' + esc(m.nome) + '</td><td class="d">' + m.n + '</td><td class="d">' + fmtRS2(m.total) + '</td><td><select data-chave="' + esc(m.chave) + '"' + (m.g === '?' ? ' class="pend"' : '') + '>' + opts(m.g) + '</select></td></tr>'; });
+  document.getElementById('tab-rev').innerHTML = h + '</tbody></table>';
+}
+function renderTudo() {
+  renderArqs(); renderRevisao(); renderResultado();
+  var n = (document.getElementById('in-nome').value || '').trim();
+  document.getElementById('titulo').textContent = n ? 'Inflação pessoal — ' + n : 'Inflação pessoal';
+  document.title = document.getElementById('titulo').textContent + ' — Clube do Rendimento';
+  var im = document.getElementById('in-meses');
+  if (!MESES_USER) im.placeholder = String(mesesConsiderados());
+}
+
+// ── Eventos ──
+var inp = document.getElementById('in-arq'), drop = document.getElementById('drop');
+inp.addEventListener('change', function () { receberArquivos(inp.files); inp.value = ''; });
+['dragover', 'dragenter'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('sobre'); }); });
+['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('sobre'); }); });
+drop.addEventListener('drop', function (e) { receberArquivos(e.dataTransfer && e.dataTransfer.files); });
+document.getElementById('chips').addEventListener('click', function (e) {
+  var b = e.target.closest ? e.target.closest('[data-rm]') : null;
+  if (!b) return;
+  var nome = b.getAttribute('data-rm');
+  ARQS = ARQS.filter(function (a) { return a.nome !== nome; });
+  LANC = LANC.filter(function (l) { return l.arq !== nome; });
+  renderTudo();
+});
+document.getElementById('grade-man').addEventListener('input', function (e) {
+  var k = e.target.getAttribute ? e.target.getAttribute('data-k') : null;
+  if (!k) return;
+  var v = parseBR(e.target.value);
+  if (v === null || v <= 0) delete MANUAL[k]; else MANUAL[k] = v;
+  renderResultado();
+});
+document.getElementById('tab-rev').addEventListener('change', function (e) {
+  var c = e.target.getAttribute ? e.target.getAttribute('data-chave') : null;
+  if (c === null || c === undefined) return;
+  OVR[c] = e.target.value;
+  LANC.forEach(function (l) { if (l.chave === c) { l.g = e.target.value; l.rev = false; } });
+  renderTudo();
+});
+document.getElementById('in-nome').addEventListener('input', renderTudo);
+document.getElementById('in-meses').addEventListener('input', function () {
+  var v = parseInt(this.value, 10);
+  MESES_USER = v > 0 ? v : null;
+  renderResultado();
+});
+document.getElementById('btn-imprimir').addEventListener('click', function () { window.print(); });
+document.getElementById('btn-limpar').addEventListener('click', function () {
+  if (!confirm('Remover as faturas e os valores informados?')) return;
+  LANC = []; ARQS = []; MANUAL = {}; OVR = {}; MESES_USER = null;
+  document.getElementById('in-meses').value = '';
+  Array.prototype.forEach.call(document.querySelectorAll('#grade-man input'), function (i) { i.value = ''; });
+  dizer('', false); renderTudo();
+});
+document.addEventListener('click', function (e) {
+  var h = e.target.closest ? e.target.closest('.sec[data-tg]') : null;
+  if (!h) return;
+  var c = document.getElementById(h.getAttribute('data-tg')), abrir = c.classList.contains('fechado');
+  c.classList.toggle('fechado', !abrir);
+  var b = h.querySelector('.btn-mais');
+  if (b) { b.textContent = abrir ? '−' : '+'; b.setAttribute('aria-expanded', abrir ? 'true' : 'false'); }
+});
+renderManual();
+renderTudo();
+carregarIPCA();
+<\/script>
+</body>
+</html>`);
+  }
+
   function abrirOpcoes() {
     var win = window.open('', '_blank');
     if (!win) { alert('Permita pop-ups para este site e tente novamente.'); return; }
@@ -27186,6 +27705,7 @@ if (btnExportarExcelPesquisa) {
   document.getElementById('btn-nav-mapa-calor').addEventListener('click', abrirMapaCalor);
   document.getElementById('btn-nav-valuation').addEventListener('click', abrirValuation);
   document.getElementById('btn-nav-opcoes').addEventListener('click', abrirOpcoes);
+  document.getElementById('btn-nav-inflacao').addEventListener('click', abrirInflacaoPessoal);
   document.getElementById('btn-nav-nota-corretagem').addEventListener('click', abrirNotaCorretagem);
   document.getElementById('btn-nav-cetipados').addEventListener('click', abrirCetipados);
   document.getElementById('btn-nav-pesquisa').addEventListener('click', abrirPesquisaAtivo);
