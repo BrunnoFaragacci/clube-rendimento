@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://segeufywrjmstfmfscdi.supabase.co https://api.bcb.gov.br https://olinda.bcb.gov.br https://brapi.dev https://icons.brapi.dev https://brasilapi.com.br https://dados.cvm.gov.br https://api.alternative.me; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://segeufywrjmstfmfscdi.supabase.co https://apisidra.ibge.gov.br https://api.bcb.gov.br https://olinda.bcb.gov.br https://brapi.dev https://icons.brapi.dev https://brasilapi.com.br https://dados.cvm.gov.br https://api.alternative.me; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'self'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="google-site-verification" content="ox1-Dib-hjSEcEXFrWMBXz4IB05sJ4cRTw5JotQAfZY" />
 <title>Clube do Rendimento</title>
@@ -20225,6 +20225,7 @@ td select.pend{border-color:var(--red);}
     <p class="msg">Aluguel, condomínio, energia, plano de saúde e mensalidades escolares costumam ser pagos por boleto ou débito e, por isso, não aparecem na fatura. Informe-os aqui para um resultado completo.</p>
   </div>
 
+  <div class="card" id="c-ipca" hidden><p class="msg" id="ipca-msg" style="margin:0;font-size:15px;"></p><div style="margin-top:12px;" id="ipca-acao" hidden><button type="button" class="btn pri" id="btn-ipca">Tentar novamente</button></div></div>
   <div class="card" id="c-res" hidden>
     <div class="passo"><i>3</i>Resultado<small id="res-info"></small></div>
     <div class="hero">
@@ -20245,7 +20246,7 @@ td select.pend{border-color:var(--red);}
   <div class="card" id="c-imp" hidden>
     <div class="passo">O que isso significa na prática</div>
     <div class="impacto" id="impacto"></div>
-    <p class="aviso">Estimativa com base nos gastos informados e na variação acumulada em 12 meses de cada grupo do IPCA (IBGE, SIDRA, tabela 7060), mantidas as proporções de gastos atuais. O retorno bruto considera Imposto de Renda de 15%. Informação sem caráter de recomendação.</p>
+    <p class="aviso">Estimativa com base nos gastos informados e na variação acumulada em 12 meses de cada grupo do IPCA (IBGE, SIDRA, tabela 7060, ou séries do Banco Central), mantidas as proporções de gastos atuais. O retorno bruto considera Imposto de Renda de 15%. Informação sem caráter de recomendação.</p>
     <div class="noprint" style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;"><button type="button" class="btn pri" id="btn-imprimir">Imprimir ou salvar em PDF</button><button type="button" class="btn" id="btn-limpar">Limpar tudo</button></div>
   </div>
 
@@ -20291,13 +20292,15 @@ function parseBR(s) {
 }
 function norm(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
 
-// ── IPCA do IBGE (SIDRA, tabela 7060): variação acumulada em 12 meses e peso de cada grupo ──
-function carregarIPCA() {
-  var info = document.getElementById('ipca-info');
-  info.textContent = 'Consultando o IPCA no IBGE...';
+// ── IPCA: IBGE (SIDRA, tabela 7060) e, se indisponível, Banco Central (séries do SGS) ──
+var PESOS_REF = { alim: 21.51, hab: 15.49, art: 3.47, vest: 4.61, transp: 20.17, saude: 13.74, desp: 10.35, edu: 6.16, com: 4.50 };   // pesos do IPCA (IBGE, outubro de 2026), usados somente na consulta alternativa
+var SGS = { geral: 13522, alim: 1635, hab: 1636, art: 1637, vest: 1638, transp: 1639, saude: 1640, desp: 1641, edu: 1642, com: 1643 };
+var NOMES_MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+var IPCA_ESTADO = 'carregando';
+function ipcaSidra() {
   var cods = '7169,' + GRUPOS.map(function (g) { return g.c; }).join(',');
   return fetch('https://apisidra.ibge.gov.br/values/t/7060/n1/all/v/2265,66/p/last%201/c315/' + cods + '?formato=json').then(function (r) { return r.json(); }).then(function (j) {
-    var o = { mes: '', geral: null, g: {} };
+    var o = { mes: '', geral: null, g: {}, fonte: 'IBGE' };
     j.slice(1).forEach(function (x) {
       var v = parseFloat(x.V);
       if (isNaN(v)) return;
@@ -20310,14 +20313,37 @@ function carregarIPCA() {
     });
     var ok = o.geral !== null && GRUPOS.every(function (g) { return o.g[g.k] && typeof o.g[g.k].v12 === 'number' && typeof o.g[g.k].peso === 'number'; });
     if (!ok) throw new Error('dados incompletos');
-    IPCA = o;
-    info.textContent = 'IPCA de ' + o.mes + ' · fonte: IBGE';
+    return o;
+  });
+}
+function ipcaBcb() {
+  var ks = Object.keys(SGS);
+  return Promise.all(ks.map(function (k) { return fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.' + SGS[k] + '/dados/ultimos/' + (k === 'geral' ? 1 : 12) + '?formato=json').then(function (r) { return r.json(); }); })).then(function (rs) {
+    var o = { mes: '', geral: null, g: {}, fonte: 'Banco Central' };
+    ks.forEach(function (k, i) {
+      var arr = rs[i];
+      if (!Array.isArray(arr) || arr.length < (k === 'geral' ? 1 : 12)) throw new Error('série incompleta');
+      if (k === 'geral') { o.geral = parseFloat(arr[0].valor); var d = arr[0].data.split('/'); o.mes = NOMES_MES[parseInt(d[1], 10) - 1] + ' ' + d[2]; return; }
+      var f = 1;
+      arr.forEach(function (x) { f *= 1 + parseFloat(x.valor) / 100; });
+      o.g[k] = { v12: (f - 1) * 100, peso: PESOS_REF[k] };
+    });
+    return o;
+  });
+}
+function carregarIPCA() {
+  IPCA_ESTADO = 'carregando';
+  var info = document.getElementById('ipca-info');
+  info.textContent = 'Consultando o IPCA...';
+  renderResultado();
+  return ipcaSidra().catch(function () { return ipcaBcb(); }).then(function (o) {
+    IPCA = o; IPCA_ESTADO = 'ok';
+    info.textContent = 'IPCA de ' + o.mes + ' · fonte: ' + o.fonte;
     renderTudo();
   }).catch(function () {
-    IPCA = null;
-    info.innerHTML = 'Não foi possível consultar o IBGE. <a href="#" id="lnk-tentar" style="color:inherit;font-weight:700;">Tentar novamente</a>';
-    var l = document.getElementById('lnk-tentar');
-    if (l) l.addEventListener('click', function (e) { e.preventDefault(); carregarIPCA(); });
+    IPCA = null; IPCA_ESTADO = 'erro';
+    info.textContent = 'IPCA indisponível';
+    renderTudo();
   });
 }
 
@@ -20494,8 +20520,13 @@ function renderArqs() {
   document.getElementById('chips').innerHTML = ARQS.map(function (a) { return '<span class="chip">' + esc(a.nome) + ' <small>' + a.n + ' lançamentos · ' + fmtRS(a.total) + '</small><button type="button" data-rm="' + esc(a.nome) + '" title="Remover" aria-label="Remover">×</button></span>'; }).join('');
 }
 function renderResultado() {
-  var temDados = IPCA && (LANC.length || Object.keys(MANUAL).some(function (k) { return MANUAL[k] > 0; }));
+  var temEntrada = LANC.length || Object.keys(MANUAL).some(function (k) { return MANUAL[k] > 0; });
   ['c-res', 'c-grupos', 'c-imp'].forEach(function (id) { document.getElementById(id).hidden = true; });
+  var cI = document.getElementById('c-ipca');
+  cI.hidden = !(temEntrada && IPCA_ESTADO !== 'ok');
+  document.getElementById('ipca-msg').textContent = IPCA_ESTADO === 'erro' ? 'Não foi possível obter o IPCA do IBGE e do Banco Central neste momento. Verifique a conexão e tente novamente.' : 'Consultando o IPCA para calcular o resultado...';
+  document.getElementById('ipca-acao').hidden = IPCA_ESTADO !== 'erro';
+  var temDados = IPCA && temEntrada;
   if (!temDados) return;
   var r = calcular();
   if (!(r.tot > 0)) return;
@@ -20598,6 +20629,8 @@ document.getElementById('in-meses').addEventListener('input', function () {
   MESES_USER = v > 0 ? v : null;
   renderResultado();
 });
+document.getElementById('btn-ipca').addEventListener('click', carregarIPCA);
+window.addEventListener('error', function (e) { dizer('Ocorreu um erro inesperado: ' + (e && e.message ? e.message : 'tente novamente') + '.', true); });
 document.getElementById('btn-imprimir').addEventListener('click', function () { window.print(); });
 document.getElementById('btn-limpar').addEventListener('click', function () {
   if (!confirm('Remover as faturas e os valores informados?')) return;
