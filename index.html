@@ -714,6 +714,268 @@ h2{font-size:32px;letter-spacing:-.02em;}
   // "about:blank" no navegador (já que document.write() nunca muda a URL da
   // página) — a Blob URL é do mesmo domínio de origem, então window.opener
   // continua acessível normalmente a partir da página filha.
+  // ── Módulo compartilhado dos relatórios em PDF ──
+  // Todo relatório do site segue o padrão do Diagnóstico: páginas A4 em paisagem, capa preta com faixa dourada,
+  // cabeçalho "Assessoria de investimentos", indicadores em faixa, tabelas e gráficos em dourado e cinza,
+  // rodapé com cliente e numeração e página final escura. Os popups acessam este módulo por window.opener.CR_REL.
+  var CR_REL = (function () {
+    var CORES = ['#BC863E', '#BFBFBF', '#D9A566', '#757982', '#E6CEC4', '#8A5F26', '#3D3936', '#A98B5B', '#9A9A9A'];
+    function esc(t) { return String(t === undefined || t === null ? '' : t).split('&').join('&amp;').split('"').join('&quot;').split('<').join('&lt;'); }
+    function dataHoje() { var h = new Date(); return String(h.getDate()).padStart(2, '0') + '/' + String(h.getMonth() + 1).padStart(2, '0') + '/' + h.getFullYear(); }
+    function css() {
+      return [
+        '@page{size:A4 landscape;margin:0}',
+        '*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}',
+        'body{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;background:#d9d9d9;color:#1A1A1A;font-size:10pt}',
+        '.barra-tela{position:sticky;top:0;z-index:9;background:#111;color:#fff;padding:10px 18px;display:flex;gap:14px;align-items:center;font-size:13px}',
+        '.barra-tela button{background:#fff;color:#111;border:none;border-radius:8px;padding:8px 16px;font-weight:700;font-family:inherit;cursor:pointer}',
+        '.slide{width:297mm;height:210mm;background:#fff;margin:14px auto;padding:12mm 15mm 0;position:relative;overflow:hidden;page-break-after:always;break-after:page;box-shadow:0 2px 14px rgba(0,0,0,.25)}',
+        '.topo{display:flex;justify-content:space-between;align-items:flex-end;font-size:7.5pt;color:#1A1A1A;border-bottom:2px solid #DCDCDC;padding-bottom:2.6mm;height:10mm}.topo>span:first-child{font-weight:700}',
+        '.logo{display:flex;align-items:center;gap:2mm}.logo i{font-style:normal;background:#000;color:#fff;font-weight:700;font-size:7.5pt;width:5.4mm;height:5.4mm;border-radius:1.1mm;display:flex;align-items:center;justify-content:center}.logo b{font-weight:400;font-size:10.5pt;color:#000}',
+        'h1{font-weight:300;font-size:22pt;letter-spacing:.01em;color:#666;margin-top:3.2mm;line-height:1.05}',
+        'h2{font-weight:700;font-size:8.2pt;letter-spacing:.2em;color:#BC863E;margin:1mm 0 6mm}',
+        '.resumo{font-size:10pt;line-height:1.5;max-width:255mm;margin-bottom:6.5mm}',
+        '.corpo{position:relative}',
+        '.seguinte{position:absolute;left:15mm;bottom:15mm;font-size:8.5pt;font-style:italic;color:#8E8E8E}',
+        '.rodape{position:absolute;left:15mm;right:15mm;bottom:0;height:12mm;border-top:1px solid #E2E2E2;display:flex;justify-content:space-between;align-items:center;font-size:8.5pt;color:#9A9A9A}',
+        '.kpis{display:flex;border-top:1px solid #E0E0E0;border-bottom:1px solid #E0E0E0;margin-bottom:6mm}',
+        '.kp{flex:1;padding:3.2mm 4mm 4.2mm;border-left:1px solid #E0E0E0;position:relative;min-width:0}.kp:first-child{border-left:none;padding-left:0}',
+        '.kr{display:block;font-size:7.2pt;letter-spacing:.16em;text-transform:uppercase;color:#8E8E8E;font-weight:600}.kp.pri .kr{color:#8A5F26}',
+        '.kp b{display:block;font-size:17pt;font-weight:400;margin:1.4mm 0 .6mm;color:#1A1A1A;white-space:nowrap}.kp b.pos{color:#2F6B3A}.kp b.neg{color:#9B2C1E}.kp small{font-size:8pt;color:#8E8E8E}',
+        '.kp u{position:absolute;left:0;bottom:1.6mm;width:9mm;height:.7mm;background:#BC863E}',
+        '.sec{display:flex;justify-content:space-between;align-items:center;font-size:8.6pt;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin:0 0 4mm}',
+        '.sec i{display:inline-block;width:1.4mm;height:3.4mm;background:#BC863E;border-radius:.6mm;margin-right:2.4mm;vertical-align:-.6mm}.sec em{font-style:normal;font-weight:400;color:#8E8E8E;letter-spacing:.08em}',
+        '.duas{display:grid;grid-template-columns:1fr 1fr;gap:12mm}',
+        '.donut{display:flex;align-items:center;gap:8mm}.rosca{width:62mm;height:62mm;flex:none}.rc{font-size:7.5pt;fill:#555}.vc{font-size:11pt;font-weight:700;fill:#1A1A1A}',
+        '.leg{flex:1;font-size:9pt}.leg div{display:flex;justify-content:space-between;gap:10px;padding:1.6mm 0}.leg i{display:inline-block;width:3mm;height:3mm;margin-right:2.4mm;border-radius:.6mm;vertical-align:-.4mm}.leg b{font-weight:700}',
+        '.pontos .pt{border-left:1.2mm solid #BC863E;background:#FBF7F0;padding:3.2mm 4.5mm;margin-bottom:3.2mm;font-size:9.2pt;line-height:1.5}.pontos .pt b{display:block;font-size:8pt;letter-spacing:.12em;text-transform:uppercase;color:#8A5F26;margin-bottom:1mm}',
+        '.pontos .pt.neg{border-left-color:#9B2C1E;background:#FBF3F1}.pontos .pt.neg b{color:#9B2C1E}.pontos .pt.pos{border-left-color:#2F6B3A;background:#F3F8F4}.pontos .pt.pos b{color:#2F6B3A}',
+        '.tab{width:100%;border-collapse:collapse;font-size:8.6pt}.tab th{font-size:6.8pt;letter-spacing:.1em;text-transform:uppercase;color:#8E8E8E;font-weight:600;text-align:right;padding:2.1mm 2mm;border-bottom:1px solid #1A1A1A}',
+        '.tab td{text-align:right;padding:2.1mm 2mm;border-bottom:1px solid #EAEAEA;white-space:nowrap}.tab .e{text-align:left;white-space:normal}.tab tbody tr:nth-child(even) td{background:#FAFAFA}.tab tr.tot td{font-weight:700;border-top:1px solid #1A1A1A;background:#F6F6F6}',
+        '.tab td.pos{color:#2F6B3A;font-weight:600}.tab td.neg{color:#9B2C1E;font-weight:600}',
+        '.nt{font-size:8pt;color:#8E8E8E;margin-top:3mm;line-height:1.5}',
+        '.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:7mm}.card-al{border:1px solid #E6E6E6;border-left:1.2mm solid #BC863E;padding:5mm 5.5mm;overflow:hidden}.card-al h4{font-size:10.5pt;font-weight:600;margin-bottom:2.4mm}.card-al p{font-size:9pt;line-height:1.55}',
+        '.imgs img{max-width:100%;max-height:118mm;object-fit:contain}',
+        '.txt p{font-size:9.6pt;line-height:1.6;margin-bottom:3mm;max-width:250mm}',
+        '.barras .lb{display:grid;grid-template-columns:36% 1fr 14%;gap:3mm;align-items:center;padding:1.4mm 0}.barras .nm{font-size:9pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.barras .tr{height:4mm;background:#F1F2F4;border-radius:2mm;overflow:hidden}.barras .fl{height:4mm;background:#BC863E;border-radius:2mm}.barras .vl{text-align:right;font-weight:700;font-size:9pt}',
+        '.capa{background:#000;color:#fff;padding:0;box-shadow:none}.capa .faixa{position:absolute;left:0;top:0;bottom:0;width:5mm;background:#BC863E}',
+        '.logo-capa{position:absolute;left:29mm;top:50mm;gap:2.6mm}.logo-capa i{background:#fff;color:#000;width:8.6mm;height:8.6mm;font-size:10.5pt;border-radius:1.8mm}.logo-capa b{color:#fff;font-size:15pt}',
+        '.capa .cc{position:absolute;left:29mm;top:74mm;right:30mm}',
+        '.capa h1.gr{font-size:38pt;color:#fff;line-height:1.05;margin:0 0 7mm;font-weight:300;letter-spacing:.02em}.capa .cli{font-size:17pt;font-weight:700;color:#C99A55;margin-bottom:12mm}',
+        '.lin-capa{font-size:10pt;color:#9A9A9A;margin:3.6mm 0}.lin-capa b{color:#fff}',
+        '.fim .marca{font-size:7.6pt;letter-spacing:.1em;color:#BC863E;margin-bottom:8mm;font-weight:600}.fim .cc{top:36mm}',
+        '.prs{display:grid;grid-template-columns:1fr 1fr;gap:8mm 18mm;margin-top:9mm}.pr{display:flex;gap:3.2mm}.pr .num{flex:none;width:6.2mm;height:6.2mm;border-radius:50%;background:#BC863E;color:#fff;font-weight:700;font-size:8pt;display:flex;align-items:center;justify-content:center;margin-top:.4mm}',
+        '.pr h3{font-size:11pt;font-weight:600;margin-bottom:1.6mm;color:#fff}.pr p{font-size:8.6pt;line-height:1.55;color:#A8A8A8}',
+        '.assin{margin-top:12mm;border-top:1px solid #444;width:50mm;padding-top:4mm}.assin b{display:block;font-size:11pt;color:#BC863E}.assin span{font-size:8.5pt;color:#9A9A9A}',
+        '.aviso{margin-top:9mm;font-size:7.6pt;color:#777;max-width:200mm}.rod-fim{position:absolute;left:29mm;bottom:11mm;font-size:7.6pt;color:#777}',
+        '@media print{body{background:#fff}.barra-tela{display:none}.slide{margin:0;box-shadow:none}}'
+      ].join('\n');
+    }
+    function kpis(itens) {
+      return '<div class="kpis">' + itens.map(function (k, i) {
+        return '<div class="kp' + (i === 0 ? ' pri' : '') + '"><span class="kr">' + esc(k.r) + '</span><b' + (k.c ? ' class="' + k.c + '"' : '') + '>' + esc(k.v) + '</b><small>' + esc(k.s || '') + '</small>' + (i === 0 ? '<u></u>' : '') + '</div>';
+      }).join('') + '</div>';
+    }
+    function sec(t, dir) { return '<div class="sec"><span><i></i>' + esc(t) + '</span>' + (dir ? '<em>' + esc(dir) + '</em>' : '') + '</div>'; }
+    function donut(partes, rotulo, valor) {
+      var tot = partes.reduce(function (a, x) { return a + x.v; }, 0), raio = 74, circ = 2 * Math.PI * raio, acc = 0;
+      var sv = '<svg viewBox="0 0 200 200" class="rosca"><g transform="rotate(-90 100 100)">';
+      partes.forEach(function (p, i) {
+        var f = tot > 0 ? p.v / tot : 0;
+        if (f <= 0) return;
+        sv += '<circle cx="100" cy="100" r="' + raio + '" fill="none" stroke="' + CORES[i % CORES.length] + '" stroke-width="32" stroke-dasharray="' + (f * circ).toFixed(2) + ' ' + (circ - f * circ).toFixed(2) + '" stroke-dashoffset="' + (-acc * circ).toFixed(2) + '"/>';
+        acc += f;
+      });
+      sv += '</g><text x="100" y="97" text-anchor="middle" class="rc">' + esc(rotulo) + '</text><text x="100" y="115" text-anchor="middle" class="vc">' + esc(valor) + '</text></svg>';
+      var lg = '<div class="leg">' + partes.map(function (p, i) { return '<div><span><i style="background:' + CORES[i % CORES.length] + '"></i>' + esc(p.r) + '</span><b>' + (tot > 0 ? (p.v / tot * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '0,0') + '%</b></div>'; }).join('') + '</div>';
+      return '<div class="donut">' + sv + lg + '</div>';
+    }
+    function barras(lista, pct) {
+      var mx = Math.max.apply(null, lista.map(function (x) { return x.v; }).concat([0.0001]));
+      return '<div class="barras">' + lista.map(function (x) {
+        return '<div class="lb"><div class="nm">' + esc(x.r) + '</div><div class="tr"><div class="fl" style="width:' + Math.max(x.v / mx * 100, 1.5).toFixed(1) + '%"></div></div><div class="vl">' + x.v.toLocaleString('pt-BR', { minimumFractionDigits: pct ? 1 : 0, maximumFractionDigits: pct ? 1 : 2 }) + (pct ? '%' : '') + '</div></div>';
+      }).join('') + '</div>';
+    }
+    // tabela: cols = [{ t: 'Título', e: true (alinhado à esquerda) }], linhas = [[texto ou { v: texto, c: 'pos'|'neg' }]]
+    function tabela(cols, linhas, o) {
+      o = o || {};
+      return '<table class="tab"><thead><tr>' + cols.map(function (c) { return '<th' + (c.e ? ' class="e"' : '') + '>' + esc(c.t) + '</th>'; }).join('') + '</tr></thead><tbody>' + linhas.map(function (l) {
+        return '<tr' + (l.tot ? ' class="tot"' : '') + '>' + (l.tot ? l.c : l).map(function (v, i) {
+          var t = v && typeof v === 'object' ? v.v : v, c = v && typeof v === 'object' && v.c ? v.c : '';
+          return '<td class="' + (cols[i] && cols[i].e ? 'e ' : '') + c + '">' + esc(t) + '</td>';
+        }).join('') + '</tr>';
+      }).join('') + '</tbody></table>';
+    }
+    function slide(ctx, o) {
+      return '<section class="slide"><header class="topo"><span>Assessoria de investimentos</span><span class="logo"><i>CR</i><b>Clube do Rendimento</b></span></header><h1>' + esc(ctx.titulo) + '</h1><h2>' + esc(o.sub) + '</h2>' + (o.resumo ? '<p class="resumo">' + o.resumo + '</p>' : '') +
+        '<div class="corpo">' + o.corpo + '</div>' + (o.seg ? '<p class="seguinte">A seguir: ' + esc(o.seg) + '</p>' : '') +
+        '<footer class="rodape"><span>' + esc(ctx.rodape || '') + '</span><span>Clube do Rendimento · ' + ctx.data + ' · página @@N@@ de @@T@@</span></footer></section>';
+    }
+    // capa: { titulo: ['ANÁLISE', 'DE CARTEIRA'], cliente, linhas: [[rótulo, valor]] }
+    function capa(o) {
+      return '<section class="slide capa"><div class="faixa"></div><div class="logo logo-capa"><i>CR</i><b>Clube do Rendimento</b></div><div class="cc"><h1 class="gr">' + o.titulo.map(esc).join('<br>') + '</h1><div class="cli">' + esc(o.cliente) + '</div>' +
+        o.linhas.map(function (l) { return '<div class="lin-capa"><span>' + esc(l[0]) + '</span> <b>' + esc(l[1]) + '</b></div>'; }).join('') + '</div></section>';
+    }
+    // encerramento: { marca, titulo: ['A', 'B'], itens: [{ t, p }], assinatura, aviso, data }
+    function fim(o) {
+      return '<section class="slide capa fim"><div class="faixa"></div><div class="cc"><div class="marca">' + o.marca.split(' ').map(function (w) { return esc(w).split('').join(' '); }).join(' &nbsp; ') + '</div><h1 class="gr">' + o.titulo.map(esc).join('<br>') + '</h1><div class="prs">' +
+        o.itens.map(function (it, i) { return '<div class="pr"><span class="num">' + (i + 1) + '</span><div><h3>' + esc(it.t) + '</h3><p>' + esc(it.p) + '</p></div></div>'; }).join('') + '</div>' +
+        '<div class="assin">' + (o.assinatura ? '<b>' + esc(o.assinatura) + '</b>' : '') + '<span>Clube do Rendimento</span></div><p class="aviso">' + esc(o.aviso || 'Material de caráter meramente informativo; não constitui recomendação de investimento.') + '</p></div><div class="rod-fim">Clube do Rendimento · ' + o.data + '</div></section>';
+    }
+    // abre o relatório em uma janela (a janela pode ser aberta pelo chamador, no clique, para não ser bloqueada)
+    function abrir(titulo, slides, janela, nome) {
+      var n = slides.length;
+      slides = slides.map(function (s, i) {
+        var m = /<h2>([^<]*)<\/h2>/.exec(slides[i + 1] || ''), t = m ? m[1].split(' · ')[0].toLowerCase() : '';
+        return s.split('<p class="seguinte">A seguir: -</p>').join(t ? '<p class="seguinte">A seguir: ' + t + '.</p>' : '');
+      });
+      var corpo = slides.map(function (s, i) { return s.split('@@N@@').join(String(i + 1)).split('@@T@@').join(String(n)); }).join('\n');
+      var w = janela || window.open('', '_blank');
+      if (!w) { alert('Permita pop-ups para este site e tente novamente.'); return false; }
+      var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc(titulo) + (nome ? ' — ' + esc(nome) : '') + '</title><style>' + css() + '</' + 'style></head><body>' +
+        '<div class="barra-tela"><span>Relatório · ' + n + ' páginas. Na janela de impressão, escolha <b>Salvar como PDF</b>, orientação <b>paisagem</b>, margens <b>nenhuma</b>, desative <b>Cabeçalhos e rodapés</b> e ative <b>Gráficos de segundo plano</b>.</span><button type="button" onclick="window.print()">Imprimir / Salvar como PDF</button></div>' + corpo + '</body></html>';
+      w.document.open(); w.document.write(html); w.document.close();
+      setTimeout(function () { try { w.focus(); w.print(); } catch (e) {} }, 1500);
+      return true;
+    }
+
+    // ── Conversão de uma tela já montada (tabelas, gráficos e quadrantes) em páginas do relatório ──
+    function visivel(el) {
+      var v = el.ownerDocument.defaultView;
+      for (var e = el; e && e.nodeType === 1; e = e.parentNode) { if (e.hidden || v.getComputedStyle(e).display === 'none') return false; }
+      return true;
+    }
+    function limpo(t) { return String(t || '').replace(/\s+/g, ' ').trim(); }
+    function textoTh(th) {
+      var c = th.cloneNode(true);
+      Array.prototype.forEach.call(c.querySelectorAll('.th-tip-box, .col-redimensionar, span, button, svg'), function (e) { e.remove(); });
+      return limpo(c.textContent);
+    }
+    function textoTd(td) {
+      var orig = td.querySelectorAll('input, select'), c = td.cloneNode(true);
+      Array.prototype.forEach.call(c.querySelectorAll('input, select'), function (e, i) { var o = orig[i]; var s = c.ownerDocument.createTextNode(o ? (o.tagName === 'SELECT' ? (o.options[o.selectedIndex] || {}).text || '' : o.value) : ''); e.parentNode.replaceChild(s, e); });
+      Array.prototype.forEach.call(c.querySelectorAll('button, .th-tip-box, svg, style, script, .col-redimensionar'), function (e) { e.remove(); });
+      return limpo(c.textContent);
+    }
+    var PRIOR = ['ativo', 'título', 'titulo', 'fundo', 'operação', 'operacao', 'emissor', 'tipo', 'segmento', 'categoria', 'quantidade', 'qtd', 'aplicação', 'vencimento', 'taxa', 'valor aplicado', 'preço médio', 'cotação', 'valor total', 'posição', 'valor líquido', 'variação', 'valorização', 'lucro (r$)', 'lucro (%)', 'rentabilidade', 'dividend yield', 'yield', 'próximos proventos', 'p/vp', 'vacância'];
+    function escolherColunas(heads, max) {
+      var idx = heads.map(function (h, i) { return i; }).filter(function (i) { return heads[i]; });
+      if (idx.length <= max) return idx;
+      var esc2 = [];
+      PRIOR.forEach(function (p) { idx.forEach(function (i) { if (esc2.length < max && esc2.indexOf(i) === -1 && heads[i].toLowerCase().indexOf(p) === 0) esc2.push(i); }); });
+      idx.forEach(function (i) { if (esc2.length < max && esc2.indexOf(i) === -1) esc2.push(i); });
+      return esc2.sort(function (a, b) { return a - b; });
+    }
+    var RX_NUM = /^[▲▼+\-−–]?\s*(R\$\s*)?[+\-−–]?[\d.]+(,\d+)?\s*(%|x|p\.p\.)?$|^\d{2}\/\d{2}\/\d{4}$|^\d{2}\/\d{4}$|^—$|^-$/;
+    function tabelaDe(t) {
+      var heads = Array.prototype.map.call(t.querySelectorAll('thead th'), textoTh);
+      var linhas = Array.prototype.filter.call(t.querySelectorAll('tbody tr'), visivel).map(function (tr) { return Array.prototype.map.call(tr.children, function (td) { return { v: textoTd(td), c: /(^| )neg( |$)/.test(td.className) ? 'neg' : (/(^| )pos( |$)/.test(td.className) ? 'pos' : '') }; }); });
+      var cols = escolherColunas(heads, 9);
+      var defs = cols.map(function (i) {
+        var vals = linhas.map(function (l) { return l[i] ? l[i].v : ''; }).filter(function (v) { return v !== ''; });
+        return { t: heads[i], e: !(vals.length && vals.every(function (v) { return RX_NUM.test(v); })) };
+      });
+      return { cols: defs, linhas: linhas.map(function (l) { return cols.map(function (i) { return l[i] || { v: '', c: '' }; }); }) };
+    }
+    function tituloDe(el, raiz) {
+      var n = el, nivel = 0;
+      while (n && n !== raiz.parentNode && nivel < 3) {
+        var p = n.previousElementSibling;
+        while (p) {
+          if (p.matches && p.matches('h2,h3,h4,.quadro-titulo,.tabela-titulo,.grafico-titulo,.subtitulo,.resultado-titulo,.card-titulo')) return limpo(p.textContent.replace('▼', ''));
+          p = p.previousElementSibling;
+        }
+        n = n.parentNode; nivel++;
+      }
+      return '';
+    }
+    function secaoSlides(ctx, rotulo, el) {
+      var out = [], blocos = Array.prototype.filter.call(el.querySelectorAll('table, canvas'), visivel), imgs = [];
+      var tituloSecao = rotulo, nTab = blocos.filter(function (b) { return b.tagName === 'TABLE'; }).length;
+      blocos.forEach(function (b) {
+        if (b.tagName === 'CANVAS') {
+          try {
+            var jan = b.ownerDocument.defaultView, gr = jan.Chart && jan.Chart.getChart ? jan.Chart.getChart(b) : null, tg = tituloDe(b, el);
+            var tp = gr && gr.config && gr.config.type, ds = gr && gr.data && gr.data.datasets;
+            if (gr && ds && ds.length === 1 && gr.data.labels && gr.data.labels.length && /^(bar|pie|doughnut)$/.test(tp)) {
+              // gráfico de uma série: refeito em barras ou rosca douradas, no padrão do relatório
+              var partes = gr.data.labels.map(function (r, i) { return { r: String(r), v: Number(ds[0].data[i]) || 0 }; }).filter(function (x) { return x.v > 0; });
+              var tot = partes.reduce(function (a, x) { return a + x.v; }, 0), pct = Math.abs(tot - 100) < 1.5;
+              if (partes.length) { imgs.push({ t: tg, html: tp === 'bar' ? barras(partes.slice(0, 14), pct) : donut(partes, '', '') }); return; }
+            }
+            // demais gráficos: imagem, somente se houver conteúdo desenhado
+            if (gr) { gr.update('none'); if (gr.draw) gr.draw(); }
+            var px = b.getContext('2d').getImageData(0, 0, b.width, b.height).data, tem = false;
+            for (var q = 3; q < px.length; q += 16) { if (px[q]) { tem = true; break; } }
+            if (tem) imgs.push({ t: tg, html: '<img src="' + b.toDataURL('image/png') + '" alt="">' });
+          } catch (e) {}
+          return;
+        }
+        var d = tabelaDe(b);
+        if (!d.linhas.length) return;
+        var nome = (nTab > 1 && tituloDe(b, el)) || tituloSecao, por = 10, np = Math.ceil(d.linhas.length / por);
+        for (var p = 0; p < np; p++) {
+          out.push(slide(ctx, { sub: (nome + (np > 1 ? ' · ' + (p + 1) + ' DE ' + np : '')).toUpperCase(), corpo: tabela(d.cols, d.linhas.slice(p * por, (p + 1) * por).map(function (l) { return l.map(function (c) { return c.c ? c : c.v; }); })) + (p === np - 1 ? '<p class="nt">' + d.linhas.length + (d.linhas.length === 1 ? ' registro' : ' registros') + '.</p>' : ''), seg: '-' }));
+        }
+      });
+      for (var i = 0; i < imgs.length; i += 2) {
+        var par = imgs.slice(i, i + 2);
+        out.push(slide(ctx, { sub: (par.length === 1 && par[0].t ? par[0].t : tituloSecao).toUpperCase(), corpo: '<div class="' + (par.length > 1 ? 'duas' : 'um') + '">' + par.map(function (g) { return '<div>' + (par.length > 1 && g.t ? sec(g.t) : '') + '<div class="imgs">' + g.html + '</div></div>'; }).join('') + '</div>', seg: '-' }));
+      }
+      if (!out.length) {
+        var txt = Array.prototype.filter.call(el.querySelectorAll('p, li'), visivel).map(function (e) { return limpo(e.textContent); }).filter(function (t) { return t.length > 25; }).slice(0, 8);
+        if (txt.length) out.push(slide(ctx, { sub: tituloSecao.toUpperCase(), corpo: '<div class="txt">' + txt.map(function (t) { return '<p>' + esc(t) + '</p>'; }).join('') + '</div>', seg: '-' }));
+      }
+      return out;
+    }
+    function quadrantesSlides(ctx, el) {
+      var cards = Array.prototype.filter.call(el.querySelectorAll('.resumo-card'), visivel).map(function (c) {
+        var l = c.querySelector('.resumo-label'), v = c.querySelector('.resumo-valor');
+        return { r: limpo(l && l.textContent), v: limpo(v && v.textContent) || '—', c: v && /(^| )neg( |$)/.test(v.className) ? 'neg' : (v && /(^| )(pos|resumo-valor-verde)( |$)/.test(v.className) ? 'pos' : '') };
+      }).filter(function (c) { return c.r; });
+      var grupos = [];
+      cards.forEach(function (c) {
+        if (!grupos.length || /^total em /i.test(c.r)) grupos.push({ t: /^total em /i.test(c.r) ? c.r.replace(/^total em /i, '') : 'Resumo', itens: [] });
+        grupos[grupos.length - 1].itens.push(c);
+      });
+      var out = [];
+      for (var i = 0; i < grupos.length; i += 3) {
+        var corpo = grupos.slice(i, i + 3).map(function (g) {
+          var linhas = '';
+          for (var k = 0; k < g.itens.length; k += 4) linhas += kpis(g.itens.slice(k, k + 4));
+          return sec(g.t.charAt(0).toUpperCase() + g.t.slice(1)) + linhas;
+        }).join('');
+        out.push(slide(ctx, { sub: 'RESUMO DA CARTEIRA' + (grupos.length > 3 ? ' · ' + (Math.floor(i / 3) + 1) + ' DE ' + Math.ceil(grupos.length / 3) : ''), corpo: corpo, seg: '-' }));
+      }
+      return out;
+    }
+    // relatório da Análise de Carteira: converte as seções escolhidas da tela
+    function relatorioAnalise(D, ids, itens, cliente, janela) {
+      var data = dataHoje(), ctx = { titulo: 'ANÁLISE DE CARTEIRA', rodape: (cliente || 'Análise de carteira'), data: data }, S = [], rotulos = [];
+      itens.forEach(function (item) {
+        var lista = Array.isArray(item.id) ? item.id : [item.id];
+        if (ids.indexOf(lista[0]) === -1) return;
+        lista.forEach(function (id) {
+          var el = D.getElementById(id);
+          if (!el || !visivel(el)) return;
+          var antes = S.length;
+          if (id === 'resumo-grid') quadrantesSlides(ctx, el).forEach(function (s) { S.push(s); });
+          else secaoSlides(ctx, item.rotulo, el).forEach(function (s) { S.push(s); });
+          if (S.length > antes && rotulos.indexOf(item.rotulo) === -1) rotulos.push(item.rotulo);
+        });
+      });
+      if (!S.length) { alert('Nenhum conteúdo disponível para o relatório.'); return false; }
+      S.unshift(capa({ titulo: ['ANÁLISE', 'DE CARTEIRA'], cliente: cliente || 'Carteira analisada', linhas: [['Conteúdo', rotulos.join(', ')], ['Emitido em', data]] }));
+      S.push(fim({ marca: 'INFORMAÇÕES IMPORTANTES', titulo: ['SOBRE ESTA', 'ANÁLISE.'], data: data, itens: [
+        { t: 'Fontes e atraso', p: 'Cotações, indicadores e proventos vêm de fontes públicas e podem ter atraso em relação ao mercado.' },
+        { t: 'Valores editáveis', p: 'Os valores apresentados refletem a planilha enviada e eventuais ajustes feitos na própria análise.' },
+        { t: 'Sem recomendação', p: 'Material de caráter meramente informativo; não constitui oferta nem recomendação de compra ou venda de ativos.' }], aviso: 'Rentabilidade passada não garante resultados futuros.' }));
+      return abrir('Análise de carteira', S, janela, cliente);
+    }
+    return { barras: barras, esc: esc, css: css, kpis: kpis, sec: sec, donut: donut, tabela: tabela, slide: slide, capa: capa, fim: fim, abrir: abrir, dataHoje: dataHoje, secaoSlides: secaoSlides, relatorioAnalise: relatorioAnalise, CORES: CORES };
+  })();
+  window.CR_REL = CR_REL;
+
   function escreverConteudoJanela(janela, html) {
     if (!janela) return;
     // Sempre grava o conteúdo via document.write (síncrono), em vez de navegar
@@ -5965,25 +6227,12 @@ h2{font-size:32px;letter-spacing:-.02em;}
         });
       });
     }
-    function executarExportacaoPdf(idsSelecionados) {
-      var ocultados = [];
-      itensPdfDisponiveis().forEach(function(item) {
-        if (idsSelecionados.indexOf(chaveItemPdf(item)) === -1) {
-          idsDoItemPdf(item).forEach(function(id) {
-            var el = D.getElementById(id);
-            if (el) { el.classList.add('pdf-secao-oculta-export'); ocultados.push(el); }
-          });
-        }
-      });
-      D.body.classList.add('modo-exportar-pdf');
-      var limpar = function() {
-        D.body.classList.remove('modo-exportar-pdf');
-        ocultados.forEach(function(el) { el.classList.remove('pdf-secao-oculta-export'); });
-      };
-      novaJanela.addEventListener('afterprint', limpar, { once: true });
-      novaJanela.focus();
-      novaJanela.print();
-      setTimeout(limpar, 8000); // salvaguarda caso 'afterprint' não dispare
+    function executarExportacaoPdf(idsSelecionados, nomeCliente) {
+      // O PDF segue o padrão dos relatórios do site (páginas A4 em paisagem), montado a partir das seções escolhidas
+      var w = novaJanela.open('', '_blank');
+      if (!w) { alert('O navegador bloqueou a abertura de nova guia. Permita pop-ups e tente novamente.'); return; }
+      try { CR_REL.relatorioAnalise(D, idsSelecionados, ITENS_PDF_EXPORT, nomeCliente, w); }
+      catch (e) { try { w.close(); } catch (x) {} alert('Não foi possível gerar o relatório: ' + (e && e.message ? e.message : e)); }
     }
     function abrirSeletorExportarPdf() {
       var itensDisponiveis = itensPdfDisponiveis();
@@ -6000,7 +6249,8 @@ h2{font-size:32px;letter-spacing:-.02em;}
       overlay.innerHTML =
         '<div style="background:#fff;border-radius:16px;padding:28px 32px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 25px 70px rgba(0,0,0,.4);">' +
           '<h3 style="margin:0 0 6px;font-size:18px;font-weight:600;">Exportar PDF</h3>' +
-          '<p style="margin:0 0 18px;font-size:13px;color:var(--ink-soft);">Selecione o que deve aparecer no PDF.</p>' +
+          '<p style="margin:0 0 14px;font-size:13px;color:var(--ink-soft);">Selecione o que deve aparecer no relatório.</p>' +
+          '<input type="text" id="pdf-selecao-cliente" maxlength="60" autocomplete="off" placeholder="Nome do cliente (opcional)" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-family:inherit;font-size:13px;margin-bottom:14px;">' +
           '<div id="pdf-selecao-lista">' + caixas + '</div>' +
           '<p id="pdf-selecao-erro" style="display:none;color:#c0392b;font-size:12.5px;margin:10px 0 0;">Selecione ao menos um item.</p>' +
           '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:22px;">' +
@@ -6017,8 +6267,9 @@ h2{font-size:32px;letter-spacing:-.02em;}
           D.getElementById('pdf-selecao-erro').style.display = 'block';
           return;
         }
+        var nomeCli = String((D.getElementById('pdf-selecao-cliente') || {}).value || '').trim();
         overlay.remove();
-        executarExportacaoPdf(marcados);
+        executarExportacaoPdf(marcados, nomeCli);
       });
     }
     var btnExportarPdf = D.getElementById('btn-exportar-pdf');
@@ -15044,7 +15295,7 @@ tr:last-child td{border-bottom:none;}
   <div id="bloco-resultado" hidden>
     <div class="acoes" style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;">
       <button type="button" class="btn btn-claro" id="btn-refazer">← Revisar respostas</button>
-      <button type="button" class="btn btn-claro" id="btn-imprimir">Imprimir / salvar em PDF</button>
+      <input type="text" id="in-cliente-rel" maxlength="60" autocomplete="off" placeholder="Nome do cliente (opcional)" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-family:inherit;font-size:13px;min-width:220px;"><button type="button" class="btn btn-claro" id="btn-relatorio">Gerar relatório em PDF</button>
     </div>
     <div class="veredito" id="res-veredito"></div>
     <div id="res-alertas"></div>
@@ -15352,7 +15603,80 @@ document.getElementById('btn-refazer').addEventListener('click', function () {
   document.getElementById('bloco-form').hidden = false;
   window.scrollTo(0, 0);
 });
-document.getElementById('btn-imprimir').addEventListener('click', function () { window.print(); });
+// ── Relatório em PDF: páginas A4 no padrão dos relatórios do site (módulo CR_REL do site principal) ──
+function txt(e) {
+  var t = e ? String(e.textContent || '') : '', o = '', sp = false, i, c;
+  for (i = 0; i < t.length; i++) {
+    c = t.charAt(i);
+    if (c === ' ' || c === '\\n' || c === '\\t' || c === '\\r') { sp = true; continue; }
+    if (sp && o) o += ' ';
+    sp = false; o += c;
+  }
+  return o;
+}
+function gerarRelatorio() {
+  var K = window.opener && window.opener.CR_REL;
+  if (!K) { alert('Não foi possível gerar o relatório. Abra esta ferramenta a partir do site e tente novamente.'); return; }
+  var w = window.open('', '_blank');
+  if (!w) { alert('O navegador bloqueou a abertura de nova guia. Permita pop-ups e tente novamente.'); return; }
+  var cliente = (document.getElementById('in-cliente-rel').value || '').trim(), data = K.dataHoje(), S = [];
+  var ctx = { titulo: 'VIABILIDADE DE HOLDING', rodape: cliente || 'Holding patrimonial', data: data };
+  var tituloV = txt(document.querySelector('#res-veredito .veredito-titulo')), textoV = txt(document.querySelector('#res-veredito .veredito-texto'));
+  var barra = document.querySelector('#res-veredito .barra'), pct = barra ? parseInt(barra.style.width, 10) || 0 : 0;
+  var low = tituloV.toLowerCase(), nivel = low.indexOf('desfavor') !== -1 ? 'Desfavorável' : (low.indexOf('ressalvas') !== -1 ? 'Com ressalvas' : 'Favorável');
+  var nPos = document.querySelectorAll('#res-fatores .marca.pos').length, nNeg = document.querySelectorAll('#res-fatores .marca.neg').length;
+  var alertas = Array.prototype.map.call(document.querySelectorAll('#res-alertas .alerta'), function (a) {
+    var b = a.querySelector('b'), t = txt(b), corpo = txt(a).slice(t.length).trim();
+    return { t: t.split(':').join('').trim(), p: corpo.charAt(0).toUpperCase() + corpo.slice(1) };
+  });
+
+  S.push(K.capa({ titulo: ['VIABILIDADE DE', 'HOLDING', 'PATRIMONIAL'], cliente: cliente || 'Avaliação preliminar', linhas: [['Indicação', nivel], ['Aderência ao perfil de holding', pct + '%'], ['Emitido em', data]] }));
+
+  var corpoRes = K.kpis([{ r: 'Aderência ao perfil', v: pct + '%', s: 'índice ponderado das respostas' }, { r: 'Indicação', v: nivel, c: nivel === 'Favorável' ? 'pos' : (nivel === 'Desfavorável' ? 'neg' : '') }, { r: 'Pontos favoráveis', v: String(nPos), s: 'fatores a favor da holding' }, { r: 'Pontos contrários', v: String(nNeg), s: 'fatores contra a holding' }]) +
+    K.sec('Aderência ao perfil de holding') + '<div class="barras"><div class="lb" style="grid-template-columns:1fr 14%;"><div class="tr" style="height:6mm;border-radius:3mm;"><div class="fl" style="height:6mm;border-radius:3mm;width:' + pct + '%"></div></div><div class="vl">' + pct + '%</div></div></div>' +
+    '<p class="nt">Índice ponderado das respostas ao questionário. Valores abaixo de 40% indicam que a holding tende a não compensar; entre 40% e 65%, viabilidade com ressalvas; acima de 65%, e sem impeditivos, indicação favorável.</p>';
+  S.push(K.slide(ctx, { sub: 'O RESULTADO', resumo: K.esc(tituloV) + '. ' + K.esc(textoV), corpo: corpoRes, seg: '-' }));
+
+  for (var a = 0; a < alertas.length; a += 3) {
+    S.push(K.slide(ctx, { sub: 'ALERTAS E PONTOS DE ATENÇÃO' + (alertas.length > 3 ? ' · ' + (Math.floor(a / 3) + 1) + ' DE ' + Math.ceil(alertas.length / 3) : ''), corpo: '<div class="cards">' + alertas.slice(a, a + 3).map(function (x) { return '<div class="card-al"><h4>' + K.esc(x.t) + '</h4><p>' + K.esc(x.p) + '</p></div>'; }).join('') + '</div>', seg: '-' }));
+  }
+
+  var fatores = [], grupoAtual = '';
+  Array.prototype.forEach.call(document.querySelectorAll('#res-fatores > *'), function (el) {
+    if (el.className.indexOf('lista-titulo') !== -1) { grupoAtual = txt(el); return; }
+    Array.prototype.forEach.call(el.querySelectorAll('li'), function (li) {
+      var b = li.querySelector('b'), t = txt(b), corpo = txt(li.querySelectorAll('span')[1]).slice(t.length).trim();
+      if (corpo.indexOf('—') === 0) corpo = corpo.slice(1).trim();
+      fatores.push({ g: grupoAtual, c: grupoAtual.indexOf('favor') !== -1 && grupoAtual.indexOf('Pontos') === 0 ? 'pos' : (grupoAtual.indexOf('contr') !== -1 ? 'neg' : ''), t: t, p: corpo });
+    });
+  });
+  var POR = 4;
+  for (var f = 0; f < fatores.length; f += POR) {
+    S.push(K.slide(ctx, { sub: 'ANÁLISE DOS FATORES' + (fatores.length > POR ? ' · ' + (Math.floor(f / POR) + 1) + ' DE ' + Math.ceil(fatores.length / POR) : ''), resumo: f === 0 ? 'Fatores ordenados pelo peso na pontuação. Em verde, os favoráveis; em vermelho, os contrários; em dourado, os neutros.' : '',
+      corpo: '<div class="pontos">' + fatores.slice(f, f + POR).map(function (x) { return '<div class="pt ' + x.c + '"><b>' + K.esc(x.g.replace('Pontos ', '').replace('Fatores ', '')) + ' · ' + K.esc(x.t) + '</b>' + K.esc(x.p) + '</div>'; }).join('') + '</div>', seg: '-' }));
+  }
+
+  var eco = document.getElementById('res-economia');
+  if (eco && !eco.hidden) {
+    var corpoEco = '';
+    Array.prototype.forEach.call(eco.children, function (el) {
+      var cl = el.className || '';
+      if (cl.indexOf('card-titulo') !== -1) return;
+      if (cl.indexOf('lista-titulo') !== -1) { corpoEco += '<div style="margin-top:7mm;">' + K.sec(txt(el)) + '</div>'; return; }
+      if (cl.indexOf('resultado-grid') !== -1) {
+        corpoEco += K.kpis(Array.prototype.map.call(el.querySelectorAll('.stat'), function (st) { var v = st.querySelector('.stat-valor'); return { r: txt(st.querySelector('.stat-label')), v: txt(v), c: v && v.className.indexOf('neg') !== -1 ? 'neg' : (v && v.className.indexOf('pos') !== -1 ? 'pos' : '') }; }));
+        return;
+      }
+      corpoEco += '<p class="nt">' + K.esc(txt(el)) + '</p>';
+    });
+    S.push(K.slide(ctx, { sub: 'ESTIMATIVA ECONÔMICA', corpo: corpoEco, seg: '-' }));
+  }
+
+  var passos = Array.prototype.map.call(document.querySelectorAll('#res-passos li'), function (li) { return txt(li.querySelectorAll('span')[1]); }).filter(function (t) { return t; }).slice(0, 6);
+  S.push(K.fim({ marca: 'PRÓXIMOS PASSOS', titulo: ['PASSOS', 'SUGERIDOS.'], data: data, itens: passos.map(function (p, i) { return { t: 'Passo ' + (i + 1), p: p }; }), assinatura: '', aviso: 'Avaliação preliminar, com base nas respostas informadas; não substitui a análise de advogado e contador. Material de caráter meramente informativo.' }));
+  K.abrir('Viabilidade de holding', S, w, cliente);
+}
+document.getElementById('btn-relatorio').addEventListener('click', gerarRelatorio);
 montarFormulario();
 <\/script>
 </body>
@@ -22830,7 +23154,7 @@ tbody tr:last-child td{border-bottom:none;}
       <button type="button" class="btn" id="nota-limpar" style="background:#fff;border-color:var(--line);color:var(--ink-soft);">Limpar notas</button>
       <span id="nota-exportar-grupo" style="display:inline-flex;gap:8px;margin-left:auto;" hidden>
         <button type="button" class="btn" id="nota-exportar-excel" style="background:#fff;border-color:var(--ink);color:var(--ink);">⬇ Extrair em Excel</button>
-        <button type="button" class="btn" id="nota-exportar-pdf" style="background:#fff;border-color:var(--ink);color:var(--ink);">⬇ Extrair em PDF</button>
+        <input type="text" id="nota-cliente-rel" maxlength="60" autocomplete="off" placeholder="Nome do cliente (opcional)" style="padding:8px 12px;border:1.5px solid var(--line);border-radius:9px;font-family:inherit;font-size:13px;min-width:200px;"><button type="button" class="btn" id="nota-exportar-pdf" style="background:#fff;border-color:var(--ink);color:var(--ink);">⬇ Relatório em PDF</button>
       </span>
     </div>
     <p class="resultado-sub" style="margin:12px 0 0;">É possível selecionar várias notas de uma vez e adicionar outras em seguida: os totais, a tabela de negócios e o imposto devido consideram todas as notas carregadas.</p>
@@ -23544,9 +23868,59 @@ document.getElementById('nota-exportar-excel').addEventListener('click', functio
   XLSX.writeFile(livro, 'notas_corretagem_' + carimbo + '.xlsx');
 });
 
+function txtNota(e) {
+  var t = e ? String(e.textContent || '') : '', o = '', sp = false, i, c;
+  for (i = 0; i < t.length; i++) {
+    c = t.charAt(i);
+    if (c === ' ' || c === '\\n' || c === '\\t' || c === '\\r') { sp = true; continue; }
+    if (sp && o) o += ' ';
+    sp = false; o += c;
+  }
+  return o;
+}
+// Relatório em PDF: páginas A4 no padrão dos relatórios do site (módulo CR_REL do site principal)
 document.getElementById('nota-exportar-pdf').addEventListener('click', function () {
   if (!notasCarregadas.length) return;
-  window.print();
+  var K = window.opener && window.opener.CR_REL;
+  if (!K) { alert('Não foi possível gerar o relatório. Abra esta ferramenta a partir do site e tente novamente.'); return; }
+  var w = window.open('', '_blank');
+  if (!w) { alert('O navegador bloqueou a abertura de nova guia. Permita pop-ups e tente novamente.'); return; }
+  var cliente = String((document.getElementById('nota-cliente-rel') || {}).value || '').trim(), data = K.dataHoje(), S = [];
+  var ctx = { titulo: 'NOTAS DE CORRETAGEM', rodape: cliente || 'Notas de corretagem', data: data };
+  function kpisDe(cont) {
+    var itens = Array.prototype.map.call(cont.querySelectorAll('.stat'), function (st) {
+      var v = st.querySelector('.stat-valor');
+      return { r: txtNota(st.querySelector('.stat-label')), v: txtNota(v) || '—', c: v && v.className.indexOf('neg') !== -1 ? 'neg' : (v && v.className.indexOf('pos') !== -1 ? 'pos' : '') };
+    });
+    var h = '', k;
+    for (k = 0; k < itens.length; k += 4) h += K.kpis(itens.slice(k, k + 4));
+    return h;
+  }
+  var darfWrap = document.getElementById('nota-darf-wrap'), temDarf = darfWrap && !darfWrap.hidden;
+  var linhasCapa = [['Notas carregadas', String(notasCarregadas.length)]];
+  if (temDarf) linhasCapa.push(['DARF total a pagar', txtNota(document.getElementById('nota-darf-total'))]);
+  linhasCapa.push(['Emitido em', data]);
+  S.push(K.capa({ titulo: ['NOTAS DE', 'CORRETAGEM'], cliente: cliente || 'Apuração de operações', linhas: linhasCapa }));
+
+  var totais = document.getElementById('nota-totais-grid');
+  var resumo = document.getElementById('nota-resultado-resumo');
+  if (totais) S.push(K.slide(ctx, { sub: 'RESUMO DAS NOTAS', resumo: K.esc(txtNota(resumo)), corpo: kpisDe(totais), seg: '-' }));
+  var lista = document.getElementById('nota-lista-wrap');
+  if (lista && !lista.hidden) K.secaoSlides(ctx, 'Notas carregadas', lista).forEach(function (x) { S.push(x); });
+  var res = document.getElementById('nota-resultado-wrap');
+  if (res && !res.hidden) K.secaoSlides(ctx, 'Ativos negociados', res).forEach(function (x) { S.push(x); });
+  var avisoImposto = '';
+  if (temDarf) {
+    K.secaoSlides(ctx, 'Imposto devido (DARF)', darfWrap).forEach(function (x) { S.push(x); });
+    var gr = darfWrap.querySelector('.resultado-grid');
+    avisoImposto = txtNota(darfWrap.querySelector('.nota'));
+    if (gr) S.push(K.slide(ctx, { sub: 'RESULTADO DO IMPOSTO', corpo: kpisDe(gr) + (avisoImposto ? '<p class="nt">' + K.esc(avisoImposto) + '</p>' : ''), seg: '-' }));
+  }
+  S.push(K.fim({ marca: 'INFORMAÇÕES IMPORTANTES', titulo: ['SOBRE ESTA', 'APURAÇÃO.'], data: data, itens: [
+    { t: 'Base das informações', p: 'Os valores foram extraídos das notas de corretagem enviadas; confira-os com os documentos originais.' },
+    { t: 'Estimativa de imposto', p: 'O cálculo do DARF é uma estimativa para operações comuns e depende do preço médio e dos prejuízos informados.' },
+    { t: 'Orientação profissional', p: 'Confirme a apuração e o recolhimento com o contador ou com a legislação vigente.' }], aviso: 'Material de caráter meramente informativo; não constitui recomendação de investimento.' }));
+  K.abrir('Notas de corretagem', S, w, cliente);
 });
 
 document.getElementById('nota-limpar').addEventListener('click', function () {
