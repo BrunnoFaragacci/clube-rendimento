@@ -20247,7 +20247,7 @@ td select.pend{border-color:var(--red);}
     <div class="passo">O que isso significa na prática</div>
     <div class="impacto" id="impacto"></div>
     <p class="aviso">Estimativa com base nos gastos informados e na variação acumulada em 12 meses de cada grupo do IPCA (IBGE, SIDRA, tabela 7060, ou séries do Banco Central), mantidas as proporções de gastos atuais. O retorno bruto considera Imposto de Renda de 15%. Informação sem caráter de recomendação.</p>
-    <div class="noprint" style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;"><button type="button" class="btn pri" id="btn-imprimir">Imprimir ou salvar em PDF</button><button type="button" class="btn" id="btn-limpar">Limpar tudo</button></div>
+    <div class="noprint" style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;"><button type="button" class="btn pri" id="btn-relatorio">Gerar relatório em PDF</button><button type="button" class="btn" id="btn-limpar">Limpar tudo</button></div>
   </div>
 
   <div class="card fechado noprint" id="c-rev" hidden>
@@ -20260,6 +20260,7 @@ td select.pend{border-color:var(--red);}
 
   <div class="card noprint" id="c-nome" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;">
     <div class="campo" style="min-width:280px;"><label for="in-nome">Nome do cliente (aparece no título e na impressão)</label><input type="text" id="in-nome" maxlength="60" autocomplete="off" placeholder="Ex.: Maria Silva"></div>
+    <div class="campo" style="min-width:240px;"><label for="in-assessor">Assessor (aparece no relatório)</label><input type="text" id="in-assessor" maxlength="60" autocomplete="off" placeholder="Ex.: Brunno Faragacci"></div>
     <div class="campo" style="min-width:180px;max-width:220px;"><label for="in-meses">Meses considerados</label><input type="text" id="in-meses" inputmode="numeric" autocomplete="off" placeholder="1"></div>
   </div>
 </div>
@@ -20595,6 +20596,161 @@ function renderTudo() {
   if (!MESES_USER) im.placeholder = String(mesesConsiderados());
 }
 
+// ── Relatório em PDF (páginas A4 em paisagem, no padrão do Diagnóstico de carteira) ──
+var CORES_REL = ['#BC863E', '#BFBFBF', '#D9A566', '#757982', '#E6CEC4', '#8A5F26', '#3D3936', '#A98B5B', '#9A9A9A'];
+function relCss() {
+  return [
+    '@page{size:A4 landscape;margin:0}',
+    '*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}',
+    'body{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;background:#d9d9d9;color:#1A1A1A;font-size:10pt}',
+    '.barra-tela{position:sticky;top:0;z-index:9;background:#111;color:#fff;padding:10px 18px;display:flex;gap:14px;align-items:center;font-size:13px}',
+    '.barra-tela button{background:#fff;color:#111;border:none;border-radius:8px;padding:8px 16px;font-weight:700;font-family:inherit;cursor:pointer}',
+    '.slide{width:297mm;height:210mm;background:#fff;margin:14px auto;padding:12mm 15mm 0;position:relative;overflow:hidden;page-break-after:always;break-after:page;box-shadow:0 2px 14px rgba(0,0,0,.25)}',
+    '.topo{display:flex;justify-content:space-between;align-items:flex-end;font-size:7.5pt;color:#1A1A1A;border-bottom:2px solid #DCDCDC;padding-bottom:2.6mm;height:10mm}.topo>span:first-child{font-weight:700}',
+    '.logo{display:flex;align-items:center;gap:2mm}.logo i{font-style:normal;background:#000;color:#fff;font-weight:700;font-size:7.5pt;width:5.4mm;height:5.4mm;border-radius:1.1mm;display:flex;align-items:center;justify-content:center}.logo b{font-weight:400;font-size:10.5pt;color:#000}',
+    'h1{font-weight:300;font-size:22pt;letter-spacing:.01em;color:#666;margin-top:3.2mm;line-height:1.05}',
+    'h2{font-weight:700;font-size:8.2pt;letter-spacing:.2em;color:#BC863E;margin:1mm 0 6mm}',
+    '.resumo{font-size:10pt;line-height:1.5;max-width:255mm;margin-bottom:6.5mm}',
+    '.corpo{position:relative}',
+    '.seguinte{position:absolute;left:15mm;bottom:15mm;font-size:8.5pt;font-style:italic;color:#8E8E8E}',
+    '.rodape{position:absolute;left:15mm;right:15mm;bottom:0;height:12mm;border-top:1px solid #E2E2E2;display:flex;justify-content:space-between;align-items:center;font-size:8.5pt;color:#9A9A9A}',
+    '.kpis{display:flex;border-top:1px solid #E0E0E0;border-bottom:1px solid #E0E0E0;margin-bottom:7mm}',
+    '.kp{flex:1;padding:3.4mm 4mm 4.4mm;border-left:1px solid #E0E0E0;position:relative}.kp:first-child{border-left:none;padding-left:0}',
+    '.kr{display:block;font-size:7.2pt;letter-spacing:.16em;text-transform:uppercase;color:#8E8E8E;font-weight:600}.kp.pri .kr{color:#8A5F26}',
+    '.kp b{display:block;font-size:19pt;font-weight:400;margin:1.4mm 0 .6mm;color:#1A1A1A}.kp b.pos{color:#2F6B3A}.kp b.neg{color:#9B2C1E}.kp small{font-size:8pt;color:#8E8E8E}',
+    '.kp u{position:absolute;left:0;bottom:1.6mm;width:9mm;height:.7mm;background:#BC863E}',
+    '.sec{display:flex;justify-content:space-between;align-items:center;font-size:8.6pt;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin:0 0 4.5mm}',
+    '.sec i{display:inline-block;width:1.4mm;height:3.4mm;background:#BC863E;border-radius:.6mm;margin-right:2.4mm;vertical-align:-.6mm}.sec em{font-style:normal;font-weight:400;color:#8E8E8E;letter-spacing:.08em}',
+    '.duas{display:grid;grid-template-columns:1fr 1fr;gap:12mm}',
+    '.donut{display:flex;align-items:center;gap:8mm}.rosca{width:62mm;height:62mm;flex:none}.rc{font-size:7.5pt;fill:#555}.vc{font-size:11pt;font-weight:700;fill:#1A1A1A}',
+    '.leg{flex:1;font-size:9pt}.leg div{display:flex;justify-content:space-between;gap:10px;padding:1.6mm 0}.leg i{display:inline-block;width:3mm;height:3mm;margin-right:2.4mm;border-radius:.6mm;vertical-align:-.4mm}.leg b{font-weight:700}',
+    '.pontos .pt{border-left:1.2mm solid #BC863E;background:#FBF7F0;padding:3.4mm 4.5mm;margin-bottom:3.4mm;font-size:9.4pt;line-height:1.5}.pontos .pt b{display:block;font-size:8pt;letter-spacing:.12em;text-transform:uppercase;color:#8A5F26;margin-bottom:1mm}',
+    '.tab{width:100%;border-collapse:collapse;font-size:9pt}.tab th{font-size:7.1pt;letter-spacing:.12em;text-transform:uppercase;color:#8E8E8E;font-weight:600;text-align:right;padding:2.2mm 2.4mm;border-bottom:1px solid #1A1A1A}',
+    '.tab td{text-align:right;padding:2.3mm 2.4mm;border-bottom:1px solid #EAEAEA;white-space:nowrap}.tab .e{text-align:left;white-space:normal}.tab tbody tr:nth-child(even) td{background:#FAFAFA}.tab tr.tot td{font-weight:700;border-top:1px solid #1A1A1A;background:#F6F6F6}',
+    '.tab .brr{display:inline-block;width:38mm;height:3.4mm;background:#F1F2F4;border-radius:1.7mm;position:relative;vertical-align:middle}.tab .brr i{position:absolute;left:0;top:0;bottom:0;background:#BC863E;border-radius:1.7mm;min-width:1mm}.tab .brr b{position:absolute;top:-1mm;bottom:-1mm;width:.7mm;background:#3D3936}',
+    '.nt{font-size:8pt;color:#8E8E8E;margin-top:3mm;line-height:1.5}',
+    '.leg-lin{display:flex;gap:16mm;font-size:8.6pt;margin:0 0 2mm 4mm}.leg-lin i{display:inline-block;width:3mm;height:3mm;border-radius:50%;margin-right:2mm;vertical-align:-.3mm}.graf{width:100%;height:auto}.ax{font-size:11px;fill:#8E8E8E}',
+    '.capa{background:#000;color:#fff;padding:0;box-shadow:none}.capa .faixa{position:absolute;left:0;top:0;bottom:0;width:5mm;background:#BC863E}',
+    '.logo-capa{position:absolute;left:29mm;top:50mm;gap:2.6mm}.logo-capa i{background:#fff;color:#000;width:8.6mm;height:8.6mm;font-size:10.5pt;border-radius:1.8mm}.logo-capa b{color:#fff;font-size:15pt}',
+    '.capa .cc{position:absolute;left:29mm;top:74mm;right:30mm}',
+    '.capa h1.gr{font-size:38pt;color:#fff;line-height:1.05;margin:0 0 7mm;font-weight:300;letter-spacing:.02em}.capa .cli{font-size:17pt;font-weight:700;color:#C99A55;margin-bottom:12mm}',
+    '.lin-capa{font-size:10pt;color:#9A9A9A;margin:3.6mm 0}.lin-capa b{color:#fff}',
+    '.fim .marca{font-size:7.6pt;letter-spacing:.1em;color:#BC863E;margin-bottom:8mm;font-weight:600}.fim .cc{top:36mm}',
+    '.prs{display:grid;grid-template-columns:1fr 1fr;gap:8mm 18mm;margin-top:9mm}.pr{display:flex;gap:3.2mm}.pr .num{flex:none;width:6.2mm;height:6.2mm;border-radius:50%;background:#BC863E;color:#fff;font-weight:700;font-size:8pt;display:flex;align-items:center;justify-content:center;margin-top:.4mm}',
+    '.pr h3{font-size:11pt;font-weight:600;margin-bottom:1.6mm;color:#fff}.pr p{font-size:8.6pt;line-height:1.55;color:#A8A8A8}',
+    '.assin{margin-top:12mm;border-top:1px solid #444;width:50mm;padding-top:4mm}.assin b{display:block;font-size:11pt;color:#BC863E}.assin span{font-size:8.5pt;color:#9A9A9A}',
+    '.aviso{margin-top:9mm;font-size:7.6pt;color:#777;max-width:200mm}.rod-fim{position:absolute;left:29mm;bottom:11mm;font-size:7.6pt;color:#777}',
+    '@media print{body{background:#fff}.barra-tela{display:none}.slide{margin:0;box-shadow:none}}'
+  ].join('\\n');
+}
+function relDonut(partes, rotulo, valor) {
+  var tot = partes.reduce(function (a, x) { return a + x.v; }, 0), raio = 74, circ = 2 * Math.PI * raio, acc = 0;
+  var sv = '<svg viewBox="0 0 200 200" class="rosca"><g transform="rotate(-90 100 100)">';
+  partes.forEach(function (p, i) {
+    var f = tot > 0 ? p.v / tot : 0;
+    if (f <= 0) return;
+    sv += '<circle cx="100" cy="100" r="' + raio + '" fill="none" stroke="' + CORES_REL[i % CORES_REL.length] + '" stroke-width="32" stroke-dasharray="' + (f * circ).toFixed(2) + ' ' + (circ - f * circ).toFixed(2) + '" stroke-dashoffset="' + (-acc * circ).toFixed(2) + '"/>';
+    acc += f;
+  });
+  sv += '</g><text x="100" y="97" text-anchor="middle" class="rc">' + esc(rotulo) + '</text><text x="100" y="115" text-anchor="middle" class="vc">' + esc(valor) + '</text></svg>';
+  var lg = '<div class="leg">' + partes.map(function (p, i) { return '<div><span><i style="background:' + CORES_REL[i % CORES_REL.length] + '"></i>' + esc(p.r) + '</span><b>' + fmtP(tot > 0 ? p.v / tot * 100 : 0, 1) + '</b></div>'; }).join('') + '</div>';
+  return '<div class="donut">' + sv + lg + '</div>';
+}
+function relLinhas(series, anos) {
+  var W = 1040, H = 190, mL = 74, mR = 30, mT = 12, mB = 24, mx = 0, mn = Infinity;
+  series.forEach(function (s) { s.pts.forEach(function (v) { if (v > mx) mx = v; if (v < mn) mn = v; }); });
+  var base = Math.floor(mn * 0.9 / 100) * 100, topo = mx * 1.02;
+  function X(i) { return mL + (W - mL - mR) * i / anos; }
+  function Y(v) { return mT + (H - mT - mB) * (1 - (v - base) / (topo - base)); }
+  var g = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="graf">';
+  for (var k = 0; k <= 4; k++) {
+    var vk = base + (topo - base) * k / 4, yk = Y(vk);
+    g += '<line x1="' + mL + '" y1="' + yk.toFixed(1) + '" x2="' + (W - mR) + '" y2="' + yk.toFixed(1) + '" stroke="#EDEDED" stroke-width="1"/><text x="' + (mL - 8) + '" y="' + (yk + 3.5).toFixed(1) + '" text-anchor="end" class="ax">' + esc(fmtRS(vk)) + '</text>';
+  }
+  for (var a = 0; a <= anos; a += 2) g += '<text x="' + X(a).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" class="ax">' + (a === 0 ? 'hoje' : a + 'a') + '</text>';
+  series.forEach(function (s) {
+    var dd = s.pts.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1); }).join(' ');
+    g += '<path d="' + dd + '" fill="none" stroke="' + s.cor + '" stroke-width="' + (s.tr ? 2 : 2.8) + '"' + (s.tr ? ' stroke-dasharray="6 5"' : '') + ' stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + X(anos).toFixed(1) + '" cy="' + Y(s.pts[anos]).toFixed(1) + '" r="4" fill="' + s.cor + '"/>';
+  });
+  return g + '</svg>';
+}
+function gerarRelatorio() {
+  if (!IPCA) { alert('O IPCA ainda não foi carregado. Aguarde alguns instantes e tente novamente.'); return; }
+  var r = calcular();
+  if (!(r.tot > 0)) { alert('Envie ao menos uma fatura ou informe gastos fora do cartão.'); return; }
+  var nome = (document.getElementById('in-nome').value || '').trim() || 'Cliente', assessor = (document.getElementById('in-assessor').value || '').trim();
+  var hoje = new Date(), dataTxt = String(hoje.getDate()).padStart(2, '0') + '/' + String(hoje.getMonth() + 1).padStart(2, '0') + '/' + hoje.getFullYear();
+  var dif = r.pessoal - IPCA.geral, S = [];
+  var rows = r.rows.filter(function (x) { return x.v > 0; }).sort(function (a, b) { return b.v - a.v; });
+  function slide(sub, resumo, corpo, seg) {
+    return '<section class="slide"><header class="topo"><span>Assessoria de investimentos</span><span class="logo"><i>CR</i><b>Clube do Rendimento</b></span></header><h1>INFLAÇÃO PESSOAL</h1><h2>' + esc(sub) + '</h2>' + (resumo ? '<p class="resumo">' + resumo + '</p>' : '') + '<div class="corpo">' + corpo + '</div>' + (seg ? '<p class="seguinte">A seguir: ' + esc(seg) + '</p>' : '') +
+      '<footer class="rodape"><span>' + esc(nome) + ' · ' + fmtRS(r.tot) + ' por mês</span><span>Clube do Rendimento · ' + dataTxt + ' · página @@N@@ de @@T@@</span></footer></section>';
+  }
+  function kpis(itens) { return '<div class="kpis">' + itens.map(function (k, i) { return '<div class="kp' + (i === 0 ? ' pri' : '') + '"><span class="kr">' + esc(k.r) + '</span><b' + (k.c ? ' class="' + k.c + '"' : '') + '>' + esc(k.v) + '</b><small>' + esc(k.s || '') + '</small>' + (i === 0 ? '<u></u>' : '') + '</div>'; }).join('') + '</div>'; }
+  function sec(t, dir) { return '<div class="sec"><span><i></i>' + esc(t) + '</span>' + (dir ? '<em>' + esc(dir) + '</em>' : '') + '</div>'; }
+  var sinal = function (v) { return (v > 0 ? '+' : '') + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+
+  // capa
+  S.push('<section class="slide capa"><div class="faixa"></div><div class="logo logo-capa"><i>CR</i><b>Clube do Rendimento</b></div><div class="cc"><h1 class="gr">INFLAÇÃO<br>PESSOAL</h1><div class="cli">' + esc(nome) + '</div>' +
+    '<div class="lin-capa"><span>Inflação pessoal em 12 meses</span> <b>' + fmtP(r.pessoal, 2) + '</b></div><div class="lin-capa"><span>IPCA oficial</span> <b>' + fmtP(IPCA.geral, 2) + ' (' + esc(IPCA.mes) + ')</b></div>' +
+    '<div class="lin-capa"><span>Gasto mensal analisado</span> <b>' + fmtRS(r.tot) + '</b></div>' + (assessor ? '<div class="lin-capa"><span>Assessor</span> <b>' + esc(assessor) + '</b></div>' : '') + '<div class="lin-capa"><span>Emitido em</span> <b>' + dataTxt + '</b></div></div></section>');
+
+  // resultado
+  var maiorC = rows.slice().sort(function (a, b) { return b.c - a.c; })[0];
+  var maiorD = rows.slice().sort(function (a, b) { return Math.abs(b.w - b.wo) - Math.abs(a.w - a.wo); })[0];
+  var princ = rows.filter(function (x) { return x.w >= 5; }).sort(function (a, b) { return b.i - a.i; })[0];
+  var pontos = '<div class="pontos">' +
+    '<div class="pt"><b>Maior contribuição</b>' + esc(maiorC.g.n) + ' responde por ' + fmtP(maiorC.w, 0) + ' dos seus gastos e por ' + maiorC.c.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' p.p. da sua inflação.</div>' +
+    '<div class="pt"><b>Maior diferença de peso</b>' + esc(maiorD.g.n) + ' pesa ' + fmtP(maiorD.w, 0) + ' no seu orçamento, contra ' + fmtP(maiorD.wo, 0) + ' no IPCA oficial.</div>' +
+    (princ ? '<div class="pt"><b>Maior alta entre os principais gastos</b>' + esc(princ.g.n) + ' subiu ' + fmtP(princ.i, 2) + ' em 12 meses.</div>' : '') + '</div>';
+  S.push(slide('O RESULTADO', 'Em 12 meses, os preços dos itens que compõem o seu consumo subiram ' + fmtP(r.pessoal, 2) + ', contra ' + fmtP(IPCA.geral, 2) + ' do IPCA oficial. ' + (Math.abs(dif) < 0.005 ? 'O seu custo de vida acompanha a média do país.' : 'O seu custo de vida sobe ' + (dif > 0 ? 'mais' : 'menos') + ' que a média do país.'),
+    kpis([{ r: 'Inflação pessoal', v: fmtP(r.pessoal, 2), s: 'acumulada em 12 meses' }, { r: 'IPCA oficial', v: fmtP(IPCA.geral, 2), s: IPCA.mes + ' · ' + IPCA.fonte }, { r: 'Diferença', v: sinal(dif) + ' p.p.', c: dif > 0.005 ? 'neg' : (dif < -0.005 ? 'pos' : ''), s: dif > 0.005 ? 'acima da média do país' : (dif < -0.005 ? 'abaixo da média do país' : 'em linha com a média') }, { r: 'Gasto mensal analisado', v: fmtRS(r.tot), s: r.meses + (r.meses === 1 ? ' mês' : ' meses') + ' de faturas' }]) +
+    '<div class="duas"><div>' + sec('Distribuição do gasto', rows.length + ' grupos do IPCA') + relDonut(rows.map(function (x) { return { r: x.g.n, v: x.v }; }), 'por mês', fmtRS(r.tot)) + '</div><div>' + sec('Em destaque') + pontos + '</div></div>', 'para onde vai o seu dinheiro, grupo a grupo.'));
+
+  // grupos
+  var linhas = rows.map(function (x) {
+    return '<tr><td class="e">' + esc(x.g.n) + '</td><td class="e"><span class="brr"><i style="width:' + Math.min(100, x.w).toFixed(1) + '%"></i><b style="left:calc(' + Math.min(100, x.wo).toFixed(1) + '% - .35mm)"></b></span></td><td>' + fmtP(x.w, 1) + '</td><td>' + fmtP(x.wo, 1) + '</td><td>' + fmtRS(x.v) + '</td><td>' + fmtP(x.i, 2) + '</td><td>' + x.c.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' p.p.</td></tr>';
+  }).join('') + '<tr class="tot"><td class="e">Total</td><td></td><td>100,0%</td><td>100,0%</td><td>' + fmtRS(r.tot) + '</td><td>' + fmtP(IPCA.geral, 2) + '</td><td>' + r.pessoal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' p.p.</td></tr>';
+  S.push(slide('PARA ONDE VAI O SEU DINHEIRO', 'A inflação pessoal é a média das altas de cada grupo, ponderada pelo peso que cada um tem no seu orçamento. A barra dourada mostra o seu peso; o traço escuro, o peso no IPCA oficial.',
+    '<table class="tab"><thead><tr><th class="e">Grupo</th><th class="e">Seu peso × peso no IPCA</th><th>Seu peso</th><th>Peso no IPCA</th><th>Gasto mensal</th><th>IPCA 12 meses</th><th>Contribuição</th></tr></thead><tbody>' + linhas + '</tbody></table>' +
+    '<p class="nt">Contribuição = peso no seu orçamento × alta do grupo em 12 meses; a soma é a sua inflação pessoal. Fonte dos índices: ' + esc(IPCA.fonte) + ' (IPCA de ' + esc(IPCA.mes) + ').</p>', 'quanto isso pesa no futuro do seu orçamento.'));
+
+  // projeção
+  var pi = r.pessoal / 100, po = IPCA.geral / 100, A = 10, ps = [], oc = [];
+  for (var t = 0; t <= A; t++) { ps.push(r.tot * Math.pow(1 + pi, t)); oc.push(r.tot * Math.pow(1 + po, t)); }
+  var bruto = r.pessoal / 0.85;
+  S.push(slide('QUANTO ISSO PESA NO FUTURO', 'Se a inflação pessoal de ' + fmtP(r.pessoal, 2) + ' ao ano se mantiver, o custo de vida de ' + fmtRS(r.tot) + ' por mês chega a ' + fmtRS(ps[A]) + ' em ' + A + ' anos, ' + fmtRS(Math.abs(ps[A] - oc[A])) + (ps[A] >= oc[A] ? ' acima' : ' abaixo') + ' do que o IPCA oficial indicaria.',
+    kpis([{ r: 'Custo de vida hoje', v: fmtRS(r.tot), s: 'por mês' }, { r: 'Em 12 meses', v: fmtRS(ps[1]), s: fmtRS(ps[1] - r.tot) + ' a mais por mês' }, { r: 'Em ' + A + ' anos', v: fmtRS(ps[A]), s: 'por mês, a preços futuros' }, { r: 'Retorno mínimo', v: fmtP(bruto, 2), s: 'ao ano, bruto de IR (15%)' }]) +
+    '<div class="leg-lin"><span><i style="background:#BC863E"></i>Inflação pessoal · ' + fmtRS(ps[A]) + '</span><span><i style="background:#9A9A9A"></i>IPCA oficial · ' + fmtRS(oc[A]) + '</span></div>' + relLinhas([{ cor: '#9A9A9A', pts: oc, tr: true }, { cor: '#BC863E', pts: ps }], A) +
+    '<p class="nt">Projeção ilustrativa, com as proporções de gasto atuais e inflação constante. O eixo vertical não parte de zero. O retorno mínimo é o rendimento bruto necessário para que o patrimônio, após o Imposto de Renda de 15%, apenas acompanhe a inflação pessoal.</p>', 'os maiores gastos considerados no cálculo.'));
+
+  // maiores gastos
+  var mp = {}, it = [];
+  LANC.forEach(function (l) { if (l.g === 'x' || l.g === '?') return; var m = mp[l.chave] || (mp[l.chave] = { nome: l.desc, g: l.g, v: 0, n: 0 }); m.v += l.valor; m.n++; });
+  Object.keys(mp).forEach(function (k) { var m = mp[k]; it.push({ nome: m.nome, g: GRUPOS.filter(function (x) { return x.k === m.g; })[0].n, n: m.n + (m.n === 1 ? ' lançamento' : ' lançamentos'), v: m.v / r.meses }); });
+  GRUPOS.forEach(function (g) { if (MANUAL[g.k] > 0) it.push({ nome: 'Gasto informado fora do cartão', g: g.n, n: 'mensal', v: MANUAL[g.k] }); });
+  it = it.filter(function (x) { return x.v > 0; }).sort(function (a, b) { return b.v - a.v; });
+  var lim = 11, topo = it.slice(0, lim), resto = it.slice(lim).reduce(function (a, x) { return a + x.v; }, 0);
+  S.push(slide('MAIORES GASTOS CONSIDERADOS', 'Os ' + topo.length + ' maiores gastos mensais, já classificados nos grupos do IPCA.',
+    '<table class="tab"><thead><tr><th class="e">Estabelecimento</th><th class="e">Grupo do IPCA</th><th class="e">Base</th><th>Gasto mensal</th><th>% do total</th></tr></thead><tbody>' + topo.map(function (x) { return '<tr><td class="e">' + esc(x.nome) + '</td><td class="e">' + esc(x.g) + '</td><td class="e">' + esc(x.n) + '</td><td>' + fmtRS(x.v) + '</td><td>' + fmtP(x.v / r.tot * 100, 1) + '</td></tr>'; }).join('') + '</tbody></table>' + (it.length > lim ? '<p class="nt">+ ' + (it.length - lim) + ' demais gastos, somando ' + fmtRS(resto) + ' por mês.</p>' : ''), 'como interpretar este resultado.'));
+
+  // encerramento
+  S.push('<section class="slide capa fim"><div class="faixa"></div><div class="cc"><div class="marca">C O M O &nbsp; I N T E R P R E T A R</div><h1 class="gr">A INFLAÇÃO<br>É PESSOAL.</h1><div class="prs">' +
+    '<div class="pr"><span class="num">1</span><div><h3>Compare com o IPCA oficial</h3><p>Sua inflação pessoal é de ' + fmtP(r.pessoal, 2) + ' ao ano, contra ' + fmtP(IPCA.geral, 2) + ' do IPCA. A diferença decorre do peso de cada grupo no seu orçamento.</p></div></div>' +
+    '<div class="pr"><span class="num">2</span><div><h3>Proteja o poder de compra</h3><p>Para apenas acompanhar a sua inflação, o patrimônio precisa render ao menos ' + fmtP(bruto, 2) + ' ao ano, brutos de Imposto de Renda.</p></div></div>' +
+    '<div class="pr"><span class="num">3</span><div><h3>Atualize periodicamente</h3><p>O padrão de gastos e os índices mudam. Recomenda-se refazer a análise a cada trimestre, com novas faturas.</p></div></div></div>' +
+    '<div class="assin">' + (assessor ? '<b>' + esc(assessor) + '</b>' : '') + '<span>Clube do Rendimento</span></div><p class="aviso">Estimativa com base nos gastos informados e nos índices de inflação do ' + esc(IPCA.fonte) + '. Material de caráter meramente informativo; não constitui recomendação de investimento.</p></div><div class="rod-fim">Clube do Rendimento · ' + dataTxt + '</div></section>');
+
+  var n = S.length;
+  var corpo = S.map(function (x, i) { return x.split('@@N@@').join(String(i + 1)).split('@@T@@').join(String(n)); }).join('\\n');
+  var w = window.open('', '_blank');
+  if (!w) { alert('Permita pop-ups para este site e tente novamente.'); return; }
+  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Inflação pessoal — ' + esc(nome) + '</title><style>' + relCss() + '</' + 'style></head><body>' +
+    '<div class="barra-tela"><span>Relatório de inflação pessoal · ' + n + ' páginas. Na janela de impressão, escolha <b>Salvar como PDF</b>, orientação <b>paisagem</b>, margens <b>nenhuma</b>, desative <b>Cabeçalhos e rodapés</b> e ative <b>Gráficos de segundo plano</b>.</span><button type="button" onclick="window.print()">Imprimir / Salvar como PDF</button></div>' + corpo + '</body></html>';
+  w.document.open(); w.document.write(html); w.document.close();
+  setTimeout(function () { try { w.focus(); w.print(); } catch (e) {} }, 1500);
+}
+
 // ── Eventos ──
 var inp = document.getElementById('in-arq'), drop = document.getElementById('drop');
 inp.addEventListener('change', function () { receberArquivos(inp.files); inp.value = ''; });
@@ -20631,7 +20787,7 @@ document.getElementById('in-meses').addEventListener('input', function () {
 });
 document.getElementById('btn-ipca').addEventListener('click', carregarIPCA);
 window.addEventListener('error', function (e) { dizer('Ocorreu um erro inesperado: ' + (e && e.message ? e.message : 'tente novamente') + '.', true); });
-document.getElementById('btn-imprimir').addEventListener('click', function () { window.print(); });
+document.getElementById('btn-relatorio').addEventListener('click', gerarRelatorio);
 document.getElementById('btn-limpar').addEventListener('click', function () {
   if (!confirm('Remover as faturas e os valores informados?')) return;
   LANC = []; ARQS = []; MANUAL = {}; OVR = {}; MESES_USER = null;
@@ -20647,6 +20803,8 @@ document.addEventListener('click', function (e) {
   var b = h.querySelector('.btn-mais');
   if (b) { b.textContent = abrir ? '−' : '+'; b.setAttribute('aria-expanded', abrir ? 'true' : 'false'); }
 });
+try { document.getElementById('in-assessor').value = localStorage.getItem('cr_inf_assessor') || ''; } catch (e) {}
+document.getElementById('in-assessor').addEventListener('input', function () { try { localStorage.setItem('cr_inf_assessor', this.value); } catch (e) {} });
 renderManual();
 renderTudo();
 carregarIPCA();
