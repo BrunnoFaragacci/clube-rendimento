@@ -21544,13 +21544,13 @@ function renderizar() {
   document.getElementById('resumo').innerHTML = '<div><div class="r">Ativo-objeto</div><div class="n">' + esc(a.ticker) + '</div></div><div><div class="r">Cotação atual</div><div class="n">R$ ' + fmt(a.preco, 2) + '</div></div><div><div class="r">Variação no dia</div><div class="m ' + (a.variacao > 0 ? 'pos' : (a.variacao < 0 ? 'neg' : '')) + '">' + fmtPs(a.variacao === null ? null : a.variacao * 100) + '</div></div>' +
     (venc ? '<div><div class="r">Vencimento</div><div class="m">' + fmtData(venc.data) + ' <small style="font-weight:500;color:var(--ink-soft);">(' + venc.diasCorridos + ' dias corridos)</small></div></div>' : '') + '<div><div class="r">Cotação em</div><div class="m">' + esc(a.data || '—') + '</div></div>' + (qa > 0 ? '<div><div class="r">Posição</div><div class="m">' + fmt(qa, 0) + ' ações <small style="font-weight:500;color:var(--ink-soft);">(' + fmt(lt, 0) + ' lote(s) de 100' + (qa % 100 ? '; sobram ' + (qa % 100) : '') + ')</small></div></div><div><div class="r">Valor da posição</div><div class="m">R$ ' + fmt(qa * (a.preco || 0), 2) + '</div></div>' : '');
   var rs = linhas(); ULT_LINHAS = rs;
-  var cab = [['ticker', 'Ticker'], ['tipo', 'Tipo'], ['preco', 'Cotação atual'], ['strike', 'Strike'], ['dist', 'Distância do strike (%)'], ['n', 'Nº de negociações'], ['aio', 'ITM / ATM / OTM']];
+  var cab = [['ticker', 'Ticker'], ['tipo', 'Tipo'], ['preco', 'Cotação atual'], ['base', 'Cotação ' + a.ticker], ['strike', 'Strike'], ['dist', 'Distância do strike (%)'], ['n', 'Nº de negociações'], ['aio', 'ITM / ATM / OTM']];
   var qa = qtdAcoes(), lt = Math.floor(qa / 100);
   if (qa > 0) cab = cab.concat([['premio', 'Prêmio total da venda coberta (R$)'], ['yld', 'Yield sobre o prêmio (%)'], ['exerc', 'Valor se exercida (R$)']]);
   cab.push(['add', '']);
   var t = '<table><thead><tr>' + cab.map(function (c) { return '<th data-ord="' + c[0] + '">' + c[1] + (ordem.col === c[0] ? (ordem.dir > 0 ? ' ▲' : ' ▼') : '') + '</th>'; }).join('') + '</tr></thead><tbody>';
   rs.forEach(function (r) {
-    t += '<tr><td><b>' + esc(r.ticker) + '</b></td><td><span class="tp ' + r.tipo + '">' + (r.tipo === 'call' ? 'Call' : 'Put') + '</span></td><td>' + (r.preco === null ? '—' : 'R$ ' + fmt(r.preco, 2)) + '</td><td>R$ ' + fmt(r.strike, 2) + '</td><td class="' + (r.dist > 0 ? 'pos' : (r.dist < 0 ? 'neg' : '')) + '">' + fmtPs(r.dist) + '</td><td>' + (r.n === null || r.n === undefined ? '—' : fmt(r.n, 0)) + '</td><td><span class="aio ' + r.aio + '">' + r.aio + '</span></td>' + (qa > 0 ? '<td>' + (r.premio === null ? '—' : '<b>R$ ' + fmt(r.premio, 2) + '</b>') + '</td><td>' + (r.yld === null ? '—' : fmt(r.yld, 2) + '%') + '</td><td>' + (r.exerc === null ? '—' : 'R$ ' + fmt(r.exerc, 2)) + '</td>' : '') + '<td>' + (naCarteira(r.ticker) ? '<button type="button" class="btn-mais ok" disabled title="Já está na carteira teórica">✓</button>' : '<button type="button" class="btn-mais" data-add="' + esc(r.ticker) + '" title="Adicionar à carteira teórica">+</button>') + '</td></tr>';
+    t += '<tr><td><b>' + esc(r.ticker) + '</b></td><td><span class="tp ' + r.tipo + '">' + (r.tipo === 'call' ? 'Call' : 'Put') + '</span></td><td>' + (r.preco === null ? '—' : 'R$ ' + fmt(r.preco, 2)) + '</td><td>' + (a.preco === null || a.preco === undefined ? '—' : 'R$ ' + fmt(a.preco, 2)) + '</td><td>R$ ' + fmt(r.strike, 2) + '</td><td class="' + (r.dist > 0 ? 'pos' : (r.dist < 0 ? 'neg' : '')) + '">' + fmtPs(r.dist) + '</td><td>' + (r.n === null || r.n === undefined ? '—' : fmt(r.n, 0)) + '</td><td><span class="aio ' + r.aio + '">' + r.aio + '</span></td>' + (qa > 0 ? '<td>' + (r.premio === null ? '—' : '<b>R$ ' + fmt(r.premio, 2) + '</b>') + '</td><td>' + (r.yld === null ? '—' : fmt(r.yld, 2) + '%') + '</td><td>' + (r.exerc === null ? '—' : 'R$ ' + fmt(r.exerc, 2)) + '</td>' : '') + '<td>' + (naCarteira(r.ticker) ? '<button type="button" class="btn-mais ok" disabled title="Já está na carteira teórica">✓</button>' : '<button type="button" class="btn-mais" data-add="' + esc(r.ticker) + '" title="Adicionar à carteira teórica">+</button>') + '</td></tr>';
   });
   t += '</tbody></table>';
   document.getElementById('tabela').innerHTML = rs.length ? '<div class="msg" style="margin-bottom:8px;">' + rs.length + ' série(s) exibida(s). Clique no título de uma coluna para ordenar.</div>' + t : '<div class="vazio">Nenhuma série para os filtros selecionados.' + (document.getElementById('f-todas').checked ? '' : ' Marque "Incluir séries sem negociação" para ver todas as séries listadas.') + '</div>';
@@ -21641,13 +21641,26 @@ function renderAcoes() {
   document.getElementById('btn-salvar-acoes').hidden = !ACOES.length;
   if (!ACOES.length) fecharFormSalvar();
   if (!ACOES.length) { el.innerHTML = '<p class="vazio">Nenhuma carteira carregada. Suba a planilha de posição consolidada para listar as ações do cliente.</p>'; return; }
-  var ord = ACOES.slice().sort(function (a, b) { return b.pos - a.pos; }), tot = 0;
-  var h = '<table class="tb-acoes"><thead><tr><th>Ativo</th><th>Quantidade</th><th>Preço médio</th><th>Última cotação</th><th>Posição (R$)</th><th></th></tr></thead><tbody>';
-  ord.forEach(function (x) {
-    tot += x.pos;
-    h += '<tr' + (x.ticker === ACAO_SEL ? ' class="sel"' : '') + '><td><b>' + esc(x.ticker) + '</b>' + (x.opcao ? ' <small>' + (x.opcao.tipo === 'call' ? 'Call' : 'Put') + ' ' + esc(x.opcao.ativo) + ' · strike R$ ' + fmt(Number(x.opcao.strike), 2) + ' · venc. ' + fmtData(x.opcao.venc) + '</small>' : '') + '</td><td>' + fmt(x.qtd, 0) + '</td><td>' + (x.pm !== null ? 'R$ ' + fmt(x.pm, 2) : '—') + '</td><td>' + (x.cot !== null ? 'R$ ' + fmt(x.cot, 2) : '—') + '</td><td>' + (x.pos ? 'R$ ' + fmt(x.pos, 2) : '—') + '</td><td>' + (x.opcao ? '<button type="button" class="rm" data-rm-opc="' + esc(x.ticker) + '" title="Remover da carteira do cliente">×</button>' : '<button type="button" class="btn" data-analisar="' + esc(x.ticker) + '">Consultar opções</button>') + '</td></tr>';
-  });
-  h += '<tr><td><b>Total</b></td><td></td><td></td><td></td><td><b>R$ ' + fmt(tot, 2) + '</b></td><td></td></tr></tbody></table>';
+  var porPos = function (x, y) { return y.pos - x.pos; };
+  var acs = ACOES.filter(function (x) { return !x.opcao; }).sort(porPos), ops = ACOES.filter(function (x) { return !!x.opcao; }).sort(porPos), tot = 0, h = '';
+  if (acs.length) {
+    h += '<table class="tb-acoes"><thead><tr><th>Ativo</th><th>Quantidade</th><th>Preço médio</th><th>Última cotação</th><th>Posição (R$)</th><th></th></tr></thead><tbody>';
+    acs.forEach(function (x) {
+      tot += x.pos;
+      h += '<tr' + (x.ticker === ACAO_SEL ? ' class="sel"' : '') + '><td><b>' + esc(x.ticker) + '</b></td><td>' + fmt(x.qtd, 0) + '</td><td>' + (x.pm !== null ? 'R$ ' + fmt(x.pm, 2) : '—') + '</td><td>' + (x.cot !== null ? 'R$ ' + fmt(x.cot, 2) : '—') + '</td><td>' + (x.pos ? 'R$ ' + fmt(x.pos, 2) : '—') + '</td><td><button type="button" class="btn" data-analisar="' + esc(x.ticker) + '">Consultar opções</button></td></tr>';
+    });
+    h += '<tr><td><b>Total</b></td><td></td><td></td><td></td><td><b>R$ ' + fmt(tot, 2) + '</b></td><td></td></tr></tbody></table>';
+  }
+  if (ops.length) {
+    var totO = 0;
+    h += '<div class="sec" style="margin:22px 0 10px;"><span>Opções <span>(' + ops.length + ')</span></span></div>';
+    h += '<table class="tb-acoes"><thead><tr><th>Opção</th><th>Ativo-objeto</th><th>Strike</th><th>Vencimento</th><th>Quantidade</th><th>Preço de entrada</th><th>Posição (R$)</th><th></th></tr></thead><tbody>';
+    ops.forEach(function (x) {
+      totO += x.pos;
+      h += '<tr><td><b>' + esc(x.ticker) + '</b> <small>' + (x.opcao.tipo === 'call' ? 'Call' : 'Put') + '</small></td><td>' + esc(x.opcao.ativo) + '</td><td>R$ ' + fmt(Number(x.opcao.strike), 2) + '</td><td>' + fmtData(x.opcao.venc) + '</td><td>' + fmt(x.qtd, 0) + '</td><td>' + (x.pm !== null ? 'R$ ' + fmt(x.pm, 2) : '—') + '</td><td>' + (x.pos ? 'R$ ' + fmt(x.pos, 2) : '—') + '</td><td><button type="button" class="rm" data-rm-opc="' + esc(x.ticker) + '" title="Remover da carteira do cliente">×</button></td></tr>';
+    });
+    h += '<tr><td><b>Total</b></td><td></td><td></td><td></td><td></td><td></td><td><b>R$ ' + fmt(totO, 2) + '</b></td><td></td></tr></tbody></table>';
+  }
   el.innerHTML = h;
 }
 function analisarAcao(tk) {
