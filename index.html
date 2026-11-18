@@ -21654,12 +21654,16 @@ function renderAcoes() {
   if (ops.length) {
     var totO = 0;
     h += '<div class="sec" style="margin:22px 0 10px;"><span>Opções <span>(' + ops.length + ')</span></span></div>';
-    h += '<table class="tb-acoes"><thead><tr><th>Opção</th><th>Ativo-objeto</th><th>Strike</th><th>Vencimento</th><th>Quantidade</th><th>Preço de entrada</th><th>Posição (R$)</th><th></th></tr></thead><tbody>';
+    h += '<table class="tb-acoes"><thead><tr><th>Opção</th><th>Ativo-objeto</th><th>Strike</th><th>Vencimento</th><th>Quantidade</th><th>Preço de entrada</th><th>Prêmio total da venda coberta (R$)</th><th>Yield sobre o prêmio</th><th></th></tr></thead><tbody>';
+    var totBase = 0, baseDe = function (x) {
+      var a = ACOES.filter(function (y) { return !y.opcao && y.ticker === x.opcao.ativo && y.cot; })[0];
+      return x.qtd * (a ? a.cot : Number(x.opcao.strike) || 0);
+    };
     ops.forEach(function (x) {
-      totO += x.pos;
-      h += '<tr><td><b>' + esc(x.ticker) + '</b> <small>' + (x.opcao.tipo === 'call' ? 'Call' : 'Put') + '</small></td><td>' + esc(x.opcao.ativo) + '</td><td>R$ ' + fmt(Number(x.opcao.strike), 2) + '</td><td>' + fmtData(x.opcao.venc) + '</td><td>' + fmt(x.qtd, 0) + '</td><td>' + (x.pm !== null ? 'R$ ' + fmt(x.pm, 2) : '—') + '</td><td>' + (x.pos ? 'R$ ' + fmt(x.pos, 2) : '—') + '</td><td><button type="button" class="rm" data-rm-opc="' + esc(x.ticker) + '" title="Remover da carteira do cliente">×</button></td></tr>';
+      totO += x.pos; totBase += baseDe(x);
+      h += '<tr><td><b>' + esc(x.ticker) + '</b> <small>' + (x.opcao.tipo === 'call' ? 'Call' : 'Put') + '</small></td><td>' + esc(x.opcao.ativo) + '</td><td>R$ ' + fmt(Number(x.opcao.strike), 2) + '</td><td>' + fmtData(x.opcao.venc) + '</td><td>' + fmt(x.qtd, 0) + '</td><td>' + (x.pm !== null ? 'R$ ' + fmt(x.pm, 2) : '—') + '</td><td>' + (x.pos ? 'R$ ' + fmt(x.pos, 2) : '—') + '</td><td>' + (baseDe(x) > 0 && x.pos ? fmt(x.pos / baseDe(x) * 100, 2) + '%' : '—') + '</td><td><button type="button" class="rm" data-rm-opc="' + esc(x.ticker) + '" title="Remover da carteira do cliente">×</button></td></tr>';
     });
-    h += '<tr><td><b>Total</b></td><td></td><td></td><td></td><td></td><td></td><td><b>R$ ' + fmt(totO, 2) + '</b></td><td></td></tr></tbody></table>';
+    h += '<tr><td><b>Total</b></td><td></td><td></td><td></td><td></td><td></td><td><b>R$ ' + fmt(totO, 2) + '</b></td><td><b>' + (totBase > 0 && totO ? fmt(totO / totBase * 100, 2) + '%' : '—') + '</b></td><td></td></tr></tbody></table>';
   }
   el.innerHTML = h;
 }
